@@ -1,0 +1,23 @@
+{
+  "name": "larity",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "packageManager": "bun@1.1.34",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --no-daemon",
+    "build": "turbo run build --no-daemon",
+    "lint": "turbo run lint --no-daemon"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "turbo": "^2.6.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
