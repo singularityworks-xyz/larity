@@ -19,5 +19,8 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "ioredis": "^5.8.2"
   }
 }
