@@ -4,11 +4,11 @@ import { promisify } from 'util';
 import Redis from 'ioredis';
 
 // Import the modules to test (without mocking)
-import { redis, connectRedis } from './client';
-import { checkRedisHealth } from './health';
-import { redisKeys } from './keys';
-import { acquireLock, releaseLock } from './locks';
-import { publish } from './pubsub';
+import { redis, connectRedis } from '../client';
+import { checkRedisHealth } from '../health';
+import { redisKeys } from '../keys';
+import { acquireLock, releaseLock } from '../locks';
+import { publish } from '../pubsub';
 
 const sleep = promisify(setTimeout);
 
