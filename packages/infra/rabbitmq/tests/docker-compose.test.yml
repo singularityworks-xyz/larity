@@ -1,0 +1,21 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: larity
+      RABBITMQ_DEFAULT_PASS: larity_dev
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    networks:
+      - rabbitmq-test
+
+networks:
+  rabbitmq-test:
+    driver: bridge
+
