@@ -1,0 +1,29 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: larity-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: larity
+      RABBITMQ_DEFAULT_PASS: larity_dev
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - larity-network
+    restart: unless-stopped
+
+volumes:
+  rabbitmq_data:
+
+networks:
+  larity-network:
+    external: true
+    name: larity-network
+

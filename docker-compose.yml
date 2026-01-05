@@ -1,0 +1,19 @@
+services:
+  redis:
+    extends:
+      file: ./packages/infra/redis/docker-compose.yml
+      service: redis
+    networks:
+      - larity-network
+
+  rabbitmq:
+    extends:
+      file: ./packages/infra/rabbitmq/docker-compose.yml
+      service: rabbitmq
+    networks:
+      - larity-network
+
+networks:
+  larity-network:
+    name: larity-network
+
