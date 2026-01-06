@@ -1,33 +1,38 @@
 {
-    "$schema": "https://turbo.build/schema.json",
-    "tasks": {
-        "dev": {
-            "cache": false,
-            "persistent": true
-        },
-        "build": {
-            "dependsOn": [
-                "^build"
-            ],
-            "inputs": [
-                "$TURBO_DEFAULT$",
-                ".env*"
-            ],
-            "outputs": [
-                "dist/**",
-                "build/**",
-                "out/**"
-            ]
-        },
-        "check": {
-            "cache": true,
-            "persistent": false
-        },
-        "check-types": {
-            "cache": true,
-            "dependsOn": [
-                "^check-types"
-            ]
-        }
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": ["dist/**", "build/**", "out/**"]
+    },
+    "check": {
+      "cache": true,
+      "persistent": false
+    },
+    "check-types": {
+      "cache": true,
+      "dependsOn": ["^check-types"]
+    },
+    "lint": {
+      "cache": true,
+      "dependsOn": ["^lint"]
+    },
+    "lint:fix": {
+      "cache": false,
+      "dependsOn": ["^lint:fix"]
+    },
+    "format": {
+      "cache": true,
+      "dependsOn": ["^format"]
+    },
+    "format:check": {
+      "cache": true,
+      "dependsOn": ["^format:check"]
     }
+  }
 }

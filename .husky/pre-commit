@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run format check and linting
+echo "🔍 Running format check and linting..."
+bun run format:check || {
+  echo "❌ Format check failed. Please run 'bun run format' to fix formatting issues."
+  exit 1
+}
+
+bun run lint || {
+  echo "❌ Linting failed. Please run 'bun run lint:fix' to fix linting issues."
+  exit 1
+}
+
+echo "✅ Pre-commit checks passed!"

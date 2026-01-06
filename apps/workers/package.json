@@ -3,6 +3,12 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "lint": "biome check --log-level=info --diagnostic-level=warn .",
+    "lint:fix": "biome check --write --unsafe .",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
