@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Run format check and linting
 echo "🔍 Running format check and linting..."
 bun run format:check || {
