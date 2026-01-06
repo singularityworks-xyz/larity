@@ -20,6 +20,9 @@ services:
     networks:
       - larity-network
 
+volumes:
+  postgres_data:
+
 networks:
   larity-network:
     name: larity-network
