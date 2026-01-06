@@ -1,7 +1,7 @@
 
 generator client {
   provider = "prisma-client"
-  output   = "../generated/prisma"
+  output   = "./generated/prisma"
 }
 
 datasource db {
@@ -24,24 +24,71 @@ model Org {
 
 model User {
   id            String    @id @default(uuid())
+  name          String
   email         String    @unique
-  emailVerified DateTime?
-  name          String?
-  avatar        String?   @default("https://www.catstalkers.com/_next/static/media/bg-footer.1b0868cc.png")
-  role          UserRole  @default(MEMBER)
+  emailVerified Boolean
+  image         String?   @default("https://www.catstalkers.com/_next/static/media/bg-footer.1b0868cc.png")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+ 
+  role          UserRole  @default(MEMBER)
 
   orgId String
   org   Org    @relation(fields: [orgId], references: [id], onDelete: Cascade)
 
+  sessions      Session[]
+  accounts      Account[]
   assignedTasks Task[]     @relation("TaskAssignee")
   createdTasks  Task[]     @relation("TaskCreator")
   decisions     Decision[] @relation("DecisionAuthor")
 
   @@index([orgId])
   @@index([email])
-  @@map("users")
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
 }
 
 enum UserRole {
