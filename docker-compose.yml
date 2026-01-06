@@ -22,6 +22,8 @@ services:
 
 volumes:
   postgres_data:
+  rabbitmq_data:
+  redis_data:
 
 networks:
   larity-network:
