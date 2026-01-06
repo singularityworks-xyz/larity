@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
-import { spawn, execSync } from 'child_process';
-import { promisify } from 'util';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import amqp from 'amqplib';
+import { execSync, spawn } from 'child_process';
+import { promisify } from 'util';
 
-import { getChannel, closeConnection } from '../connection';
-import { publish } from '../publish';
+import { closeConnection, getChannel } from '../connection';
 import { consume } from '../consume';
 import { setupRabbitMQ } from '../index';
+import { publish } from '../publish';
 import { Queues } from '../queues';
 
 const sleep = promisify(setTimeout);
@@ -20,22 +20,28 @@ class RabbitMQTestContainer {
 
     // Ensure any stale container is gone
     try {
-        execSync('docker rm -f rabbitmq-integration-test', { stdio: 'ignore' });
+      execSync('docker rm -f rabbitmq-integration-test', { stdio: 'ignore' });
     } catch (e) {
-        // ignore
+      // ignore
     }
 
     // Run docker container directly
     // Using --rm to auto-clean if the process dies, but we'll manage lifecycle manually
     const cmd = [
-        'docker', 'run', 
-        '-d',
-        '--name', 'rabbitmq-integration-test',
-        '-p', '5672:5672',
-        '-p', '15672:15672',
-        '-e', 'RABBITMQ_DEFAULT_USER=larity',
-        '-e', 'RABBITMQ_DEFAULT_PASS=larity_dev',
-        'rabbitmq:3-management-alpine'
+      'docker',
+      'run',
+      '-d',
+      '--name',
+      'rabbitmq-integration-test',
+      '-p',
+      '5672:5672',
+      '-p',
+      '15672:15672',
+      '-e',
+      'RABBITMQ_DEFAULT_USER=larity',
+      '-e',
+      'RABBITMQ_DEFAULT_PASS=larity_dev',
+      'rabbitmq:3-management-alpine',
     ];
 
     const result = execSync(cmd.join(' '));
@@ -54,7 +60,7 @@ class RabbitMQTestContainer {
         return;
       } catch (error) {
         if (i % 5 === 0) {
-           console.log(`RabbitMQ not ready yet, retry ${i + 1}/${maxRetries}...`);
+          console.log(`RabbitMQ not ready yet, retry ${i + 1}/${maxRetries}...`);
         }
         await sleep(1000);
       }
@@ -62,14 +68,14 @@ class RabbitMQTestContainer {
 
     // If we failed, let's print the logs to see why
     if (this.containerId) {
-        try {
-            const logs = execSync(`docker logs ${this.containerId}`).toString();
-            console.log('--- RabbitMQ Container Logs ---');
-            console.log(logs);
-            console.log('-------------------------------');
-        } catch (e) {
-            console.error('Failed to fetch logs');
-        }
+      try {
+        const logs = execSync(`docker logs ${this.containerId}`).toString();
+        console.log('--- RabbitMQ Container Logs ---');
+        console.log(logs);
+        console.log('-------------------------------');
+      } catch (e) {
+        console.error('Failed to fetch logs');
+      }
     }
 
     throw new Error('RabbitMQ container failed to become ready');
@@ -99,11 +105,11 @@ const testContainer = new RabbitMQTestContainer();
 describe('RabbitMQ Integration Tests', () => {
   beforeAll(async () => {
     process.env.RABBITMQ_URL = testContainer.getUrl();
-    
+
     try {
       await testContainer.start();
       await testContainer.waitForReady();
-      
+
       // Initialize infrastructure (create queues/exchanges)
       await setupRabbitMQ();
     } catch (error) {
@@ -123,12 +129,12 @@ describe('RabbitMQ Integration Tests', () => {
       // We need to use the routing key bound to this queue.
       // In queues.ts: await ch.bindQueue(q, Exchanges.EVENTS, q.replace("q.", ""));
       // So for "q.meeting.transcribe", routing key is "meeting.transcribe"
-      const routingKey = testQueue.replace("q.", "");
-      
-      const payload = { 
-        id: 'integration-test-id', 
+      const routingKey = testQueue.replace('q.', '');
+
+      const payload = {
+        id: 'integration-test-id',
         data: 'hello world',
-        timestamp: Date.now() 
+        timestamp: Date.now(),
       };
 
       let receivedData: any = null;
@@ -155,35 +161,35 @@ describe('RabbitMQ Integration Tests', () => {
     });
 
     it('should handle multiple messages', async () => {
-        const testQueue = Queues.MEETING_SUMMARY;
-        const routingKey = testQueue.replace("q.", "");
-        
-        const messages = [
-            { id: 1, text: 'msg1' },
-            { id: 2, text: 'msg2' },
-            { id: 3, text: 'msg3' }
-        ];
+      const testQueue = Queues.MEETING_SUMMARY;
+      const routingKey = testQueue.replace('q.', '');
 
-        const received: any[] = [];
-        
-        await consume(testQueue, async (data) => {
-            received.push(data);
-        });
+      const messages = [
+        { id: 1, text: 'msg1' },
+        { id: 2, text: 'msg2' },
+        { id: 3, text: 'msg3' },
+      ];
 
-        for (const msg of messages) {
-            await publish(routingKey, msg);
-        }
+      const received: any[] = [];
 
-        // Wait for all messages
-        let retries = 0;
-        while (received.length < 3 && retries < 50) {
-            await sleep(100);
-            retries++;
-        }
+      await consume(testQueue, async (data) => {
+        received.push(data);
+      });
 
-        expect(received.length).toBe(3);
-        const sortedReceived = received.sort((a, b) => a.id - b.id);
-        expect(sortedReceived).toEqual(messages);
+      for (const msg of messages) {
+        await publish(routingKey, msg);
+      }
+
+      // Wait for all messages
+      let retries = 0;
+      while (received.length < 3 && retries < 50) {
+        await sleep(100);
+        retries++;
+      }
+
+      expect(received.length).toBe(3);
+      const sortedReceived = received.sort((a, b) => a.id - b.id);
+      expect(sortedReceived).toEqual(messages);
     });
   });
 });

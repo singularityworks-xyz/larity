@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { spawn } from 'child_process';
-import { promisify } from 'util';
 import Redis from 'ioredis';
+import { promisify } from 'util';
 
 // Import the modules to test (without mocking)
-import { redis, connectRedis } from '../client';
+import { connectRedis, redis } from '../client';
 import { checkRedisHealth } from '../health';
 import { redisKeys } from '../keys';
 import { acquireLock, releaseLock } from '../locks';
@@ -25,13 +25,9 @@ class RedisTestContainer {
     console.log('Starting Redis test container...');
 
     // Start Docker Compose
-    const dockerProcess = spawn('docker-compose', [
-      '-f', 'docker-compose.test.yml',
-      'up',
-      '-d'
-    ], {
+    const dockerProcess = spawn('docker-compose', ['-f', 'docker-compose.test.yml', 'up', '-d'], {
       cwd: __dirname,
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
 
     this.container = { process: dockerProcess };
@@ -90,14 +86,19 @@ class RedisTestContainer {
 
     if (this.container) {
       try {
-        const dockerProcess = spawn('docker-compose', [
-          '-f', 'docker-compose.test.yml',
-          'down',
-          '-v' // Remove volumes
-        ], {
-          cwd: __dirname,
-          stdio: ['pipe', 'pipe', 'pipe']
-        });
+        const dockerProcess = spawn(
+          'docker-compose',
+          [
+            '-f',
+            'docker-compose.test.yml',
+            'down',
+            '-v', // Remove volumes
+          ],
+          {
+            cwd: __dirname,
+            stdio: ['pipe', 'pipe', 'pipe'],
+          }
+        );
 
         await new Promise((resolve, reject) => {
           dockerProcess.on('close', (code) => {
@@ -310,7 +311,7 @@ describe('Redis Integration Tests', () => {
       });
 
       const results = await Promise.all(operations);
-      expect(results.every(result => result)).toBe(true);
+      expect(results.every((result) => result)).toBe(true);
     });
   });
 

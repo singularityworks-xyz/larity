@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 
 // Mock ioredis before importing our modules
 mock.module('ioredis', () => {
@@ -10,12 +10,12 @@ mock.module('ioredis', () => {
       get: mock(() => Promise.resolve('test_value')),
       del: mock(() => Promise.resolve(1)),
       publish: mock(() => Promise.resolve(1)),
-    }))
+    })),
   };
 });
 
 // Import the modules to test (after mocking)
-import { redis, connectRedis } from '../client';
+import { connectRedis, redis } from '../client';
 import { checkRedisHealth } from '../health';
 import { redisKeys } from '../keys';
 import { acquireLock, releaseLock } from '../locks';
@@ -218,9 +218,9 @@ describe('Redis Infrastructure Tests', () => {
         const payload = {
           nested: {
             data: [1, 2, 3],
-            metadata: { type: 'test' }
+            metadata: { type: 'test' },
           },
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
 
         redis.publish = mock(() => Promise.resolve(1));

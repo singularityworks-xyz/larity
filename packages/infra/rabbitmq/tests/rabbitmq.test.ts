@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, mock } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 
 // Mock amqplib
 const mockChannel = {
@@ -30,12 +30,11 @@ mock.module('amqplib', () => {
 });
 
 // Import modules after mocking
-import { getChannel, closeConnection } from '../connection';
+import { closeConnection, getChannel } from '../connection';
 import { consume } from '../consume';
+import { Exchanges, setupExchanges } from '../exchanges';
 import { publish } from '../publish';
-import { setupExchanges } from '../exchanges';
-import { setupQueues, Queues } from '../queues';
-import { Exchanges } from '../exchanges';
+import { Queues, setupQueues } from '../queues';
 
 describe('RabbitMQ Infrastructure Unit Tests', () => {
   beforeEach(async () => {
@@ -50,7 +49,7 @@ describe('RabbitMQ Infrastructure Unit Tests', () => {
     mockChannel.bindQueue.mockClear();
     mockChannel.waitForConfirms.mockClear();
     mockChannel.on.mockClear();
-    
+
     // Reset connection module state by closing it
     await closeConnection();
   });
@@ -73,13 +72,13 @@ describe('RabbitMQ Infrastructure Unit Tests', () => {
     it('should set up consumer on queue', async () => {
       const handler = mock(() => Promise.resolve());
       await consume('test-queue', handler);
-      
+
       expect(mockChannel.consume).toHaveBeenCalledWith('test-queue', expect.any(Function));
     });
 
     it('should process message and ack on success', async () => {
       const handler = mock(() => Promise.resolve());
-      
+
       // Manually trigger the consumer callback
       mockChannel.consume.mockImplementation(async (queue: any, callback: any) => {
         const msg = {
@@ -90,14 +89,14 @@ describe('RabbitMQ Infrastructure Unit Tests', () => {
       });
 
       await consume('test-queue', handler);
-      
+
       expect(handler).toHaveBeenCalled();
       expect(mockChannel.ack).toHaveBeenCalled();
     });
 
     it('should nack on JSON parse error', async () => {
       const handler = mock(() => Promise.resolve());
-      
+
       mockChannel.consume.mockImplementation(async (queue: any, callback: any) => {
         const msg = {
           content: Buffer.from('invalid-json'),
@@ -107,17 +106,17 @@ describe('RabbitMQ Infrastructure Unit Tests', () => {
       });
 
       await consume('test-queue', handler);
-      
+
       expect(handler).not.toHaveBeenCalled();
       // Inspect calls safely or use specific matcher
       expect(mockChannel.nack).toHaveBeenCalled();
-      
+
       // We can rely on toHaveBeenCalled for now as it confirms the error path
     });
 
     it('should nack on handler error', async () => {
       const handler = mock(() => Promise.reject(new Error('Handler failed')));
-      
+
       mockChannel.consume.mockImplementation(async (queue: any, callback: any) => {
         const msg = {
           content: Buffer.from(JSON.stringify({ data: 'test' })),
@@ -127,7 +126,7 @@ describe('RabbitMQ Infrastructure Unit Tests', () => {
       });
 
       await consume('test-queue', handler);
-      
+
       expect(handler).toHaveBeenCalled();
       expect(mockChannel.nack).toHaveBeenCalled();
     });
@@ -137,49 +136,57 @@ describe('RabbitMQ Infrastructure Unit Tests', () => {
     it('should publish message to exchange', async () => {
       const payload = { test: 'data' };
       await publish('test-routing-key', payload);
-      
+
       expect(mockChannel.publish).toHaveBeenCalledWith(
         Exchanges.EVENTS,
         'test-routing-key',
         expect.any(Buffer),
         expect.objectContaining({
           contentType: 'application/json',
-          persistent: true
+          persistent: true,
         })
       );
       expect(mockChannel.waitForConfirms).toHaveBeenCalled();
     });
 
     it('should publish to specified exchange', async () => {
-        const payload = { test: 'data' };
-        await publish('test-routing-key', payload, 'custom-exchange');
-        
-        expect(mockChannel.publish).toHaveBeenCalledWith(
-          'custom-exchange',
-          'test-routing-key',
-          expect.any(Buffer),
-          expect.any(Object)
-        );
-      });
+      const payload = { test: 'data' };
+      await publish('test-routing-key', payload, 'custom-exchange');
+
+      expect(mockChannel.publish).toHaveBeenCalledWith(
+        'custom-exchange',
+        'test-routing-key',
+        expect.any(Buffer),
+        expect.any(Object)
+      );
+    });
   });
 
   describe('Setup Modules', () => {
     it('should set up exchanges', async () => {
       await setupExchanges();
-      
+
       expect(mockChannel.assertExchange).toHaveBeenCalledTimes(2); // EVENTS and JOBS
-      expect(mockChannel.assertExchange).toHaveBeenCalledWith(Exchanges.EVENTS, 'topic', expect.objectContaining({ durable: true }));
+      expect(mockChannel.assertExchange).toHaveBeenCalledWith(
+        Exchanges.EVENTS,
+        'topic',
+        expect.objectContaining({ durable: true })
+      );
     });
 
     it('should set up queues and bindings', async () => {
       await setupQueues();
-      
+
       // Should create DLX
-      expect(mockChannel.assertExchange).toHaveBeenCalledWith('ex.dlx', 'topic', expect.any(Object));
-      
+      expect(mockChannel.assertExchange).toHaveBeenCalledWith(
+        'ex.dlx',
+        'topic',
+        expect.any(Object)
+      );
+
       // Check for queue assertions
-      expect(mockChannel.assertQueue).toHaveBeenCalled(); 
-      
+      expect(mockChannel.assertQueue).toHaveBeenCalled();
+
       // Check for bindings
       expect(mockChannel.bindQueue).toHaveBeenCalled();
     });
