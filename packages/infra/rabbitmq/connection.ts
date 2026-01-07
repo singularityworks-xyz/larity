@@ -1,7 +1,7 @@
-import type { ConfirmChannel } from 'amqplib';
+import type { ChannelModel, ConfirmChannel } from 'amqplib';
 import amqp from 'amqplib';
 
-let connection: any = null;
+let connection: ChannelModel | null = null;
 let channel: ConfirmChannel | null = null;
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://larity:larity_dev@localhost:5672';
@@ -14,7 +14,7 @@ export async function getChannel(): Promise<ConfirmChannel> {
       console.log('Connecting to RabbitMQ at', RABBITMQ_URL.split('@')[1] || 'localhost');
       connection = await amqp.connect(RABBITMQ_URL);
 
-      connection.on('error', (err: any) => {
+      connection.on('error', (err: unknown) => {
         console.error('RabbitMQ connection error:', err);
         resetConnection();
       });
@@ -35,7 +35,7 @@ export async function getChannel(): Promise<ConfirmChannel> {
       throw new Error('Failed to create channel');
     }
 
-    channel.on('error', (err: any) => {
+    channel.on('error', (err: unknown) => {
       console.error('RabbitMQ channel error:', err);
       channel = null;
     });
@@ -46,7 +46,7 @@ export async function getChannel(): Promise<ConfirmChannel> {
     });
 
     await channel.prefetch(
-      process.env.RABBITMQ_PREFETCH ? parseInt(process.env.RABBITMQ_PREFETCH) : 10
+      process.env.RABBITMQ_PREFETCH ? parseInt(process.env.RABBITMQ_PREFETCH, 10) : 10
     );
 
     return channel;
@@ -61,7 +61,7 @@ function resetConnection() {
   try {
     if (channel) channel.close().catch(() => {});
     if (connection) connection.close().catch(() => {});
-  } catch (e) {
+  } catch (_e) {
     // Ignore errors
   }
   connection = null;

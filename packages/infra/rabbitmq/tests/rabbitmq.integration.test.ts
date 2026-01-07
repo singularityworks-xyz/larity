@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import amqp from 'amqplib';
-import { execSync, spawn } from 'child_process';
+import { execSync } from 'child_process';
 import { promisify } from 'util';
 
-import { closeConnection, getChannel } from '../connection';
+import { closeConnection } from '../connection';
 import { consume } from '../consume';
 import { setupRabbitMQ } from '../index';
 import { publish } from '../publish';
@@ -21,7 +21,7 @@ class RabbitMQTestContainer {
     // Ensure any stale container is gone
     try {
       execSync('docker rm -f rabbitmq-integration-test', { stdio: 'ignore' });
-    } catch (e) {
+    } catch (_e) {
       // ignore
     }
 
@@ -58,7 +58,7 @@ class RabbitMQTestContainer {
         await conn.close();
         console.log('RabbitMQ is ready!');
         return;
-      } catch (error) {
+      } catch (_error) {
         if (i % 5 === 0) {
           console.log(`RabbitMQ not ready yet, retry ${i + 1}/${maxRetries}...`);
         }
@@ -73,7 +73,7 @@ class RabbitMQTestContainer {
         console.log('--- RabbitMQ Container Logs ---');
         console.log(logs);
         console.log('-------------------------------');
-      } catch (e) {
+      } catch (_e) {
         console.error('Failed to fetch logs');
       }
     }
@@ -137,13 +137,14 @@ describe('RabbitMQ Integration Tests', () => {
         timestamp: Date.now(),
       };
 
-      let receivedData: any = null;
+      let receivedData: unknown = null;
       let messageReceived = false;
 
       // Start consumer
-      await consume(testQueue, async (data) => {
+      await consume(testQueue, (data) => {
         receivedData = data;
         messageReceived = true;
+        return Promise.resolve();
       });
 
       // Publish message
@@ -170,10 +171,11 @@ describe('RabbitMQ Integration Tests', () => {
         { id: 3, text: 'msg3' },
       ];
 
-      const received: any[] = [];
+      const received: { id: number; text: string }[] = [];
 
-      await consume(testQueue, async (data) => {
-        received.push(data);
+      await consume(testQueue, (data) => {
+        received.push(data as { id: number; text: string });
+        return Promise.resolve();
       });
 
       for (const msg of messages) {

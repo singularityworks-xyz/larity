@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { spawn } from 'child_process';
+import { type ChildProcess, spawn } from 'child_process';
 import Redis from 'ioredis';
 import { promisify } from 'util';
 
@@ -13,7 +13,7 @@ import { publish } from '../pubsub';
 const sleep = promisify(setTimeout);
 
 interface DockerContainer {
-  process: any;
+  process: ChildProcess;
   containerId?: string;
 }
 
@@ -33,11 +33,11 @@ class RedisTestContainer {
     this.container = { process: dockerProcess };
 
     return new Promise((resolve, reject) => {
-      let stdout = '';
+      let _stdout = '';
       let stderr = '';
 
       dockerProcess.stdout?.on('data', (data) => {
-        stdout += data.toString();
+        _stdout += data.toString();
       });
 
       dockerProcess.stderr?.on('data', (data) => {
@@ -72,7 +72,7 @@ class RedisTestContainer {
         await testRedis.quit();
         console.log('Redis is ready!');
         return;
-      } catch (error) {
+      } catch (_error) {
         console.log(`Redis not ready yet, retry ${i + 1}/${maxRetries}...`);
         await sleep(1000);
       }
@@ -239,7 +239,7 @@ describe('Redis Integration Tests', () => {
       const channel = 'integration-test-channel';
       const testMessage = { data: 'test payload', timestamp: Date.now() };
 
-      let receivedMessage: any = null;
+      let receivedMessage: unknown = null;
       let messageReceived = false;
 
       // Subscribe to the channel

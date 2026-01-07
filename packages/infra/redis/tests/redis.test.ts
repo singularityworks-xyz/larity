@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 
 // Mock ioredis before importing our modules
 mock.module('ioredis', () => {
@@ -173,7 +173,7 @@ describe('Redis Infrastructure Tests', () => {
       });
 
       it('should fail to acquire lock when already locked', async () => {
-        redis.set = mock(() => Promise.resolve(null as any));
+        redis.set = mock(() => Promise.resolve('OK' as const));
 
         const result = await acquireLock('test-lock');
 

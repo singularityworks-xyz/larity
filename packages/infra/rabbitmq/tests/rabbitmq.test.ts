@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import type { ConsumeMessage } from 'amqplib';
 
 // Mock amqplib
 const mockChannel = {
   prefetch: mock(() => Promise.resolve()),
-  consume: mock((queue: string, onMessage: any) => Promise.resolve({ consumerTag: 'test-tag' })),
+  consume: mock((_queue: string, _onMessage: (msg: ConsumeMessage | null) => void) =>
+    Promise.resolve({ consumerTag: 'test-tag' })
+  ),
   ack: mock(),
   nack: mock(),
   publish: mock(() => true),
@@ -34,7 +37,7 @@ import { closeConnection, getChannel } from '../connection';
 import { consume } from '../consume';
 import { Exchanges, setupExchanges } from '../exchanges';
 import { publish } from '../publish';
-import { Queues, setupQueues } from '../queues';
+import { setupQueues } from '../queues';
 
 describe('RabbitMQ Infrastructure Unit Tests', () => {
   beforeEach(async () => {
@@ -80,13 +83,15 @@ describe('RabbitMQ Infrastructure Unit Tests', () => {
       const handler = mock(() => Promise.resolve());
 
       // Manually trigger the consumer callback
-      mockChannel.consume.mockImplementation(async (queue: any, callback: any) => {
-        const msg = {
-          content: Buffer.from(JSON.stringify({ data: 'test' })),
-        };
-        await callback(msg);
-        return { consumerTag: 'test' };
-      });
+      mockChannel.consume.mockImplementation(
+        async (_queue: string, callback: (msg: ConsumeMessage | null) => void) => {
+          const msg = {
+            content: Buffer.from(JSON.stringify({ data: 'test' })),
+          } as ConsumeMessage;
+          await callback(msg);
+          return { consumerTag: 'test' };
+        }
+      );
 
       await consume('test-queue', handler);
 
@@ -97,13 +102,15 @@ describe('RabbitMQ Infrastructure Unit Tests', () => {
     it('should nack on JSON parse error', async () => {
       const handler = mock(() => Promise.resolve());
 
-      mockChannel.consume.mockImplementation(async (queue: any, callback: any) => {
-        const msg = {
-          content: Buffer.from('invalid-json'),
-        };
-        await callback(msg);
-        return { consumerTag: 'test' };
-      });
+      mockChannel.consume.mockImplementation(
+        async (_queue: string, callback: (msg: ConsumeMessage | null) => void) => {
+          const msg = {
+            content: Buffer.from('invalid-json'),
+          } as ConsumeMessage;
+          await callback(msg);
+          return { consumerTag: 'test' };
+        }
+      );
 
       await consume('test-queue', handler);
 
@@ -117,13 +124,15 @@ describe('RabbitMQ Infrastructure Unit Tests', () => {
     it('should nack on handler error', async () => {
       const handler = mock(() => Promise.reject(new Error('Handler failed')));
 
-      mockChannel.consume.mockImplementation(async (queue: any, callback: any) => {
-        const msg = {
-          content: Buffer.from(JSON.stringify({ data: 'test' })),
-        };
-        await callback(msg);
-        return { consumerTag: 'test' };
-      });
+      mockChannel.consume.mockImplementation(
+        async (_queue: string, callback: (msg: ConsumeMessage | null) => void) => {
+          const msg = {
+            content: Buffer.from(JSON.stringify({ data: 'test' })),
+          } as ConsumeMessage;
+          await callback(msg);
+          return { consumerTag: 'test' };
+        }
+      );
 
       await consume('test-queue', handler);
 
