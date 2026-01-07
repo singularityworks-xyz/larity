@@ -1,20 +1,24 @@
-import { t } from 'elysia';
+import { z } from 'zod';
 
-export const createOrgSchema = t.Object({
-  name: t.String({ minLength: 1, maxLength: 255 }),
+export const createOrgSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(255, 'Name must be less than 255 characters'),
 });
 
-export const updateOrgSchema = t.Object({
-  name: t.Optional(t.String({ minLength: 1, maxLength: 255 })),
+export const updateOrgSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Name is required')
+    .max(255, 'Name must be less than 255 characters')
+    .optional(),
 });
 
-export const orgIdSchema = t.Object({
-  id: t.String({ format: 'uuid' }),
+export const orgIdSchema = z.object({
+  id: z.uuid('Invalid organization ID'),
 });
 
-export const orgResponseSchema = t.Object({
-  id: t.String(),
-  name: t.String(),
-  createdAt: t.Date(),
-  updatedAt: t.Date(),
+export const orgResponseSchema = z.object({
+  id: z.uuid('Invalid organization ID'),
+  name: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 });

@@ -1,33 +1,33 @@
-import { t } from 'elysia';
+import { z } from 'zod';
 
-export const MeetingStatus = t.Union([
-  t.Literal('SCHEDULED'),
-  t.Literal('LIVE'),
-  t.Literal('ENDED'),
-]);
+export const MeetingStatus = z.enum(['SCHEDULED', 'LIVE', 'ENDED']);
 
-export const createMeetingSchema = t.Object({
-  title: t.String({ minLength: 1, maxLength: 255 }),
-  description: t.Optional(t.String()),
-  orgId: t.String({ format: 'uuid' }),
-  scheduledAt: t.Optional(t.String({ format: 'date-time' })),
-  status: t.Optional(MeetingStatus),
+export const createMeetingSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(255, 'Title must be less than 255 characters'),
+  description: z.string().optional(),
+  orgId: z.uuid('Invalid organization ID'),
+  scheduledAt: z.iso.datetime('Invalid datetime format').optional(),
+  status: MeetingStatus.optional(),
 });
 
-export const updateMeetingSchema = t.Object({
-  title: t.Optional(t.String({ minLength: 1, maxLength: 255 })),
-  description: t.Optional(t.String()),
-  status: t.Optional(MeetingStatus),
-  scheduledAt: t.Optional(t.String({ format: 'date-time' })),
-  startedAt: t.Optional(t.String({ format: 'date-time' })),
-  endedAt: t.Optional(t.String({ format: 'date-time' })),
+export const updateMeetingSchema = z.object({
+  title: z
+    .string()
+    .min(1, 'Title is required')
+    .max(255, 'Title must be less than 255 characters')
+    .optional(),
+  description: z.string().optional(),
+  status: MeetingStatus.optional(),
+  scheduledAt: z.iso.datetime('Invalid datetime format').optional(),
+  startedAt: z.iso.datetime('Invalid datetime format').optional(),
+  endedAt: z.iso.datetime('Invalid datetime format').optional(),
 });
 
-export const meetingIdSchema = t.Object({
-  id: t.String({ format: 'uuid' }),
+export const meetingIdSchema = z.object({
+  id: z.uuid('Invalid meeting ID'),
 });
 
-export const meetingQuerySchema = t.Object({
-  orgId: t.Optional(t.String({ format: 'uuid' })),
-  status: t.Optional(MeetingStatus),
+export const meetingQuerySchema = z.object({
+  orgId: z.uuid('Invalid organization ID').optional(),
+  status: MeetingStatus.optional(),
 });

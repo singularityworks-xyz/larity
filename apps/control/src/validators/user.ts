@@ -1,27 +1,31 @@
-import { t } from 'elysia';
+import { z } from 'zod';
 
-export const UserRole = t.Union([t.Literal('OWNER'), t.Literal('MEMBER')]);
+export const UserRole = z.enum(['OWNER', 'MEMBER']);
 
-export const createUserSchema = t.Object({
-  name: t.String({ minLength: 1, maxLength: 255 }),
-  email: t.String({ format: 'email' }),
-  orgId: t.String({ format: 'uuid' }),
-  role: t.Optional(UserRole),
-  image: t.Optional(t.String()),
+export const createUserSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(255, 'Name must be less than 255 characters'),
+  email: z.email('Invalid email address'),
+  orgId: z.uuid('Invalid organization ID'),
+  role: UserRole.optional(),
+  image: z.string().optional(),
 });
 
-export const updateUserSchema = t.Object({
-  name: t.Optional(t.String({ minLength: 1, maxLength: 255 })),
-  email: t.Optional(t.String({ format: 'email' })),
-  role: t.Optional(UserRole),
-  image: t.Optional(t.String()),
+export const updateUserSchema = z.object({
+  name: z
+    .string()
+    .min(1, 'Name is required')
+    .max(255, 'Name must be less than 255 characters')
+    .optional(),
+  email: z.email('Invalid email address').optional(),
+  role: UserRole.optional(),
+  image: z.string().optional(),
 });
 
-export const userIdSchema = t.Object({
-  id: t.String({ format: 'uuid' }),
+export const userIdSchema = z.object({
+  id: z.uuid('Invalid user ID'),
 });
 
-export const userQuerySchema = t.Object({
-  orgId: t.Optional(t.String({ format: 'uuid' })),
-  role: t.Optional(UserRole),
+export const userQuerySchema = z.object({
+  orgId: z.uuid('Invalid organization ID').optional(),
+  role: UserRole.optional(),
 });

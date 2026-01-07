@@ -1,33 +1,37 @@
-import { t } from 'elysia';
+import { z } from 'zod';
 
-export const TaskStatus = t.Union([t.Literal('OPEN'), t.Literal('DONE')]);
+export const TaskStatus = z.enum(['OPEN', 'DONE']);
 
-export const createTaskSchema = t.Object({
-  title: t.String({ minLength: 1, maxLength: 255 }),
-  description: t.Optional(t.String()),
-  orgId: t.String({ format: 'uuid' }),
-  meetingId: t.Optional(t.String({ format: 'uuid' })),
-  assigneeId: t.Optional(t.String({ format: 'uuid' })),
-  creatorId: t.Optional(t.String({ format: 'uuid' })),
-  dueAt: t.Optional(t.String({ format: 'date-time' })),
-  status: t.Optional(TaskStatus),
+export const createTaskSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(255, 'Title must be less than 255 characters'),
+  description: z.string().optional(),
+  orgId: z.uuid('Invalid organization ID'),
+  meetingId: z.uuid('Invalid meeting ID').optional(),
+  assigneeId: z.uuid('Invalid assignee ID').optional(),
+  creatorId: z.uuid('Invalid creator ID').optional(),
+  dueAt: z.iso.datetime('Invalid datetime format').optional(),
+  status: TaskStatus.optional(),
 });
 
-export const updateTaskSchema = t.Object({
-  title: t.Optional(t.String({ minLength: 1, maxLength: 255 })),
-  description: t.Optional(t.String()),
-  status: t.Optional(TaskStatus),
-  dueAt: t.Optional(t.String({ format: 'date-time' })),
-  assigneeId: t.Optional(t.String({ format: 'uuid' })),
+export const updateTaskSchema = z.object({
+  title: z
+    .string()
+    .min(1, 'Title is required')
+    .max(255, 'Title must be less than 255 characters')
+    .optional(),
+  description: z.string().optional(),
+  status: TaskStatus.optional(),
+  dueAt: z.iso.datetime('Invalid datetime format').optional(),
+  assigneeId: z.uuid('Invalid assignee ID').optional(),
 });
 
-export const taskIdSchema = t.Object({
-  id: t.String({ format: 'uuid' }),
+export const taskIdSchema = z.object({
+  id: z.uuid('Invalid task ID'),
 });
 
-export const taskQuerySchema = t.Object({
-  orgId: t.Optional(t.String({ format: 'uuid' })),
-  status: t.Optional(TaskStatus),
-  assigneeId: t.Optional(t.String({ format: 'uuid' })),
-  meetingId: t.Optional(t.String({ format: 'uuid' })),
+export const taskQuerySchema = z.object({
+  orgId: z.uuid('Invalid organization ID').optional(),
+  status: TaskStatus.optional(),
+  assigneeId: z.uuid('Invalid assignee ID').optional(),
+  meetingId: z.uuid('Invalid meeting ID').optional(),
 });
