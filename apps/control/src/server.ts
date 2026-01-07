@@ -1,5 +1,6 @@
 import { cors } from '@elysiajs/cors';
 import { Elysia } from 'elysia';
+import { env } from './env';
 import { requireAuth } from './middleware/auth';
 import {
   authRoutes,
@@ -14,7 +15,7 @@ export const app = new Elysia()
   // CORS
   .use(
     cors({
-      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+      origin: env.FRONTEND_URL,
       credentials: true,
     })
   )

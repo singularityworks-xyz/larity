@@ -1,6 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { organization } from 'better-auth/plugins';
+import { env } from '../env';
 import { prisma } from './prisma';
 
 export const auth = betterAuth({
@@ -12,16 +13,16 @@ export const auth = betterAuth({
   },
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      clientId: env.GOOGLE_CLIENT_ID as string,
+      clientSecret: env.GOOGLE_CLIENT_SECRET as string,
     },
     github: {
-      clientId: process.env.GITHUB_CLIENT_ID as string,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+      clientId: env.GITHUB_CLIENT_ID as string,
+      clientSecret: env.GITHUB_CLIENT_SECRET as string,
     },
   },
   plugins: [organization()],
-  trustedOrigins: [process.env.FRONTEND_URL || 'http://localhost:5173'],
+  trustedOrigins: [env.FRONTEND_URL],
 });
 
 export type Session = typeof auth.$Infer.Session;
