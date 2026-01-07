@@ -1,11 +1,8 @@
-import { PrismaPg } from '@prisma/adapter-pg';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { PrismaClient } from '../../../../packages/infra/prisma/generated/prisma/client';
+import { organization } from 'better-auth/plugins';
+import { prisma } from './prisma';
 
-const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
-});
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: 'postgresql',
@@ -23,4 +20,8 @@ export const auth = betterAuth({
       clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
     },
   },
+  plugins: [organization()],
+  trustedOrigins: [process.env.FRONTEND_URL || 'http://localhost:5173'],
 });
+
+export type Session = typeof auth.$Infer.Session;
