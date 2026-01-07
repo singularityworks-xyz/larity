@@ -1,5 +1,9 @@
-import { Elysia } from 'elysia';
+import { app } from './server';
 
-const app = new Elysia().get('/', () => 'Hello Elysia').listen(3000);
+const PORT = process.env.PORT ?? 3000;
 
-console.log(`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`);
+app.listen(PORT);
+
+console.log(`🦊 Control plane running at http://localhost:${PORT}`);
+console.log(`   Health: http://localhost:${PORT}/health`);
+console.log(`   API:    http://localhost:${PORT}/api`);
