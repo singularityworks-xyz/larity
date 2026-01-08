@@ -1,50 +1,17 @@
-import type { TaskStatus } from '../../../../packages/infra/prisma/generated/prisma/client';
+import { applyPagination } from '../lib/pagination';
 import { prisma } from '../lib/prisma';
-
-interface CreateTaskData {
-  title: string;
-  description?: string;
-  orgId: string;
-  meetingId?: string;
-  assigneeId?: string;
-  creatorId?: string;
-  dueAt?: string;
-  status?: TaskStatus;
-}
-
-interface UpdateTaskData {
-  title?: string;
-  description?: string;
-  status?: TaskStatus;
-  dueAt?: string;
-  assigneeId?: string;
-}
-
-interface TaskQuery {
-  orgId?: string;
-  status?: TaskStatus;
-  assigneeId?: string;
-  meetingId?: string;
-}
+import type { CreateTaskInput, TaskQueryInput, UpdateTaskInput } from '../validators';
 
 export const TaskService = {
-  async create(data: CreateTaskData) {
+  async create(data: CreateTaskInput) {
     return prisma.task.create({
-      data: {
-        title: data.title,
-        description: data.description,
-        orgId: data.orgId,
-        meetingId: data.meetingId,
-        assigneeId: data.assigneeId,
-        creatorId: data.creatorId,
-        status: data.status,
-        dueAt: data.dueAt ? new Date(data.dueAt) : undefined,
-      },
+      data,
       include: {
-        org: true,
-        meeting: true,
-        assignee: true,
-        creator: true,
+        client: { select: { id: true, name: true, slug: true } },
+        meeting: { select: { id: true, title: true } },
+        decision: { select: { id: true, title: true, decisionRef: true } },
+        assignee: { select: { id: true, name: true, email: true } },
+        creator: { select: { id: true, name: true, email: true } },
       },
     });
   },
@@ -53,44 +20,57 @@ export const TaskService = {
     return prisma.task.findUnique({
       where: { id },
       include: {
-        org: true,
-        meeting: true,
-        assignee: true,
-        creator: true,
+        client: { select: { id: true, name: true, slug: true } },
+        meeting: { select: { id: true, title: true } },
+        decision: { select: { id: true, title: true, decisionRef: true } },
+        assignee: { select: { id: true, name: true, email: true } },
+        creator: { select: { id: true, name: true, email: true } },
       },
     });
   },
 
-  async findAll(query: TaskQuery = {}) {
+  async findAll(query?: TaskQueryInput) {
     return prisma.task.findMany({
       where: {
-        ...(query.orgId && { orgId: query.orgId }),
-        ...(query.status && { status: query.status }),
-        ...(query.assigneeId && { assigneeId: query.assigneeId }),
-        ...(query.meetingId && { meetingId: query.meetingId }),
+        clientId: query?.clientId,
+        status: query?.status as
+          | 'OPEN'
+          | 'IN_PROGRESS'
+          | 'BLOCKED'
+          | 'DONE'
+          | 'CANCELLED'
+          | undefined,
+        priority: query?.priority as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | undefined,
+        assigneeId: query?.assigneeId,
+        meetingId: query?.meetingId,
+        decisionId: query?.decisionId,
+        dueAt: {
+          ...(query?.dueBefore && { lte: query.dueBefore }),
+          ...(query?.dueAfter && { gte: query.dueAfter }),
+        },
       },
       include: {
-        org: true,
-        meeting: true,
-        assignee: true,
-        creator: true,
+        client: { select: { id: true, name: true, slug: true } },
+        meeting: { select: { id: true, title: true } },
+        decision: { select: { id: true, title: true, decisionRef: true } },
+        assignee: { select: { id: true, name: true, email: true } },
+        creator: { select: { id: true, name: true, email: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ priority: 'desc' }, { dueAt: 'asc' }, { createdAt: 'desc' }],
+      ...applyPagination(query),
     });
   },
 
-  async update(id: string, data: UpdateTaskData) {
+  async update(id: string, data: UpdateTaskInput) {
     return prisma.task.update({
       where: { id },
-      data: {
-        ...data,
-        dueAt: data.dueAt ? new Date(data.dueAt) : undefined,
-      },
+      data,
       include: {
-        org: true,
-        meeting: true,
-        assignee: true,
-        creator: true,
+        client: { select: { id: true, name: true, slug: true } },
+        meeting: { select: { id: true, title: true } },
+        decision: { select: { id: true, title: true, decisionRef: true } },
+        assignee: { select: { id: true, name: true, email: true } },
+        creator: { select: { id: true, name: true, email: true } },
       },
     });
   },
@@ -102,16 +82,97 @@ export const TaskService = {
   },
 
   async markComplete(id: string) {
+    // Validate status transition: cannot complete CANCELLED tasks
+    const task = await prisma.task.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+
+    if (!task) {
+      throw new Error('Task not found');
+    }
+
+    if (task.status === 'CANCELLED') {
+      throw new Error('Cannot complete a cancelled task');
+    }
+
+    if (task.status === 'DONE') {
+      throw new Error('Task is already completed');
+    }
+
     return prisma.task.update({
       where: { id },
-      data: { status: 'DONE' },
+      data: {
+        status: 'DONE',
+        completedAt: new Date(),
+      },
+      include: {
+        client: { select: { id: true, name: true, slug: true } },
+        assignee: { select: { id: true, name: true, email: true } },
+      },
     });
   },
 
   async markOpen(id: string) {
+    const task = await prisma.task.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+
+    if (!task) {
+      throw new Error('Task not found');
+    }
+
+    if (task.status === 'CANCELLED') {
+      throw new Error('Cannot reopen a cancelled task');
+    }
+
     return prisma.task.update({
       where: { id },
-      data: { status: 'OPEN' },
+      data: {
+        status: 'OPEN',
+        completedAt: null,
+      },
+    });
+  },
+
+  async markInProgress(id: string) {
+    const task = await prisma.task.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+
+    if (!task) {
+      throw new Error('Task not found');
+    }
+
+    if (task.status === 'CANCELLED' || task.status === 'DONE') {
+      throw new Error(`Cannot start a ${task.status.toLowerCase()} task`);
+    }
+
+    return prisma.task.update({
+      where: { id },
+      data: { status: 'IN_PROGRESS' },
+    });
+  },
+
+  async markBlocked(id: string) {
+    const task = await prisma.task.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+
+    if (!task) {
+      throw new Error('Task not found');
+    }
+
+    if (task.status === 'CANCELLED' || task.status === 'DONE') {
+      throw new Error(`Cannot block a ${task.status.toLowerCase()} task`);
+    }
+
+    return prisma.task.update({
+      where: { id },
+      data: { status: 'BLOCKED' },
     });
   },
 };
