@@ -346,6 +346,11 @@ export type OrgScalarRelationFilter = {
   isNot?: Prisma.OrgWhereInput;
 };
 
+export type OrgNullableScalarRelationFilter = {
+  is?: Prisma.OrgWhereInput | null;
+  isNot?: Prisma.OrgWhereInput | null;
+};
+
 export type StringFieldUpdateOperationsInput = {
   set?: string;
 };
@@ -389,13 +394,15 @@ export type OrgCreateNestedOneWithoutUsersInput = {
   connect?: Prisma.OrgWhereUniqueInput;
 };
 
-export type OrgUpdateOneRequiredWithoutUsersNestedInput = {
+export type OrgUpdateOneWithoutUsersNestedInput = {
   create?: Prisma.XOR<
     Prisma.OrgCreateWithoutUsersInput,
     Prisma.OrgUncheckedCreateWithoutUsersInput
   >;
   connectOrCreate?: Prisma.OrgCreateOrConnectWithoutUsersInput;
   upsert?: Prisma.OrgUpsertWithoutUsersInput;
+  disconnect?: Prisma.OrgWhereInput | boolean;
+  delete?: Prisma.OrgWhereInput | boolean;
   connect?: Prisma.OrgWhereUniqueInput;
   update?: Prisma.XOR<
     Prisma.XOR<Prisma.OrgUpdateToOneWithWhereWithoutUsersInput, Prisma.OrgUpdateWithoutUsersInput>,

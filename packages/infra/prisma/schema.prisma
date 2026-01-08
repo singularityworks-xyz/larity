@@ -62,8 +62,8 @@ enum ClientStatus {
 
 model User {
   id            String   @id @default(uuid())
-  orgId         String
-  org           Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orgId         String?
+  org           Org?      @relation(fields: [orgId], references: [id], onDelete: Cascade)
   name          String
   email         String   @unique
   emailVerified Boolean  @default(false)
