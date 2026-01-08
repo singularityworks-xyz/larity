@@ -2,16 +2,25 @@ import { cors } from '@elysiajs/cors';
 import { Elysia } from 'elysia';
 import { env } from './env';
 import { requireAuth } from './middleware/auth';
+import { requestLogger } from './middleware/logger';
 import {
   authRoutes,
+  clientsRoutes,
   decisionsRoutes,
+  documentsRoutes,
+  importantPointsRoutes,
   meetingsRoutes,
+  openQuestionsRoutes,
   orgsRoutes,
+  policyGuardrailsRoutes,
+  remindersRoutes,
   tasksRoutes,
   usersRoutes,
 } from './routes';
 
 export const app = new Elysia()
+  // Request logging/tracing
+  .use(requestLogger)
   // CORS
   .use(
     cors({
@@ -56,11 +65,22 @@ export const app = new Elysia()
   .group('/api', (app) =>
     app
       .use(requireAuth)
+      // Core identity
       .use(orgsRoutes)
+      .use(clientsRoutes)
       .use(usersRoutes)
+      // Meeting domain
       .use(meetingsRoutes)
+      // Decisions & tasks
       .use(tasksRoutes)
       .use(decisionsRoutes)
+      .use(openQuestionsRoutes)
+      .use(importantPointsRoutes)
+      // Policy & compliance
+      .use(policyGuardrailsRoutes)
+      // Documents & reminders
+      .use(documentsRoutes)
+      .use(remindersRoutes)
   );
 
 export type App = typeof app;
