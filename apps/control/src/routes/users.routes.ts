@@ -25,6 +25,20 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
     },
     { params: userIdSchema }
   )
+  // Get user's client assignments
+  .get(
+    '/:id/clients',
+    async ({ params, set }) => {
+      const user = await UserService.findById(params.id);
+      if (!user) {
+        set.status = 404;
+        return { success: false, error: 'User not found' };
+      }
+      const clients = await UserService.getClientAssignments(params.id);
+      return { success: true, data: clients };
+    },
+    { params: userIdSchema }
+  )
   // Create user
   .post(
     '/',
