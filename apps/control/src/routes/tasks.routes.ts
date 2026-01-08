@@ -38,7 +38,7 @@ export const tasksRoutes = new Elysia({ prefix: '/tasks' })
           set.status = 400;
           return {
             success: false,
-            error: 'Invalid reference (org, meeting, assignee, or creator)',
+            error: 'Invalid reference (client, meeting, decision, assignee, or creator)',
           };
         }
         throw e;
@@ -61,7 +61,7 @@ export const tasksRoutes = new Elysia({ prefix: '/tasks' })
         }
         if (err.code === 'P2003') {
           set.status = 400;
-          return { success: false, error: 'Invalid assignee reference' };
+          return { success: false, error: 'Invalid assignee or decision reference' };
         }
         throw e;
       }
@@ -94,8 +94,8 @@ export const tasksRoutes = new Elysia({ prefix: '/tasks' })
         const task = await TaskService.markComplete(params.id);
         return { success: true, data: task };
       } catch (e: unknown) {
-        const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        const err = e as { code?: string; message?: string };
+        if (err.code === 'P2025' || err.message === 'Task not found') {
           set.status = 404;
           return { success: false, error: 'Task not found' };
         }
@@ -110,6 +110,42 @@ export const tasksRoutes = new Elysia({ prefix: '/tasks' })
     async ({ params, set }) => {
       try {
         const task = await TaskService.markOpen(params.id);
+        return { success: true, data: task };
+      } catch (e: unknown) {
+        const err = e as { code?: string };
+        if (err.code === 'P2025') {
+          set.status = 404;
+          return { success: false, error: 'Task not found' };
+        }
+        throw e;
+      }
+    },
+    { params: taskIdSchema }
+  )
+  // Mark task as in progress
+  .post(
+    '/:id/start',
+    async ({ params, set }) => {
+      try {
+        const task = await TaskService.markInProgress(params.id);
+        return { success: true, data: task };
+      } catch (e: unknown) {
+        const err = e as { code?: string };
+        if (err.code === 'P2025') {
+          set.status = 404;
+          return { success: false, error: 'Task not found' };
+        }
+        throw e;
+      }
+    },
+    { params: taskIdSchema }
+  )
+  // Mark task as blocked
+  .post(
+    '/:id/block',
+    async ({ params, set }) => {
+      try {
+        const task = await TaskService.markBlocked(params.id);
         return { success: true, data: task };
       } catch (e: unknown) {
         const err = e as { code?: string };
