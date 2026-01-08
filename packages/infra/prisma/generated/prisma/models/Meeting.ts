@@ -25,81 +25,99 @@ export type AggregateMeeting = {
 
 export type MeetingMinAggregateOutputType = {
   id: string | null;
+  clientId: string | null;
   title: string | null;
   description: string | null;
+  agenda: string | null;
   status: $Enums.MeetingStatus | null;
   scheduledAt: Date | null;
   startedAt: Date | null;
   endedAt: Date | null;
+  calendarEventId: string | null;
+  summary: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
-  orgId: string | null;
 };
 
 export type MeetingMaxAggregateOutputType = {
   id: string | null;
+  clientId: string | null;
   title: string | null;
   description: string | null;
+  agenda: string | null;
   status: $Enums.MeetingStatus | null;
   scheduledAt: Date | null;
   startedAt: Date | null;
   endedAt: Date | null;
+  calendarEventId: string | null;
+  summary: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
-  orgId: string | null;
 };
 
 export type MeetingCountAggregateOutputType = {
   id: number;
+  clientId: number;
   title: number;
   description: number;
+  agenda: number;
   status: number;
   scheduledAt: number;
   startedAt: number;
   endedAt: number;
+  calendarEventId: number;
+  summary: number;
   createdAt: number;
   updatedAt: number;
-  orgId: number;
   _all: number;
 };
 
 export type MeetingMinAggregateInputType = {
   id?: true;
+  clientId?: true;
   title?: true;
   description?: true;
+  agenda?: true;
   status?: true;
   scheduledAt?: true;
   startedAt?: true;
   endedAt?: true;
+  calendarEventId?: true;
+  summary?: true;
   createdAt?: true;
   updatedAt?: true;
-  orgId?: true;
 };
 
 export type MeetingMaxAggregateInputType = {
   id?: true;
+  clientId?: true;
   title?: true;
   description?: true;
+  agenda?: true;
   status?: true;
   scheduledAt?: true;
   startedAt?: true;
   endedAt?: true;
+  calendarEventId?: true;
+  summary?: true;
   createdAt?: true;
   updatedAt?: true;
-  orgId?: true;
 };
 
 export type MeetingCountAggregateInputType = {
   id?: true;
+  clientId?: true;
   title?: true;
   description?: true;
+  agenda?: true;
   status?: true;
   scheduledAt?: true;
   startedAt?: true;
   endedAt?: true;
+  calendarEventId?: true;
+  summary?: true;
   createdAt?: true;
   updatedAt?: true;
-  orgId?: true;
   _all?: true;
 };
 
@@ -178,15 +196,18 @@ export type MeetingGroupByArgs<
 
 export type MeetingGroupByOutputType = {
   id: string;
+  clientId: string;
   title: string;
   description: string | null;
+  agenda: string | null;
   status: $Enums.MeetingStatus;
   scheduledAt: Date | null;
   startedAt: Date | null;
   endedAt: Date | null;
+  calendarEventId: string | null;
+  summary: string | null;
   createdAt: Date;
   updatedAt: Date;
-  orgId: string;
   _count: MeetingCountAggregateOutputType | null;
   _min: MeetingMinAggregateOutputType | null;
   _max: MeetingMaxAggregateOutputType | null;
@@ -209,34 +230,51 @@ export type MeetingWhereInput = {
   OR?: Prisma.MeetingWhereInput[];
   NOT?: Prisma.MeetingWhereInput | Prisma.MeetingWhereInput[];
   id?: Prisma.StringFilter<'Meeting'> | string;
+  clientId?: Prisma.StringFilter<'Meeting'> | string;
   title?: Prisma.StringFilter<'Meeting'> | string;
   description?: Prisma.StringNullableFilter<'Meeting'> | string | null;
+  agenda?: Prisma.StringNullableFilter<'Meeting'> | string | null;
   status?: Prisma.EnumMeetingStatusFilter<'Meeting'> | $Enums.MeetingStatus;
   scheduledAt?: Prisma.DateTimeNullableFilter<'Meeting'> | Date | string | null;
   startedAt?: Prisma.DateTimeNullableFilter<'Meeting'> | Date | string | null;
   endedAt?: Prisma.DateTimeNullableFilter<'Meeting'> | Date | string | null;
+  calendarEventId?: Prisma.StringNullableFilter<'Meeting'> | string | null;
+  summary?: Prisma.StringNullableFilter<'Meeting'> | string | null;
   createdAt?: Prisma.DateTimeFilter<'Meeting'> | Date | string;
   updatedAt?: Prisma.DateTimeFilter<'Meeting'> | Date | string;
-  orgId?: Prisma.StringFilter<'Meeting'> | string;
-  org?: Prisma.XOR<Prisma.OrgScalarRelationFilter, Prisma.OrgWhereInput>;
-  tasks?: Prisma.TaskListRelationFilter;
+  client?: Prisma.XOR<Prisma.ClientScalarRelationFilter, Prisma.ClientWhereInput>;
+  participants?: Prisma.MeetingParticipantListRelationFilter;
+  transcript?: Prisma.XOR<
+    Prisma.TranscriptNullableScalarRelationFilter,
+    Prisma.TranscriptWhereInput
+  > | null;
   decisions?: Prisma.DecisionListRelationFilter;
+  tasks?: Prisma.TaskListRelationFilter;
+  openQuestions?: Prisma.OpenQuestionListRelationFilter;
+  importantPoints?: Prisma.ImportantPointListRelationFilter;
 };
 
 export type MeetingOrderByWithRelationInput = {
   id?: Prisma.SortOrder;
+  clientId?: Prisma.SortOrder;
   title?: Prisma.SortOrder;
   description?: Prisma.SortOrderInput | Prisma.SortOrder;
+  agenda?: Prisma.SortOrderInput | Prisma.SortOrder;
   status?: Prisma.SortOrder;
   scheduledAt?: Prisma.SortOrderInput | Prisma.SortOrder;
   startedAt?: Prisma.SortOrderInput | Prisma.SortOrder;
   endedAt?: Prisma.SortOrderInput | Prisma.SortOrder;
+  calendarEventId?: Prisma.SortOrderInput | Prisma.SortOrder;
+  summary?: Prisma.SortOrderInput | Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
-  org?: Prisma.OrgOrderByWithRelationInput;
-  tasks?: Prisma.TaskOrderByRelationAggregateInput;
+  client?: Prisma.ClientOrderByWithRelationInput;
+  participants?: Prisma.MeetingParticipantOrderByRelationAggregateInput;
+  transcript?: Prisma.TranscriptOrderByWithRelationInput;
   decisions?: Prisma.DecisionOrderByRelationAggregateInput;
+  tasks?: Prisma.TaskOrderByRelationAggregateInput;
+  openQuestions?: Prisma.OpenQuestionOrderByRelationAggregateInput;
+  importantPoints?: Prisma.ImportantPointOrderByRelationAggregateInput;
 };
 
 export type MeetingWhereUniqueInput = Prisma.AtLeast<
@@ -245,33 +283,46 @@ export type MeetingWhereUniqueInput = Prisma.AtLeast<
     AND?: Prisma.MeetingWhereInput | Prisma.MeetingWhereInput[];
     OR?: Prisma.MeetingWhereInput[];
     NOT?: Prisma.MeetingWhereInput | Prisma.MeetingWhereInput[];
+    clientId?: Prisma.StringFilter<'Meeting'> | string;
     title?: Prisma.StringFilter<'Meeting'> | string;
     description?: Prisma.StringNullableFilter<'Meeting'> | string | null;
+    agenda?: Prisma.StringNullableFilter<'Meeting'> | string | null;
     status?: Prisma.EnumMeetingStatusFilter<'Meeting'> | $Enums.MeetingStatus;
     scheduledAt?: Prisma.DateTimeNullableFilter<'Meeting'> | Date | string | null;
     startedAt?: Prisma.DateTimeNullableFilter<'Meeting'> | Date | string | null;
     endedAt?: Prisma.DateTimeNullableFilter<'Meeting'> | Date | string | null;
+    calendarEventId?: Prisma.StringNullableFilter<'Meeting'> | string | null;
+    summary?: Prisma.StringNullableFilter<'Meeting'> | string | null;
     createdAt?: Prisma.DateTimeFilter<'Meeting'> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<'Meeting'> | Date | string;
-    orgId?: Prisma.StringFilter<'Meeting'> | string;
-    org?: Prisma.XOR<Prisma.OrgScalarRelationFilter, Prisma.OrgWhereInput>;
-    tasks?: Prisma.TaskListRelationFilter;
+    client?: Prisma.XOR<Prisma.ClientScalarRelationFilter, Prisma.ClientWhereInput>;
+    participants?: Prisma.MeetingParticipantListRelationFilter;
+    transcript?: Prisma.XOR<
+      Prisma.TranscriptNullableScalarRelationFilter,
+      Prisma.TranscriptWhereInput
+    > | null;
     decisions?: Prisma.DecisionListRelationFilter;
+    tasks?: Prisma.TaskListRelationFilter;
+    openQuestions?: Prisma.OpenQuestionListRelationFilter;
+    importantPoints?: Prisma.ImportantPointListRelationFilter;
   },
   'id'
 >;
 
 export type MeetingOrderByWithAggregationInput = {
   id?: Prisma.SortOrder;
+  clientId?: Prisma.SortOrder;
   title?: Prisma.SortOrder;
   description?: Prisma.SortOrderInput | Prisma.SortOrder;
+  agenda?: Prisma.SortOrderInput | Prisma.SortOrder;
   status?: Prisma.SortOrder;
   scheduledAt?: Prisma.SortOrderInput | Prisma.SortOrder;
   startedAt?: Prisma.SortOrderInput | Prisma.SortOrder;
   endedAt?: Prisma.SortOrderInput | Prisma.SortOrder;
+  calendarEventId?: Prisma.SortOrderInput | Prisma.SortOrder;
+  summary?: Prisma.SortOrderInput | Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
   _count?: Prisma.MeetingCountOrderByAggregateInput;
   _max?: Prisma.MeetingMaxOrderByAggregateInput;
   _min?: Prisma.MeetingMinOrderByAggregateInput;
@@ -286,113 +337,153 @@ export type MeetingScalarWhereWithAggregatesInput = {
     | Prisma.MeetingScalarWhereWithAggregatesInput
     | Prisma.MeetingScalarWhereWithAggregatesInput[];
   id?: Prisma.StringWithAggregatesFilter<'Meeting'> | string;
+  clientId?: Prisma.StringWithAggregatesFilter<'Meeting'> | string;
   title?: Prisma.StringWithAggregatesFilter<'Meeting'> | string;
   description?: Prisma.StringNullableWithAggregatesFilter<'Meeting'> | string | null;
+  agenda?: Prisma.StringNullableWithAggregatesFilter<'Meeting'> | string | null;
   status?: Prisma.EnumMeetingStatusWithAggregatesFilter<'Meeting'> | $Enums.MeetingStatus;
   scheduledAt?: Prisma.DateTimeNullableWithAggregatesFilter<'Meeting'> | Date | string | null;
   startedAt?: Prisma.DateTimeNullableWithAggregatesFilter<'Meeting'> | Date | string | null;
   endedAt?: Prisma.DateTimeNullableWithAggregatesFilter<'Meeting'> | Date | string | null;
+  calendarEventId?: Prisma.StringNullableWithAggregatesFilter<'Meeting'> | string | null;
+  summary?: Prisma.StringNullableWithAggregatesFilter<'Meeting'> | string | null;
   createdAt?: Prisma.DateTimeWithAggregatesFilter<'Meeting'> | Date | string;
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<'Meeting'> | Date | string;
-  orgId?: Prisma.StringWithAggregatesFilter<'Meeting'> | string;
 };
 
 export type MeetingCreateInput = {
   id?: string;
   title: string;
   description?: string | null;
+  agenda?: string | null;
   status?: $Enums.MeetingStatus;
   scheduledAt?: Date | string | null;
   startedAt?: Date | string | null;
   endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  org: Prisma.OrgCreateNestedOneWithoutMeetingsInput;
-  tasks?: Prisma.TaskCreateNestedManyWithoutMeetingInput;
+  client: Prisma.ClientCreateNestedOneWithoutMeetingsInput;
+  participants?: Prisma.MeetingParticipantCreateNestedManyWithoutMeetingInput;
+  transcript?: Prisma.TranscriptCreateNestedOneWithoutMeetingInput;
   decisions?: Prisma.DecisionCreateNestedManyWithoutMeetingInput;
+  tasks?: Prisma.TaskCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointCreateNestedManyWithoutMeetingInput;
 };
 
 export type MeetingUncheckedCreateInput = {
   id?: string;
+  clientId: string;
   title: string;
   description?: string | null;
+  agenda?: string | null;
   status?: $Enums.MeetingStatus;
   scheduledAt?: Date | string | null;
   startedAt?: Date | string | null;
   endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  orgId: string;
-  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutMeetingInput;
+  participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput;
+  transcript?: Prisma.TranscriptUncheckedCreateNestedOneWithoutMeetingInput;
   decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutMeetingInput;
+  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutMeetingInput;
 };
 
 export type MeetingUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
   scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  org?: Prisma.OrgUpdateOneRequiredWithoutMeetingsNestedInput;
-  tasks?: Prisma.TaskUpdateManyWithoutMeetingNestedInput;
+  client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput;
+  participants?: Prisma.MeetingParticipantUpdateManyWithoutMeetingNestedInput;
+  transcript?: Prisma.TranscriptUpdateOneWithoutMeetingNestedInput;
   decisions?: Prisma.DecisionUpdateManyWithoutMeetingNestedInput;
+  tasks?: Prisma.TaskUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUpdateManyWithoutMeetingNestedInput;
 };
 
 export type MeetingUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
   scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
-  tasks?: Prisma.TaskUncheckedUpdateManyWithoutMeetingNestedInput;
+  participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput;
+  transcript?: Prisma.TranscriptUncheckedUpdateOneWithoutMeetingNestedInput;
   decisions?: Prisma.DecisionUncheckedUpdateManyWithoutMeetingNestedInput;
+  tasks?: Prisma.TaskUncheckedUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutMeetingNestedInput;
 };
 
 export type MeetingCreateManyInput = {
   id?: string;
+  clientId: string;
   title: string;
   description?: string | null;
+  agenda?: string | null;
   status?: $Enums.MeetingStatus;
   scheduledAt?: Date | string | null;
   startedAt?: Date | string | null;
   endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  orgId: string;
 };
 
 export type MeetingUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
   scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 
 export type MeetingUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
   scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
 };
 
 export type MeetingListRelationFilter = {
@@ -407,41 +498,55 @@ export type MeetingOrderByRelationAggregateInput = {
 
 export type MeetingCountOrderByAggregateInput = {
   id?: Prisma.SortOrder;
+  clientId?: Prisma.SortOrder;
   title?: Prisma.SortOrder;
   description?: Prisma.SortOrder;
+  agenda?: Prisma.SortOrder;
   status?: Prisma.SortOrder;
   scheduledAt?: Prisma.SortOrder;
   startedAt?: Prisma.SortOrder;
   endedAt?: Prisma.SortOrder;
+  calendarEventId?: Prisma.SortOrder;
+  summary?: Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
 };
 
 export type MeetingMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder;
+  clientId?: Prisma.SortOrder;
   title?: Prisma.SortOrder;
   description?: Prisma.SortOrder;
+  agenda?: Prisma.SortOrder;
   status?: Prisma.SortOrder;
   scheduledAt?: Prisma.SortOrder;
   startedAt?: Prisma.SortOrder;
   endedAt?: Prisma.SortOrder;
+  calendarEventId?: Prisma.SortOrder;
+  summary?: Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
 };
 
 export type MeetingMinOrderByAggregateInput = {
   id?: Prisma.SortOrder;
+  clientId?: Prisma.SortOrder;
   title?: Prisma.SortOrder;
   description?: Prisma.SortOrder;
+  agenda?: Prisma.SortOrder;
   status?: Prisma.SortOrder;
   scheduledAt?: Prisma.SortOrder;
   startedAt?: Prisma.SortOrder;
   endedAt?: Prisma.SortOrder;
+  calendarEventId?: Prisma.SortOrder;
+  summary?: Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
+};
+
+export type MeetingScalarRelationFilter = {
+  is?: Prisma.MeetingWhereInput;
+  isNot?: Prisma.MeetingWhereInput;
 };
 
 export type MeetingNullableScalarRelationFilter = {
@@ -449,77 +554,89 @@ export type MeetingNullableScalarRelationFilter = {
   isNot?: Prisma.MeetingWhereInput | null;
 };
 
-export type MeetingCreateNestedManyWithoutOrgInput = {
+export type MeetingCreateNestedManyWithoutClientInput = {
   create?:
-    | Prisma.XOR<Prisma.MeetingCreateWithoutOrgInput, Prisma.MeetingUncheckedCreateWithoutOrgInput>
-    | Prisma.MeetingCreateWithoutOrgInput[]
-    | Prisma.MeetingUncheckedCreateWithoutOrgInput[];
+    | Prisma.XOR<
+        Prisma.MeetingCreateWithoutClientInput,
+        Prisma.MeetingUncheckedCreateWithoutClientInput
+      >
+    | Prisma.MeetingCreateWithoutClientInput[]
+    | Prisma.MeetingUncheckedCreateWithoutClientInput[];
   connectOrCreate?:
-    | Prisma.MeetingCreateOrConnectWithoutOrgInput
-    | Prisma.MeetingCreateOrConnectWithoutOrgInput[];
-  createMany?: Prisma.MeetingCreateManyOrgInputEnvelope;
+    | Prisma.MeetingCreateOrConnectWithoutClientInput
+    | Prisma.MeetingCreateOrConnectWithoutClientInput[];
+  createMany?: Prisma.MeetingCreateManyClientInputEnvelope;
   connect?: Prisma.MeetingWhereUniqueInput | Prisma.MeetingWhereUniqueInput[];
 };
 
-export type MeetingUncheckedCreateNestedManyWithoutOrgInput = {
+export type MeetingUncheckedCreateNestedManyWithoutClientInput = {
   create?:
-    | Prisma.XOR<Prisma.MeetingCreateWithoutOrgInput, Prisma.MeetingUncheckedCreateWithoutOrgInput>
-    | Prisma.MeetingCreateWithoutOrgInput[]
-    | Prisma.MeetingUncheckedCreateWithoutOrgInput[];
+    | Prisma.XOR<
+        Prisma.MeetingCreateWithoutClientInput,
+        Prisma.MeetingUncheckedCreateWithoutClientInput
+      >
+    | Prisma.MeetingCreateWithoutClientInput[]
+    | Prisma.MeetingUncheckedCreateWithoutClientInput[];
   connectOrCreate?:
-    | Prisma.MeetingCreateOrConnectWithoutOrgInput
-    | Prisma.MeetingCreateOrConnectWithoutOrgInput[];
-  createMany?: Prisma.MeetingCreateManyOrgInputEnvelope;
+    | Prisma.MeetingCreateOrConnectWithoutClientInput
+    | Prisma.MeetingCreateOrConnectWithoutClientInput[];
+  createMany?: Prisma.MeetingCreateManyClientInputEnvelope;
   connect?: Prisma.MeetingWhereUniqueInput | Prisma.MeetingWhereUniqueInput[];
 };
 
-export type MeetingUpdateManyWithoutOrgNestedInput = {
+export type MeetingUpdateManyWithoutClientNestedInput = {
   create?:
-    | Prisma.XOR<Prisma.MeetingCreateWithoutOrgInput, Prisma.MeetingUncheckedCreateWithoutOrgInput>
-    | Prisma.MeetingCreateWithoutOrgInput[]
-    | Prisma.MeetingUncheckedCreateWithoutOrgInput[];
+    | Prisma.XOR<
+        Prisma.MeetingCreateWithoutClientInput,
+        Prisma.MeetingUncheckedCreateWithoutClientInput
+      >
+    | Prisma.MeetingCreateWithoutClientInput[]
+    | Prisma.MeetingUncheckedCreateWithoutClientInput[];
   connectOrCreate?:
-    | Prisma.MeetingCreateOrConnectWithoutOrgInput
-    | Prisma.MeetingCreateOrConnectWithoutOrgInput[];
+    | Prisma.MeetingCreateOrConnectWithoutClientInput
+    | Prisma.MeetingCreateOrConnectWithoutClientInput[];
   upsert?:
-    | Prisma.MeetingUpsertWithWhereUniqueWithoutOrgInput
-    | Prisma.MeetingUpsertWithWhereUniqueWithoutOrgInput[];
-  createMany?: Prisma.MeetingCreateManyOrgInputEnvelope;
+    | Prisma.MeetingUpsertWithWhereUniqueWithoutClientInput
+    | Prisma.MeetingUpsertWithWhereUniqueWithoutClientInput[];
+  createMany?: Prisma.MeetingCreateManyClientInputEnvelope;
   set?: Prisma.MeetingWhereUniqueInput | Prisma.MeetingWhereUniqueInput[];
   disconnect?: Prisma.MeetingWhereUniqueInput | Prisma.MeetingWhereUniqueInput[];
   delete?: Prisma.MeetingWhereUniqueInput | Prisma.MeetingWhereUniqueInput[];
   connect?: Prisma.MeetingWhereUniqueInput | Prisma.MeetingWhereUniqueInput[];
   update?:
-    | Prisma.MeetingUpdateWithWhereUniqueWithoutOrgInput
-    | Prisma.MeetingUpdateWithWhereUniqueWithoutOrgInput[];
+    | Prisma.MeetingUpdateWithWhereUniqueWithoutClientInput
+    | Prisma.MeetingUpdateWithWhereUniqueWithoutClientInput[];
   updateMany?:
-    | Prisma.MeetingUpdateManyWithWhereWithoutOrgInput
-    | Prisma.MeetingUpdateManyWithWhereWithoutOrgInput[];
+    | Prisma.MeetingUpdateManyWithWhereWithoutClientInput
+    | Prisma.MeetingUpdateManyWithWhereWithoutClientInput[];
   deleteMany?: Prisma.MeetingScalarWhereInput | Prisma.MeetingScalarWhereInput[];
 };
 
-export type MeetingUncheckedUpdateManyWithoutOrgNestedInput = {
+export type MeetingUncheckedUpdateManyWithoutClientNestedInput = {
   create?:
-    | Prisma.XOR<Prisma.MeetingCreateWithoutOrgInput, Prisma.MeetingUncheckedCreateWithoutOrgInput>
-    | Prisma.MeetingCreateWithoutOrgInput[]
-    | Prisma.MeetingUncheckedCreateWithoutOrgInput[];
+    | Prisma.XOR<
+        Prisma.MeetingCreateWithoutClientInput,
+        Prisma.MeetingUncheckedCreateWithoutClientInput
+      >
+    | Prisma.MeetingCreateWithoutClientInput[]
+    | Prisma.MeetingUncheckedCreateWithoutClientInput[];
   connectOrCreate?:
-    | Prisma.MeetingCreateOrConnectWithoutOrgInput
-    | Prisma.MeetingCreateOrConnectWithoutOrgInput[];
+    | Prisma.MeetingCreateOrConnectWithoutClientInput
+    | Prisma.MeetingCreateOrConnectWithoutClientInput[];
   upsert?:
-    | Prisma.MeetingUpsertWithWhereUniqueWithoutOrgInput
-    | Prisma.MeetingUpsertWithWhereUniqueWithoutOrgInput[];
-  createMany?: Prisma.MeetingCreateManyOrgInputEnvelope;
+    | Prisma.MeetingUpsertWithWhereUniqueWithoutClientInput
+    | Prisma.MeetingUpsertWithWhereUniqueWithoutClientInput[];
+  createMany?: Prisma.MeetingCreateManyClientInputEnvelope;
   set?: Prisma.MeetingWhereUniqueInput | Prisma.MeetingWhereUniqueInput[];
   disconnect?: Prisma.MeetingWhereUniqueInput | Prisma.MeetingWhereUniqueInput[];
   delete?: Prisma.MeetingWhereUniqueInput | Prisma.MeetingWhereUniqueInput[];
   connect?: Prisma.MeetingWhereUniqueInput | Prisma.MeetingWhereUniqueInput[];
   update?:
-    | Prisma.MeetingUpdateWithWhereUniqueWithoutOrgInput
-    | Prisma.MeetingUpdateWithWhereUniqueWithoutOrgInput[];
+    | Prisma.MeetingUpdateWithWhereUniqueWithoutClientInput
+    | Prisma.MeetingUpdateWithWhereUniqueWithoutClientInput[];
   updateMany?:
-    | Prisma.MeetingUpdateManyWithWhereWithoutOrgInput
-    | Prisma.MeetingUpdateManyWithWhereWithoutOrgInput[];
+    | Prisma.MeetingUpdateManyWithWhereWithoutClientInput
+    | Prisma.MeetingUpdateManyWithWhereWithoutClientInput[];
   deleteMany?: Prisma.MeetingScalarWhereInput | Prisma.MeetingScalarWhereInput[];
 };
 
@@ -527,31 +644,55 @@ export type EnumMeetingStatusFieldUpdateOperationsInput = {
   set?: $Enums.MeetingStatus;
 };
 
-export type MeetingCreateNestedOneWithoutTasksInput = {
+export type MeetingCreateNestedOneWithoutParticipantsInput = {
   create?: Prisma.XOR<
-    Prisma.MeetingCreateWithoutTasksInput,
-    Prisma.MeetingUncheckedCreateWithoutTasksInput
+    Prisma.MeetingCreateWithoutParticipantsInput,
+    Prisma.MeetingUncheckedCreateWithoutParticipantsInput
   >;
-  connectOrCreate?: Prisma.MeetingCreateOrConnectWithoutTasksInput;
+  connectOrCreate?: Prisma.MeetingCreateOrConnectWithoutParticipantsInput;
   connect?: Prisma.MeetingWhereUniqueInput;
 };
 
-export type MeetingUpdateOneWithoutTasksNestedInput = {
+export type MeetingUpdateOneRequiredWithoutParticipantsNestedInput = {
   create?: Prisma.XOR<
-    Prisma.MeetingCreateWithoutTasksInput,
-    Prisma.MeetingUncheckedCreateWithoutTasksInput
+    Prisma.MeetingCreateWithoutParticipantsInput,
+    Prisma.MeetingUncheckedCreateWithoutParticipantsInput
   >;
-  connectOrCreate?: Prisma.MeetingCreateOrConnectWithoutTasksInput;
-  upsert?: Prisma.MeetingUpsertWithoutTasksInput;
-  disconnect?: Prisma.MeetingWhereInput | boolean;
-  delete?: Prisma.MeetingWhereInput | boolean;
+  connectOrCreate?: Prisma.MeetingCreateOrConnectWithoutParticipantsInput;
+  upsert?: Prisma.MeetingUpsertWithoutParticipantsInput;
   connect?: Prisma.MeetingWhereUniqueInput;
   update?: Prisma.XOR<
     Prisma.XOR<
-      Prisma.MeetingUpdateToOneWithWhereWithoutTasksInput,
-      Prisma.MeetingUpdateWithoutTasksInput
+      Prisma.MeetingUpdateToOneWithWhereWithoutParticipantsInput,
+      Prisma.MeetingUpdateWithoutParticipantsInput
     >,
-    Prisma.MeetingUncheckedUpdateWithoutTasksInput
+    Prisma.MeetingUncheckedUpdateWithoutParticipantsInput
+  >;
+};
+
+export type MeetingCreateNestedOneWithoutTranscriptInput = {
+  create?: Prisma.XOR<
+    Prisma.MeetingCreateWithoutTranscriptInput,
+    Prisma.MeetingUncheckedCreateWithoutTranscriptInput
+  >;
+  connectOrCreate?: Prisma.MeetingCreateOrConnectWithoutTranscriptInput;
+  connect?: Prisma.MeetingWhereUniqueInput;
+};
+
+export type MeetingUpdateOneRequiredWithoutTranscriptNestedInput = {
+  create?: Prisma.XOR<
+    Prisma.MeetingCreateWithoutTranscriptInput,
+    Prisma.MeetingUncheckedCreateWithoutTranscriptInput
+  >;
+  connectOrCreate?: Prisma.MeetingCreateOrConnectWithoutTranscriptInput;
+  upsert?: Prisma.MeetingUpsertWithoutTranscriptInput;
+  connect?: Prisma.MeetingWhereUniqueInput;
+  update?: Prisma.XOR<
+    Prisma.XOR<
+      Prisma.MeetingUpdateToOneWithWhereWithoutTranscriptInput,
+      Prisma.MeetingUpdateWithoutTranscriptInput
+    >,
+    Prisma.MeetingUncheckedUpdateWithoutTranscriptInput
   >;
 };
 
@@ -583,72 +724,170 @@ export type MeetingUpdateOneWithoutDecisionsNestedInput = {
   >;
 };
 
-export type MeetingCreateWithoutOrgInput = {
-  id?: string;
-  title: string;
-  description?: string | null;
-  status?: $Enums.MeetingStatus;
-  scheduledAt?: Date | string | null;
-  startedAt?: Date | string | null;
-  endedAt?: Date | string | null;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
-  tasks?: Prisma.TaskCreateNestedManyWithoutMeetingInput;
-  decisions?: Prisma.DecisionCreateNestedManyWithoutMeetingInput;
+export type MeetingCreateNestedOneWithoutTasksInput = {
+  create?: Prisma.XOR<
+    Prisma.MeetingCreateWithoutTasksInput,
+    Prisma.MeetingUncheckedCreateWithoutTasksInput
+  >;
+  connectOrCreate?: Prisma.MeetingCreateOrConnectWithoutTasksInput;
+  connect?: Prisma.MeetingWhereUniqueInput;
 };
 
-export type MeetingUncheckedCreateWithoutOrgInput = {
-  id?: string;
-  title: string;
-  description?: string | null;
-  status?: $Enums.MeetingStatus;
-  scheduledAt?: Date | string | null;
-  startedAt?: Date | string | null;
-  endedAt?: Date | string | null;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
-  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutMeetingInput;
-  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutMeetingInput;
-};
-
-export type MeetingCreateOrConnectWithoutOrgInput = {
-  where: Prisma.MeetingWhereUniqueInput;
-  create: Prisma.XOR<
-    Prisma.MeetingCreateWithoutOrgInput,
-    Prisma.MeetingUncheckedCreateWithoutOrgInput
+export type MeetingUpdateOneWithoutTasksNestedInput = {
+  create?: Prisma.XOR<
+    Prisma.MeetingCreateWithoutTasksInput,
+    Prisma.MeetingUncheckedCreateWithoutTasksInput
+  >;
+  connectOrCreate?: Prisma.MeetingCreateOrConnectWithoutTasksInput;
+  upsert?: Prisma.MeetingUpsertWithoutTasksInput;
+  disconnect?: Prisma.MeetingWhereInput | boolean;
+  delete?: Prisma.MeetingWhereInput | boolean;
+  connect?: Prisma.MeetingWhereUniqueInput;
+  update?: Prisma.XOR<
+    Prisma.XOR<
+      Prisma.MeetingUpdateToOneWithWhereWithoutTasksInput,
+      Prisma.MeetingUpdateWithoutTasksInput
+    >,
+    Prisma.MeetingUncheckedUpdateWithoutTasksInput
   >;
 };
 
-export type MeetingCreateManyOrgInputEnvelope = {
-  data: Prisma.MeetingCreateManyOrgInput | Prisma.MeetingCreateManyOrgInput[];
+export type MeetingCreateNestedOneWithoutOpenQuestionsInput = {
+  create?: Prisma.XOR<
+    Prisma.MeetingCreateWithoutOpenQuestionsInput,
+    Prisma.MeetingUncheckedCreateWithoutOpenQuestionsInput
+  >;
+  connectOrCreate?: Prisma.MeetingCreateOrConnectWithoutOpenQuestionsInput;
+  connect?: Prisma.MeetingWhereUniqueInput;
+};
+
+export type MeetingUpdateOneWithoutOpenQuestionsNestedInput = {
+  create?: Prisma.XOR<
+    Prisma.MeetingCreateWithoutOpenQuestionsInput,
+    Prisma.MeetingUncheckedCreateWithoutOpenQuestionsInput
+  >;
+  connectOrCreate?: Prisma.MeetingCreateOrConnectWithoutOpenQuestionsInput;
+  upsert?: Prisma.MeetingUpsertWithoutOpenQuestionsInput;
+  disconnect?: Prisma.MeetingWhereInput | boolean;
+  delete?: Prisma.MeetingWhereInput | boolean;
+  connect?: Prisma.MeetingWhereUniqueInput;
+  update?: Prisma.XOR<
+    Prisma.XOR<
+      Prisma.MeetingUpdateToOneWithWhereWithoutOpenQuestionsInput,
+      Prisma.MeetingUpdateWithoutOpenQuestionsInput
+    >,
+    Prisma.MeetingUncheckedUpdateWithoutOpenQuestionsInput
+  >;
+};
+
+export type MeetingCreateNestedOneWithoutImportantPointsInput = {
+  create?: Prisma.XOR<
+    Prisma.MeetingCreateWithoutImportantPointsInput,
+    Prisma.MeetingUncheckedCreateWithoutImportantPointsInput
+  >;
+  connectOrCreate?: Prisma.MeetingCreateOrConnectWithoutImportantPointsInput;
+  connect?: Prisma.MeetingWhereUniqueInput;
+};
+
+export type MeetingUpdateOneWithoutImportantPointsNestedInput = {
+  create?: Prisma.XOR<
+    Prisma.MeetingCreateWithoutImportantPointsInput,
+    Prisma.MeetingUncheckedCreateWithoutImportantPointsInput
+  >;
+  connectOrCreate?: Prisma.MeetingCreateOrConnectWithoutImportantPointsInput;
+  upsert?: Prisma.MeetingUpsertWithoutImportantPointsInput;
+  disconnect?: Prisma.MeetingWhereInput | boolean;
+  delete?: Prisma.MeetingWhereInput | boolean;
+  connect?: Prisma.MeetingWhereUniqueInput;
+  update?: Prisma.XOR<
+    Prisma.XOR<
+      Prisma.MeetingUpdateToOneWithWhereWithoutImportantPointsInput,
+      Prisma.MeetingUpdateWithoutImportantPointsInput
+    >,
+    Prisma.MeetingUncheckedUpdateWithoutImportantPointsInput
+  >;
+};
+
+export type MeetingCreateWithoutClientInput = {
+  id?: string;
+  title: string;
+  description?: string | null;
+  agenda?: string | null;
+  status?: $Enums.MeetingStatus;
+  scheduledAt?: Date | string | null;
+  startedAt?: Date | string | null;
+  endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  participants?: Prisma.MeetingParticipantCreateNestedManyWithoutMeetingInput;
+  transcript?: Prisma.TranscriptCreateNestedOneWithoutMeetingInput;
+  decisions?: Prisma.DecisionCreateNestedManyWithoutMeetingInput;
+  tasks?: Prisma.TaskCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointCreateNestedManyWithoutMeetingInput;
+};
+
+export type MeetingUncheckedCreateWithoutClientInput = {
+  id?: string;
+  title: string;
+  description?: string | null;
+  agenda?: string | null;
+  status?: $Enums.MeetingStatus;
+  scheduledAt?: Date | string | null;
+  startedAt?: Date | string | null;
+  endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput;
+  transcript?: Prisma.TranscriptUncheckedCreateNestedOneWithoutMeetingInput;
+  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutMeetingInput;
+  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutMeetingInput;
+};
+
+export type MeetingCreateOrConnectWithoutClientInput = {
+  where: Prisma.MeetingWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.MeetingCreateWithoutClientInput,
+    Prisma.MeetingUncheckedCreateWithoutClientInput
+  >;
+};
+
+export type MeetingCreateManyClientInputEnvelope = {
+  data: Prisma.MeetingCreateManyClientInput | Prisma.MeetingCreateManyClientInput[];
   skipDuplicates?: boolean;
 };
 
-export type MeetingUpsertWithWhereUniqueWithoutOrgInput = {
+export type MeetingUpsertWithWhereUniqueWithoutClientInput = {
   where: Prisma.MeetingWhereUniqueInput;
   update: Prisma.XOR<
-    Prisma.MeetingUpdateWithoutOrgInput,
-    Prisma.MeetingUncheckedUpdateWithoutOrgInput
+    Prisma.MeetingUpdateWithoutClientInput,
+    Prisma.MeetingUncheckedUpdateWithoutClientInput
   >;
   create: Prisma.XOR<
-    Prisma.MeetingCreateWithoutOrgInput,
-    Prisma.MeetingUncheckedCreateWithoutOrgInput
+    Prisma.MeetingCreateWithoutClientInput,
+    Prisma.MeetingUncheckedCreateWithoutClientInput
   >;
 };
 
-export type MeetingUpdateWithWhereUniqueWithoutOrgInput = {
+export type MeetingUpdateWithWhereUniqueWithoutClientInput = {
   where: Prisma.MeetingWhereUniqueInput;
   data: Prisma.XOR<
-    Prisma.MeetingUpdateWithoutOrgInput,
-    Prisma.MeetingUncheckedUpdateWithoutOrgInput
+    Prisma.MeetingUpdateWithoutClientInput,
+    Prisma.MeetingUncheckedUpdateWithoutClientInput
   >;
 };
 
-export type MeetingUpdateManyWithWhereWithoutOrgInput = {
+export type MeetingUpdateManyWithWhereWithoutClientInput = {
   where: Prisma.MeetingScalarWhereInput;
   data: Prisma.XOR<
     Prisma.MeetingUpdateManyMutationInput,
-    Prisma.MeetingUncheckedUpdateManyWithoutOrgInput
+    Prisma.MeetingUncheckedUpdateManyWithoutClientInput
   >;
 };
 
@@ -657,127 +896,284 @@ export type MeetingScalarWhereInput = {
   OR?: Prisma.MeetingScalarWhereInput[];
   NOT?: Prisma.MeetingScalarWhereInput | Prisma.MeetingScalarWhereInput[];
   id?: Prisma.StringFilter<'Meeting'> | string;
+  clientId?: Prisma.StringFilter<'Meeting'> | string;
   title?: Prisma.StringFilter<'Meeting'> | string;
   description?: Prisma.StringNullableFilter<'Meeting'> | string | null;
+  agenda?: Prisma.StringNullableFilter<'Meeting'> | string | null;
   status?: Prisma.EnumMeetingStatusFilter<'Meeting'> | $Enums.MeetingStatus;
   scheduledAt?: Prisma.DateTimeNullableFilter<'Meeting'> | Date | string | null;
   startedAt?: Prisma.DateTimeNullableFilter<'Meeting'> | Date | string | null;
   endedAt?: Prisma.DateTimeNullableFilter<'Meeting'> | Date | string | null;
+  calendarEventId?: Prisma.StringNullableFilter<'Meeting'> | string | null;
+  summary?: Prisma.StringNullableFilter<'Meeting'> | string | null;
   createdAt?: Prisma.DateTimeFilter<'Meeting'> | Date | string;
   updatedAt?: Prisma.DateTimeFilter<'Meeting'> | Date | string;
-  orgId?: Prisma.StringFilter<'Meeting'> | string;
 };
 
-export type MeetingCreateWithoutTasksInput = {
+export type MeetingCreateWithoutParticipantsInput = {
   id?: string;
   title: string;
   description?: string | null;
+  agenda?: string | null;
   status?: $Enums.MeetingStatus;
   scheduledAt?: Date | string | null;
   startedAt?: Date | string | null;
   endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  org: Prisma.OrgCreateNestedOneWithoutMeetingsInput;
+  client: Prisma.ClientCreateNestedOneWithoutMeetingsInput;
+  transcript?: Prisma.TranscriptCreateNestedOneWithoutMeetingInput;
   decisions?: Prisma.DecisionCreateNestedManyWithoutMeetingInput;
+  tasks?: Prisma.TaskCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointCreateNestedManyWithoutMeetingInput;
 };
 
-export type MeetingUncheckedCreateWithoutTasksInput = {
+export type MeetingUncheckedCreateWithoutParticipantsInput = {
   id?: string;
+  clientId: string;
   title: string;
   description?: string | null;
+  agenda?: string | null;
   status?: $Enums.MeetingStatus;
   scheduledAt?: Date | string | null;
   startedAt?: Date | string | null;
   endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  orgId: string;
+  transcript?: Prisma.TranscriptUncheckedCreateNestedOneWithoutMeetingInput;
   decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutMeetingInput;
+  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutMeetingInput;
 };
 
-export type MeetingCreateOrConnectWithoutTasksInput = {
+export type MeetingCreateOrConnectWithoutParticipantsInput = {
   where: Prisma.MeetingWhereUniqueInput;
   create: Prisma.XOR<
-    Prisma.MeetingCreateWithoutTasksInput,
-    Prisma.MeetingUncheckedCreateWithoutTasksInput
+    Prisma.MeetingCreateWithoutParticipantsInput,
+    Prisma.MeetingUncheckedCreateWithoutParticipantsInput
   >;
 };
 
-export type MeetingUpsertWithoutTasksInput = {
+export type MeetingUpsertWithoutParticipantsInput = {
   update: Prisma.XOR<
-    Prisma.MeetingUpdateWithoutTasksInput,
-    Prisma.MeetingUncheckedUpdateWithoutTasksInput
+    Prisma.MeetingUpdateWithoutParticipantsInput,
+    Prisma.MeetingUncheckedUpdateWithoutParticipantsInput
   >;
   create: Prisma.XOR<
-    Prisma.MeetingCreateWithoutTasksInput,
-    Prisma.MeetingUncheckedCreateWithoutTasksInput
+    Prisma.MeetingCreateWithoutParticipantsInput,
+    Prisma.MeetingUncheckedCreateWithoutParticipantsInput
   >;
   where?: Prisma.MeetingWhereInput;
 };
 
-export type MeetingUpdateToOneWithWhereWithoutTasksInput = {
+export type MeetingUpdateToOneWithWhereWithoutParticipantsInput = {
   where?: Prisma.MeetingWhereInput;
   data: Prisma.XOR<
-    Prisma.MeetingUpdateWithoutTasksInput,
-    Prisma.MeetingUncheckedUpdateWithoutTasksInput
+    Prisma.MeetingUpdateWithoutParticipantsInput,
+    Prisma.MeetingUncheckedUpdateWithoutParticipantsInput
   >;
 };
 
-export type MeetingUpdateWithoutTasksInput = {
+export type MeetingUpdateWithoutParticipantsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
   scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  org?: Prisma.OrgUpdateOneRequiredWithoutMeetingsNestedInput;
+  client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput;
+  transcript?: Prisma.TranscriptUpdateOneWithoutMeetingNestedInput;
   decisions?: Prisma.DecisionUpdateManyWithoutMeetingNestedInput;
+  tasks?: Prisma.TaskUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUpdateManyWithoutMeetingNestedInput;
 };
 
-export type MeetingUncheckedUpdateWithoutTasksInput = {
+export type MeetingUncheckedUpdateWithoutParticipantsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
   scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
+  transcript?: Prisma.TranscriptUncheckedUpdateOneWithoutMeetingNestedInput;
   decisions?: Prisma.DecisionUncheckedUpdateManyWithoutMeetingNestedInput;
+  tasks?: Prisma.TaskUncheckedUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutMeetingNestedInput;
+};
+
+export type MeetingCreateWithoutTranscriptInput = {
+  id?: string;
+  title: string;
+  description?: string | null;
+  agenda?: string | null;
+  status?: $Enums.MeetingStatus;
+  scheduledAt?: Date | string | null;
+  startedAt?: Date | string | null;
+  endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  client: Prisma.ClientCreateNestedOneWithoutMeetingsInput;
+  participants?: Prisma.MeetingParticipantCreateNestedManyWithoutMeetingInput;
+  decisions?: Prisma.DecisionCreateNestedManyWithoutMeetingInput;
+  tasks?: Prisma.TaskCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointCreateNestedManyWithoutMeetingInput;
+};
+
+export type MeetingUncheckedCreateWithoutTranscriptInput = {
+  id?: string;
+  clientId: string;
+  title: string;
+  description?: string | null;
+  agenda?: string | null;
+  status?: $Enums.MeetingStatus;
+  scheduledAt?: Date | string | null;
+  startedAt?: Date | string | null;
+  endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput;
+  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutMeetingInput;
+  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutMeetingInput;
+};
+
+export type MeetingCreateOrConnectWithoutTranscriptInput = {
+  where: Prisma.MeetingWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.MeetingCreateWithoutTranscriptInput,
+    Prisma.MeetingUncheckedCreateWithoutTranscriptInput
+  >;
+};
+
+export type MeetingUpsertWithoutTranscriptInput = {
+  update: Prisma.XOR<
+    Prisma.MeetingUpdateWithoutTranscriptInput,
+    Prisma.MeetingUncheckedUpdateWithoutTranscriptInput
+  >;
+  create: Prisma.XOR<
+    Prisma.MeetingCreateWithoutTranscriptInput,
+    Prisma.MeetingUncheckedCreateWithoutTranscriptInput
+  >;
+  where?: Prisma.MeetingWhereInput;
+};
+
+export type MeetingUpdateToOneWithWhereWithoutTranscriptInput = {
+  where?: Prisma.MeetingWhereInput;
+  data: Prisma.XOR<
+    Prisma.MeetingUpdateWithoutTranscriptInput,
+    Prisma.MeetingUncheckedUpdateWithoutTranscriptInput
+  >;
+};
+
+export type MeetingUpdateWithoutTranscriptInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  title?: Prisma.StringFieldUpdateOperationsInput | string;
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput;
+  participants?: Prisma.MeetingParticipantUpdateManyWithoutMeetingNestedInput;
+  decisions?: Prisma.DecisionUpdateManyWithoutMeetingNestedInput;
+  tasks?: Prisma.TaskUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUpdateManyWithoutMeetingNestedInput;
+};
+
+export type MeetingUncheckedUpdateWithoutTranscriptInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  title?: Prisma.StringFieldUpdateOperationsInput | string;
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput;
+  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutMeetingNestedInput;
+  tasks?: Prisma.TaskUncheckedUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutMeetingNestedInput;
 };
 
 export type MeetingCreateWithoutDecisionsInput = {
   id?: string;
   title: string;
   description?: string | null;
+  agenda?: string | null;
   status?: $Enums.MeetingStatus;
   scheduledAt?: Date | string | null;
   startedAt?: Date | string | null;
   endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  org: Prisma.OrgCreateNestedOneWithoutMeetingsInput;
+  client: Prisma.ClientCreateNestedOneWithoutMeetingsInput;
+  participants?: Prisma.MeetingParticipantCreateNestedManyWithoutMeetingInput;
+  transcript?: Prisma.TranscriptCreateNestedOneWithoutMeetingInput;
   tasks?: Prisma.TaskCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointCreateNestedManyWithoutMeetingInput;
 };
 
 export type MeetingUncheckedCreateWithoutDecisionsInput = {
   id?: string;
+  clientId: string;
   title: string;
   description?: string | null;
+  agenda?: string | null;
   status?: $Enums.MeetingStatus;
   scheduledAt?: Date | string | null;
   startedAt?: Date | string | null;
   endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  orgId: string;
+  participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput;
+  transcript?: Prisma.TranscriptUncheckedCreateNestedOneWithoutMeetingInput;
   tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutMeetingInput;
 };
 
 export type MeetingCreateOrConnectWithoutDecisionsInput = {
@@ -812,78 +1208,448 @@ export type MeetingUpdateWithoutDecisionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
   scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  org?: Prisma.OrgUpdateOneRequiredWithoutMeetingsNestedInput;
+  client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput;
+  participants?: Prisma.MeetingParticipantUpdateManyWithoutMeetingNestedInput;
+  transcript?: Prisma.TranscriptUpdateOneWithoutMeetingNestedInput;
   tasks?: Prisma.TaskUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUpdateManyWithoutMeetingNestedInput;
 };
 
 export type MeetingUncheckedUpdateWithoutDecisionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
   scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
+  participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput;
+  transcript?: Prisma.TranscriptUncheckedUpdateOneWithoutMeetingNestedInput;
   tasks?: Prisma.TaskUncheckedUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutMeetingNestedInput;
 };
 
-export type MeetingCreateManyOrgInput = {
+export type MeetingCreateWithoutTasksInput = {
   id?: string;
   title: string;
   description?: string | null;
+  agenda?: string | null;
   status?: $Enums.MeetingStatus;
   scheduledAt?: Date | string | null;
   startedAt?: Date | string | null;
   endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  client: Prisma.ClientCreateNestedOneWithoutMeetingsInput;
+  participants?: Prisma.MeetingParticipantCreateNestedManyWithoutMeetingInput;
+  transcript?: Prisma.TranscriptCreateNestedOneWithoutMeetingInput;
+  decisions?: Prisma.DecisionCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointCreateNestedManyWithoutMeetingInput;
+};
+
+export type MeetingUncheckedCreateWithoutTasksInput = {
+  id?: string;
+  clientId: string;
+  title: string;
+  description?: string | null;
+  agenda?: string | null;
+  status?: $Enums.MeetingStatus;
+  scheduledAt?: Date | string | null;
+  startedAt?: Date | string | null;
+  endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput;
+  transcript?: Prisma.TranscriptUncheckedCreateNestedOneWithoutMeetingInput;
+  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutMeetingInput;
+};
+
+export type MeetingCreateOrConnectWithoutTasksInput = {
+  where: Prisma.MeetingWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.MeetingCreateWithoutTasksInput,
+    Prisma.MeetingUncheckedCreateWithoutTasksInput
+  >;
+};
+
+export type MeetingUpsertWithoutTasksInput = {
+  update: Prisma.XOR<
+    Prisma.MeetingUpdateWithoutTasksInput,
+    Prisma.MeetingUncheckedUpdateWithoutTasksInput
+  >;
+  create: Prisma.XOR<
+    Prisma.MeetingCreateWithoutTasksInput,
+    Prisma.MeetingUncheckedCreateWithoutTasksInput
+  >;
+  where?: Prisma.MeetingWhereInput;
+};
+
+export type MeetingUpdateToOneWithWhereWithoutTasksInput = {
+  where?: Prisma.MeetingWhereInput;
+  data: Prisma.XOR<
+    Prisma.MeetingUpdateWithoutTasksInput,
+    Prisma.MeetingUncheckedUpdateWithoutTasksInput
+  >;
+};
+
+export type MeetingUpdateWithoutTasksInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  title?: Prisma.StringFieldUpdateOperationsInput | string;
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput;
+  participants?: Prisma.MeetingParticipantUpdateManyWithoutMeetingNestedInput;
+  transcript?: Prisma.TranscriptUpdateOneWithoutMeetingNestedInput;
+  decisions?: Prisma.DecisionUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUpdateManyWithoutMeetingNestedInput;
+};
+
+export type MeetingUncheckedUpdateWithoutTasksInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  title?: Prisma.StringFieldUpdateOperationsInput | string;
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput;
+  transcript?: Prisma.TranscriptUncheckedUpdateOneWithoutMeetingNestedInput;
+  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutMeetingNestedInput;
+};
+
+export type MeetingCreateWithoutOpenQuestionsInput = {
+  id?: string;
+  title: string;
+  description?: string | null;
+  agenda?: string | null;
+  status?: $Enums.MeetingStatus;
+  scheduledAt?: Date | string | null;
+  startedAt?: Date | string | null;
+  endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  client: Prisma.ClientCreateNestedOneWithoutMeetingsInput;
+  participants?: Prisma.MeetingParticipantCreateNestedManyWithoutMeetingInput;
+  transcript?: Prisma.TranscriptCreateNestedOneWithoutMeetingInput;
+  decisions?: Prisma.DecisionCreateNestedManyWithoutMeetingInput;
+  tasks?: Prisma.TaskCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointCreateNestedManyWithoutMeetingInput;
+};
+
+export type MeetingUncheckedCreateWithoutOpenQuestionsInput = {
+  id?: string;
+  clientId: string;
+  title: string;
+  description?: string | null;
+  agenda?: string | null;
+  status?: $Enums.MeetingStatus;
+  scheduledAt?: Date | string | null;
+  startedAt?: Date | string | null;
+  endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput;
+  transcript?: Prisma.TranscriptUncheckedCreateNestedOneWithoutMeetingInput;
+  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutMeetingInput;
+  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutMeetingInput;
+  importantPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutMeetingInput;
+};
+
+export type MeetingCreateOrConnectWithoutOpenQuestionsInput = {
+  where: Prisma.MeetingWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.MeetingCreateWithoutOpenQuestionsInput,
+    Prisma.MeetingUncheckedCreateWithoutOpenQuestionsInput
+  >;
+};
+
+export type MeetingUpsertWithoutOpenQuestionsInput = {
+  update: Prisma.XOR<
+    Prisma.MeetingUpdateWithoutOpenQuestionsInput,
+    Prisma.MeetingUncheckedUpdateWithoutOpenQuestionsInput
+  >;
+  create: Prisma.XOR<
+    Prisma.MeetingCreateWithoutOpenQuestionsInput,
+    Prisma.MeetingUncheckedCreateWithoutOpenQuestionsInput
+  >;
+  where?: Prisma.MeetingWhereInput;
+};
+
+export type MeetingUpdateToOneWithWhereWithoutOpenQuestionsInput = {
+  where?: Prisma.MeetingWhereInput;
+  data: Prisma.XOR<
+    Prisma.MeetingUpdateWithoutOpenQuestionsInput,
+    Prisma.MeetingUncheckedUpdateWithoutOpenQuestionsInput
+  >;
+};
+
+export type MeetingUpdateWithoutOpenQuestionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  title?: Prisma.StringFieldUpdateOperationsInput | string;
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput;
+  participants?: Prisma.MeetingParticipantUpdateManyWithoutMeetingNestedInput;
+  transcript?: Prisma.TranscriptUpdateOneWithoutMeetingNestedInput;
+  decisions?: Prisma.DecisionUpdateManyWithoutMeetingNestedInput;
+  tasks?: Prisma.TaskUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUpdateManyWithoutMeetingNestedInput;
+};
+
+export type MeetingUncheckedUpdateWithoutOpenQuestionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  title?: Prisma.StringFieldUpdateOperationsInput | string;
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput;
+  transcript?: Prisma.TranscriptUncheckedUpdateOneWithoutMeetingNestedInput;
+  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutMeetingNestedInput;
+  tasks?: Prisma.TaskUncheckedUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutMeetingNestedInput;
+};
+
+export type MeetingCreateWithoutImportantPointsInput = {
+  id?: string;
+  title: string;
+  description?: string | null;
+  agenda?: string | null;
+  status?: $Enums.MeetingStatus;
+  scheduledAt?: Date | string | null;
+  startedAt?: Date | string | null;
+  endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  client: Prisma.ClientCreateNestedOneWithoutMeetingsInput;
+  participants?: Prisma.MeetingParticipantCreateNestedManyWithoutMeetingInput;
+  transcript?: Prisma.TranscriptCreateNestedOneWithoutMeetingInput;
+  decisions?: Prisma.DecisionCreateNestedManyWithoutMeetingInput;
+  tasks?: Prisma.TaskCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutMeetingInput;
+};
+
+export type MeetingUncheckedCreateWithoutImportantPointsInput = {
+  id?: string;
+  clientId: string;
+  title: string;
+  description?: string | null;
+  agenda?: string | null;
+  status?: $Enums.MeetingStatus;
+  scheduledAt?: Date | string | null;
+  startedAt?: Date | string | null;
+  endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput;
+  transcript?: Prisma.TranscriptUncheckedCreateNestedOneWithoutMeetingInput;
+  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutMeetingInput;
+  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutMeetingInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutMeetingInput;
+};
+
+export type MeetingCreateOrConnectWithoutImportantPointsInput = {
+  where: Prisma.MeetingWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.MeetingCreateWithoutImportantPointsInput,
+    Prisma.MeetingUncheckedCreateWithoutImportantPointsInput
+  >;
+};
+
+export type MeetingUpsertWithoutImportantPointsInput = {
+  update: Prisma.XOR<
+    Prisma.MeetingUpdateWithoutImportantPointsInput,
+    Prisma.MeetingUncheckedUpdateWithoutImportantPointsInput
+  >;
+  create: Prisma.XOR<
+    Prisma.MeetingCreateWithoutImportantPointsInput,
+    Prisma.MeetingUncheckedCreateWithoutImportantPointsInput
+  >;
+  where?: Prisma.MeetingWhereInput;
+};
+
+export type MeetingUpdateToOneWithWhereWithoutImportantPointsInput = {
+  where?: Prisma.MeetingWhereInput;
+  data: Prisma.XOR<
+    Prisma.MeetingUpdateWithoutImportantPointsInput,
+    Prisma.MeetingUncheckedUpdateWithoutImportantPointsInput
+  >;
+};
+
+export type MeetingUpdateWithoutImportantPointsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  title?: Prisma.StringFieldUpdateOperationsInput | string;
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput;
+  participants?: Prisma.MeetingParticipantUpdateManyWithoutMeetingNestedInput;
+  transcript?: Prisma.TranscriptUpdateOneWithoutMeetingNestedInput;
+  decisions?: Prisma.DecisionUpdateManyWithoutMeetingNestedInput;
+  tasks?: Prisma.TaskUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUpdateManyWithoutMeetingNestedInput;
+};
+
+export type MeetingUncheckedUpdateWithoutImportantPointsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  title?: Prisma.StringFieldUpdateOperationsInput | string;
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
+  scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput;
+  transcript?: Prisma.TranscriptUncheckedUpdateOneWithoutMeetingNestedInput;
+  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutMeetingNestedInput;
+  tasks?: Prisma.TaskUncheckedUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutMeetingNestedInput;
+};
+
+export type MeetingCreateManyClientInput = {
+  id?: string;
+  title: string;
+  description?: string | null;
+  agenda?: string | null;
+  status?: $Enums.MeetingStatus;
+  scheduledAt?: Date | string | null;
+  startedAt?: Date | string | null;
+  endedAt?: Date | string | null;
+  calendarEventId?: string | null;
+  summary?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 };
 
-export type MeetingUpdateWithoutOrgInput = {
+export type MeetingUpdateWithoutClientInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
   scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  tasks?: Prisma.TaskUpdateManyWithoutMeetingNestedInput;
+  participants?: Prisma.MeetingParticipantUpdateManyWithoutMeetingNestedInput;
+  transcript?: Prisma.TranscriptUpdateOneWithoutMeetingNestedInput;
   decisions?: Prisma.DecisionUpdateManyWithoutMeetingNestedInput;
+  tasks?: Prisma.TaskUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUpdateManyWithoutMeetingNestedInput;
 };
 
-export type MeetingUncheckedUpdateWithoutOrgInput = {
+export type MeetingUncheckedUpdateWithoutClientInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
   scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  tasks?: Prisma.TaskUncheckedUpdateManyWithoutMeetingNestedInput;
+  participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput;
+  transcript?: Prisma.TranscriptUncheckedUpdateOneWithoutMeetingNestedInput;
   decisions?: Prisma.DecisionUncheckedUpdateManyWithoutMeetingNestedInput;
+  tasks?: Prisma.TaskUncheckedUpdateManyWithoutMeetingNestedInput;
+  openQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutMeetingNestedInput;
+  importantPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutMeetingNestedInput;
 };
 
-export type MeetingUncheckedUpdateManyWithoutOrgInput = {
+export type MeetingUncheckedUpdateManyWithoutClientInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  agenda?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumMeetingStatusFieldUpdateOperationsInput | $Enums.MeetingStatus;
   scheduledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   startedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
@@ -893,15 +1659,21 @@ export type MeetingUncheckedUpdateManyWithoutOrgInput = {
  */
 
 export type MeetingCountOutputType = {
-  tasks: number;
+  participants: number;
   decisions: number;
+  tasks: number;
+  openQuestions: number;
+  importantPoints: number;
 };
 
 export type MeetingCountOutputTypeSelect<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
-  tasks?: boolean | MeetingCountOutputTypeCountTasksArgs;
+  participants?: boolean | MeetingCountOutputTypeCountParticipantsArgs;
   decisions?: boolean | MeetingCountOutputTypeCountDecisionsArgs;
+  tasks?: boolean | MeetingCountOutputTypeCountTasksArgs;
+  openQuestions?: boolean | MeetingCountOutputTypeCountOpenQuestionsArgs;
+  importantPoints?: boolean | MeetingCountOutputTypeCountImportantPointsArgs;
 };
 
 /**
@@ -919,10 +1691,10 @@ export type MeetingCountOutputTypeDefaultArgs<
 /**
  * MeetingCountOutputType without action
  */
-export type MeetingCountOutputTypeCountTasksArgs<
+export type MeetingCountOutputTypeCountParticipantsArgs<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
-  where?: Prisma.TaskWhereInput;
+  where?: Prisma.MeetingParticipantWhereInput;
 };
 
 /**
@@ -934,23 +1706,57 @@ export type MeetingCountOutputTypeCountDecisionsArgs<
   where?: Prisma.DecisionWhereInput;
 };
 
+/**
+ * MeetingCountOutputType without action
+ */
+export type MeetingCountOutputTypeCountTasksArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  where?: Prisma.TaskWhereInput;
+};
+
+/**
+ * MeetingCountOutputType without action
+ */
+export type MeetingCountOutputTypeCountOpenQuestionsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  where?: Prisma.OpenQuestionWhereInput;
+};
+
+/**
+ * MeetingCountOutputType without action
+ */
+export type MeetingCountOutputTypeCountImportantPointsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  where?: Prisma.ImportantPointWhereInput;
+};
+
 export type MeetingSelect<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = runtime.Types.Extensions.GetSelect<
   {
     id?: boolean;
+    clientId?: boolean;
     title?: boolean;
     description?: boolean;
+    agenda?: boolean;
     status?: boolean;
     scheduledAt?: boolean;
     startedAt?: boolean;
     endedAt?: boolean;
+    calendarEventId?: boolean;
+    summary?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
-    orgId?: boolean;
-    org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
-    tasks?: boolean | Prisma.Meeting$tasksArgs<ExtArgs>;
+    client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
+    participants?: boolean | Prisma.Meeting$participantsArgs<ExtArgs>;
+    transcript?: boolean | Prisma.Meeting$transcriptArgs<ExtArgs>;
     decisions?: boolean | Prisma.Meeting$decisionsArgs<ExtArgs>;
+    tasks?: boolean | Prisma.Meeting$tasksArgs<ExtArgs>;
+    openQuestions?: boolean | Prisma.Meeting$openQuestionsArgs<ExtArgs>;
+    importantPoints?: boolean | Prisma.Meeting$importantPointsArgs<ExtArgs>;
     _count?: boolean | Prisma.MeetingCountOutputTypeDefaultArgs<ExtArgs>;
   },
   ExtArgs['result']['meeting']
@@ -961,16 +1767,19 @@ export type MeetingSelectCreateManyAndReturn<
 > = runtime.Types.Extensions.GetSelect<
   {
     id?: boolean;
+    clientId?: boolean;
     title?: boolean;
     description?: boolean;
+    agenda?: boolean;
     status?: boolean;
     scheduledAt?: boolean;
     startedAt?: boolean;
     endedAt?: boolean;
+    calendarEventId?: boolean;
+    summary?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
-    orgId?: boolean;
-    org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
+    client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
   },
   ExtArgs['result']['meeting']
 >;
@@ -980,65 +1789,78 @@ export type MeetingSelectUpdateManyAndReturn<
 > = runtime.Types.Extensions.GetSelect<
   {
     id?: boolean;
+    clientId?: boolean;
     title?: boolean;
     description?: boolean;
+    agenda?: boolean;
     status?: boolean;
     scheduledAt?: boolean;
     startedAt?: boolean;
     endedAt?: boolean;
+    calendarEventId?: boolean;
+    summary?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
-    orgId?: boolean;
-    org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
+    client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
   },
   ExtArgs['result']['meeting']
 >;
 
 export type MeetingSelectScalar = {
   id?: boolean;
+  clientId?: boolean;
   title?: boolean;
   description?: boolean;
+  agenda?: boolean;
   status?: boolean;
   scheduledAt?: boolean;
   startedAt?: boolean;
   endedAt?: boolean;
+  calendarEventId?: boolean;
+  summary?: boolean;
   createdAt?: boolean;
   updatedAt?: boolean;
-  orgId?: boolean;
 };
 
 export type MeetingOmit<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = runtime.Types.Extensions.GetOmit<
   | 'id'
+  | 'clientId'
   | 'title'
   | 'description'
+  | 'agenda'
   | 'status'
   | 'scheduledAt'
   | 'startedAt'
   | 'endedAt'
+  | 'calendarEventId'
+  | 'summary'
   | 'createdAt'
-  | 'updatedAt'
-  | 'orgId',
+  | 'updatedAt',
   ExtArgs['result']['meeting']
 >;
 export type MeetingInclude<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
-  org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
-  tasks?: boolean | Prisma.Meeting$tasksArgs<ExtArgs>;
+  client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
+  participants?: boolean | Prisma.Meeting$participantsArgs<ExtArgs>;
+  transcript?: boolean | Prisma.Meeting$transcriptArgs<ExtArgs>;
   decisions?: boolean | Prisma.Meeting$decisionsArgs<ExtArgs>;
+  tasks?: boolean | Prisma.Meeting$tasksArgs<ExtArgs>;
+  openQuestions?: boolean | Prisma.Meeting$openQuestionsArgs<ExtArgs>;
+  importantPoints?: boolean | Prisma.Meeting$importantPointsArgs<ExtArgs>;
   _count?: boolean | Prisma.MeetingCountOutputTypeDefaultArgs<ExtArgs>;
 };
 export type MeetingIncludeCreateManyAndReturn<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
-  org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
+  client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
 };
 export type MeetingIncludeUpdateManyAndReturn<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
-  org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
+  client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
 };
 
 export type $MeetingPayload<
@@ -1046,22 +1868,29 @@ export type $MeetingPayload<
 > = {
   name: 'Meeting';
   objects: {
-    org: Prisma.$OrgPayload<ExtArgs>;
-    tasks: Prisma.$TaskPayload<ExtArgs>[];
+    client: Prisma.$ClientPayload<ExtArgs>;
+    participants: Prisma.$MeetingParticipantPayload<ExtArgs>[];
+    transcript: Prisma.$TranscriptPayload<ExtArgs> | null;
     decisions: Prisma.$DecisionPayload<ExtArgs>[];
+    tasks: Prisma.$TaskPayload<ExtArgs>[];
+    openQuestions: Prisma.$OpenQuestionPayload<ExtArgs>[];
+    importantPoints: Prisma.$ImportantPointPayload<ExtArgs>[];
   };
   scalars: runtime.Types.Extensions.GetPayloadResult<
     {
       id: string;
+      clientId: string;
       title: string;
       description: string | null;
+      agenda: string | null;
       status: $Enums.MeetingStatus;
       scheduledAt: Date | null;
       startedAt: Date | null;
       endedAt: Date | null;
+      calendarEventId: string | null;
+      summary: string | null;
       createdAt: Date;
       updatedAt: Date;
-      orgId: string;
     },
     ExtArgs['result']['meeting']
   >;
@@ -1577,11 +2406,11 @@ export interface Prisma__MeetingClient<
   GlobalOmitOptions = {},
 > extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: 'PrismaPromise';
-  org<T extends Prisma.OrgDefaultArgs<ExtArgs> = {}>(
-    args?: Prisma.Subset<T, Prisma.OrgDefaultArgs<ExtArgs>>
-  ): Prisma.Prisma__OrgClient<
+  client<T extends Prisma.ClientDefaultArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.ClientDefaultArgs<ExtArgs>>
+  ): Prisma.Prisma__ClientClient<
     | runtime.Types.Result.GetResult<
-        Prisma.$OrgPayload<ExtArgs>,
+        Prisma.$ClientPayload<ExtArgs>,
         T,
         'findUniqueOrThrow',
         GlobalOmitOptions
@@ -1591,17 +2420,63 @@ export interface Prisma__MeetingClient<
     ExtArgs,
     GlobalOmitOptions
   >;
-  tasks<T extends Prisma.Meeting$tasksArgs<ExtArgs> = {}>(
-    args?: Prisma.Subset<T, Prisma.Meeting$tasksArgs<ExtArgs>>
+  participants<T extends Prisma.Meeting$participantsArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.Meeting$participantsArgs<ExtArgs>>
   ): Prisma.PrismaPromise<
-    | runtime.Types.Result.GetResult<Prisma.$TaskPayload<ExtArgs>, T, 'findMany', GlobalOmitOptions>
+    | runtime.Types.Result.GetResult<
+        Prisma.$MeetingParticipantPayload<ExtArgs>,
+        T,
+        'findMany',
+        GlobalOmitOptions
+      >
     | Null
+  >;
+  transcript<T extends Prisma.Meeting$transcriptArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.Meeting$transcriptArgs<ExtArgs>>
+  ): Prisma.Prisma__TranscriptClient<
+    runtime.Types.Result.GetResult<
+      Prisma.$TranscriptPayload<ExtArgs>,
+      T,
+      'findUniqueOrThrow',
+      GlobalOmitOptions
+    > | null,
+    null,
+    ExtArgs,
+    GlobalOmitOptions
   >;
   decisions<T extends Prisma.Meeting$decisionsArgs<ExtArgs> = {}>(
     args?: Prisma.Subset<T, Prisma.Meeting$decisionsArgs<ExtArgs>>
   ): Prisma.PrismaPromise<
     | runtime.Types.Result.GetResult<
         Prisma.$DecisionPayload<ExtArgs>,
+        T,
+        'findMany',
+        GlobalOmitOptions
+      >
+    | Null
+  >;
+  tasks<T extends Prisma.Meeting$tasksArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.Meeting$tasksArgs<ExtArgs>>
+  ): Prisma.PrismaPromise<
+    | runtime.Types.Result.GetResult<Prisma.$TaskPayload<ExtArgs>, T, 'findMany', GlobalOmitOptions>
+    | Null
+  >;
+  openQuestions<T extends Prisma.Meeting$openQuestionsArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.Meeting$openQuestionsArgs<ExtArgs>>
+  ): Prisma.PrismaPromise<
+    | runtime.Types.Result.GetResult<
+        Prisma.$OpenQuestionPayload<ExtArgs>,
+        T,
+        'findMany',
+        GlobalOmitOptions
+      >
+    | Null
+  >;
+  importantPoints<T extends Prisma.Meeting$importantPointsArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.Meeting$importantPointsArgs<ExtArgs>>
+  ): Prisma.PrismaPromise<
+    | runtime.Types.Result.GetResult<
+        Prisma.$ImportantPointPayload<ExtArgs>,
         T,
         'findMany',
         GlobalOmitOptions
@@ -1640,15 +2515,18 @@ export interface Prisma__MeetingClient<
  */
 export interface MeetingFieldRefs {
   readonly id: Prisma.FieldRef<'Meeting', 'String'>;
+  readonly clientId: Prisma.FieldRef<'Meeting', 'String'>;
   readonly title: Prisma.FieldRef<'Meeting', 'String'>;
   readonly description: Prisma.FieldRef<'Meeting', 'String'>;
+  readonly agenda: Prisma.FieldRef<'Meeting', 'String'>;
   readonly status: Prisma.FieldRef<'Meeting', 'MeetingStatus'>;
   readonly scheduledAt: Prisma.FieldRef<'Meeting', 'DateTime'>;
   readonly startedAt: Prisma.FieldRef<'Meeting', 'DateTime'>;
   readonly endedAt: Prisma.FieldRef<'Meeting', 'DateTime'>;
+  readonly calendarEventId: Prisma.FieldRef<'Meeting', 'String'>;
+  readonly summary: Prisma.FieldRef<'Meeting', 'String'>;
   readonly createdAt: Prisma.FieldRef<'Meeting', 'DateTime'>;
   readonly updatedAt: Prisma.FieldRef<'Meeting', 'DateTime'>;
-  readonly orgId: Prisma.FieldRef<'Meeting', 'String'>;
 }
 
 // Custom InputTypes
@@ -2072,29 +2950,52 @@ export type MeetingDeleteManyArgs<
 };
 
 /**
- * Meeting.tasks
+ * Meeting.participants
  */
-export type Meeting$tasksArgs<
+export type Meeting$participantsArgs<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
   /**
-   * Select specific fields to fetch from the Task
+   * Select specific fields to fetch from the MeetingParticipant
    */
-  select?: Prisma.TaskSelect<ExtArgs> | null;
+  select?: Prisma.MeetingParticipantSelect<ExtArgs> | null;
   /**
-   * Omit specific fields from the Task
+   * Omit specific fields from the MeetingParticipant
    */
-  omit?: Prisma.TaskOmit<ExtArgs> | null;
+  omit?: Prisma.MeetingParticipantOmit<ExtArgs> | null;
   /**
    * Choose, which related nodes to fetch as well
    */
-  include?: Prisma.TaskInclude<ExtArgs> | null;
-  where?: Prisma.TaskWhereInput;
-  orderBy?: Prisma.TaskOrderByWithRelationInput | Prisma.TaskOrderByWithRelationInput[];
-  cursor?: Prisma.TaskWhereUniqueInput;
+  include?: Prisma.MeetingParticipantInclude<ExtArgs> | null;
+  where?: Prisma.MeetingParticipantWhereInput;
+  orderBy?:
+    | Prisma.MeetingParticipantOrderByWithRelationInput
+    | Prisma.MeetingParticipantOrderByWithRelationInput[];
+  cursor?: Prisma.MeetingParticipantWhereUniqueInput;
   take?: number;
   skip?: number;
-  distinct?: Prisma.TaskScalarFieldEnum | Prisma.TaskScalarFieldEnum[];
+  distinct?: Prisma.MeetingParticipantScalarFieldEnum | Prisma.MeetingParticipantScalarFieldEnum[];
+};
+
+/**
+ * Meeting.transcript
+ */
+export type Meeting$transcriptArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  /**
+   * Select specific fields to fetch from the Transcript
+   */
+  select?: Prisma.TranscriptSelect<ExtArgs> | null;
+  /**
+   * Omit specific fields from the Transcript
+   */
+  omit?: Prisma.TranscriptOmit<ExtArgs> | null;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TranscriptInclude<ExtArgs> | null;
+  where?: Prisma.TranscriptWhereInput;
 };
 
 /**
@@ -2121,6 +3022,88 @@ export type Meeting$decisionsArgs<
   take?: number;
   skip?: number;
   distinct?: Prisma.DecisionScalarFieldEnum | Prisma.DecisionScalarFieldEnum[];
+};
+
+/**
+ * Meeting.tasks
+ */
+export type Meeting$tasksArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  /**
+   * Select specific fields to fetch from the Task
+   */
+  select?: Prisma.TaskSelect<ExtArgs> | null;
+  /**
+   * Omit specific fields from the Task
+   */
+  omit?: Prisma.TaskOmit<ExtArgs> | null;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TaskInclude<ExtArgs> | null;
+  where?: Prisma.TaskWhereInput;
+  orderBy?: Prisma.TaskOrderByWithRelationInput | Prisma.TaskOrderByWithRelationInput[];
+  cursor?: Prisma.TaskWhereUniqueInput;
+  take?: number;
+  skip?: number;
+  distinct?: Prisma.TaskScalarFieldEnum | Prisma.TaskScalarFieldEnum[];
+};
+
+/**
+ * Meeting.openQuestions
+ */
+export type Meeting$openQuestionsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  /**
+   * Select specific fields to fetch from the OpenQuestion
+   */
+  select?: Prisma.OpenQuestionSelect<ExtArgs> | null;
+  /**
+   * Omit specific fields from the OpenQuestion
+   */
+  omit?: Prisma.OpenQuestionOmit<ExtArgs> | null;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OpenQuestionInclude<ExtArgs> | null;
+  where?: Prisma.OpenQuestionWhereInput;
+  orderBy?:
+    | Prisma.OpenQuestionOrderByWithRelationInput
+    | Prisma.OpenQuestionOrderByWithRelationInput[];
+  cursor?: Prisma.OpenQuestionWhereUniqueInput;
+  take?: number;
+  skip?: number;
+  distinct?: Prisma.OpenQuestionScalarFieldEnum | Prisma.OpenQuestionScalarFieldEnum[];
+};
+
+/**
+ * Meeting.importantPoints
+ */
+export type Meeting$importantPointsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  /**
+   * Select specific fields to fetch from the ImportantPoint
+   */
+  select?: Prisma.ImportantPointSelect<ExtArgs> | null;
+  /**
+   * Omit specific fields from the ImportantPoint
+   */
+  omit?: Prisma.ImportantPointOmit<ExtArgs> | null;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ImportantPointInclude<ExtArgs> | null;
+  where?: Prisma.ImportantPointWhereInput;
+  orderBy?:
+    | Prisma.ImportantPointOrderByWithRelationInput
+    | Prisma.ImportantPointOrderByWithRelationInput[];
+  cursor?: Prisma.ImportantPointWhereUniqueInput;
+  take?: number;
+  skip?: number;
+  distinct?: Prisma.ImportantPointScalarFieldEnum | Prisma.ImportantPointScalarFieldEnum[];
 };
 
 /**

@@ -25,75 +25,81 @@ export type AggregateUser = {
 
 export type UserMinAggregateOutputType = {
   id: string | null;
+  orgId: string | null;
   name: string | null;
   email: string | null;
   emailVerified: boolean | null;
   image: string | null;
+  role: $Enums.UserRole | null;
+  timezone: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
-  role: $Enums.UserRole | null;
-  orgId: string | null;
 };
 
 export type UserMaxAggregateOutputType = {
   id: string | null;
+  orgId: string | null;
   name: string | null;
   email: string | null;
   emailVerified: boolean | null;
   image: string | null;
+  role: $Enums.UserRole | null;
+  timezone: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
-  role: $Enums.UserRole | null;
-  orgId: string | null;
 };
 
 export type UserCountAggregateOutputType = {
   id: number;
+  orgId: number;
   name: number;
   email: number;
   emailVerified: number;
   image: number;
+  role: number;
+  timezone: number;
   createdAt: number;
   updatedAt: number;
-  role: number;
-  orgId: number;
   _all: number;
 };
 
 export type UserMinAggregateInputType = {
   id?: true;
+  orgId?: true;
   name?: true;
   email?: true;
   emailVerified?: true;
   image?: true;
+  role?: true;
+  timezone?: true;
   createdAt?: true;
   updatedAt?: true;
-  role?: true;
-  orgId?: true;
 };
 
 export type UserMaxAggregateInputType = {
   id?: true;
+  orgId?: true;
   name?: true;
   email?: true;
   emailVerified?: true;
   image?: true;
+  role?: true;
+  timezone?: true;
   createdAt?: true;
   updatedAt?: true;
-  role?: true;
-  orgId?: true;
 };
 
 export type UserCountAggregateInputType = {
   id?: true;
+  orgId?: true;
   name?: true;
   email?: true;
   emailVerified?: true;
   image?: true;
+  role?: true;
+  timezone?: true;
   createdAt?: true;
   updatedAt?: true;
-  role?: true;
-  orgId?: true;
   _all?: true;
 };
 
@@ -172,14 +178,15 @@ export type UserGroupByArgs<
 
 export type UserGroupByOutputType = {
   id: string;
+  orgId: string;
   name: string;
   email: string;
   emailVerified: boolean;
   image: string | null;
+  role: $Enums.UserRole;
+  timezone: string | null;
   createdAt: Date;
   updatedAt: Date;
-  role: $Enums.UserRole;
-  orgId: string;
   _count: UserCountAggregateOutputType | null;
   _min: UserMinAggregateOutputType | null;
   _max: UserMaxAggregateOutputType | null;
@@ -202,38 +209,54 @@ export type UserWhereInput = {
   OR?: Prisma.UserWhereInput[];
   NOT?: Prisma.UserWhereInput | Prisma.UserWhereInput[];
   id?: Prisma.StringFilter<'User'> | string;
+  orgId?: Prisma.StringFilter<'User'> | string;
   name?: Prisma.StringFilter<'User'> | string;
   email?: Prisma.StringFilter<'User'> | string;
   emailVerified?: Prisma.BoolFilter<'User'> | boolean;
   image?: Prisma.StringNullableFilter<'User'> | string | null;
+  role?: Prisma.EnumUserRoleFilter<'User'> | $Enums.UserRole;
+  timezone?: Prisma.StringNullableFilter<'User'> | string | null;
   createdAt?: Prisma.DateTimeFilter<'User'> | Date | string;
   updatedAt?: Prisma.DateTimeFilter<'User'> | Date | string;
-  role?: Prisma.EnumUserRoleFilter<'User'> | $Enums.UserRole;
-  orgId?: Prisma.StringFilter<'User'> | string;
   org?: Prisma.XOR<Prisma.OrgScalarRelationFilter, Prisma.OrgWhereInput>;
   sessions?: Prisma.SessionListRelationFilter;
   accounts?: Prisma.AccountListRelationFilter;
+  clientMemberships?: Prisma.ClientMemberListRelationFilter;
+  meetingParticipations?: Prisma.MeetingParticipantListRelationFilter;
   assignedTasks?: Prisma.TaskListRelationFilter;
   createdTasks?: Prisma.TaskListRelationFilter;
-  decisions?: Prisma.DecisionListRelationFilter;
+  authoredDecisions?: Prisma.DecisionListRelationFilter;
+  assignedQuestions?: Prisma.OpenQuestionListRelationFilter;
+  spokenPoints?: Prisma.ImportantPointListRelationFilter;
+  createdDocuments?: Prisma.DocumentListRelationFilter;
+  reminders?: Prisma.ReminderListRelationFilter;
+  createdGuardrails?: Prisma.PolicyGuardrailListRelationFilter;
 };
 
 export type UserOrderByWithRelationInput = {
   id?: Prisma.SortOrder;
+  orgId?: Prisma.SortOrder;
   name?: Prisma.SortOrder;
   email?: Prisma.SortOrder;
   emailVerified?: Prisma.SortOrder;
   image?: Prisma.SortOrderInput | Prisma.SortOrder;
+  role?: Prisma.SortOrder;
+  timezone?: Prisma.SortOrderInput | Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  role?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
   org?: Prisma.OrgOrderByWithRelationInput;
   sessions?: Prisma.SessionOrderByRelationAggregateInput;
   accounts?: Prisma.AccountOrderByRelationAggregateInput;
+  clientMemberships?: Prisma.ClientMemberOrderByRelationAggregateInput;
+  meetingParticipations?: Prisma.MeetingParticipantOrderByRelationAggregateInput;
   assignedTasks?: Prisma.TaskOrderByRelationAggregateInput;
   createdTasks?: Prisma.TaskOrderByRelationAggregateInput;
-  decisions?: Prisma.DecisionOrderByRelationAggregateInput;
+  authoredDecisions?: Prisma.DecisionOrderByRelationAggregateInput;
+  assignedQuestions?: Prisma.OpenQuestionOrderByRelationAggregateInput;
+  spokenPoints?: Prisma.ImportantPointOrderByRelationAggregateInput;
+  createdDocuments?: Prisma.DocumentOrderByRelationAggregateInput;
+  reminders?: Prisma.ReminderOrderByRelationAggregateInput;
+  createdGuardrails?: Prisma.PolicyGuardrailOrderByRelationAggregateInput;
 };
 
 export type UserWhereUniqueInput = Prisma.AtLeast<
@@ -243,33 +266,42 @@ export type UserWhereUniqueInput = Prisma.AtLeast<
     AND?: Prisma.UserWhereInput | Prisma.UserWhereInput[];
     OR?: Prisma.UserWhereInput[];
     NOT?: Prisma.UserWhereInput | Prisma.UserWhereInput[];
+    orgId?: Prisma.StringFilter<'User'> | string;
     name?: Prisma.StringFilter<'User'> | string;
     emailVerified?: Prisma.BoolFilter<'User'> | boolean;
     image?: Prisma.StringNullableFilter<'User'> | string | null;
+    role?: Prisma.EnumUserRoleFilter<'User'> | $Enums.UserRole;
+    timezone?: Prisma.StringNullableFilter<'User'> | string | null;
     createdAt?: Prisma.DateTimeFilter<'User'> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<'User'> | Date | string;
-    role?: Prisma.EnumUserRoleFilter<'User'> | $Enums.UserRole;
-    orgId?: Prisma.StringFilter<'User'> | string;
     org?: Prisma.XOR<Prisma.OrgScalarRelationFilter, Prisma.OrgWhereInput>;
     sessions?: Prisma.SessionListRelationFilter;
     accounts?: Prisma.AccountListRelationFilter;
+    clientMemberships?: Prisma.ClientMemberListRelationFilter;
+    meetingParticipations?: Prisma.MeetingParticipantListRelationFilter;
     assignedTasks?: Prisma.TaskListRelationFilter;
     createdTasks?: Prisma.TaskListRelationFilter;
-    decisions?: Prisma.DecisionListRelationFilter;
+    authoredDecisions?: Prisma.DecisionListRelationFilter;
+    assignedQuestions?: Prisma.OpenQuestionListRelationFilter;
+    spokenPoints?: Prisma.ImportantPointListRelationFilter;
+    createdDocuments?: Prisma.DocumentListRelationFilter;
+    reminders?: Prisma.ReminderListRelationFilter;
+    createdGuardrails?: Prisma.PolicyGuardrailListRelationFilter;
   },
   'id' | 'email'
 >;
 
 export type UserOrderByWithAggregationInput = {
   id?: Prisma.SortOrder;
+  orgId?: Prisma.SortOrder;
   name?: Prisma.SortOrder;
   email?: Prisma.SortOrder;
   emailVerified?: Prisma.SortOrder;
   image?: Prisma.SortOrderInput | Prisma.SortOrder;
+  role?: Prisma.SortOrder;
+  timezone?: Prisma.SortOrderInput | Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  role?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
   _count?: Prisma.UserCountOrderByAggregateInput;
   _max?: Prisma.UserMaxOrderByAggregateInput;
   _min?: Prisma.UserMinOrderByAggregateInput;
@@ -280,48 +312,65 @@ export type UserScalarWhereWithAggregatesInput = {
   OR?: Prisma.UserScalarWhereWithAggregatesInput[];
   NOT?: Prisma.UserScalarWhereWithAggregatesInput | Prisma.UserScalarWhereWithAggregatesInput[];
   id?: Prisma.StringWithAggregatesFilter<'User'> | string;
+  orgId?: Prisma.StringWithAggregatesFilter<'User'> | string;
   name?: Prisma.StringWithAggregatesFilter<'User'> | string;
   email?: Prisma.StringWithAggregatesFilter<'User'> | string;
   emailVerified?: Prisma.BoolWithAggregatesFilter<'User'> | boolean;
   image?: Prisma.StringNullableWithAggregatesFilter<'User'> | string | null;
+  role?: Prisma.EnumUserRoleWithAggregatesFilter<'User'> | $Enums.UserRole;
+  timezone?: Prisma.StringNullableWithAggregatesFilter<'User'> | string | null;
   createdAt?: Prisma.DateTimeWithAggregatesFilter<'User'> | Date | string;
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<'User'> | Date | string;
-  role?: Prisma.EnumUserRoleWithAggregatesFilter<'User'> | $Enums.UserRole;
-  orgId?: Prisma.StringWithAggregatesFilter<'User'> | string;
 };
 
 export type UserCreateInput = {
   id?: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
   org: Prisma.OrgCreateNestedOneWithoutUsersInput;
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  decisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
 };
 
 export type UserUncheckedCreateInput = {
   id?: string;
+  orgId: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
-  orgId: string;
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
 };
 
 export type UserUpdateInput = {
@@ -330,44 +379,61 @@ export type UserUpdateInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
   org?: Prisma.OrgUpdateOneRequiredWithoutUsersNestedInput;
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  decisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
 };
 
 export type UserUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
 };
 
 export type UserCreateManyInput = {
   id?: string;
+  orgId: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
-  orgId: string;
 };
 
 export type UserUpdateManyMutationInput = {
@@ -376,21 +442,23 @@ export type UserUpdateManyMutationInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
 };
 
 export type UserUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
 };
 
 export type UserListRelationFilter = {
@@ -405,38 +473,41 @@ export type UserOrderByRelationAggregateInput = {
 
 export type UserCountOrderByAggregateInput = {
   id?: Prisma.SortOrder;
+  orgId?: Prisma.SortOrder;
   name?: Prisma.SortOrder;
   email?: Prisma.SortOrder;
   emailVerified?: Prisma.SortOrder;
   image?: Prisma.SortOrder;
+  role?: Prisma.SortOrder;
+  timezone?: Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  role?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
 };
 
 export type UserMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder;
+  orgId?: Prisma.SortOrder;
   name?: Prisma.SortOrder;
   email?: Prisma.SortOrder;
   emailVerified?: Prisma.SortOrder;
   image?: Prisma.SortOrder;
+  role?: Prisma.SortOrder;
+  timezone?: Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  role?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
 };
 
 export type UserMinOrderByAggregateInput = {
   id?: Prisma.SortOrder;
+  orgId?: Prisma.SortOrder;
   name?: Prisma.SortOrder;
   email?: Prisma.SortOrder;
   emailVerified?: Prisma.SortOrder;
   image?: Prisma.SortOrder;
+  role?: Prisma.SortOrder;
+  timezone?: Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  role?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
 };
 
 export type UserScalarRelationFilter = {
@@ -527,12 +598,34 @@ export type BoolFieldUpdateOperationsInput = {
   set?: boolean;
 };
 
-export type NullableStringFieldUpdateOperationsInput = {
-  set?: string | null;
-};
-
 export type EnumUserRoleFieldUpdateOperationsInput = {
   set?: $Enums.UserRole;
+};
+
+export type UserCreateNestedOneWithoutClientMembershipsInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutClientMembershipsInput,
+    Prisma.UserUncheckedCreateWithoutClientMembershipsInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutClientMembershipsInput;
+  connect?: Prisma.UserWhereUniqueInput;
+};
+
+export type UserUpdateOneRequiredWithoutClientMembershipsNestedInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutClientMembershipsInput,
+    Prisma.UserUncheckedCreateWithoutClientMembershipsInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutClientMembershipsInput;
+  upsert?: Prisma.UserUpsertWithoutClientMembershipsInput;
+  connect?: Prisma.UserWhereUniqueInput;
+  update?: Prisma.XOR<
+    Prisma.XOR<
+      Prisma.UserUpdateToOneWithWhereWithoutClientMembershipsInput,
+      Prisma.UserUpdateWithoutClientMembershipsInput
+    >,
+    Prisma.UserUncheckedUpdateWithoutClientMembershipsInput
+  >;
 };
 
 export type UserCreateNestedOneWithoutSessionsInput = {
@@ -584,6 +677,62 @@ export type UserUpdateOneRequiredWithoutAccountsNestedInput = {
       Prisma.UserUpdateWithoutAccountsInput
     >,
     Prisma.UserUncheckedUpdateWithoutAccountsInput
+  >;
+};
+
+export type UserCreateNestedOneWithoutMeetingParticipationsInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutMeetingParticipationsInput,
+    Prisma.UserUncheckedCreateWithoutMeetingParticipationsInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutMeetingParticipationsInput;
+  connect?: Prisma.UserWhereUniqueInput;
+};
+
+export type UserUpdateOneWithoutMeetingParticipationsNestedInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutMeetingParticipationsInput,
+    Prisma.UserUncheckedCreateWithoutMeetingParticipationsInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutMeetingParticipationsInput;
+  upsert?: Prisma.UserUpsertWithoutMeetingParticipationsInput;
+  disconnect?: Prisma.UserWhereInput | boolean;
+  delete?: Prisma.UserWhereInput | boolean;
+  connect?: Prisma.UserWhereUniqueInput;
+  update?: Prisma.XOR<
+    Prisma.XOR<
+      Prisma.UserUpdateToOneWithWhereWithoutMeetingParticipationsInput,
+      Prisma.UserUpdateWithoutMeetingParticipationsInput
+    >,
+    Prisma.UserUncheckedUpdateWithoutMeetingParticipationsInput
+  >;
+};
+
+export type UserCreateNestedOneWithoutAuthoredDecisionsInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutAuthoredDecisionsInput,
+    Prisma.UserUncheckedCreateWithoutAuthoredDecisionsInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAuthoredDecisionsInput;
+  connect?: Prisma.UserWhereUniqueInput;
+};
+
+export type UserUpdateOneWithoutAuthoredDecisionsNestedInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutAuthoredDecisionsInput,
+    Prisma.UserUncheckedCreateWithoutAuthoredDecisionsInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAuthoredDecisionsInput;
+  upsert?: Prisma.UserUpsertWithoutAuthoredDecisionsInput;
+  disconnect?: Prisma.UserWhereInput | boolean;
+  delete?: Prisma.UserWhereInput | boolean;
+  connect?: Prisma.UserWhereUniqueInput;
+  update?: Prisma.XOR<
+    Prisma.XOR<
+      Prisma.UserUpdateToOneWithWhereWithoutAuthoredDecisionsInput,
+      Prisma.UserUpdateWithoutAuthoredDecisionsInput
+    >,
+    Prisma.UserUncheckedUpdateWithoutAuthoredDecisionsInput
   >;
 };
 
@@ -643,31 +792,141 @@ export type UserUpdateOneWithoutCreatedTasksNestedInput = {
   >;
 };
 
-export type UserCreateNestedOneWithoutDecisionsInput = {
+export type UserCreateNestedOneWithoutAssignedQuestionsInput = {
   create?: Prisma.XOR<
-    Prisma.UserCreateWithoutDecisionsInput,
-    Prisma.UserUncheckedCreateWithoutDecisionsInput
+    Prisma.UserCreateWithoutAssignedQuestionsInput,
+    Prisma.UserUncheckedCreateWithoutAssignedQuestionsInput
   >;
-  connectOrCreate?: Prisma.UserCreateOrConnectWithoutDecisionsInput;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAssignedQuestionsInput;
   connect?: Prisma.UserWhereUniqueInput;
 };
 
-export type UserUpdateOneWithoutDecisionsNestedInput = {
+export type UserUpdateOneWithoutAssignedQuestionsNestedInput = {
   create?: Prisma.XOR<
-    Prisma.UserCreateWithoutDecisionsInput,
-    Prisma.UserUncheckedCreateWithoutDecisionsInput
+    Prisma.UserCreateWithoutAssignedQuestionsInput,
+    Prisma.UserUncheckedCreateWithoutAssignedQuestionsInput
   >;
-  connectOrCreate?: Prisma.UserCreateOrConnectWithoutDecisionsInput;
-  upsert?: Prisma.UserUpsertWithoutDecisionsInput;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAssignedQuestionsInput;
+  upsert?: Prisma.UserUpsertWithoutAssignedQuestionsInput;
   disconnect?: Prisma.UserWhereInput | boolean;
   delete?: Prisma.UserWhereInput | boolean;
   connect?: Prisma.UserWhereUniqueInput;
   update?: Prisma.XOR<
     Prisma.XOR<
-      Prisma.UserUpdateToOneWithWhereWithoutDecisionsInput,
-      Prisma.UserUpdateWithoutDecisionsInput
+      Prisma.UserUpdateToOneWithWhereWithoutAssignedQuestionsInput,
+      Prisma.UserUpdateWithoutAssignedQuestionsInput
     >,
-    Prisma.UserUncheckedUpdateWithoutDecisionsInput
+    Prisma.UserUncheckedUpdateWithoutAssignedQuestionsInput
+  >;
+};
+
+export type UserCreateNestedOneWithoutSpokenPointsInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutSpokenPointsInput,
+    Prisma.UserUncheckedCreateWithoutSpokenPointsInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutSpokenPointsInput;
+  connect?: Prisma.UserWhereUniqueInput;
+};
+
+export type UserUpdateOneWithoutSpokenPointsNestedInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutSpokenPointsInput,
+    Prisma.UserUncheckedCreateWithoutSpokenPointsInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutSpokenPointsInput;
+  upsert?: Prisma.UserUpsertWithoutSpokenPointsInput;
+  disconnect?: Prisma.UserWhereInput | boolean;
+  delete?: Prisma.UserWhereInput | boolean;
+  connect?: Prisma.UserWhereUniqueInput;
+  update?: Prisma.XOR<
+    Prisma.XOR<
+      Prisma.UserUpdateToOneWithWhereWithoutSpokenPointsInput,
+      Prisma.UserUpdateWithoutSpokenPointsInput
+    >,
+    Prisma.UserUncheckedUpdateWithoutSpokenPointsInput
+  >;
+};
+
+export type UserCreateNestedOneWithoutCreatedGuardrailsInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutCreatedGuardrailsInput,
+    Prisma.UserUncheckedCreateWithoutCreatedGuardrailsInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCreatedGuardrailsInput;
+  connect?: Prisma.UserWhereUniqueInput;
+};
+
+export type UserUpdateOneWithoutCreatedGuardrailsNestedInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutCreatedGuardrailsInput,
+    Prisma.UserUncheckedCreateWithoutCreatedGuardrailsInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCreatedGuardrailsInput;
+  upsert?: Prisma.UserUpsertWithoutCreatedGuardrailsInput;
+  disconnect?: Prisma.UserWhereInput | boolean;
+  delete?: Prisma.UserWhereInput | boolean;
+  connect?: Prisma.UserWhereUniqueInput;
+  update?: Prisma.XOR<
+    Prisma.XOR<
+      Prisma.UserUpdateToOneWithWhereWithoutCreatedGuardrailsInput,
+      Prisma.UserUpdateWithoutCreatedGuardrailsInput
+    >,
+    Prisma.UserUncheckedUpdateWithoutCreatedGuardrailsInput
+  >;
+};
+
+export type UserCreateNestedOneWithoutCreatedDocumentsInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutCreatedDocumentsInput,
+    Prisma.UserUncheckedCreateWithoutCreatedDocumentsInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCreatedDocumentsInput;
+  connect?: Prisma.UserWhereUniqueInput;
+};
+
+export type UserUpdateOneWithoutCreatedDocumentsNestedInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutCreatedDocumentsInput,
+    Prisma.UserUncheckedCreateWithoutCreatedDocumentsInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCreatedDocumentsInput;
+  upsert?: Prisma.UserUpsertWithoutCreatedDocumentsInput;
+  disconnect?: Prisma.UserWhereInput | boolean;
+  delete?: Prisma.UserWhereInput | boolean;
+  connect?: Prisma.UserWhereUniqueInput;
+  update?: Prisma.XOR<
+    Prisma.XOR<
+      Prisma.UserUpdateToOneWithWhereWithoutCreatedDocumentsInput,
+      Prisma.UserUpdateWithoutCreatedDocumentsInput
+    >,
+    Prisma.UserUncheckedUpdateWithoutCreatedDocumentsInput
+  >;
+};
+
+export type UserCreateNestedOneWithoutRemindersInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutRemindersInput,
+    Prisma.UserUncheckedCreateWithoutRemindersInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutRemindersInput;
+  connect?: Prisma.UserWhereUniqueInput;
+};
+
+export type UserUpdateOneRequiredWithoutRemindersNestedInput = {
+  create?: Prisma.XOR<
+    Prisma.UserCreateWithoutRemindersInput,
+    Prisma.UserUncheckedCreateWithoutRemindersInput
+  >;
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutRemindersInput;
+  upsert?: Prisma.UserUpsertWithoutRemindersInput;
+  connect?: Prisma.UserWhereUniqueInput;
+  update?: Prisma.XOR<
+    Prisma.XOR<
+      Prisma.UserUpdateToOneWithWhereWithoutRemindersInput,
+      Prisma.UserUpdateWithoutRemindersInput
+    >,
+    Prisma.UserUncheckedUpdateWithoutRemindersInput
   >;
 };
 
@@ -675,32 +934,48 @@ export type UserCreateWithoutOrgInput = {
   id?: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  decisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
 };
 
 export type UserUncheckedCreateWithoutOrgInput = {
   id?: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
 };
 
 export type UserCreateOrConnectWithoutOrgInput = {
@@ -737,46 +1012,187 @@ export type UserScalarWhereInput = {
   OR?: Prisma.UserScalarWhereInput[];
   NOT?: Prisma.UserScalarWhereInput | Prisma.UserScalarWhereInput[];
   id?: Prisma.StringFilter<'User'> | string;
+  orgId?: Prisma.StringFilter<'User'> | string;
   name?: Prisma.StringFilter<'User'> | string;
   email?: Prisma.StringFilter<'User'> | string;
   emailVerified?: Prisma.BoolFilter<'User'> | boolean;
   image?: Prisma.StringNullableFilter<'User'> | string | null;
+  role?: Prisma.EnumUserRoleFilter<'User'> | $Enums.UserRole;
+  timezone?: Prisma.StringNullableFilter<'User'> | string | null;
   createdAt?: Prisma.DateTimeFilter<'User'> | Date | string;
   updatedAt?: Prisma.DateTimeFilter<'User'> | Date | string;
-  role?: Prisma.EnumUserRoleFilter<'User'> | $Enums.UserRole;
-  orgId?: Prisma.StringFilter<'User'> | string;
+};
+
+export type UserCreateWithoutClientMembershipsInput = {
+  id?: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  org: Prisma.OrgCreateNestedOneWithoutUsersInput;
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
+};
+
+export type UserUncheckedCreateWithoutClientMembershipsInput = {
+  id?: string;
+  orgId: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
+};
+
+export type UserCreateOrConnectWithoutClientMembershipsInput = {
+  where: Prisma.UserWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutClientMembershipsInput,
+    Prisma.UserUncheckedCreateWithoutClientMembershipsInput
+  >;
+};
+
+export type UserUpsertWithoutClientMembershipsInput = {
+  update: Prisma.XOR<
+    Prisma.UserUpdateWithoutClientMembershipsInput,
+    Prisma.UserUncheckedUpdateWithoutClientMembershipsInput
+  >;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutClientMembershipsInput,
+    Prisma.UserUncheckedCreateWithoutClientMembershipsInput
+  >;
+  where?: Prisma.UserWhereInput;
+};
+
+export type UserUpdateToOneWithWhereWithoutClientMembershipsInput = {
+  where?: Prisma.UserWhereInput;
+  data: Prisma.XOR<
+    Prisma.UserUpdateWithoutClientMembershipsInput,
+    Prisma.UserUncheckedUpdateWithoutClientMembershipsInput
+  >;
+};
+
+export type UserUpdateWithoutClientMembershipsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  org?: Prisma.OrgUpdateOneRequiredWithoutUsersNestedInput;
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
+};
+
+export type UserUncheckedUpdateWithoutClientMembershipsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
 };
 
 export type UserCreateWithoutSessionsInput = {
   id?: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
   org: Prisma.OrgCreateNestedOneWithoutUsersInput;
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  decisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
 };
 
 export type UserUncheckedCreateWithoutSessionsInput = {
   id?: string;
+  orgId: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
-  orgId: string;
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
 };
 
 export type UserCreateOrConnectWithoutSessionsInput = {
@@ -813,62 +1229,94 @@ export type UserUpdateWithoutSessionsInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
   org?: Prisma.OrgUpdateOneRequiredWithoutUsersNestedInput;
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  decisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
 };
 
 export type UserUncheckedUpdateWithoutSessionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
 };
 
 export type UserCreateWithoutAccountsInput = {
   id?: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
   org: Prisma.OrgCreateNestedOneWithoutUsersInput;
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  decisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
 };
 
 export type UserUncheckedCreateWithoutAccountsInput = {
   id?: string;
+  orgId: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
-  orgId: string;
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
 };
 
 export type UserCreateOrConnectWithoutAccountsInput = {
@@ -905,62 +1353,342 @@ export type UserUpdateWithoutAccountsInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
   org?: Prisma.OrgUpdateOneRequiredWithoutUsersNestedInput;
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  decisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
 };
 
 export type UserUncheckedUpdateWithoutAccountsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
+};
+
+export type UserCreateWithoutMeetingParticipationsInput = {
+  id?: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  org: Prisma.OrgCreateNestedOneWithoutUsersInput;
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
+};
+
+export type UserUncheckedCreateWithoutMeetingParticipationsInput = {
+  id?: string;
+  orgId: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
+};
+
+export type UserCreateOrConnectWithoutMeetingParticipationsInput = {
+  where: Prisma.UserWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutMeetingParticipationsInput,
+    Prisma.UserUncheckedCreateWithoutMeetingParticipationsInput
+  >;
+};
+
+export type UserUpsertWithoutMeetingParticipationsInput = {
+  update: Prisma.XOR<
+    Prisma.UserUpdateWithoutMeetingParticipationsInput,
+    Prisma.UserUncheckedUpdateWithoutMeetingParticipationsInput
+  >;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutMeetingParticipationsInput,
+    Prisma.UserUncheckedCreateWithoutMeetingParticipationsInput
+  >;
+  where?: Prisma.UserWhereInput;
+};
+
+export type UserUpdateToOneWithWhereWithoutMeetingParticipationsInput = {
+  where?: Prisma.UserWhereInput;
+  data: Prisma.XOR<
+    Prisma.UserUpdateWithoutMeetingParticipationsInput,
+    Prisma.UserUncheckedUpdateWithoutMeetingParticipationsInput
+  >;
+};
+
+export type UserUpdateWithoutMeetingParticipationsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  org?: Prisma.OrgUpdateOneRequiredWithoutUsersNestedInput;
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
+};
+
+export type UserUncheckedUpdateWithoutMeetingParticipationsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
   orgId?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
+};
+
+export type UserCreateWithoutAuthoredDecisionsInput = {
+  id?: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  org: Prisma.OrgCreateNestedOneWithoutUsersInput;
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
+  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
+};
+
+export type UserUncheckedCreateWithoutAuthoredDecisionsInput = {
+  id?: string;
+  orgId: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
+};
+
+export type UserCreateOrConnectWithoutAuthoredDecisionsInput = {
+  where: Prisma.UserWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutAuthoredDecisionsInput,
+    Prisma.UserUncheckedCreateWithoutAuthoredDecisionsInput
+  >;
+};
+
+export type UserUpsertWithoutAuthoredDecisionsInput = {
+  update: Prisma.XOR<
+    Prisma.UserUpdateWithoutAuthoredDecisionsInput,
+    Prisma.UserUncheckedUpdateWithoutAuthoredDecisionsInput
+  >;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutAuthoredDecisionsInput,
+    Prisma.UserUncheckedCreateWithoutAuthoredDecisionsInput
+  >;
+  where?: Prisma.UserWhereInput;
+};
+
+export type UserUpdateToOneWithWhereWithoutAuthoredDecisionsInput = {
+  where?: Prisma.UserWhereInput;
+  data: Prisma.XOR<
+    Prisma.UserUpdateWithoutAuthoredDecisionsInput,
+    Prisma.UserUncheckedUpdateWithoutAuthoredDecisionsInput
+  >;
+};
+
+export type UserUpdateWithoutAuthoredDecisionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  org?: Prisma.OrgUpdateOneRequiredWithoutUsersNestedInput;
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
+};
+
+export type UserUncheckedUpdateWithoutAuthoredDecisionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
 };
 
 export type UserCreateWithoutAssignedTasksInput = {
   id?: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
   org: Prisma.OrgCreateNestedOneWithoutUsersInput;
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  decisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
 };
 
 export type UserUncheckedCreateWithoutAssignedTasksInput = {
   id?: string;
+  orgId: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
-  orgId: string;
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
 };
 
 export type UserCreateOrConnectWithoutAssignedTasksInput = {
@@ -975,32 +1703,48 @@ export type UserCreateWithoutCreatedTasksInput = {
   id?: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
   org: Prisma.OrgCreateNestedOneWithoutUsersInput;
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
-  decisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
 };
 
 export type UserUncheckedCreateWithoutCreatedTasksInput = {
   id?: string;
+  orgId: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
-  orgId: string;
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
-  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
 };
 
 export type UserCreateOrConnectWithoutCreatedTasksInput = {
@@ -1037,30 +1781,46 @@ export type UserUpdateWithoutAssignedTasksInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
   org?: Prisma.OrgUpdateOneRequiredWithoutUsersNestedInput;
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  decisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
 };
 
 export type UserUncheckedUpdateWithoutAssignedTasksInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
 };
 
 export type UserUpsertWithoutCreatedTasksInput = {
@@ -1089,133 +1849,678 @@ export type UserUpdateWithoutCreatedTasksInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
   org?: Prisma.OrgUpdateOneRequiredWithoutUsersNestedInput;
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
-  decisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
 };
 
 export type UserUncheckedUpdateWithoutCreatedTasksInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
-  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
 };
 
-export type UserCreateWithoutDecisionsInput = {
+export type UserCreateWithoutAssignedQuestionsInput = {
   id?: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
   org: Prisma.OrgCreateNestedOneWithoutUsersInput;
   sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
   accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
 };
 
-export type UserUncheckedCreateWithoutDecisionsInput = {
+export type UserUncheckedCreateWithoutAssignedQuestionsInput = {
   id?: string;
+  orgId: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
-  orgId: string;
   sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
   accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
 };
 
-export type UserCreateOrConnectWithoutDecisionsInput = {
+export type UserCreateOrConnectWithoutAssignedQuestionsInput = {
   where: Prisma.UserWhereUniqueInput;
   create: Prisma.XOR<
-    Prisma.UserCreateWithoutDecisionsInput,
-    Prisma.UserUncheckedCreateWithoutDecisionsInput
+    Prisma.UserCreateWithoutAssignedQuestionsInput,
+    Prisma.UserUncheckedCreateWithoutAssignedQuestionsInput
   >;
 };
 
-export type UserUpsertWithoutDecisionsInput = {
+export type UserUpsertWithoutAssignedQuestionsInput = {
   update: Prisma.XOR<
-    Prisma.UserUpdateWithoutDecisionsInput,
-    Prisma.UserUncheckedUpdateWithoutDecisionsInput
+    Prisma.UserUpdateWithoutAssignedQuestionsInput,
+    Prisma.UserUncheckedUpdateWithoutAssignedQuestionsInput
   >;
   create: Prisma.XOR<
-    Prisma.UserCreateWithoutDecisionsInput,
-    Prisma.UserUncheckedCreateWithoutDecisionsInput
+    Prisma.UserCreateWithoutAssignedQuestionsInput,
+    Prisma.UserUncheckedCreateWithoutAssignedQuestionsInput
   >;
   where?: Prisma.UserWhereInput;
 };
 
-export type UserUpdateToOneWithWhereWithoutDecisionsInput = {
+export type UserUpdateToOneWithWhereWithoutAssignedQuestionsInput = {
   where?: Prisma.UserWhereInput;
   data: Prisma.XOR<
-    Prisma.UserUpdateWithoutDecisionsInput,
-    Prisma.UserUncheckedUpdateWithoutDecisionsInput
+    Prisma.UserUpdateWithoutAssignedQuestionsInput,
+    Prisma.UserUncheckedUpdateWithoutAssignedQuestionsInput
   >;
 };
 
-export type UserUpdateWithoutDecisionsInput = {
+export type UserUpdateWithoutAssignedQuestionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
   org?: Prisma.OrgUpdateOneRequiredWithoutUsersNestedInput;
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
 };
 
-export type UserUncheckedUpdateWithoutDecisionsInput = {
+export type UserUncheckedUpdateWithoutAssignedQuestionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
+};
+
+export type UserCreateWithoutSpokenPointsInput = {
+  id?: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  org: Prisma.OrgCreateNestedOneWithoutUsersInput;
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
+  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
+};
+
+export type UserUncheckedCreateWithoutSpokenPointsInput = {
+  id?: string;
+  orgId: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
+  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
+};
+
+export type UserCreateOrConnectWithoutSpokenPointsInput = {
+  where: Prisma.UserWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutSpokenPointsInput,
+    Prisma.UserUncheckedCreateWithoutSpokenPointsInput
+  >;
+};
+
+export type UserUpsertWithoutSpokenPointsInput = {
+  update: Prisma.XOR<
+    Prisma.UserUpdateWithoutSpokenPointsInput,
+    Prisma.UserUncheckedUpdateWithoutSpokenPointsInput
+  >;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutSpokenPointsInput,
+    Prisma.UserUncheckedCreateWithoutSpokenPointsInput
+  >;
+  where?: Prisma.UserWhereInput;
+};
+
+export type UserUpdateToOneWithWhereWithoutSpokenPointsInput = {
+  where?: Prisma.UserWhereInput;
+  data: Prisma.XOR<
+    Prisma.UserUpdateWithoutSpokenPointsInput,
+    Prisma.UserUncheckedUpdateWithoutSpokenPointsInput
+  >;
+};
+
+export type UserUpdateWithoutSpokenPointsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  org?: Prisma.OrgUpdateOneRequiredWithoutUsersNestedInput;
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
+  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
+};
+
+export type UserUncheckedUpdateWithoutSpokenPointsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
   orgId?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
+  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
+};
+
+export type UserCreateWithoutCreatedGuardrailsInput = {
+  id?: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  org: Prisma.OrgCreateNestedOneWithoutUsersInput;
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
+};
+
+export type UserUncheckedCreateWithoutCreatedGuardrailsInput = {
+  id?: string;
+  orgId: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
+};
+
+export type UserCreateOrConnectWithoutCreatedGuardrailsInput = {
+  where: Prisma.UserWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutCreatedGuardrailsInput,
+    Prisma.UserUncheckedCreateWithoutCreatedGuardrailsInput
+  >;
+};
+
+export type UserUpsertWithoutCreatedGuardrailsInput = {
+  update: Prisma.XOR<
+    Prisma.UserUpdateWithoutCreatedGuardrailsInput,
+    Prisma.UserUncheckedUpdateWithoutCreatedGuardrailsInput
+  >;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutCreatedGuardrailsInput,
+    Prisma.UserUncheckedCreateWithoutCreatedGuardrailsInput
+  >;
+  where?: Prisma.UserWhereInput;
+};
+
+export type UserUpdateToOneWithWhereWithoutCreatedGuardrailsInput = {
+  where?: Prisma.UserWhereInput;
+  data: Prisma.XOR<
+    Prisma.UserUpdateWithoutCreatedGuardrailsInput,
+    Prisma.UserUncheckedUpdateWithoutCreatedGuardrailsInput
+  >;
+};
+
+export type UserUpdateWithoutCreatedGuardrailsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  org?: Prisma.OrgUpdateOneRequiredWithoutUsersNestedInput;
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
+};
+
+export type UserUncheckedUpdateWithoutCreatedGuardrailsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
+};
+
+export type UserCreateWithoutCreatedDocumentsInput = {
+  id?: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  org: Prisma.OrgCreateNestedOneWithoutUsersInput;
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
+  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
+};
+
+export type UserUncheckedCreateWithoutCreatedDocumentsInput = {
+  id?: string;
+  orgId: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
+};
+
+export type UserCreateOrConnectWithoutCreatedDocumentsInput = {
+  where: Prisma.UserWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutCreatedDocumentsInput,
+    Prisma.UserUncheckedCreateWithoutCreatedDocumentsInput
+  >;
+};
+
+export type UserUpsertWithoutCreatedDocumentsInput = {
+  update: Prisma.XOR<
+    Prisma.UserUpdateWithoutCreatedDocumentsInput,
+    Prisma.UserUncheckedUpdateWithoutCreatedDocumentsInput
+  >;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutCreatedDocumentsInput,
+    Prisma.UserUncheckedCreateWithoutCreatedDocumentsInput
+  >;
+  where?: Prisma.UserWhereInput;
+};
+
+export type UserUpdateToOneWithWhereWithoutCreatedDocumentsInput = {
+  where?: Prisma.UserWhereInput;
+  data: Prisma.XOR<
+    Prisma.UserUpdateWithoutCreatedDocumentsInput,
+    Prisma.UserUncheckedUpdateWithoutCreatedDocumentsInput
+  >;
+};
+
+export type UserUpdateWithoutCreatedDocumentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  org?: Prisma.OrgUpdateOneRequiredWithoutUsersNestedInput;
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
+  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
+};
+
+export type UserUncheckedUpdateWithoutCreatedDocumentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
+};
+
+export type UserCreateWithoutRemindersInput = {
+  id?: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  org: Prisma.OrgCreateNestedOneWithoutUsersInput;
+  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
+  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
+};
+
+export type UserUncheckedCreateWithoutRemindersInput = {
+  id?: string;
+  orgId: string;
+  name: string;
+  email: string;
+  emailVerified?: boolean;
+  image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
+  accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
+  assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
+  createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
+  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
+  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
+};
+
+export type UserCreateOrConnectWithoutRemindersInput = {
+  where: Prisma.UserWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutRemindersInput,
+    Prisma.UserUncheckedCreateWithoutRemindersInput
+  >;
+};
+
+export type UserUpsertWithoutRemindersInput = {
+  update: Prisma.XOR<
+    Prisma.UserUpdateWithoutRemindersInput,
+    Prisma.UserUncheckedUpdateWithoutRemindersInput
+  >;
+  create: Prisma.XOR<
+    Prisma.UserCreateWithoutRemindersInput,
+    Prisma.UserUncheckedCreateWithoutRemindersInput
+  >;
+  where?: Prisma.UserWhereInput;
+};
+
+export type UserUpdateToOneWithWhereWithoutRemindersInput = {
+  where?: Prisma.UserWhereInput;
+  data: Prisma.XOR<
+    Prisma.UserUpdateWithoutRemindersInput,
+    Prisma.UserUncheckedUpdateWithoutRemindersInput
+  >;
+};
+
+export type UserUpdateWithoutRemindersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  org?: Prisma.OrgUpdateOneRequiredWithoutUsersNestedInput;
+  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
+};
+
+export type UserUncheckedUpdateWithoutRemindersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.StringFieldUpdateOperationsInput | string;
+  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
+  accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
+  assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
+  createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
+  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
 };
 
 export type UserCreateManyOrgInput = {
   id?: string;
   name: string;
   email: string;
-  emailVerified: boolean;
+  emailVerified?: boolean;
   image?: string | null;
+  role?: $Enums.UserRole;
+  timezone?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  role?: $Enums.UserRole;
 };
 
 export type UserUpdateWithoutOrgInput = {
@@ -1224,14 +2529,22 @@ export type UserUpdateWithoutOrgInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
   sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
   accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  decisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
 };
 
 export type UserUncheckedUpdateWithoutOrgInput = {
@@ -1240,14 +2553,22 @@ export type UserUncheckedUpdateWithoutOrgInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
+  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
+  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
+  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
+  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
+  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
+  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
 };
 
 export type UserUncheckedUpdateManyWithoutOrgInput = {
@@ -1256,9 +2577,10 @@ export type UserUncheckedUpdateManyWithoutOrgInput = {
   email?: Prisma.StringFieldUpdateOperationsInput | string;
   emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
   image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
+  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
 };
 
 /**
@@ -1268,9 +2590,16 @@ export type UserUncheckedUpdateManyWithoutOrgInput = {
 export type UserCountOutputType = {
   sessions: number;
   accounts: number;
+  clientMemberships: number;
+  meetingParticipations: number;
   assignedTasks: number;
   createdTasks: number;
-  decisions: number;
+  authoredDecisions: number;
+  assignedQuestions: number;
+  spokenPoints: number;
+  createdDocuments: number;
+  reminders: number;
+  createdGuardrails: number;
 };
 
 export type UserCountOutputTypeSelect<
@@ -1278,9 +2607,16 @@ export type UserCountOutputTypeSelect<
 > = {
   sessions?: boolean | UserCountOutputTypeCountSessionsArgs;
   accounts?: boolean | UserCountOutputTypeCountAccountsArgs;
+  clientMemberships?: boolean | UserCountOutputTypeCountClientMembershipsArgs;
+  meetingParticipations?: boolean | UserCountOutputTypeCountMeetingParticipationsArgs;
   assignedTasks?: boolean | UserCountOutputTypeCountAssignedTasksArgs;
   createdTasks?: boolean | UserCountOutputTypeCountCreatedTasksArgs;
-  decisions?: boolean | UserCountOutputTypeCountDecisionsArgs;
+  authoredDecisions?: boolean | UserCountOutputTypeCountAuthoredDecisionsArgs;
+  assignedQuestions?: boolean | UserCountOutputTypeCountAssignedQuestionsArgs;
+  spokenPoints?: boolean | UserCountOutputTypeCountSpokenPointsArgs;
+  createdDocuments?: boolean | UserCountOutputTypeCountCreatedDocumentsArgs;
+  reminders?: boolean | UserCountOutputTypeCountRemindersArgs;
+  createdGuardrails?: boolean | UserCountOutputTypeCountCreatedGuardrailsArgs;
 };
 
 /**
@@ -1316,6 +2652,24 @@ export type UserCountOutputTypeCountAccountsArgs<
 /**
  * UserCountOutputType without action
  */
+export type UserCountOutputTypeCountClientMembershipsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  where?: Prisma.ClientMemberWhereInput;
+};
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountMeetingParticipationsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  where?: Prisma.MeetingParticipantWhereInput;
+};
+
+/**
+ * UserCountOutputType without action
+ */
 export type UserCountOutputTypeCountAssignedTasksArgs<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
@@ -1334,10 +2688,55 @@ export type UserCountOutputTypeCountCreatedTasksArgs<
 /**
  * UserCountOutputType without action
  */
-export type UserCountOutputTypeCountDecisionsArgs<
+export type UserCountOutputTypeCountAuthoredDecisionsArgs<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
   where?: Prisma.DecisionWhereInput;
+};
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountAssignedQuestionsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  where?: Prisma.OpenQuestionWhereInput;
+};
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountSpokenPointsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  where?: Prisma.ImportantPointWhereInput;
+};
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountCreatedDocumentsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  where?: Prisma.DocumentWhereInput;
+};
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountRemindersArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  where?: Prisma.ReminderWhereInput;
+};
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountCreatedGuardrailsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  where?: Prisma.PolicyGuardrailWhereInput;
 };
 
 export type UserSelect<
@@ -1345,20 +2744,28 @@ export type UserSelect<
 > = runtime.Types.Extensions.GetSelect<
   {
     id?: boolean;
+    orgId?: boolean;
     name?: boolean;
     email?: boolean;
     emailVerified?: boolean;
     image?: boolean;
+    role?: boolean;
+    timezone?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
-    role?: boolean;
-    orgId?: boolean;
     org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
     sessions?: boolean | Prisma.User$sessionsArgs<ExtArgs>;
     accounts?: boolean | Prisma.User$accountsArgs<ExtArgs>;
+    clientMemberships?: boolean | Prisma.User$clientMembershipsArgs<ExtArgs>;
+    meetingParticipations?: boolean | Prisma.User$meetingParticipationsArgs<ExtArgs>;
     assignedTasks?: boolean | Prisma.User$assignedTasksArgs<ExtArgs>;
     createdTasks?: boolean | Prisma.User$createdTasksArgs<ExtArgs>;
-    decisions?: boolean | Prisma.User$decisionsArgs<ExtArgs>;
+    authoredDecisions?: boolean | Prisma.User$authoredDecisionsArgs<ExtArgs>;
+    assignedQuestions?: boolean | Prisma.User$assignedQuestionsArgs<ExtArgs>;
+    spokenPoints?: boolean | Prisma.User$spokenPointsArgs<ExtArgs>;
+    createdDocuments?: boolean | Prisma.User$createdDocumentsArgs<ExtArgs>;
+    reminders?: boolean | Prisma.User$remindersArgs<ExtArgs>;
+    createdGuardrails?: boolean | Prisma.User$createdGuardrailsArgs<ExtArgs>;
     _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>;
   },
   ExtArgs['result']['user']
@@ -1369,14 +2776,15 @@ export type UserSelectCreateManyAndReturn<
 > = runtime.Types.Extensions.GetSelect<
   {
     id?: boolean;
+    orgId?: boolean;
     name?: boolean;
     email?: boolean;
     emailVerified?: boolean;
     image?: boolean;
+    role?: boolean;
+    timezone?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
-    role?: boolean;
-    orgId?: boolean;
     org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
   },
   ExtArgs['result']['user']
@@ -1387,14 +2795,15 @@ export type UserSelectUpdateManyAndReturn<
 > = runtime.Types.Extensions.GetSelect<
   {
     id?: boolean;
+    orgId?: boolean;
     name?: boolean;
     email?: boolean;
     emailVerified?: boolean;
     image?: boolean;
+    role?: boolean;
+    timezone?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
-    role?: boolean;
-    orgId?: boolean;
     org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
   },
   ExtArgs['result']['user']
@@ -1402,28 +2811,30 @@ export type UserSelectUpdateManyAndReturn<
 
 export type UserSelectScalar = {
   id?: boolean;
+  orgId?: boolean;
   name?: boolean;
   email?: boolean;
   emailVerified?: boolean;
   image?: boolean;
+  role?: boolean;
+  timezone?: boolean;
   createdAt?: boolean;
   updatedAt?: boolean;
-  role?: boolean;
-  orgId?: boolean;
 };
 
 export type UserOmit<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = runtime.Types.Extensions.GetOmit<
   | 'id'
+  | 'orgId'
   | 'name'
   | 'email'
   | 'emailVerified'
   | 'image'
-  | 'createdAt'
-  | 'updatedAt'
   | 'role'
-  | 'orgId',
+  | 'timezone'
+  | 'createdAt'
+  | 'updatedAt',
   ExtArgs['result']['user']
 >;
 export type UserInclude<
@@ -1432,9 +2843,16 @@ export type UserInclude<
   org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
   sessions?: boolean | Prisma.User$sessionsArgs<ExtArgs>;
   accounts?: boolean | Prisma.User$accountsArgs<ExtArgs>;
+  clientMemberships?: boolean | Prisma.User$clientMembershipsArgs<ExtArgs>;
+  meetingParticipations?: boolean | Prisma.User$meetingParticipationsArgs<ExtArgs>;
   assignedTasks?: boolean | Prisma.User$assignedTasksArgs<ExtArgs>;
   createdTasks?: boolean | Prisma.User$createdTasksArgs<ExtArgs>;
-  decisions?: boolean | Prisma.User$decisionsArgs<ExtArgs>;
+  authoredDecisions?: boolean | Prisma.User$authoredDecisionsArgs<ExtArgs>;
+  assignedQuestions?: boolean | Prisma.User$assignedQuestionsArgs<ExtArgs>;
+  spokenPoints?: boolean | Prisma.User$spokenPointsArgs<ExtArgs>;
+  createdDocuments?: boolean | Prisma.User$createdDocumentsArgs<ExtArgs>;
+  reminders?: boolean | Prisma.User$remindersArgs<ExtArgs>;
+  createdGuardrails?: boolean | Prisma.User$createdGuardrailsArgs<ExtArgs>;
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>;
 };
 export type UserIncludeCreateManyAndReturn<
@@ -1456,21 +2874,29 @@ export type $UserPayload<
     org: Prisma.$OrgPayload<ExtArgs>;
     sessions: Prisma.$SessionPayload<ExtArgs>[];
     accounts: Prisma.$AccountPayload<ExtArgs>[];
+    clientMemberships: Prisma.$ClientMemberPayload<ExtArgs>[];
+    meetingParticipations: Prisma.$MeetingParticipantPayload<ExtArgs>[];
     assignedTasks: Prisma.$TaskPayload<ExtArgs>[];
     createdTasks: Prisma.$TaskPayload<ExtArgs>[];
-    decisions: Prisma.$DecisionPayload<ExtArgs>[];
+    authoredDecisions: Prisma.$DecisionPayload<ExtArgs>[];
+    assignedQuestions: Prisma.$OpenQuestionPayload<ExtArgs>[];
+    spokenPoints: Prisma.$ImportantPointPayload<ExtArgs>[];
+    createdDocuments: Prisma.$DocumentPayload<ExtArgs>[];
+    reminders: Prisma.$ReminderPayload<ExtArgs>[];
+    createdGuardrails: Prisma.$PolicyGuardrailPayload<ExtArgs>[];
   };
   scalars: runtime.Types.Extensions.GetPayloadResult<
     {
       id: string;
+      orgId: string;
       name: string;
       email: string;
       emailVerified: boolean;
       image: string | null;
+      role: $Enums.UserRole;
+      timezone: string | null;
       createdAt: Date;
       updatedAt: Date;
-      role: $Enums.UserRole;
-      orgId: string;
     },
     ExtArgs['result']['user']
   >;
@@ -2017,6 +3443,28 @@ export interface Prisma__UserClient<
       >
     | Null
   >;
+  clientMemberships<T extends Prisma.User$clientMembershipsArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.User$clientMembershipsArgs<ExtArgs>>
+  ): Prisma.PrismaPromise<
+    | runtime.Types.Result.GetResult<
+        Prisma.$ClientMemberPayload<ExtArgs>,
+        T,
+        'findMany',
+        GlobalOmitOptions
+      >
+    | Null
+  >;
+  meetingParticipations<T extends Prisma.User$meetingParticipationsArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.User$meetingParticipationsArgs<ExtArgs>>
+  ): Prisma.PrismaPromise<
+    | runtime.Types.Result.GetResult<
+        Prisma.$MeetingParticipantPayload<ExtArgs>,
+        T,
+        'findMany',
+        GlobalOmitOptions
+      >
+    | Null
+  >;
   assignedTasks<T extends Prisma.User$assignedTasksArgs<ExtArgs> = {}>(
     args?: Prisma.Subset<T, Prisma.User$assignedTasksArgs<ExtArgs>>
   ): Prisma.PrismaPromise<
@@ -2029,11 +3477,66 @@ export interface Prisma__UserClient<
     | runtime.Types.Result.GetResult<Prisma.$TaskPayload<ExtArgs>, T, 'findMany', GlobalOmitOptions>
     | Null
   >;
-  decisions<T extends Prisma.User$decisionsArgs<ExtArgs> = {}>(
-    args?: Prisma.Subset<T, Prisma.User$decisionsArgs<ExtArgs>>
+  authoredDecisions<T extends Prisma.User$authoredDecisionsArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.User$authoredDecisionsArgs<ExtArgs>>
   ): Prisma.PrismaPromise<
     | runtime.Types.Result.GetResult<
         Prisma.$DecisionPayload<ExtArgs>,
+        T,
+        'findMany',
+        GlobalOmitOptions
+      >
+    | Null
+  >;
+  assignedQuestions<T extends Prisma.User$assignedQuestionsArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.User$assignedQuestionsArgs<ExtArgs>>
+  ): Prisma.PrismaPromise<
+    | runtime.Types.Result.GetResult<
+        Prisma.$OpenQuestionPayload<ExtArgs>,
+        T,
+        'findMany',
+        GlobalOmitOptions
+      >
+    | Null
+  >;
+  spokenPoints<T extends Prisma.User$spokenPointsArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.User$spokenPointsArgs<ExtArgs>>
+  ): Prisma.PrismaPromise<
+    | runtime.Types.Result.GetResult<
+        Prisma.$ImportantPointPayload<ExtArgs>,
+        T,
+        'findMany',
+        GlobalOmitOptions
+      >
+    | Null
+  >;
+  createdDocuments<T extends Prisma.User$createdDocumentsArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.User$createdDocumentsArgs<ExtArgs>>
+  ): Prisma.PrismaPromise<
+    | runtime.Types.Result.GetResult<
+        Prisma.$DocumentPayload<ExtArgs>,
+        T,
+        'findMany',
+        GlobalOmitOptions
+      >
+    | Null
+  >;
+  reminders<T extends Prisma.User$remindersArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.User$remindersArgs<ExtArgs>>
+  ): Prisma.PrismaPromise<
+    | runtime.Types.Result.GetResult<
+        Prisma.$ReminderPayload<ExtArgs>,
+        T,
+        'findMany',
+        GlobalOmitOptions
+      >
+    | Null
+  >;
+  createdGuardrails<T extends Prisma.User$createdGuardrailsArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.User$createdGuardrailsArgs<ExtArgs>>
+  ): Prisma.PrismaPromise<
+    | runtime.Types.Result.GetResult<
+        Prisma.$PolicyGuardrailPayload<ExtArgs>,
         T,
         'findMany',
         GlobalOmitOptions
@@ -2072,14 +3575,15 @@ export interface Prisma__UserClient<
  */
 export interface UserFieldRefs {
   readonly id: Prisma.FieldRef<'User', 'String'>;
+  readonly orgId: Prisma.FieldRef<'User', 'String'>;
   readonly name: Prisma.FieldRef<'User', 'String'>;
   readonly email: Prisma.FieldRef<'User', 'String'>;
   readonly emailVerified: Prisma.FieldRef<'User', 'Boolean'>;
   readonly image: Prisma.FieldRef<'User', 'String'>;
+  readonly role: Prisma.FieldRef<'User', 'UserRole'>;
+  readonly timezone: Prisma.FieldRef<'User', 'String'>;
   readonly createdAt: Prisma.FieldRef<'User', 'DateTime'>;
   readonly updatedAt: Prisma.FieldRef<'User', 'DateTime'>;
-  readonly role: Prisma.FieldRef<'User', 'UserRole'>;
-  readonly orgId: Prisma.FieldRef<'User', 'String'>;
 }
 
 // Custom InputTypes
@@ -2555,6 +4059,62 @@ export type User$accountsArgs<
 };
 
 /**
+ * User.clientMemberships
+ */
+export type User$clientMembershipsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  /**
+   * Select specific fields to fetch from the ClientMember
+   */
+  select?: Prisma.ClientMemberSelect<ExtArgs> | null;
+  /**
+   * Omit specific fields from the ClientMember
+   */
+  omit?: Prisma.ClientMemberOmit<ExtArgs> | null;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ClientMemberInclude<ExtArgs> | null;
+  where?: Prisma.ClientMemberWhereInput;
+  orderBy?:
+    | Prisma.ClientMemberOrderByWithRelationInput
+    | Prisma.ClientMemberOrderByWithRelationInput[];
+  cursor?: Prisma.ClientMemberWhereUniqueInput;
+  take?: number;
+  skip?: number;
+  distinct?: Prisma.ClientMemberScalarFieldEnum | Prisma.ClientMemberScalarFieldEnum[];
+};
+
+/**
+ * User.meetingParticipations
+ */
+export type User$meetingParticipationsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  /**
+   * Select specific fields to fetch from the MeetingParticipant
+   */
+  select?: Prisma.MeetingParticipantSelect<ExtArgs> | null;
+  /**
+   * Omit specific fields from the MeetingParticipant
+   */
+  omit?: Prisma.MeetingParticipantOmit<ExtArgs> | null;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.MeetingParticipantInclude<ExtArgs> | null;
+  where?: Prisma.MeetingParticipantWhereInput;
+  orderBy?:
+    | Prisma.MeetingParticipantOrderByWithRelationInput
+    | Prisma.MeetingParticipantOrderByWithRelationInput[];
+  cursor?: Prisma.MeetingParticipantWhereUniqueInput;
+  take?: number;
+  skip?: number;
+  distinct?: Prisma.MeetingParticipantScalarFieldEnum | Prisma.MeetingParticipantScalarFieldEnum[];
+};
+
+/**
  * User.assignedTasks
  */
 export type User$assignedTasksArgs<
@@ -2607,9 +4167,9 @@ export type User$createdTasksArgs<
 };
 
 /**
- * User.decisions
+ * User.authoredDecisions
  */
-export type User$decisionsArgs<
+export type User$authoredDecisionsArgs<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
   /**
@@ -2630,6 +4190,142 @@ export type User$decisionsArgs<
   take?: number;
   skip?: number;
   distinct?: Prisma.DecisionScalarFieldEnum | Prisma.DecisionScalarFieldEnum[];
+};
+
+/**
+ * User.assignedQuestions
+ */
+export type User$assignedQuestionsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  /**
+   * Select specific fields to fetch from the OpenQuestion
+   */
+  select?: Prisma.OpenQuestionSelect<ExtArgs> | null;
+  /**
+   * Omit specific fields from the OpenQuestion
+   */
+  omit?: Prisma.OpenQuestionOmit<ExtArgs> | null;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OpenQuestionInclude<ExtArgs> | null;
+  where?: Prisma.OpenQuestionWhereInput;
+  orderBy?:
+    | Prisma.OpenQuestionOrderByWithRelationInput
+    | Prisma.OpenQuestionOrderByWithRelationInput[];
+  cursor?: Prisma.OpenQuestionWhereUniqueInput;
+  take?: number;
+  skip?: number;
+  distinct?: Prisma.OpenQuestionScalarFieldEnum | Prisma.OpenQuestionScalarFieldEnum[];
+};
+
+/**
+ * User.spokenPoints
+ */
+export type User$spokenPointsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  /**
+   * Select specific fields to fetch from the ImportantPoint
+   */
+  select?: Prisma.ImportantPointSelect<ExtArgs> | null;
+  /**
+   * Omit specific fields from the ImportantPoint
+   */
+  omit?: Prisma.ImportantPointOmit<ExtArgs> | null;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ImportantPointInclude<ExtArgs> | null;
+  where?: Prisma.ImportantPointWhereInput;
+  orderBy?:
+    | Prisma.ImportantPointOrderByWithRelationInput
+    | Prisma.ImportantPointOrderByWithRelationInput[];
+  cursor?: Prisma.ImportantPointWhereUniqueInput;
+  take?: number;
+  skip?: number;
+  distinct?: Prisma.ImportantPointScalarFieldEnum | Prisma.ImportantPointScalarFieldEnum[];
+};
+
+/**
+ * User.createdDocuments
+ */
+export type User$createdDocumentsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  /**
+   * Select specific fields to fetch from the Document
+   */
+  select?: Prisma.DocumentSelect<ExtArgs> | null;
+  /**
+   * Omit specific fields from the Document
+   */
+  omit?: Prisma.DocumentOmit<ExtArgs> | null;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DocumentInclude<ExtArgs> | null;
+  where?: Prisma.DocumentWhereInput;
+  orderBy?: Prisma.DocumentOrderByWithRelationInput | Prisma.DocumentOrderByWithRelationInput[];
+  cursor?: Prisma.DocumentWhereUniqueInput;
+  take?: number;
+  skip?: number;
+  distinct?: Prisma.DocumentScalarFieldEnum | Prisma.DocumentScalarFieldEnum[];
+};
+
+/**
+ * User.reminders
+ */
+export type User$remindersArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  /**
+   * Select specific fields to fetch from the Reminder
+   */
+  select?: Prisma.ReminderSelect<ExtArgs> | null;
+  /**
+   * Omit specific fields from the Reminder
+   */
+  omit?: Prisma.ReminderOmit<ExtArgs> | null;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ReminderInclude<ExtArgs> | null;
+  where?: Prisma.ReminderWhereInput;
+  orderBy?: Prisma.ReminderOrderByWithRelationInput | Prisma.ReminderOrderByWithRelationInput[];
+  cursor?: Prisma.ReminderWhereUniqueInput;
+  take?: number;
+  skip?: number;
+  distinct?: Prisma.ReminderScalarFieldEnum | Prisma.ReminderScalarFieldEnum[];
+};
+
+/**
+ * User.createdGuardrails
+ */
+export type User$createdGuardrailsArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  /**
+   * Select specific fields to fetch from the PolicyGuardrail
+   */
+  select?: Prisma.PolicyGuardrailSelect<ExtArgs> | null;
+  /**
+   * Omit specific fields from the PolicyGuardrail
+   */
+  omit?: Prisma.PolicyGuardrailOmit<ExtArgs> | null;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PolicyGuardrailInclude<ExtArgs> | null;
+  where?: Prisma.PolicyGuardrailWhereInput;
+  orderBy?:
+    | Prisma.PolicyGuardrailOrderByWithRelationInput
+    | Prisma.PolicyGuardrailOrderByWithRelationInput[];
+  cursor?: Prisma.PolicyGuardrailWhereUniqueInput;
+  take?: number;
+  skip?: number;
+  distinct?: Prisma.PolicyGuardrailScalarFieldEnum | Prisma.PolicyGuardrailScalarFieldEnum[];
 };
 
 /**

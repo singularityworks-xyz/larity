@@ -26,6 +26,7 @@ export type AggregateOrg = {
 export type OrgMinAggregateOutputType = {
   id: string | null;
   name: string | null;
+  slug: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
 };
@@ -33,6 +34,7 @@ export type OrgMinAggregateOutputType = {
 export type OrgMaxAggregateOutputType = {
   id: string | null;
   name: string | null;
+  slug: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
 };
@@ -40,6 +42,8 @@ export type OrgMaxAggregateOutputType = {
 export type OrgCountAggregateOutputType = {
   id: number;
   name: number;
+  slug: number;
+  settings: number;
   createdAt: number;
   updatedAt: number;
   _all: number;
@@ -48,6 +52,7 @@ export type OrgCountAggregateOutputType = {
 export type OrgMinAggregateInputType = {
   id?: true;
   name?: true;
+  slug?: true;
   createdAt?: true;
   updatedAt?: true;
 };
@@ -55,6 +60,7 @@ export type OrgMinAggregateInputType = {
 export type OrgMaxAggregateInputType = {
   id?: true;
   name?: true;
+  slug?: true;
   createdAt?: true;
   updatedAt?: true;
 };
@@ -62,6 +68,8 @@ export type OrgMaxAggregateInputType = {
 export type OrgCountAggregateInputType = {
   id?: true;
   name?: true;
+  slug?: true;
+  settings?: true;
   createdAt?: true;
   updatedAt?: true;
   _all?: true;
@@ -143,6 +151,8 @@ export type OrgGroupByArgs<
 export type OrgGroupByOutputType = {
   id: string;
   name: string;
+  slug: string;
+  settings: runtime.JsonValue | null;
   createdAt: Date;
   updatedAt: Date;
   _count: OrgCountAggregateOutputType | null;
@@ -168,45 +178,50 @@ export type OrgWhereInput = {
   NOT?: Prisma.OrgWhereInput | Prisma.OrgWhereInput[];
   id?: Prisma.StringFilter<'Org'> | string;
   name?: Prisma.StringFilter<'Org'> | string;
+  slug?: Prisma.StringFilter<'Org'> | string;
+  settings?: Prisma.JsonNullableFilter<'Org'>;
   createdAt?: Prisma.DateTimeFilter<'Org'> | Date | string;
   updatedAt?: Prisma.DateTimeFilter<'Org'> | Date | string;
   users?: Prisma.UserListRelationFilter;
-  meetings?: Prisma.MeetingListRelationFilter;
-  tasks?: Prisma.TaskListRelationFilter;
-  decisions?: Prisma.DecisionListRelationFilter;
+  clients?: Prisma.ClientListRelationFilter;
+  policyGuardrails?: Prisma.PolicyGuardrailListRelationFilter;
 };
 
 export type OrgOrderByWithRelationInput = {
   id?: Prisma.SortOrder;
   name?: Prisma.SortOrder;
+  slug?: Prisma.SortOrder;
+  settings?: Prisma.SortOrderInput | Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
   users?: Prisma.UserOrderByRelationAggregateInput;
-  meetings?: Prisma.MeetingOrderByRelationAggregateInput;
-  tasks?: Prisma.TaskOrderByRelationAggregateInput;
-  decisions?: Prisma.DecisionOrderByRelationAggregateInput;
+  clients?: Prisma.ClientOrderByRelationAggregateInput;
+  policyGuardrails?: Prisma.PolicyGuardrailOrderByRelationAggregateInput;
 };
 
 export type OrgWhereUniqueInput = Prisma.AtLeast<
   {
     id?: string;
+    slug?: string;
     AND?: Prisma.OrgWhereInput | Prisma.OrgWhereInput[];
     OR?: Prisma.OrgWhereInput[];
     NOT?: Prisma.OrgWhereInput | Prisma.OrgWhereInput[];
     name?: Prisma.StringFilter<'Org'> | string;
+    settings?: Prisma.JsonNullableFilter<'Org'>;
     createdAt?: Prisma.DateTimeFilter<'Org'> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<'Org'> | Date | string;
     users?: Prisma.UserListRelationFilter;
-    meetings?: Prisma.MeetingListRelationFilter;
-    tasks?: Prisma.TaskListRelationFilter;
-    decisions?: Prisma.DecisionListRelationFilter;
+    clients?: Prisma.ClientListRelationFilter;
+    policyGuardrails?: Prisma.PolicyGuardrailListRelationFilter;
   },
-  'id'
+  'id' | 'slug'
 >;
 
 export type OrgOrderByWithAggregationInput = {
   id?: Prisma.SortOrder;
   name?: Prisma.SortOrder;
+  slug?: Prisma.SortOrder;
+  settings?: Prisma.SortOrderInput | Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
   _count?: Prisma.OrgCountOrderByAggregateInput;
@@ -220,6 +235,8 @@ export type OrgScalarWhereWithAggregatesInput = {
   NOT?: Prisma.OrgScalarWhereWithAggregatesInput | Prisma.OrgScalarWhereWithAggregatesInput[];
   id?: Prisma.StringWithAggregatesFilter<'Org'> | string;
   name?: Prisma.StringWithAggregatesFilter<'Org'> | string;
+  slug?: Prisma.StringWithAggregatesFilter<'Org'> | string;
+  settings?: Prisma.JsonNullableWithAggregatesFilter<'Org'>;
   createdAt?: Prisma.DateTimeWithAggregatesFilter<'Org'> | Date | string;
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<'Org'> | Date | string;
 };
@@ -227,50 +244,56 @@ export type OrgScalarWhereWithAggregatesInput = {
 export type OrgCreateInput = {
   id?: string;
   name: string;
+  slug: string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Date | string;
   updatedAt?: Date | string;
   users?: Prisma.UserCreateNestedManyWithoutOrgInput;
-  meetings?: Prisma.MeetingCreateNestedManyWithoutOrgInput;
-  tasks?: Prisma.TaskCreateNestedManyWithoutOrgInput;
-  decisions?: Prisma.DecisionCreateNestedManyWithoutOrgInput;
+  clients?: Prisma.ClientCreateNestedManyWithoutOrgInput;
+  policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutOrgInput;
 };
 
 export type OrgUncheckedCreateInput = {
   id?: string;
   name: string;
+  slug: string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Date | string;
   updatedAt?: Date | string;
   users?: Prisma.UserUncheckedCreateNestedManyWithoutOrgInput;
-  meetings?: Prisma.MeetingUncheckedCreateNestedManyWithoutOrgInput;
-  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutOrgInput;
-  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutOrgInput;
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutOrgInput;
+  policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutOrgInput;
 };
 
 export type OrgUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
+  slug?: Prisma.StringFieldUpdateOperationsInput | string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   users?: Prisma.UserUpdateManyWithoutOrgNestedInput;
-  meetings?: Prisma.MeetingUpdateManyWithoutOrgNestedInput;
-  tasks?: Prisma.TaskUpdateManyWithoutOrgNestedInput;
-  decisions?: Prisma.DecisionUpdateManyWithoutOrgNestedInput;
+  clients?: Prisma.ClientUpdateManyWithoutOrgNestedInput;
+  policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutOrgNestedInput;
 };
 
 export type OrgUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
+  slug?: Prisma.StringFieldUpdateOperationsInput | string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   users?: Prisma.UserUncheckedUpdateManyWithoutOrgNestedInput;
-  meetings?: Prisma.MeetingUncheckedUpdateManyWithoutOrgNestedInput;
-  tasks?: Prisma.TaskUncheckedUpdateManyWithoutOrgNestedInput;
-  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutOrgNestedInput;
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutOrgNestedInput;
+  policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutOrgNestedInput;
 };
 
 export type OrgCreateManyInput = {
   id?: string;
   name: string;
+  slug: string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 };
@@ -278,6 +301,8 @@ export type OrgCreateManyInput = {
 export type OrgUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
+  slug?: Prisma.StringFieldUpdateOperationsInput | string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
@@ -285,6 +310,8 @@ export type OrgUpdateManyMutationInput = {
 export type OrgUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
+  slug?: Prisma.StringFieldUpdateOperationsInput | string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
@@ -292,6 +319,8 @@ export type OrgUncheckedUpdateManyInput = {
 export type OrgCountOrderByAggregateInput = {
   id?: Prisma.SortOrder;
   name?: Prisma.SortOrder;
+  slug?: Prisma.SortOrder;
+  settings?: Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
 };
@@ -299,6 +328,7 @@ export type OrgCountOrderByAggregateInput = {
 export type OrgMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder;
   name?: Prisma.SortOrder;
+  slug?: Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
 };
@@ -306,6 +336,7 @@ export type OrgMaxOrderByAggregateInput = {
 export type OrgMinOrderByAggregateInput = {
   id?: Prisma.SortOrder;
   name?: Prisma.SortOrder;
+  slug?: Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
 };
@@ -321,6 +352,32 @@ export type StringFieldUpdateOperationsInput = {
 
 export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string;
+};
+
+export type OrgCreateNestedOneWithoutClientsInput = {
+  create?: Prisma.XOR<
+    Prisma.OrgCreateWithoutClientsInput,
+    Prisma.OrgUncheckedCreateWithoutClientsInput
+  >;
+  connectOrCreate?: Prisma.OrgCreateOrConnectWithoutClientsInput;
+  connect?: Prisma.OrgWhereUniqueInput;
+};
+
+export type OrgUpdateOneRequiredWithoutClientsNestedInput = {
+  create?: Prisma.XOR<
+    Prisma.OrgCreateWithoutClientsInput,
+    Prisma.OrgUncheckedCreateWithoutClientsInput
+  >;
+  connectOrCreate?: Prisma.OrgCreateOrConnectWithoutClientsInput;
+  upsert?: Prisma.OrgUpsertWithoutClientsInput;
+  connect?: Prisma.OrgWhereUniqueInput;
+  update?: Prisma.XOR<
+    Prisma.XOR<
+      Prisma.OrgUpdateToOneWithWhereWithoutClientsInput,
+      Prisma.OrgUpdateWithoutClientsInput
+    >,
+    Prisma.OrgUncheckedUpdateWithoutClientsInput
+  >;
 };
 
 export type OrgCreateNestedOneWithoutUsersInput = {
@@ -346,99 +403,124 @@ export type OrgUpdateOneRequiredWithoutUsersNestedInput = {
   >;
 };
 
-export type OrgCreateNestedOneWithoutMeetingsInput = {
+export type OrgCreateNestedOneWithoutPolicyGuardrailsInput = {
   create?: Prisma.XOR<
-    Prisma.OrgCreateWithoutMeetingsInput,
-    Prisma.OrgUncheckedCreateWithoutMeetingsInput
+    Prisma.OrgCreateWithoutPolicyGuardrailsInput,
+    Prisma.OrgUncheckedCreateWithoutPolicyGuardrailsInput
   >;
-  connectOrCreate?: Prisma.OrgCreateOrConnectWithoutMeetingsInput;
+  connectOrCreate?: Prisma.OrgCreateOrConnectWithoutPolicyGuardrailsInput;
   connect?: Prisma.OrgWhereUniqueInput;
 };
 
-export type OrgUpdateOneRequiredWithoutMeetingsNestedInput = {
+export type OrgUpdateOneRequiredWithoutPolicyGuardrailsNestedInput = {
   create?: Prisma.XOR<
-    Prisma.OrgCreateWithoutMeetingsInput,
-    Prisma.OrgUncheckedCreateWithoutMeetingsInput
+    Prisma.OrgCreateWithoutPolicyGuardrailsInput,
+    Prisma.OrgUncheckedCreateWithoutPolicyGuardrailsInput
   >;
-  connectOrCreate?: Prisma.OrgCreateOrConnectWithoutMeetingsInput;
-  upsert?: Prisma.OrgUpsertWithoutMeetingsInput;
+  connectOrCreate?: Prisma.OrgCreateOrConnectWithoutPolicyGuardrailsInput;
+  upsert?: Prisma.OrgUpsertWithoutPolicyGuardrailsInput;
   connect?: Prisma.OrgWhereUniqueInput;
   update?: Prisma.XOR<
     Prisma.XOR<
-      Prisma.OrgUpdateToOneWithWhereWithoutMeetingsInput,
-      Prisma.OrgUpdateWithoutMeetingsInput
+      Prisma.OrgUpdateToOneWithWhereWithoutPolicyGuardrailsInput,
+      Prisma.OrgUpdateWithoutPolicyGuardrailsInput
     >,
-    Prisma.OrgUncheckedUpdateWithoutMeetingsInput
+    Prisma.OrgUncheckedUpdateWithoutPolicyGuardrailsInput
   >;
 };
 
-export type OrgCreateNestedOneWithoutTasksInput = {
-  create?: Prisma.XOR<
-    Prisma.OrgCreateWithoutTasksInput,
-    Prisma.OrgUncheckedCreateWithoutTasksInput
-  >;
-  connectOrCreate?: Prisma.OrgCreateOrConnectWithoutTasksInput;
-  connect?: Prisma.OrgWhereUniqueInput;
+export type OrgCreateWithoutClientsInput = {
+  id?: string;
+  name: string;
+  slug: string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  users?: Prisma.UserCreateNestedManyWithoutOrgInput;
+  policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutOrgInput;
 };
 
-export type OrgUpdateOneRequiredWithoutTasksNestedInput = {
-  create?: Prisma.XOR<
-    Prisma.OrgCreateWithoutTasksInput,
-    Prisma.OrgUncheckedCreateWithoutTasksInput
-  >;
-  connectOrCreate?: Prisma.OrgCreateOrConnectWithoutTasksInput;
-  upsert?: Prisma.OrgUpsertWithoutTasksInput;
-  connect?: Prisma.OrgWhereUniqueInput;
-  update?: Prisma.XOR<
-    Prisma.XOR<Prisma.OrgUpdateToOneWithWhereWithoutTasksInput, Prisma.OrgUpdateWithoutTasksInput>,
-    Prisma.OrgUncheckedUpdateWithoutTasksInput
+export type OrgUncheckedCreateWithoutClientsInput = {
+  id?: string;
+  name: string;
+  slug: string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  users?: Prisma.UserUncheckedCreateNestedManyWithoutOrgInput;
+  policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutOrgInput;
+};
+
+export type OrgCreateOrConnectWithoutClientsInput = {
+  where: Prisma.OrgWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.OrgCreateWithoutClientsInput,
+    Prisma.OrgUncheckedCreateWithoutClientsInput
   >;
 };
 
-export type OrgCreateNestedOneWithoutDecisionsInput = {
-  create?: Prisma.XOR<
-    Prisma.OrgCreateWithoutDecisionsInput,
-    Prisma.OrgUncheckedCreateWithoutDecisionsInput
+export type OrgUpsertWithoutClientsInput = {
+  update: Prisma.XOR<
+    Prisma.OrgUpdateWithoutClientsInput,
+    Prisma.OrgUncheckedUpdateWithoutClientsInput
   >;
-  connectOrCreate?: Prisma.OrgCreateOrConnectWithoutDecisionsInput;
-  connect?: Prisma.OrgWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.OrgCreateWithoutClientsInput,
+    Prisma.OrgUncheckedCreateWithoutClientsInput
+  >;
+  where?: Prisma.OrgWhereInput;
 };
 
-export type OrgUpdateOneRequiredWithoutDecisionsNestedInput = {
-  create?: Prisma.XOR<
-    Prisma.OrgCreateWithoutDecisionsInput,
-    Prisma.OrgUncheckedCreateWithoutDecisionsInput
+export type OrgUpdateToOneWithWhereWithoutClientsInput = {
+  where?: Prisma.OrgWhereInput;
+  data: Prisma.XOR<
+    Prisma.OrgUpdateWithoutClientsInput,
+    Prisma.OrgUncheckedUpdateWithoutClientsInput
   >;
-  connectOrCreate?: Prisma.OrgCreateOrConnectWithoutDecisionsInput;
-  upsert?: Prisma.OrgUpsertWithoutDecisionsInput;
-  connect?: Prisma.OrgWhereUniqueInput;
-  update?: Prisma.XOR<
-    Prisma.XOR<
-      Prisma.OrgUpdateToOneWithWhereWithoutDecisionsInput,
-      Prisma.OrgUpdateWithoutDecisionsInput
-    >,
-    Prisma.OrgUncheckedUpdateWithoutDecisionsInput
-  >;
+};
+
+export type OrgUpdateWithoutClientsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  slug?: Prisma.StringFieldUpdateOperationsInput | string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  users?: Prisma.UserUpdateManyWithoutOrgNestedInput;
+  policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutOrgNestedInput;
+};
+
+export type OrgUncheckedUpdateWithoutClientsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  slug?: Prisma.StringFieldUpdateOperationsInput | string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  users?: Prisma.UserUncheckedUpdateManyWithoutOrgNestedInput;
+  policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutOrgNestedInput;
 };
 
 export type OrgCreateWithoutUsersInput = {
   id?: string;
   name: string;
+  slug: string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  meetings?: Prisma.MeetingCreateNestedManyWithoutOrgInput;
-  tasks?: Prisma.TaskCreateNestedManyWithoutOrgInput;
-  decisions?: Prisma.DecisionCreateNestedManyWithoutOrgInput;
+  clients?: Prisma.ClientCreateNestedManyWithoutOrgInput;
+  policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutOrgInput;
 };
 
 export type OrgUncheckedCreateWithoutUsersInput = {
   id?: string;
   name: string;
+  slug: string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  meetings?: Prisma.MeetingUncheckedCreateNestedManyWithoutOrgInput;
-  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutOrgInput;
-  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutOrgInput;
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutOrgInput;
+  policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutOrgInput;
 };
 
 export type OrgCreateOrConnectWithoutUsersInput = {
@@ -460,213 +542,95 @@ export type OrgUpdateToOneWithWhereWithoutUsersInput = {
 export type OrgUpdateWithoutUsersInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
+  slug?: Prisma.StringFieldUpdateOperationsInput | string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  meetings?: Prisma.MeetingUpdateManyWithoutOrgNestedInput;
-  tasks?: Prisma.TaskUpdateManyWithoutOrgNestedInput;
-  decisions?: Prisma.DecisionUpdateManyWithoutOrgNestedInput;
+  clients?: Prisma.ClientUpdateManyWithoutOrgNestedInput;
+  policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutOrgNestedInput;
 };
 
 export type OrgUncheckedUpdateWithoutUsersInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
+  slug?: Prisma.StringFieldUpdateOperationsInput | string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  meetings?: Prisma.MeetingUncheckedUpdateManyWithoutOrgNestedInput;
-  tasks?: Prisma.TaskUncheckedUpdateManyWithoutOrgNestedInput;
-  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutOrgNestedInput;
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutOrgNestedInput;
+  policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutOrgNestedInput;
 };
 
-export type OrgCreateWithoutMeetingsInput = {
+export type OrgCreateWithoutPolicyGuardrailsInput = {
   id?: string;
   name: string;
+  slug: string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Date | string;
   updatedAt?: Date | string;
   users?: Prisma.UserCreateNestedManyWithoutOrgInput;
-  tasks?: Prisma.TaskCreateNestedManyWithoutOrgInput;
-  decisions?: Prisma.DecisionCreateNestedManyWithoutOrgInput;
+  clients?: Prisma.ClientCreateNestedManyWithoutOrgInput;
 };
 
-export type OrgUncheckedCreateWithoutMeetingsInput = {
+export type OrgUncheckedCreateWithoutPolicyGuardrailsInput = {
   id?: string;
   name: string;
+  slug: string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Date | string;
   updatedAt?: Date | string;
   users?: Prisma.UserUncheckedCreateNestedManyWithoutOrgInput;
-  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutOrgInput;
-  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutOrgInput;
+  clients?: Prisma.ClientUncheckedCreateNestedManyWithoutOrgInput;
 };
 
-export type OrgCreateOrConnectWithoutMeetingsInput = {
+export type OrgCreateOrConnectWithoutPolicyGuardrailsInput = {
   where: Prisma.OrgWhereUniqueInput;
   create: Prisma.XOR<
-    Prisma.OrgCreateWithoutMeetingsInput,
-    Prisma.OrgUncheckedCreateWithoutMeetingsInput
+    Prisma.OrgCreateWithoutPolicyGuardrailsInput,
+    Prisma.OrgUncheckedCreateWithoutPolicyGuardrailsInput
   >;
 };
 
-export type OrgUpsertWithoutMeetingsInput = {
+export type OrgUpsertWithoutPolicyGuardrailsInput = {
   update: Prisma.XOR<
-    Prisma.OrgUpdateWithoutMeetingsInput,
-    Prisma.OrgUncheckedUpdateWithoutMeetingsInput
+    Prisma.OrgUpdateWithoutPolicyGuardrailsInput,
+    Prisma.OrgUncheckedUpdateWithoutPolicyGuardrailsInput
   >;
   create: Prisma.XOR<
-    Prisma.OrgCreateWithoutMeetingsInput,
-    Prisma.OrgUncheckedCreateWithoutMeetingsInput
+    Prisma.OrgCreateWithoutPolicyGuardrailsInput,
+    Prisma.OrgUncheckedCreateWithoutPolicyGuardrailsInput
   >;
   where?: Prisma.OrgWhereInput;
 };
 
-export type OrgUpdateToOneWithWhereWithoutMeetingsInput = {
+export type OrgUpdateToOneWithWhereWithoutPolicyGuardrailsInput = {
   where?: Prisma.OrgWhereInput;
   data: Prisma.XOR<
-    Prisma.OrgUpdateWithoutMeetingsInput,
-    Prisma.OrgUncheckedUpdateWithoutMeetingsInput
+    Prisma.OrgUpdateWithoutPolicyGuardrailsInput,
+    Prisma.OrgUncheckedUpdateWithoutPolicyGuardrailsInput
   >;
 };
 
-export type OrgUpdateWithoutMeetingsInput = {
+export type OrgUpdateWithoutPolicyGuardrailsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
+  slug?: Prisma.StringFieldUpdateOperationsInput | string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   users?: Prisma.UserUpdateManyWithoutOrgNestedInput;
-  tasks?: Prisma.TaskUpdateManyWithoutOrgNestedInput;
-  decisions?: Prisma.DecisionUpdateManyWithoutOrgNestedInput;
+  clients?: Prisma.ClientUpdateManyWithoutOrgNestedInput;
 };
 
-export type OrgUncheckedUpdateWithoutMeetingsInput = {
+export type OrgUncheckedUpdateWithoutPolicyGuardrailsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   name?: Prisma.StringFieldUpdateOperationsInput | string;
+  slug?: Prisma.StringFieldUpdateOperationsInput | string;
+  settings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   users?: Prisma.UserUncheckedUpdateManyWithoutOrgNestedInput;
-  tasks?: Prisma.TaskUncheckedUpdateManyWithoutOrgNestedInput;
-  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutOrgNestedInput;
-};
-
-export type OrgCreateWithoutTasksInput = {
-  id?: string;
-  name: string;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
-  users?: Prisma.UserCreateNestedManyWithoutOrgInput;
-  meetings?: Prisma.MeetingCreateNestedManyWithoutOrgInput;
-  decisions?: Prisma.DecisionCreateNestedManyWithoutOrgInput;
-};
-
-export type OrgUncheckedCreateWithoutTasksInput = {
-  id?: string;
-  name: string;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
-  users?: Prisma.UserUncheckedCreateNestedManyWithoutOrgInput;
-  meetings?: Prisma.MeetingUncheckedCreateNestedManyWithoutOrgInput;
-  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutOrgInput;
-};
-
-export type OrgCreateOrConnectWithoutTasksInput = {
-  where: Prisma.OrgWhereUniqueInput;
-  create: Prisma.XOR<Prisma.OrgCreateWithoutTasksInput, Prisma.OrgUncheckedCreateWithoutTasksInput>;
-};
-
-export type OrgUpsertWithoutTasksInput = {
-  update: Prisma.XOR<Prisma.OrgUpdateWithoutTasksInput, Prisma.OrgUncheckedUpdateWithoutTasksInput>;
-  create: Prisma.XOR<Prisma.OrgCreateWithoutTasksInput, Prisma.OrgUncheckedCreateWithoutTasksInput>;
-  where?: Prisma.OrgWhereInput;
-};
-
-export type OrgUpdateToOneWithWhereWithoutTasksInput = {
-  where?: Prisma.OrgWhereInput;
-  data: Prisma.XOR<Prisma.OrgUpdateWithoutTasksInput, Prisma.OrgUncheckedUpdateWithoutTasksInput>;
-};
-
-export type OrgUpdateWithoutTasksInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string;
-  name?: Prisma.StringFieldUpdateOperationsInput | string;
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  users?: Prisma.UserUpdateManyWithoutOrgNestedInput;
-  meetings?: Prisma.MeetingUpdateManyWithoutOrgNestedInput;
-  decisions?: Prisma.DecisionUpdateManyWithoutOrgNestedInput;
-};
-
-export type OrgUncheckedUpdateWithoutTasksInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string;
-  name?: Prisma.StringFieldUpdateOperationsInput | string;
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  users?: Prisma.UserUncheckedUpdateManyWithoutOrgNestedInput;
-  meetings?: Prisma.MeetingUncheckedUpdateManyWithoutOrgNestedInput;
-  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutOrgNestedInput;
-};
-
-export type OrgCreateWithoutDecisionsInput = {
-  id?: string;
-  name: string;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
-  users?: Prisma.UserCreateNestedManyWithoutOrgInput;
-  meetings?: Prisma.MeetingCreateNestedManyWithoutOrgInput;
-  tasks?: Prisma.TaskCreateNestedManyWithoutOrgInput;
-};
-
-export type OrgUncheckedCreateWithoutDecisionsInput = {
-  id?: string;
-  name: string;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
-  users?: Prisma.UserUncheckedCreateNestedManyWithoutOrgInput;
-  meetings?: Prisma.MeetingUncheckedCreateNestedManyWithoutOrgInput;
-  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutOrgInput;
-};
-
-export type OrgCreateOrConnectWithoutDecisionsInput = {
-  where: Prisma.OrgWhereUniqueInput;
-  create: Prisma.XOR<
-    Prisma.OrgCreateWithoutDecisionsInput,
-    Prisma.OrgUncheckedCreateWithoutDecisionsInput
-  >;
-};
-
-export type OrgUpsertWithoutDecisionsInput = {
-  update: Prisma.XOR<
-    Prisma.OrgUpdateWithoutDecisionsInput,
-    Prisma.OrgUncheckedUpdateWithoutDecisionsInput
-  >;
-  create: Prisma.XOR<
-    Prisma.OrgCreateWithoutDecisionsInput,
-    Prisma.OrgUncheckedCreateWithoutDecisionsInput
-  >;
-  where?: Prisma.OrgWhereInput;
-};
-
-export type OrgUpdateToOneWithWhereWithoutDecisionsInput = {
-  where?: Prisma.OrgWhereInput;
-  data: Prisma.XOR<
-    Prisma.OrgUpdateWithoutDecisionsInput,
-    Prisma.OrgUncheckedUpdateWithoutDecisionsInput
-  >;
-};
-
-export type OrgUpdateWithoutDecisionsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string;
-  name?: Prisma.StringFieldUpdateOperationsInput | string;
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  users?: Prisma.UserUpdateManyWithoutOrgNestedInput;
-  meetings?: Prisma.MeetingUpdateManyWithoutOrgNestedInput;
-  tasks?: Prisma.TaskUpdateManyWithoutOrgNestedInput;
-};
-
-export type OrgUncheckedUpdateWithoutDecisionsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string;
-  name?: Prisma.StringFieldUpdateOperationsInput | string;
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  users?: Prisma.UserUncheckedUpdateManyWithoutOrgNestedInput;
-  meetings?: Prisma.MeetingUncheckedUpdateManyWithoutOrgNestedInput;
-  tasks?: Prisma.TaskUncheckedUpdateManyWithoutOrgNestedInput;
+  clients?: Prisma.ClientUncheckedUpdateManyWithoutOrgNestedInput;
 };
 
 /**
@@ -675,18 +639,16 @@ export type OrgUncheckedUpdateWithoutDecisionsInput = {
 
 export type OrgCountOutputType = {
   users: number;
-  meetings: number;
-  tasks: number;
-  decisions: number;
+  clients: number;
+  policyGuardrails: number;
 };
 
 export type OrgCountOutputTypeSelect<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
   users?: boolean | OrgCountOutputTypeCountUsersArgs;
-  meetings?: boolean | OrgCountOutputTypeCountMeetingsArgs;
-  tasks?: boolean | OrgCountOutputTypeCountTasksArgs;
-  decisions?: boolean | OrgCountOutputTypeCountDecisionsArgs;
+  clients?: boolean | OrgCountOutputTypeCountClientsArgs;
+  policyGuardrails?: boolean | OrgCountOutputTypeCountPolicyGuardrailsArgs;
 };
 
 /**
@@ -713,28 +675,19 @@ export type OrgCountOutputTypeCountUsersArgs<
 /**
  * OrgCountOutputType without action
  */
-export type OrgCountOutputTypeCountMeetingsArgs<
+export type OrgCountOutputTypeCountClientsArgs<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
-  where?: Prisma.MeetingWhereInput;
+  where?: Prisma.ClientWhereInput;
 };
 
 /**
  * OrgCountOutputType without action
  */
-export type OrgCountOutputTypeCountTasksArgs<
+export type OrgCountOutputTypeCountPolicyGuardrailsArgs<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
-  where?: Prisma.TaskWhereInput;
-};
-
-/**
- * OrgCountOutputType without action
- */
-export type OrgCountOutputTypeCountDecisionsArgs<
-  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
-> = {
-  where?: Prisma.DecisionWhereInput;
+  where?: Prisma.PolicyGuardrailWhereInput;
 };
 
 export type OrgSelect<
@@ -743,12 +696,13 @@ export type OrgSelect<
   {
     id?: boolean;
     name?: boolean;
+    slug?: boolean;
+    settings?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
     users?: boolean | Prisma.Org$usersArgs<ExtArgs>;
-    meetings?: boolean | Prisma.Org$meetingsArgs<ExtArgs>;
-    tasks?: boolean | Prisma.Org$tasksArgs<ExtArgs>;
-    decisions?: boolean | Prisma.Org$decisionsArgs<ExtArgs>;
+    clients?: boolean | Prisma.Org$clientsArgs<ExtArgs>;
+    policyGuardrails?: boolean | Prisma.Org$policyGuardrailsArgs<ExtArgs>;
     _count?: boolean | Prisma.OrgCountOutputTypeDefaultArgs<ExtArgs>;
   },
   ExtArgs['result']['org']
@@ -760,6 +714,8 @@ export type OrgSelectCreateManyAndReturn<
   {
     id?: boolean;
     name?: boolean;
+    slug?: boolean;
+    settings?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
   },
@@ -772,6 +728,8 @@ export type OrgSelectUpdateManyAndReturn<
   {
     id?: boolean;
     name?: boolean;
+    slug?: boolean;
+    settings?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
   },
@@ -781,6 +739,8 @@ export type OrgSelectUpdateManyAndReturn<
 export type OrgSelectScalar = {
   id?: boolean;
   name?: boolean;
+  slug?: boolean;
+  settings?: boolean;
   createdAt?: boolean;
   updatedAt?: boolean;
 };
@@ -788,16 +748,15 @@ export type OrgSelectScalar = {
 export type OrgOmit<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = runtime.Types.Extensions.GetOmit<
-  'id' | 'name' | 'createdAt' | 'updatedAt',
+  'id' | 'name' | 'slug' | 'settings' | 'createdAt' | 'updatedAt',
   ExtArgs['result']['org']
 >;
 export type OrgInclude<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
   users?: boolean | Prisma.Org$usersArgs<ExtArgs>;
-  meetings?: boolean | Prisma.Org$meetingsArgs<ExtArgs>;
-  tasks?: boolean | Prisma.Org$tasksArgs<ExtArgs>;
-  decisions?: boolean | Prisma.Org$decisionsArgs<ExtArgs>;
+  clients?: boolean | Prisma.Org$clientsArgs<ExtArgs>;
+  policyGuardrails?: boolean | Prisma.Org$policyGuardrailsArgs<ExtArgs>;
   _count?: boolean | Prisma.OrgCountOutputTypeDefaultArgs<ExtArgs>;
 };
 export type OrgIncludeCreateManyAndReturn<
@@ -813,14 +772,15 @@ export type $OrgPayload<
   name: 'Org';
   objects: {
     users: Prisma.$UserPayload<ExtArgs>[];
-    meetings: Prisma.$MeetingPayload<ExtArgs>[];
-    tasks: Prisma.$TaskPayload<ExtArgs>[];
-    decisions: Prisma.$DecisionPayload<ExtArgs>[];
+    clients: Prisma.$ClientPayload<ExtArgs>[];
+    policyGuardrails: Prisma.$PolicyGuardrailPayload<ExtArgs>[];
   };
   scalars: runtime.Types.Extensions.GetPayloadResult<
     {
       id: string;
       name: string;
+      slug: string;
+      settings: runtime.JsonValue | null;
       createdAt: Date;
       updatedAt: Date;
     },
@@ -1339,28 +1299,22 @@ export interface Prisma__OrgClient<
     | runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, 'findMany', GlobalOmitOptions>
     | Null
   >;
-  meetings<T extends Prisma.Org$meetingsArgs<ExtArgs> = {}>(
-    args?: Prisma.Subset<T, Prisma.Org$meetingsArgs<ExtArgs>>
+  clients<T extends Prisma.Org$clientsArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.Org$clientsArgs<ExtArgs>>
   ): Prisma.PrismaPromise<
     | runtime.Types.Result.GetResult<
-        Prisma.$MeetingPayload<ExtArgs>,
+        Prisma.$ClientPayload<ExtArgs>,
         T,
         'findMany',
         GlobalOmitOptions
       >
     | Null
   >;
-  tasks<T extends Prisma.Org$tasksArgs<ExtArgs> = {}>(
-    args?: Prisma.Subset<T, Prisma.Org$tasksArgs<ExtArgs>>
-  ): Prisma.PrismaPromise<
-    | runtime.Types.Result.GetResult<Prisma.$TaskPayload<ExtArgs>, T, 'findMany', GlobalOmitOptions>
-    | Null
-  >;
-  decisions<T extends Prisma.Org$decisionsArgs<ExtArgs> = {}>(
-    args?: Prisma.Subset<T, Prisma.Org$decisionsArgs<ExtArgs>>
+  policyGuardrails<T extends Prisma.Org$policyGuardrailsArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.Org$policyGuardrailsArgs<ExtArgs>>
   ): Prisma.PrismaPromise<
     | runtime.Types.Result.GetResult<
-        Prisma.$DecisionPayload<ExtArgs>,
+        Prisma.$PolicyGuardrailPayload<ExtArgs>,
         T,
         'findMany',
         GlobalOmitOptions
@@ -1400,6 +1354,8 @@ export interface Prisma__OrgClient<
 export interface OrgFieldRefs {
   readonly id: Prisma.FieldRef<'Org', 'String'>;
   readonly name: Prisma.FieldRef<'Org', 'String'>;
+  readonly slug: Prisma.FieldRef<'Org', 'String'>;
+  readonly settings: Prisma.FieldRef<'Org', 'Json'>;
   readonly createdAt: Prisma.FieldRef<'Org', 'DateTime'>;
   readonly updatedAt: Prisma.FieldRef<'Org', 'DateTime'>;
 }
@@ -1843,81 +1799,57 @@ export type Org$usersArgs<
 };
 
 /**
- * Org.meetings
+ * Org.clients
  */
-export type Org$meetingsArgs<
+export type Org$clientsArgs<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
   /**
-   * Select specific fields to fetch from the Meeting
+   * Select specific fields to fetch from the Client
    */
-  select?: Prisma.MeetingSelect<ExtArgs> | null;
+  select?: Prisma.ClientSelect<ExtArgs> | null;
   /**
-   * Omit specific fields from the Meeting
+   * Omit specific fields from the Client
    */
-  omit?: Prisma.MeetingOmit<ExtArgs> | null;
+  omit?: Prisma.ClientOmit<ExtArgs> | null;
   /**
    * Choose, which related nodes to fetch as well
    */
-  include?: Prisma.MeetingInclude<ExtArgs> | null;
-  where?: Prisma.MeetingWhereInput;
-  orderBy?: Prisma.MeetingOrderByWithRelationInput | Prisma.MeetingOrderByWithRelationInput[];
-  cursor?: Prisma.MeetingWhereUniqueInput;
+  include?: Prisma.ClientInclude<ExtArgs> | null;
+  where?: Prisma.ClientWhereInput;
+  orderBy?: Prisma.ClientOrderByWithRelationInput | Prisma.ClientOrderByWithRelationInput[];
+  cursor?: Prisma.ClientWhereUniqueInput;
   take?: number;
   skip?: number;
-  distinct?: Prisma.MeetingScalarFieldEnum | Prisma.MeetingScalarFieldEnum[];
+  distinct?: Prisma.ClientScalarFieldEnum | Prisma.ClientScalarFieldEnum[];
 };
 
 /**
- * Org.tasks
+ * Org.policyGuardrails
  */
-export type Org$tasksArgs<
+export type Org$policyGuardrailsArgs<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
   /**
-   * Select specific fields to fetch from the Task
+   * Select specific fields to fetch from the PolicyGuardrail
    */
-  select?: Prisma.TaskSelect<ExtArgs> | null;
+  select?: Prisma.PolicyGuardrailSelect<ExtArgs> | null;
   /**
-   * Omit specific fields from the Task
+   * Omit specific fields from the PolicyGuardrail
    */
-  omit?: Prisma.TaskOmit<ExtArgs> | null;
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.TaskInclude<ExtArgs> | null;
-  where?: Prisma.TaskWhereInput;
-  orderBy?: Prisma.TaskOrderByWithRelationInput | Prisma.TaskOrderByWithRelationInput[];
-  cursor?: Prisma.TaskWhereUniqueInput;
-  take?: number;
-  skip?: number;
-  distinct?: Prisma.TaskScalarFieldEnum | Prisma.TaskScalarFieldEnum[];
-};
-
-/**
- * Org.decisions
- */
-export type Org$decisionsArgs<
-  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
-> = {
-  /**
-   * Select specific fields to fetch from the Decision
-   */
-  select?: Prisma.DecisionSelect<ExtArgs> | null;
-  /**
-   * Omit specific fields from the Decision
-   */
-  omit?: Prisma.DecisionOmit<ExtArgs> | null;
+  omit?: Prisma.PolicyGuardrailOmit<ExtArgs> | null;
   /**
    * Choose, which related nodes to fetch as well
    */
-  include?: Prisma.DecisionInclude<ExtArgs> | null;
-  where?: Prisma.DecisionWhereInput;
-  orderBy?: Prisma.DecisionOrderByWithRelationInput | Prisma.DecisionOrderByWithRelationInput[];
-  cursor?: Prisma.DecisionWhereUniqueInput;
+  include?: Prisma.PolicyGuardrailInclude<ExtArgs> | null;
+  where?: Prisma.PolicyGuardrailWhereInput;
+  orderBy?:
+    | Prisma.PolicyGuardrailOrderByWithRelationInput
+    | Prisma.PolicyGuardrailOrderByWithRelationInput[];
+  cursor?: Prisma.PolicyGuardrailWhereUniqueInput;
   take?: number;
   skip?: number;
-  distinct?: Prisma.DecisionScalarFieldEnum | Prisma.DecisionScalarFieldEnum[];
+  distinct?: Prisma.PolicyGuardrailScalarFieldEnum | Prisma.PolicyGuardrailScalarFieldEnum[];
 };
 
 /**

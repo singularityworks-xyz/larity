@@ -10,10 +10,19 @@
 
 export type * from './commonInputTypes.ts';
 export type * from './models/Account.ts';
+export type * from './models/Client.ts';
+export type * from './models/ClientMember.ts';
 export type * from './models/Decision.ts';
+export type * from './models/Document.ts';
+export type * from './models/ImportantPoint.ts';
 export type * from './models/Meeting.ts';
+export type * from './models/MeetingParticipant.ts';
+export type * from './models/OpenQuestion.ts';
 export type * from './models/Org.ts';
+export type * from './models/PolicyGuardrail.ts';
+export type * from './models/Reminder.ts';
 export type * from './models/Session.ts';
 export type * from './models/Task.ts';
+export type * from './models/Transcript.ts';
 export type * from './models/User.ts';
 export type * from './models/Verification.ts';

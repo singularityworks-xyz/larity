@@ -22,10 +22,20 @@ export * from './enums.ts';
  */
 export type Org = Prisma.OrgModel;
 /**
+ * Model Client
+ *
+ */
+export type Client = Prisma.ClientModel;
+/**
  * Model User
  *
  */
 export type User = Prisma.UserModel;
+/**
+ * Model ClientMember
+ *
+ */
+export type ClientMember = Prisma.ClientMemberModel;
 /**
  * Model Session
  *
@@ -47,12 +57,47 @@ export type Verification = Prisma.VerificationModel;
  */
 export type Meeting = Prisma.MeetingModel;
 /**
- * Model Task
+ * Model MeetingParticipant
  *
  */
-export type Task = Prisma.TaskModel;
+export type MeetingParticipant = Prisma.MeetingParticipantModel;
+/**
+ * Model Transcript
+ *
+ */
+export type Transcript = Prisma.TranscriptModel;
 /**
  * Model Decision
  *
  */
 export type Decision = Prisma.DecisionModel;
+/**
+ * Model Task
+ *
+ */
+export type Task = Prisma.TaskModel;
+/**
+ * Model OpenQuestion
+ *
+ */
+export type OpenQuestion = Prisma.OpenQuestionModel;
+/**
+ * Model ImportantPoint
+ *
+ */
+export type ImportantPoint = Prisma.ImportantPointModel;
+/**
+ * Model PolicyGuardrail
+ *
+ */
+export type PolicyGuardrail = Prisma.PolicyGuardrailModel;
+/**
+ * Model Document
+ *
+ */
+export type Document = Prisma.DocumentModel;
+/**
+ * Model Reminder
+ *
+ */
+export type Reminder = Prisma.ReminderModel;

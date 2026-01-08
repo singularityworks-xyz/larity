@@ -25,87 +25,111 @@ export type AggregateTask = {
 
 export type TaskMinAggregateOutputType = {
   id: string | null;
+  clientId: string | null;
+  meetingId: string | null;
+  decisionId: string | null;
+  assigneeId: string | null;
+  creatorId: string | null;
   title: string | null;
   description: string | null;
   status: $Enums.TaskStatus | null;
+  priority: $Enums.TaskPriority | null;
   dueAt: Date | null;
+  completedAt: Date | null;
+  externalRef: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
-  orgId: string | null;
-  meetingId: string | null;
-  assigneeId: string | null;
-  creatorId: string | null;
 };
 
 export type TaskMaxAggregateOutputType = {
   id: string | null;
+  clientId: string | null;
+  meetingId: string | null;
+  decisionId: string | null;
+  assigneeId: string | null;
+  creatorId: string | null;
   title: string | null;
   description: string | null;
   status: $Enums.TaskStatus | null;
+  priority: $Enums.TaskPriority | null;
   dueAt: Date | null;
+  completedAt: Date | null;
+  externalRef: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
-  orgId: string | null;
-  meetingId: string | null;
-  assigneeId: string | null;
-  creatorId: string | null;
 };
 
 export type TaskCountAggregateOutputType = {
   id: number;
+  clientId: number;
+  meetingId: number;
+  decisionId: number;
+  assigneeId: number;
+  creatorId: number;
   title: number;
   description: number;
   status: number;
+  priority: number;
   dueAt: number;
+  completedAt: number;
+  externalRef: number;
   createdAt: number;
   updatedAt: number;
-  orgId: number;
-  meetingId: number;
-  assigneeId: number;
-  creatorId: number;
   _all: number;
 };
 
 export type TaskMinAggregateInputType = {
   id?: true;
+  clientId?: true;
+  meetingId?: true;
+  decisionId?: true;
+  assigneeId?: true;
+  creatorId?: true;
   title?: true;
   description?: true;
   status?: true;
+  priority?: true;
   dueAt?: true;
+  completedAt?: true;
+  externalRef?: true;
   createdAt?: true;
   updatedAt?: true;
-  orgId?: true;
-  meetingId?: true;
-  assigneeId?: true;
-  creatorId?: true;
 };
 
 export type TaskMaxAggregateInputType = {
   id?: true;
+  clientId?: true;
+  meetingId?: true;
+  decisionId?: true;
+  assigneeId?: true;
+  creatorId?: true;
   title?: true;
   description?: true;
   status?: true;
+  priority?: true;
   dueAt?: true;
+  completedAt?: true;
+  externalRef?: true;
   createdAt?: true;
   updatedAt?: true;
-  orgId?: true;
-  meetingId?: true;
-  assigneeId?: true;
-  creatorId?: true;
 };
 
 export type TaskCountAggregateInputType = {
   id?: true;
+  clientId?: true;
+  meetingId?: true;
+  decisionId?: true;
+  assigneeId?: true;
+  creatorId?: true;
   title?: true;
   description?: true;
   status?: true;
+  priority?: true;
   dueAt?: true;
+  completedAt?: true;
+  externalRef?: true;
   createdAt?: true;
   updatedAt?: true;
-  orgId?: true;
-  meetingId?: true;
-  assigneeId?: true;
-  creatorId?: true;
   _all?: true;
 };
 
@@ -184,16 +208,20 @@ export type TaskGroupByArgs<
 
 export type TaskGroupByOutputType = {
   id: string;
+  clientId: string;
+  meetingId: string | null;
+  decisionId: string | null;
+  assigneeId: string | null;
+  creatorId: string | null;
   title: string;
   description: string | null;
   status: $Enums.TaskStatus;
+  priority: $Enums.TaskPriority;
   dueAt: Date | null;
+  completedAt: Date | null;
+  externalRef: string | null;
   createdAt: Date;
   updatedAt: Date;
-  orgId: string;
-  meetingId: string | null;
-  assigneeId: string | null;
-  creatorId: string | null;
   _count: TaskCountAggregateOutputType | null;
   _min: TaskMinAggregateOutputType | null;
   _max: TaskMaxAggregateOutputType | null;
@@ -216,36 +244,49 @@ export type TaskWhereInput = {
   OR?: Prisma.TaskWhereInput[];
   NOT?: Prisma.TaskWhereInput | Prisma.TaskWhereInput[];
   id?: Prisma.StringFilter<'Task'> | string;
+  clientId?: Prisma.StringFilter<'Task'> | string;
+  meetingId?: Prisma.StringNullableFilter<'Task'> | string | null;
+  decisionId?: Prisma.StringNullableFilter<'Task'> | string | null;
+  assigneeId?: Prisma.StringNullableFilter<'Task'> | string | null;
+  creatorId?: Prisma.StringNullableFilter<'Task'> | string | null;
   title?: Prisma.StringFilter<'Task'> | string;
   description?: Prisma.StringNullableFilter<'Task'> | string | null;
   status?: Prisma.EnumTaskStatusFilter<'Task'> | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFilter<'Task'> | $Enums.TaskPriority;
   dueAt?: Prisma.DateTimeNullableFilter<'Task'> | Date | string | null;
+  completedAt?: Prisma.DateTimeNullableFilter<'Task'> | Date | string | null;
+  externalRef?: Prisma.StringNullableFilter<'Task'> | string | null;
   createdAt?: Prisma.DateTimeFilter<'Task'> | Date | string;
   updatedAt?: Prisma.DateTimeFilter<'Task'> | Date | string;
-  orgId?: Prisma.StringFilter<'Task'> | string;
-  meetingId?: Prisma.StringNullableFilter<'Task'> | string | null;
-  assigneeId?: Prisma.StringNullableFilter<'Task'> | string | null;
-  creatorId?: Prisma.StringNullableFilter<'Task'> | string | null;
-  org?: Prisma.XOR<Prisma.OrgScalarRelationFilter, Prisma.OrgWhereInput>;
+  client?: Prisma.XOR<Prisma.ClientScalarRelationFilter, Prisma.ClientWhereInput>;
   meeting?: Prisma.XOR<Prisma.MeetingNullableScalarRelationFilter, Prisma.MeetingWhereInput> | null;
+  decision?: Prisma.XOR<
+    Prisma.DecisionNullableScalarRelationFilter,
+    Prisma.DecisionWhereInput
+  > | null;
   assignee?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null;
   creator?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null;
 };
 
 export type TaskOrderByWithRelationInput = {
   id?: Prisma.SortOrder;
+  clientId?: Prisma.SortOrder;
+  meetingId?: Prisma.SortOrderInput | Prisma.SortOrder;
+  decisionId?: Prisma.SortOrderInput | Prisma.SortOrder;
+  assigneeId?: Prisma.SortOrderInput | Prisma.SortOrder;
+  creatorId?: Prisma.SortOrderInput | Prisma.SortOrder;
   title?: Prisma.SortOrder;
   description?: Prisma.SortOrderInput | Prisma.SortOrder;
   status?: Prisma.SortOrder;
+  priority?: Prisma.SortOrder;
   dueAt?: Prisma.SortOrderInput | Prisma.SortOrder;
+  completedAt?: Prisma.SortOrderInput | Prisma.SortOrder;
+  externalRef?: Prisma.SortOrderInput | Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
-  meetingId?: Prisma.SortOrderInput | Prisma.SortOrder;
-  assigneeId?: Prisma.SortOrderInput | Prisma.SortOrder;
-  creatorId?: Prisma.SortOrderInput | Prisma.SortOrder;
-  org?: Prisma.OrgOrderByWithRelationInput;
+  client?: Prisma.ClientOrderByWithRelationInput;
   meeting?: Prisma.MeetingOrderByWithRelationInput;
+  decision?: Prisma.DecisionOrderByWithRelationInput;
   assignee?: Prisma.UserOrderByWithRelationInput;
   creator?: Prisma.UserOrderByWithRelationInput;
 };
@@ -256,20 +297,28 @@ export type TaskWhereUniqueInput = Prisma.AtLeast<
     AND?: Prisma.TaskWhereInput | Prisma.TaskWhereInput[];
     OR?: Prisma.TaskWhereInput[];
     NOT?: Prisma.TaskWhereInput | Prisma.TaskWhereInput[];
+    clientId?: Prisma.StringFilter<'Task'> | string;
+    meetingId?: Prisma.StringNullableFilter<'Task'> | string | null;
+    decisionId?: Prisma.StringNullableFilter<'Task'> | string | null;
+    assigneeId?: Prisma.StringNullableFilter<'Task'> | string | null;
+    creatorId?: Prisma.StringNullableFilter<'Task'> | string | null;
     title?: Prisma.StringFilter<'Task'> | string;
     description?: Prisma.StringNullableFilter<'Task'> | string | null;
     status?: Prisma.EnumTaskStatusFilter<'Task'> | $Enums.TaskStatus;
+    priority?: Prisma.EnumTaskPriorityFilter<'Task'> | $Enums.TaskPriority;
     dueAt?: Prisma.DateTimeNullableFilter<'Task'> | Date | string | null;
+    completedAt?: Prisma.DateTimeNullableFilter<'Task'> | Date | string | null;
+    externalRef?: Prisma.StringNullableFilter<'Task'> | string | null;
     createdAt?: Prisma.DateTimeFilter<'Task'> | Date | string;
     updatedAt?: Prisma.DateTimeFilter<'Task'> | Date | string;
-    orgId?: Prisma.StringFilter<'Task'> | string;
-    meetingId?: Prisma.StringNullableFilter<'Task'> | string | null;
-    assigneeId?: Prisma.StringNullableFilter<'Task'> | string | null;
-    creatorId?: Prisma.StringNullableFilter<'Task'> | string | null;
-    org?: Prisma.XOR<Prisma.OrgScalarRelationFilter, Prisma.OrgWhereInput>;
+    client?: Prisma.XOR<Prisma.ClientScalarRelationFilter, Prisma.ClientWhereInput>;
     meeting?: Prisma.XOR<
       Prisma.MeetingNullableScalarRelationFilter,
       Prisma.MeetingWhereInput
+    > | null;
+    decision?: Prisma.XOR<
+      Prisma.DecisionNullableScalarRelationFilter,
+      Prisma.DecisionWhereInput
     > | null;
     assignee?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null;
     creator?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null;
@@ -279,16 +328,20 @@ export type TaskWhereUniqueInput = Prisma.AtLeast<
 
 export type TaskOrderByWithAggregationInput = {
   id?: Prisma.SortOrder;
+  clientId?: Prisma.SortOrder;
+  meetingId?: Prisma.SortOrderInput | Prisma.SortOrder;
+  decisionId?: Prisma.SortOrderInput | Prisma.SortOrder;
+  assigneeId?: Prisma.SortOrderInput | Prisma.SortOrder;
+  creatorId?: Prisma.SortOrderInput | Prisma.SortOrder;
   title?: Prisma.SortOrder;
   description?: Prisma.SortOrderInput | Prisma.SortOrder;
   status?: Prisma.SortOrder;
+  priority?: Prisma.SortOrder;
   dueAt?: Prisma.SortOrderInput | Prisma.SortOrder;
+  completedAt?: Prisma.SortOrderInput | Prisma.SortOrder;
+  externalRef?: Prisma.SortOrderInput | Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
-  meetingId?: Prisma.SortOrderInput | Prisma.SortOrder;
-  assigneeId?: Prisma.SortOrderInput | Prisma.SortOrder;
-  creatorId?: Prisma.SortOrderInput | Prisma.SortOrder;
   _count?: Prisma.TaskCountOrderByAggregateInput;
   _max?: Prisma.TaskMaxOrderByAggregateInput;
   _min?: Prisma.TaskMinOrderByAggregateInput;
@@ -299,16 +352,20 @@ export type TaskScalarWhereWithAggregatesInput = {
   OR?: Prisma.TaskScalarWhereWithAggregatesInput[];
   NOT?: Prisma.TaskScalarWhereWithAggregatesInput | Prisma.TaskScalarWhereWithAggregatesInput[];
   id?: Prisma.StringWithAggregatesFilter<'Task'> | string;
+  clientId?: Prisma.StringWithAggregatesFilter<'Task'> | string;
+  meetingId?: Prisma.StringNullableWithAggregatesFilter<'Task'> | string | null;
+  decisionId?: Prisma.StringNullableWithAggregatesFilter<'Task'> | string | null;
+  assigneeId?: Prisma.StringNullableWithAggregatesFilter<'Task'> | string | null;
+  creatorId?: Prisma.StringNullableWithAggregatesFilter<'Task'> | string | null;
   title?: Prisma.StringWithAggregatesFilter<'Task'> | string;
   description?: Prisma.StringNullableWithAggregatesFilter<'Task'> | string | null;
   status?: Prisma.EnumTaskStatusWithAggregatesFilter<'Task'> | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityWithAggregatesFilter<'Task'> | $Enums.TaskPriority;
   dueAt?: Prisma.DateTimeNullableWithAggregatesFilter<'Task'> | Date | string | null;
+  completedAt?: Prisma.DateTimeNullableWithAggregatesFilter<'Task'> | Date | string | null;
+  externalRef?: Prisma.StringNullableWithAggregatesFilter<'Task'> | string | null;
   createdAt?: Prisma.DateTimeWithAggregatesFilter<'Task'> | Date | string;
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<'Task'> | Date | string;
-  orgId?: Prisma.StringWithAggregatesFilter<'Task'> | string;
-  meetingId?: Prisma.StringNullableWithAggregatesFilter<'Task'> | string | null;
-  assigneeId?: Prisma.StringNullableWithAggregatesFilter<'Task'> | string | null;
-  creatorId?: Prisma.StringNullableWithAggregatesFilter<'Task'> | string | null;
 };
 
 export type TaskCreateInput = {
@@ -316,27 +373,35 @@ export type TaskCreateInput = {
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  org: Prisma.OrgCreateNestedOneWithoutTasksInput;
+  client: Prisma.ClientCreateNestedOneWithoutTasksInput;
   meeting?: Prisma.MeetingCreateNestedOneWithoutTasksInput;
+  decision?: Prisma.DecisionCreateNestedOneWithoutTasksInput;
   assignee?: Prisma.UserCreateNestedOneWithoutAssignedTasksInput;
   creator?: Prisma.UserCreateNestedOneWithoutCreatedTasksInput;
 };
 
 export type TaskUncheckedCreateInput = {
   id?: string;
+  clientId: string;
+  meetingId?: string | null;
+  decisionId?: string | null;
+  assigneeId?: string | null;
+  creatorId?: string | null;
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  orgId: string;
-  meetingId?: string | null;
-  assigneeId?: string | null;
-  creatorId?: string | null;
 };
 
 export type TaskUpdateInput = {
@@ -344,41 +409,53 @@ export type TaskUpdateInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  org?: Prisma.OrgUpdateOneRequiredWithoutTasksNestedInput;
+  client?: Prisma.ClientUpdateOneRequiredWithoutTasksNestedInput;
   meeting?: Prisma.MeetingUpdateOneWithoutTasksNestedInput;
+  decision?: Prisma.DecisionUpdateOneWithoutTasksNestedInput;
   assignee?: Prisma.UserUpdateOneWithoutAssignedTasksNestedInput;
   creator?: Prisma.UserUpdateOneWithoutCreatedTasksNestedInput;
 };
 
 export type TaskUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  decisionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
-  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 
 export type TaskCreateManyInput = {
   id?: string;
+  clientId: string;
+  meetingId?: string | null;
+  decisionId?: string | null;
+  assigneeId?: string | null;
+  creatorId?: string | null;
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  orgId: string;
-  meetingId?: string | null;
-  assigneeId?: string | null;
-  creatorId?: string | null;
 };
 
 export type TaskUpdateManyMutationInput = {
@@ -386,23 +463,30 @@ export type TaskUpdateManyMutationInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 
 export type TaskUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  decisionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
-  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 
 export type TaskListRelationFilter = {
@@ -417,117 +501,129 @@ export type TaskOrderByRelationAggregateInput = {
 
 export type TaskCountOrderByAggregateInput = {
   id?: Prisma.SortOrder;
+  clientId?: Prisma.SortOrder;
+  meetingId?: Prisma.SortOrder;
+  decisionId?: Prisma.SortOrder;
+  assigneeId?: Prisma.SortOrder;
+  creatorId?: Prisma.SortOrder;
   title?: Prisma.SortOrder;
   description?: Prisma.SortOrder;
   status?: Prisma.SortOrder;
+  priority?: Prisma.SortOrder;
   dueAt?: Prisma.SortOrder;
+  completedAt?: Prisma.SortOrder;
+  externalRef?: Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
-  meetingId?: Prisma.SortOrder;
-  assigneeId?: Prisma.SortOrder;
-  creatorId?: Prisma.SortOrder;
 };
 
 export type TaskMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder;
+  clientId?: Prisma.SortOrder;
+  meetingId?: Prisma.SortOrder;
+  decisionId?: Prisma.SortOrder;
+  assigneeId?: Prisma.SortOrder;
+  creatorId?: Prisma.SortOrder;
   title?: Prisma.SortOrder;
   description?: Prisma.SortOrder;
   status?: Prisma.SortOrder;
+  priority?: Prisma.SortOrder;
   dueAt?: Prisma.SortOrder;
+  completedAt?: Prisma.SortOrder;
+  externalRef?: Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
-  meetingId?: Prisma.SortOrder;
-  assigneeId?: Prisma.SortOrder;
-  creatorId?: Prisma.SortOrder;
 };
 
 export type TaskMinOrderByAggregateInput = {
   id?: Prisma.SortOrder;
+  clientId?: Prisma.SortOrder;
+  meetingId?: Prisma.SortOrder;
+  decisionId?: Prisma.SortOrder;
+  assigneeId?: Prisma.SortOrder;
+  creatorId?: Prisma.SortOrder;
   title?: Prisma.SortOrder;
   description?: Prisma.SortOrder;
   status?: Prisma.SortOrder;
+  priority?: Prisma.SortOrder;
   dueAt?: Prisma.SortOrder;
+  completedAt?: Prisma.SortOrder;
+  externalRef?: Prisma.SortOrder;
   createdAt?: Prisma.SortOrder;
   updatedAt?: Prisma.SortOrder;
-  orgId?: Prisma.SortOrder;
-  meetingId?: Prisma.SortOrder;
-  assigneeId?: Prisma.SortOrder;
-  creatorId?: Prisma.SortOrder;
 };
 
-export type TaskCreateNestedManyWithoutOrgInput = {
+export type TaskCreateNestedManyWithoutClientInput = {
   create?:
-    | Prisma.XOR<Prisma.TaskCreateWithoutOrgInput, Prisma.TaskUncheckedCreateWithoutOrgInput>
-    | Prisma.TaskCreateWithoutOrgInput[]
-    | Prisma.TaskUncheckedCreateWithoutOrgInput[];
+    | Prisma.XOR<Prisma.TaskCreateWithoutClientInput, Prisma.TaskUncheckedCreateWithoutClientInput>
+    | Prisma.TaskCreateWithoutClientInput[]
+    | Prisma.TaskUncheckedCreateWithoutClientInput[];
   connectOrCreate?:
-    | Prisma.TaskCreateOrConnectWithoutOrgInput
-    | Prisma.TaskCreateOrConnectWithoutOrgInput[];
-  createMany?: Prisma.TaskCreateManyOrgInputEnvelope;
+    | Prisma.TaskCreateOrConnectWithoutClientInput
+    | Prisma.TaskCreateOrConnectWithoutClientInput[];
+  createMany?: Prisma.TaskCreateManyClientInputEnvelope;
   connect?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
 };
 
-export type TaskUncheckedCreateNestedManyWithoutOrgInput = {
+export type TaskUncheckedCreateNestedManyWithoutClientInput = {
   create?:
-    | Prisma.XOR<Prisma.TaskCreateWithoutOrgInput, Prisma.TaskUncheckedCreateWithoutOrgInput>
-    | Prisma.TaskCreateWithoutOrgInput[]
-    | Prisma.TaskUncheckedCreateWithoutOrgInput[];
+    | Prisma.XOR<Prisma.TaskCreateWithoutClientInput, Prisma.TaskUncheckedCreateWithoutClientInput>
+    | Prisma.TaskCreateWithoutClientInput[]
+    | Prisma.TaskUncheckedCreateWithoutClientInput[];
   connectOrCreate?:
-    | Prisma.TaskCreateOrConnectWithoutOrgInput
-    | Prisma.TaskCreateOrConnectWithoutOrgInput[];
-  createMany?: Prisma.TaskCreateManyOrgInputEnvelope;
+    | Prisma.TaskCreateOrConnectWithoutClientInput
+    | Prisma.TaskCreateOrConnectWithoutClientInput[];
+  createMany?: Prisma.TaskCreateManyClientInputEnvelope;
   connect?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
 };
 
-export type TaskUpdateManyWithoutOrgNestedInput = {
+export type TaskUpdateManyWithoutClientNestedInput = {
   create?:
-    | Prisma.XOR<Prisma.TaskCreateWithoutOrgInput, Prisma.TaskUncheckedCreateWithoutOrgInput>
-    | Prisma.TaskCreateWithoutOrgInput[]
-    | Prisma.TaskUncheckedCreateWithoutOrgInput[];
+    | Prisma.XOR<Prisma.TaskCreateWithoutClientInput, Prisma.TaskUncheckedCreateWithoutClientInput>
+    | Prisma.TaskCreateWithoutClientInput[]
+    | Prisma.TaskUncheckedCreateWithoutClientInput[];
   connectOrCreate?:
-    | Prisma.TaskCreateOrConnectWithoutOrgInput
-    | Prisma.TaskCreateOrConnectWithoutOrgInput[];
+    | Prisma.TaskCreateOrConnectWithoutClientInput
+    | Prisma.TaskCreateOrConnectWithoutClientInput[];
   upsert?:
-    | Prisma.TaskUpsertWithWhereUniqueWithoutOrgInput
-    | Prisma.TaskUpsertWithWhereUniqueWithoutOrgInput[];
-  createMany?: Prisma.TaskCreateManyOrgInputEnvelope;
+    | Prisma.TaskUpsertWithWhereUniqueWithoutClientInput
+    | Prisma.TaskUpsertWithWhereUniqueWithoutClientInput[];
+  createMany?: Prisma.TaskCreateManyClientInputEnvelope;
   set?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
   disconnect?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
   delete?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
   connect?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
   update?:
-    | Prisma.TaskUpdateWithWhereUniqueWithoutOrgInput
-    | Prisma.TaskUpdateWithWhereUniqueWithoutOrgInput[];
+    | Prisma.TaskUpdateWithWhereUniqueWithoutClientInput
+    | Prisma.TaskUpdateWithWhereUniqueWithoutClientInput[];
   updateMany?:
-    | Prisma.TaskUpdateManyWithWhereWithoutOrgInput
-    | Prisma.TaskUpdateManyWithWhereWithoutOrgInput[];
+    | Prisma.TaskUpdateManyWithWhereWithoutClientInput
+    | Prisma.TaskUpdateManyWithWhereWithoutClientInput[];
   deleteMany?: Prisma.TaskScalarWhereInput | Prisma.TaskScalarWhereInput[];
 };
 
-export type TaskUncheckedUpdateManyWithoutOrgNestedInput = {
+export type TaskUncheckedUpdateManyWithoutClientNestedInput = {
   create?:
-    | Prisma.XOR<Prisma.TaskCreateWithoutOrgInput, Prisma.TaskUncheckedCreateWithoutOrgInput>
-    | Prisma.TaskCreateWithoutOrgInput[]
-    | Prisma.TaskUncheckedCreateWithoutOrgInput[];
+    | Prisma.XOR<Prisma.TaskCreateWithoutClientInput, Prisma.TaskUncheckedCreateWithoutClientInput>
+    | Prisma.TaskCreateWithoutClientInput[]
+    | Prisma.TaskUncheckedCreateWithoutClientInput[];
   connectOrCreate?:
-    | Prisma.TaskCreateOrConnectWithoutOrgInput
-    | Prisma.TaskCreateOrConnectWithoutOrgInput[];
+    | Prisma.TaskCreateOrConnectWithoutClientInput
+    | Prisma.TaskCreateOrConnectWithoutClientInput[];
   upsert?:
-    | Prisma.TaskUpsertWithWhereUniqueWithoutOrgInput
-    | Prisma.TaskUpsertWithWhereUniqueWithoutOrgInput[];
-  createMany?: Prisma.TaskCreateManyOrgInputEnvelope;
+    | Prisma.TaskUpsertWithWhereUniqueWithoutClientInput
+    | Prisma.TaskUpsertWithWhereUniqueWithoutClientInput[];
+  createMany?: Prisma.TaskCreateManyClientInputEnvelope;
   set?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
   disconnect?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
   delete?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
   connect?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
   update?:
-    | Prisma.TaskUpdateWithWhereUniqueWithoutOrgInput
-    | Prisma.TaskUpdateWithWhereUniqueWithoutOrgInput[];
+    | Prisma.TaskUpdateWithWhereUniqueWithoutClientInput
+    | Prisma.TaskUpdateWithWhereUniqueWithoutClientInput[];
   updateMany?:
-    | Prisma.TaskUpdateManyWithWhereWithoutOrgInput
-    | Prisma.TaskUpdateManyWithWhereWithoutOrgInput[];
+    | Prisma.TaskUpdateManyWithWhereWithoutClientInput
+    | Prisma.TaskUpdateManyWithWhereWithoutClientInput[];
   deleteMany?: Prisma.TaskScalarWhereInput | Prisma.TaskScalarWhereInput[];
 };
 
@@ -789,62 +885,172 @@ export type TaskUncheckedUpdateManyWithoutMeetingNestedInput = {
   deleteMany?: Prisma.TaskScalarWhereInput | Prisma.TaskScalarWhereInput[];
 };
 
+export type TaskCreateNestedManyWithoutDecisionInput = {
+  create?:
+    | Prisma.XOR<
+        Prisma.TaskCreateWithoutDecisionInput,
+        Prisma.TaskUncheckedCreateWithoutDecisionInput
+      >
+    | Prisma.TaskCreateWithoutDecisionInput[]
+    | Prisma.TaskUncheckedCreateWithoutDecisionInput[];
+  connectOrCreate?:
+    | Prisma.TaskCreateOrConnectWithoutDecisionInput
+    | Prisma.TaskCreateOrConnectWithoutDecisionInput[];
+  createMany?: Prisma.TaskCreateManyDecisionInputEnvelope;
+  connect?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
+};
+
+export type TaskUncheckedCreateNestedManyWithoutDecisionInput = {
+  create?:
+    | Prisma.XOR<
+        Prisma.TaskCreateWithoutDecisionInput,
+        Prisma.TaskUncheckedCreateWithoutDecisionInput
+      >
+    | Prisma.TaskCreateWithoutDecisionInput[]
+    | Prisma.TaskUncheckedCreateWithoutDecisionInput[];
+  connectOrCreate?:
+    | Prisma.TaskCreateOrConnectWithoutDecisionInput
+    | Prisma.TaskCreateOrConnectWithoutDecisionInput[];
+  createMany?: Prisma.TaskCreateManyDecisionInputEnvelope;
+  connect?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
+};
+
+export type TaskUpdateManyWithoutDecisionNestedInput = {
+  create?:
+    | Prisma.XOR<
+        Prisma.TaskCreateWithoutDecisionInput,
+        Prisma.TaskUncheckedCreateWithoutDecisionInput
+      >
+    | Prisma.TaskCreateWithoutDecisionInput[]
+    | Prisma.TaskUncheckedCreateWithoutDecisionInput[];
+  connectOrCreate?:
+    | Prisma.TaskCreateOrConnectWithoutDecisionInput
+    | Prisma.TaskCreateOrConnectWithoutDecisionInput[];
+  upsert?:
+    | Prisma.TaskUpsertWithWhereUniqueWithoutDecisionInput
+    | Prisma.TaskUpsertWithWhereUniqueWithoutDecisionInput[];
+  createMany?: Prisma.TaskCreateManyDecisionInputEnvelope;
+  set?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
+  disconnect?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
+  delete?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
+  connect?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
+  update?:
+    | Prisma.TaskUpdateWithWhereUniqueWithoutDecisionInput
+    | Prisma.TaskUpdateWithWhereUniqueWithoutDecisionInput[];
+  updateMany?:
+    | Prisma.TaskUpdateManyWithWhereWithoutDecisionInput
+    | Prisma.TaskUpdateManyWithWhereWithoutDecisionInput[];
+  deleteMany?: Prisma.TaskScalarWhereInput | Prisma.TaskScalarWhereInput[];
+};
+
+export type TaskUncheckedUpdateManyWithoutDecisionNestedInput = {
+  create?:
+    | Prisma.XOR<
+        Prisma.TaskCreateWithoutDecisionInput,
+        Prisma.TaskUncheckedCreateWithoutDecisionInput
+      >
+    | Prisma.TaskCreateWithoutDecisionInput[]
+    | Prisma.TaskUncheckedCreateWithoutDecisionInput[];
+  connectOrCreate?:
+    | Prisma.TaskCreateOrConnectWithoutDecisionInput
+    | Prisma.TaskCreateOrConnectWithoutDecisionInput[];
+  upsert?:
+    | Prisma.TaskUpsertWithWhereUniqueWithoutDecisionInput
+    | Prisma.TaskUpsertWithWhereUniqueWithoutDecisionInput[];
+  createMany?: Prisma.TaskCreateManyDecisionInputEnvelope;
+  set?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
+  disconnect?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
+  delete?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
+  connect?: Prisma.TaskWhereUniqueInput | Prisma.TaskWhereUniqueInput[];
+  update?:
+    | Prisma.TaskUpdateWithWhereUniqueWithoutDecisionInput
+    | Prisma.TaskUpdateWithWhereUniqueWithoutDecisionInput[];
+  updateMany?:
+    | Prisma.TaskUpdateManyWithWhereWithoutDecisionInput
+    | Prisma.TaskUpdateManyWithWhereWithoutDecisionInput[];
+  deleteMany?: Prisma.TaskScalarWhereInput | Prisma.TaskScalarWhereInput[];
+};
+
 export type EnumTaskStatusFieldUpdateOperationsInput = {
   set?: $Enums.TaskStatus;
 };
 
-export type TaskCreateWithoutOrgInput = {
+export type EnumTaskPriorityFieldUpdateOperationsInput = {
+  set?: $Enums.TaskPriority;
+};
+
+export type TaskCreateWithoutClientInput = {
   id?: string;
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
   meeting?: Prisma.MeetingCreateNestedOneWithoutTasksInput;
+  decision?: Prisma.DecisionCreateNestedOneWithoutTasksInput;
   assignee?: Prisma.UserCreateNestedOneWithoutAssignedTasksInput;
   creator?: Prisma.UserCreateNestedOneWithoutCreatedTasksInput;
 };
 
-export type TaskUncheckedCreateWithoutOrgInput = {
+export type TaskUncheckedCreateWithoutClientInput = {
   id?: string;
+  meetingId?: string | null;
+  decisionId?: string | null;
+  assigneeId?: string | null;
+  creatorId?: string | null;
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  meetingId?: string | null;
-  assigneeId?: string | null;
-  creatorId?: string | null;
 };
 
-export type TaskCreateOrConnectWithoutOrgInput = {
+export type TaskCreateOrConnectWithoutClientInput = {
   where: Prisma.TaskWhereUniqueInput;
-  create: Prisma.XOR<Prisma.TaskCreateWithoutOrgInput, Prisma.TaskUncheckedCreateWithoutOrgInput>;
+  create: Prisma.XOR<
+    Prisma.TaskCreateWithoutClientInput,
+    Prisma.TaskUncheckedCreateWithoutClientInput
+  >;
 };
 
-export type TaskCreateManyOrgInputEnvelope = {
-  data: Prisma.TaskCreateManyOrgInput | Prisma.TaskCreateManyOrgInput[];
+export type TaskCreateManyClientInputEnvelope = {
+  data: Prisma.TaskCreateManyClientInput | Prisma.TaskCreateManyClientInput[];
   skipDuplicates?: boolean;
 };
 
-export type TaskUpsertWithWhereUniqueWithoutOrgInput = {
+export type TaskUpsertWithWhereUniqueWithoutClientInput = {
   where: Prisma.TaskWhereUniqueInput;
-  update: Prisma.XOR<Prisma.TaskUpdateWithoutOrgInput, Prisma.TaskUncheckedUpdateWithoutOrgInput>;
-  create: Prisma.XOR<Prisma.TaskCreateWithoutOrgInput, Prisma.TaskUncheckedCreateWithoutOrgInput>;
+  update: Prisma.XOR<
+    Prisma.TaskUpdateWithoutClientInput,
+    Prisma.TaskUncheckedUpdateWithoutClientInput
+  >;
+  create: Prisma.XOR<
+    Prisma.TaskCreateWithoutClientInput,
+    Prisma.TaskUncheckedCreateWithoutClientInput
+  >;
 };
 
-export type TaskUpdateWithWhereUniqueWithoutOrgInput = {
+export type TaskUpdateWithWhereUniqueWithoutClientInput = {
   where: Prisma.TaskWhereUniqueInput;
-  data: Prisma.XOR<Prisma.TaskUpdateWithoutOrgInput, Prisma.TaskUncheckedUpdateWithoutOrgInput>;
+  data: Prisma.XOR<
+    Prisma.TaskUpdateWithoutClientInput,
+    Prisma.TaskUncheckedUpdateWithoutClientInput
+  >;
 };
 
-export type TaskUpdateManyWithWhereWithoutOrgInput = {
+export type TaskUpdateManyWithWhereWithoutClientInput = {
   where: Prisma.TaskScalarWhereInput;
   data: Prisma.XOR<
     Prisma.TaskUpdateManyMutationInput,
-    Prisma.TaskUncheckedUpdateManyWithoutOrgInput
+    Prisma.TaskUncheckedUpdateManyWithoutClientInput
   >;
 };
 
@@ -853,16 +1059,20 @@ export type TaskScalarWhereInput = {
   OR?: Prisma.TaskScalarWhereInput[];
   NOT?: Prisma.TaskScalarWhereInput | Prisma.TaskScalarWhereInput[];
   id?: Prisma.StringFilter<'Task'> | string;
+  clientId?: Prisma.StringFilter<'Task'> | string;
+  meetingId?: Prisma.StringNullableFilter<'Task'> | string | null;
+  decisionId?: Prisma.StringNullableFilter<'Task'> | string | null;
+  assigneeId?: Prisma.StringNullableFilter<'Task'> | string | null;
+  creatorId?: Prisma.StringNullableFilter<'Task'> | string | null;
   title?: Prisma.StringFilter<'Task'> | string;
   description?: Prisma.StringNullableFilter<'Task'> | string | null;
   status?: Prisma.EnumTaskStatusFilter<'Task'> | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFilter<'Task'> | $Enums.TaskPriority;
   dueAt?: Prisma.DateTimeNullableFilter<'Task'> | Date | string | null;
+  completedAt?: Prisma.DateTimeNullableFilter<'Task'> | Date | string | null;
+  externalRef?: Prisma.StringNullableFilter<'Task'> | string | null;
   createdAt?: Prisma.DateTimeFilter<'Task'> | Date | string;
   updatedAt?: Prisma.DateTimeFilter<'Task'> | Date | string;
-  orgId?: Prisma.StringFilter<'Task'> | string;
-  meetingId?: Prisma.StringNullableFilter<'Task'> | string | null;
-  assigneeId?: Prisma.StringNullableFilter<'Task'> | string | null;
-  creatorId?: Prisma.StringNullableFilter<'Task'> | string | null;
 };
 
 export type TaskCreateWithoutAssigneeInput = {
@@ -870,25 +1080,33 @@ export type TaskCreateWithoutAssigneeInput = {
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  org: Prisma.OrgCreateNestedOneWithoutTasksInput;
+  client: Prisma.ClientCreateNestedOneWithoutTasksInput;
   meeting?: Prisma.MeetingCreateNestedOneWithoutTasksInput;
+  decision?: Prisma.DecisionCreateNestedOneWithoutTasksInput;
   creator?: Prisma.UserCreateNestedOneWithoutCreatedTasksInput;
 };
 
 export type TaskUncheckedCreateWithoutAssigneeInput = {
   id?: string;
+  clientId: string;
+  meetingId?: string | null;
+  decisionId?: string | null;
+  creatorId?: string | null;
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  orgId: string;
-  meetingId?: string | null;
-  creatorId?: string | null;
 };
 
 export type TaskCreateOrConnectWithoutAssigneeInput = {
@@ -909,25 +1127,33 @@ export type TaskCreateWithoutCreatorInput = {
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  org: Prisma.OrgCreateNestedOneWithoutTasksInput;
+  client: Prisma.ClientCreateNestedOneWithoutTasksInput;
   meeting?: Prisma.MeetingCreateNestedOneWithoutTasksInput;
+  decision?: Prisma.DecisionCreateNestedOneWithoutTasksInput;
   assignee?: Prisma.UserCreateNestedOneWithoutAssignedTasksInput;
 };
 
 export type TaskUncheckedCreateWithoutCreatorInput = {
   id?: string;
+  clientId: string;
+  meetingId?: string | null;
+  decisionId?: string | null;
+  assigneeId?: string | null;
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  orgId: string;
-  meetingId?: string | null;
-  assigneeId?: string | null;
 };
 
 export type TaskCreateOrConnectWithoutCreatorInput = {
@@ -1004,25 +1230,33 @@ export type TaskCreateWithoutMeetingInput = {
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  org: Prisma.OrgCreateNestedOneWithoutTasksInput;
+  client: Prisma.ClientCreateNestedOneWithoutTasksInput;
+  decision?: Prisma.DecisionCreateNestedOneWithoutTasksInput;
   assignee?: Prisma.UserCreateNestedOneWithoutAssignedTasksInput;
   creator?: Prisma.UserCreateNestedOneWithoutCreatedTasksInput;
 };
 
 export type TaskUncheckedCreateWithoutMeetingInput = {
   id?: string;
+  clientId: string;
+  decisionId?: string | null;
+  assigneeId?: string | null;
+  creatorId?: string | null;
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  orgId: string;
-  assigneeId?: string | null;
-  creatorId?: string | null;
 };
 
 export type TaskCreateOrConnectWithoutMeetingInput = {
@@ -1066,82 +1300,181 @@ export type TaskUpdateManyWithWhereWithoutMeetingInput = {
   >;
 };
 
-export type TaskCreateManyOrgInput = {
+export type TaskCreateWithoutDecisionInput = {
   id?: string;
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
+  client: Prisma.ClientCreateNestedOneWithoutTasksInput;
+  meeting?: Prisma.MeetingCreateNestedOneWithoutTasksInput;
+  assignee?: Prisma.UserCreateNestedOneWithoutAssignedTasksInput;
+  creator?: Prisma.UserCreateNestedOneWithoutCreatedTasksInput;
+};
+
+export type TaskUncheckedCreateWithoutDecisionInput = {
+  id?: string;
+  clientId: string;
   meetingId?: string | null;
   assigneeId?: string | null;
   creatorId?: string | null;
+  title: string;
+  description?: string | null;
+  status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
+  dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 };
 
-export type TaskUpdateWithoutOrgInput = {
+export type TaskCreateOrConnectWithoutDecisionInput = {
+  where: Prisma.TaskWhereUniqueInput;
+  create: Prisma.XOR<
+    Prisma.TaskCreateWithoutDecisionInput,
+    Prisma.TaskUncheckedCreateWithoutDecisionInput
+  >;
+};
+
+export type TaskCreateManyDecisionInputEnvelope = {
+  data: Prisma.TaskCreateManyDecisionInput | Prisma.TaskCreateManyDecisionInput[];
+  skipDuplicates?: boolean;
+};
+
+export type TaskUpsertWithWhereUniqueWithoutDecisionInput = {
+  where: Prisma.TaskWhereUniqueInput;
+  update: Prisma.XOR<
+    Prisma.TaskUpdateWithoutDecisionInput,
+    Prisma.TaskUncheckedUpdateWithoutDecisionInput
+  >;
+  create: Prisma.XOR<
+    Prisma.TaskCreateWithoutDecisionInput,
+    Prisma.TaskUncheckedCreateWithoutDecisionInput
+  >;
+};
+
+export type TaskUpdateWithWhereUniqueWithoutDecisionInput = {
+  where: Prisma.TaskWhereUniqueInput;
+  data: Prisma.XOR<
+    Prisma.TaskUpdateWithoutDecisionInput,
+    Prisma.TaskUncheckedUpdateWithoutDecisionInput
+  >;
+};
+
+export type TaskUpdateManyWithWhereWithoutDecisionInput = {
+  where: Prisma.TaskScalarWhereInput;
+  data: Prisma.XOR<
+    Prisma.TaskUpdateManyMutationInput,
+    Prisma.TaskUncheckedUpdateManyWithoutDecisionInput
+  >;
+};
+
+export type TaskCreateManyClientInput = {
+  id?: string;
+  meetingId?: string | null;
+  decisionId?: string | null;
+  assigneeId?: string | null;
+  creatorId?: string | null;
+  title: string;
+  description?: string | null;
+  status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
+  dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+};
+
+export type TaskUpdateWithoutClientInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   meeting?: Prisma.MeetingUpdateOneWithoutTasksNestedInput;
+  decision?: Prisma.DecisionUpdateOneWithoutTasksNestedInput;
   assignee?: Prisma.UserUpdateOneWithoutAssignedTasksNestedInput;
   creator?: Prisma.UserUpdateOneWithoutCreatedTasksNestedInput;
 };
 
-export type TaskUncheckedUpdateWithoutOrgInput = {
+export type TaskUncheckedUpdateWithoutClientInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  decisionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 
-export type TaskUncheckedUpdateManyWithoutOrgInput = {
+export type TaskUncheckedUpdateManyWithoutClientInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  decisionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 
 export type TaskCreateManyAssigneeInput = {
   id?: string;
+  clientId: string;
+  meetingId?: string | null;
+  decisionId?: string | null;
+  creatorId?: string | null;
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  orgId: string;
-  meetingId?: string | null;
-  creatorId?: string | null;
 };
 
 export type TaskCreateManyCreatorInput = {
   id?: string;
+  clientId: string;
+  meetingId?: string | null;
+  decisionId?: string | null;
+  assigneeId?: string | null;
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  orgId: string;
-  meetingId?: string | null;
-  assigneeId?: string | null;
 };
 
 export type TaskUpdateWithoutAssigneeInput = {
@@ -1149,38 +1482,50 @@ export type TaskUpdateWithoutAssigneeInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  org?: Prisma.OrgUpdateOneRequiredWithoutTasksNestedInput;
+  client?: Prisma.ClientUpdateOneRequiredWithoutTasksNestedInput;
   meeting?: Prisma.MeetingUpdateOneWithoutTasksNestedInput;
+  decision?: Prisma.DecisionUpdateOneWithoutTasksNestedInput;
   creator?: Prisma.UserUpdateOneWithoutCreatedTasksNestedInput;
 };
 
 export type TaskUncheckedUpdateWithoutAssigneeInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  decisionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
-  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 
 export type TaskUncheckedUpdateManyWithoutAssigneeInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  decisionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
-  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 
 export type TaskUpdateWithoutCreatorInput = {
@@ -1188,51 +1533,67 @@ export type TaskUpdateWithoutCreatorInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  org?: Prisma.OrgUpdateOneRequiredWithoutTasksNestedInput;
+  client?: Prisma.ClientUpdateOneRequiredWithoutTasksNestedInput;
   meeting?: Prisma.MeetingUpdateOneWithoutTasksNestedInput;
+  decision?: Prisma.DecisionUpdateOneWithoutTasksNestedInput;
   assignee?: Prisma.UserUpdateOneWithoutAssignedTasksNestedInput;
 };
 
 export type TaskUncheckedUpdateWithoutCreatorInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  decisionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
-  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 
 export type TaskUncheckedUpdateManyWithoutCreatorInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  decisionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
-  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 
 export type TaskCreateManyMeetingInput = {
   id?: string;
+  clientId: string;
+  decisionId?: string | null;
+  assigneeId?: string | null;
+  creatorId?: string | null;
   title: string;
   description?: string | null;
   status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
   dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  orgId: string;
-  assigneeId?: string | null;
-  creatorId?: string | null;
 };
 
 export type TaskUpdateWithoutMeetingInput = {
@@ -1240,38 +1601,118 @@ export type TaskUpdateWithoutMeetingInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  org?: Prisma.OrgUpdateOneRequiredWithoutTasksNestedInput;
+  client?: Prisma.ClientUpdateOneRequiredWithoutTasksNestedInput;
+  decision?: Prisma.DecisionUpdateOneWithoutTasksNestedInput;
   assignee?: Prisma.UserUpdateOneWithoutAssignedTasksNestedInput;
   creator?: Prisma.UserUpdateOneWithoutCreatedTasksNestedInput;
 };
 
 export type TaskUncheckedUpdateWithoutMeetingInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  decisionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
-  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
 };
 
 export type TaskUncheckedUpdateManyWithoutMeetingInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  decisionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
   dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  orgId?: Prisma.StringFieldUpdateOperationsInput | string;
+};
+
+export type TaskCreateManyDecisionInput = {
+  id?: string;
+  clientId: string;
+  meetingId?: string | null;
+  assigneeId?: string | null;
+  creatorId?: string | null;
+  title: string;
+  description?: string | null;
+  status?: $Enums.TaskStatus;
+  priority?: $Enums.TaskPriority;
+  dueAt?: Date | string | null;
+  completedAt?: Date | string | null;
+  externalRef?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+};
+
+export type TaskUpdateWithoutDecisionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  title?: Prisma.StringFieldUpdateOperationsInput | string;
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
+  dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  client?: Prisma.ClientUpdateOneRequiredWithoutTasksNestedInput;
+  meeting?: Prisma.MeetingUpdateOneWithoutTasksNestedInput;
+  assignee?: Prisma.UserUpdateOneWithoutAssignedTasksNestedInput;
+  creator?: Prisma.UserUpdateOneWithoutCreatedTasksNestedInput;
+};
+
+export type TaskUncheckedUpdateWithoutDecisionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  title?: Prisma.StringFieldUpdateOperationsInput | string;
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
+  dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+};
+
+export type TaskUncheckedUpdateManyWithoutDecisionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string;
+  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
+  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  assigneeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  creatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  title?: Prisma.StringFieldUpdateOperationsInput | string;
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  status?: Prisma.EnumTaskStatusFieldUpdateOperationsInput | $Enums.TaskStatus;
+  priority?: Prisma.EnumTaskPriorityFieldUpdateOperationsInput | $Enums.TaskPriority;
+  dueAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null;
+  externalRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 
 export type TaskSelect<
@@ -1279,18 +1720,23 @@ export type TaskSelect<
 > = runtime.Types.Extensions.GetSelect<
   {
     id?: boolean;
+    clientId?: boolean;
+    meetingId?: boolean;
+    decisionId?: boolean;
+    assigneeId?: boolean;
+    creatorId?: boolean;
     title?: boolean;
     description?: boolean;
     status?: boolean;
+    priority?: boolean;
     dueAt?: boolean;
+    completedAt?: boolean;
+    externalRef?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
-    orgId?: boolean;
-    meetingId?: boolean;
-    assigneeId?: boolean;
-    creatorId?: boolean;
-    org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
+    client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
     meeting?: boolean | Prisma.Task$meetingArgs<ExtArgs>;
+    decision?: boolean | Prisma.Task$decisionArgs<ExtArgs>;
     assignee?: boolean | Prisma.Task$assigneeArgs<ExtArgs>;
     creator?: boolean | Prisma.Task$creatorArgs<ExtArgs>;
   },
@@ -1302,18 +1748,23 @@ export type TaskSelectCreateManyAndReturn<
 > = runtime.Types.Extensions.GetSelect<
   {
     id?: boolean;
+    clientId?: boolean;
+    meetingId?: boolean;
+    decisionId?: boolean;
+    assigneeId?: boolean;
+    creatorId?: boolean;
     title?: boolean;
     description?: boolean;
     status?: boolean;
+    priority?: boolean;
     dueAt?: boolean;
+    completedAt?: boolean;
+    externalRef?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
-    orgId?: boolean;
-    meetingId?: boolean;
-    assigneeId?: boolean;
-    creatorId?: boolean;
-    org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
+    client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
     meeting?: boolean | Prisma.Task$meetingArgs<ExtArgs>;
+    decision?: boolean | Prisma.Task$decisionArgs<ExtArgs>;
     assignee?: boolean | Prisma.Task$assigneeArgs<ExtArgs>;
     creator?: boolean | Prisma.Task$creatorArgs<ExtArgs>;
   },
@@ -1325,18 +1776,23 @@ export type TaskSelectUpdateManyAndReturn<
 > = runtime.Types.Extensions.GetSelect<
   {
     id?: boolean;
+    clientId?: boolean;
+    meetingId?: boolean;
+    decisionId?: boolean;
+    assigneeId?: boolean;
+    creatorId?: boolean;
     title?: boolean;
     description?: boolean;
     status?: boolean;
+    priority?: boolean;
     dueAt?: boolean;
+    completedAt?: boolean;
+    externalRef?: boolean;
     createdAt?: boolean;
     updatedAt?: boolean;
-    orgId?: boolean;
-    meetingId?: boolean;
-    assigneeId?: boolean;
-    creatorId?: boolean;
-    org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
+    client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
     meeting?: boolean | Prisma.Task$meetingArgs<ExtArgs>;
+    decision?: boolean | Prisma.Task$decisionArgs<ExtArgs>;
     assignee?: boolean | Prisma.Task$assigneeArgs<ExtArgs>;
     creator?: boolean | Prisma.Task$creatorArgs<ExtArgs>;
   },
@@ -1345,55 +1801,66 @@ export type TaskSelectUpdateManyAndReturn<
 
 export type TaskSelectScalar = {
   id?: boolean;
+  clientId?: boolean;
+  meetingId?: boolean;
+  decisionId?: boolean;
+  assigneeId?: boolean;
+  creatorId?: boolean;
   title?: boolean;
   description?: boolean;
   status?: boolean;
+  priority?: boolean;
   dueAt?: boolean;
+  completedAt?: boolean;
+  externalRef?: boolean;
   createdAt?: boolean;
   updatedAt?: boolean;
-  orgId?: boolean;
-  meetingId?: boolean;
-  assigneeId?: boolean;
-  creatorId?: boolean;
 };
 
 export type TaskOmit<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = runtime.Types.Extensions.GetOmit<
   | 'id'
+  | 'clientId'
+  | 'meetingId'
+  | 'decisionId'
+  | 'assigneeId'
+  | 'creatorId'
   | 'title'
   | 'description'
   | 'status'
+  | 'priority'
   | 'dueAt'
+  | 'completedAt'
+  | 'externalRef'
   | 'createdAt'
-  | 'updatedAt'
-  | 'orgId'
-  | 'meetingId'
-  | 'assigneeId'
-  | 'creatorId',
+  | 'updatedAt',
   ExtArgs['result']['task']
 >;
 export type TaskInclude<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
-  org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
+  client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
   meeting?: boolean | Prisma.Task$meetingArgs<ExtArgs>;
+  decision?: boolean | Prisma.Task$decisionArgs<ExtArgs>;
   assignee?: boolean | Prisma.Task$assigneeArgs<ExtArgs>;
   creator?: boolean | Prisma.Task$creatorArgs<ExtArgs>;
 };
 export type TaskIncludeCreateManyAndReturn<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
-  org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
+  client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
   meeting?: boolean | Prisma.Task$meetingArgs<ExtArgs>;
+  decision?: boolean | Prisma.Task$decisionArgs<ExtArgs>;
   assignee?: boolean | Prisma.Task$assigneeArgs<ExtArgs>;
   creator?: boolean | Prisma.Task$creatorArgs<ExtArgs>;
 };
 export type TaskIncludeUpdateManyAndReturn<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
-  org?: boolean | Prisma.OrgDefaultArgs<ExtArgs>;
+  client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
   meeting?: boolean | Prisma.Task$meetingArgs<ExtArgs>;
+  decision?: boolean | Prisma.Task$decisionArgs<ExtArgs>;
   assignee?: boolean | Prisma.Task$assigneeArgs<ExtArgs>;
   creator?: boolean | Prisma.Task$creatorArgs<ExtArgs>;
 };
@@ -1403,24 +1870,29 @@ export type $TaskPayload<
 > = {
   name: 'Task';
   objects: {
-    org: Prisma.$OrgPayload<ExtArgs>;
+    client: Prisma.$ClientPayload<ExtArgs>;
     meeting: Prisma.$MeetingPayload<ExtArgs> | null;
+    decision: Prisma.$DecisionPayload<ExtArgs> | null;
     assignee: Prisma.$UserPayload<ExtArgs> | null;
     creator: Prisma.$UserPayload<ExtArgs> | null;
   };
   scalars: runtime.Types.Extensions.GetPayloadResult<
     {
       id: string;
+      clientId: string;
+      meetingId: string | null;
+      decisionId: string | null;
+      assigneeId: string | null;
+      creatorId: string | null;
       title: string;
       description: string | null;
       status: $Enums.TaskStatus;
+      priority: $Enums.TaskPriority;
       dueAt: Date | null;
+      completedAt: Date | null;
+      externalRef: string | null;
       createdAt: Date;
       updatedAt: Date;
-      orgId: string;
-      meetingId: string | null;
-      assigneeId: string | null;
-      creatorId: string | null;
     },
     ExtArgs['result']['task']
   >;
@@ -1931,11 +2403,11 @@ export interface Prisma__TaskClient<
   GlobalOmitOptions = {},
 > extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: 'PrismaPromise';
-  org<T extends Prisma.OrgDefaultArgs<ExtArgs> = {}>(
-    args?: Prisma.Subset<T, Prisma.OrgDefaultArgs<ExtArgs>>
-  ): Prisma.Prisma__OrgClient<
+  client<T extends Prisma.ClientDefaultArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.ClientDefaultArgs<ExtArgs>>
+  ): Prisma.Prisma__ClientClient<
     | runtime.Types.Result.GetResult<
-        Prisma.$OrgPayload<ExtArgs>,
+        Prisma.$ClientPayload<ExtArgs>,
         T,
         'findUniqueOrThrow',
         GlobalOmitOptions
@@ -1950,6 +2422,19 @@ export interface Prisma__TaskClient<
   ): Prisma.Prisma__MeetingClient<
     runtime.Types.Result.GetResult<
       Prisma.$MeetingPayload<ExtArgs>,
+      T,
+      'findUniqueOrThrow',
+      GlobalOmitOptions
+    > | null,
+    null,
+    ExtArgs,
+    GlobalOmitOptions
+  >;
+  decision<T extends Prisma.Task$decisionArgs<ExtArgs> = {}>(
+    args?: Prisma.Subset<T, Prisma.Task$decisionArgs<ExtArgs>>
+  ): Prisma.Prisma__DecisionClient<
+    runtime.Types.Result.GetResult<
+      Prisma.$DecisionPayload<ExtArgs>,
       T,
       'findUniqueOrThrow',
       GlobalOmitOptions
@@ -2016,16 +2501,20 @@ export interface Prisma__TaskClient<
  */
 export interface TaskFieldRefs {
   readonly id: Prisma.FieldRef<'Task', 'String'>;
+  readonly clientId: Prisma.FieldRef<'Task', 'String'>;
+  readonly meetingId: Prisma.FieldRef<'Task', 'String'>;
+  readonly decisionId: Prisma.FieldRef<'Task', 'String'>;
+  readonly assigneeId: Prisma.FieldRef<'Task', 'String'>;
+  readonly creatorId: Prisma.FieldRef<'Task', 'String'>;
   readonly title: Prisma.FieldRef<'Task', 'String'>;
   readonly description: Prisma.FieldRef<'Task', 'String'>;
   readonly status: Prisma.FieldRef<'Task', 'TaskStatus'>;
+  readonly priority: Prisma.FieldRef<'Task', 'TaskPriority'>;
   readonly dueAt: Prisma.FieldRef<'Task', 'DateTime'>;
+  readonly completedAt: Prisma.FieldRef<'Task', 'DateTime'>;
+  readonly externalRef: Prisma.FieldRef<'Task', 'String'>;
   readonly createdAt: Prisma.FieldRef<'Task', 'DateTime'>;
   readonly updatedAt: Prisma.FieldRef<'Task', 'DateTime'>;
-  readonly orgId: Prisma.FieldRef<'Task', 'String'>;
-  readonly meetingId: Prisma.FieldRef<'Task', 'String'>;
-  readonly assigneeId: Prisma.FieldRef<'Task', 'String'>;
-  readonly creatorId: Prisma.FieldRef<'Task', 'String'>;
 }
 
 // Custom InputTypes
@@ -2467,6 +2956,27 @@ export type Task$meetingArgs<
    */
   include?: Prisma.MeetingInclude<ExtArgs> | null;
   where?: Prisma.MeetingWhereInput;
+};
+
+/**
+ * Task.decision
+ */
+export type Task$decisionArgs<
+  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
+> = {
+  /**
+   * Select specific fields to fetch from the Decision
+   */
+  select?: Prisma.DecisionSelect<ExtArgs> | null;
+  /**
+   * Omit specific fields from the Decision
+   */
+  omit?: Prisma.DecisionOmit<ExtArgs> | null;
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DecisionInclude<ExtArgs> | null;
+  where?: Prisma.DecisionWhereInput;
 };
 
 /**

@@ -49,13 +49,22 @@ export const AnyNull = runtime.AnyNull;
 
 export const ModelName = {
   Org: 'Org',
+  Client: 'Client',
   User: 'User',
+  ClientMember: 'ClientMember',
   Session: 'Session',
   Account: 'Account',
   Verification: 'Verification',
   Meeting: 'Meeting',
-  Task: 'Task',
+  MeetingParticipant: 'MeetingParticipant',
+  Transcript: 'Transcript',
   Decision: 'Decision',
+  Task: 'Task',
+  OpenQuestion: 'OpenQuestion',
+  ImportantPoint: 'ImportantPoint',
+  PolicyGuardrail: 'PolicyGuardrail',
+  Document: 'Document',
+  Reminder: 'Reminder',
 } as const;
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName];
@@ -77,25 +86,55 @@ export type TransactionIsolationLevel =
 export const OrgScalarFieldEnum = {
   id: 'id',
   name: 'name',
+  slug: 'slug',
+  settings: 'settings',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
 } as const;
 
 export type OrgScalarFieldEnum = (typeof OrgScalarFieldEnum)[keyof typeof OrgScalarFieldEnum];
 
+export const ClientScalarFieldEnum = {
+  id: 'id',
+  orgId: 'orgId',
+  name: 'name',
+  slug: 'slug',
+  description: 'description',
+  status: 'status',
+  industry: 'industry',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+} as const;
+
+export type ClientScalarFieldEnum =
+  (typeof ClientScalarFieldEnum)[keyof typeof ClientScalarFieldEnum];
+
 export const UserScalarFieldEnum = {
   id: 'id',
+  orgId: 'orgId',
   name: 'name',
   email: 'email',
   emailVerified: 'emailVerified',
   image: 'image',
+  role: 'role',
+  timezone: 'timezone',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  role: 'role',
-  orgId: 'orgId',
 } as const;
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum];
+
+export const ClientMemberScalarFieldEnum = {
+  id: 'id',
+  clientId: 'clientId',
+  userId: 'userId',
+  role: 'role',
+  assignedAt: 'assignedAt',
+} as const;
+
+export type ClientMemberScalarFieldEnum =
+  (typeof ClientMemberScalarFieldEnum)[keyof typeof ClientMemberScalarFieldEnum];
 
 export const SessionScalarFieldEnum = {
   id: 'id',
@@ -144,52 +183,174 @@ export type VerificationScalarFieldEnum =
 
 export const MeetingScalarFieldEnum = {
   id: 'id',
+  clientId: 'clientId',
   title: 'title',
   description: 'description',
+  agenda: 'agenda',
   status: 'status',
   scheduledAt: 'scheduledAt',
   startedAt: 'startedAt',
   endedAt: 'endedAt',
+  calendarEventId: 'calendarEventId',
+  summary: 'summary',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  orgId: 'orgId',
 } as const;
 
 export type MeetingScalarFieldEnum =
   (typeof MeetingScalarFieldEnum)[keyof typeof MeetingScalarFieldEnum];
 
-export const TaskScalarFieldEnum = {
+export const MeetingParticipantScalarFieldEnum = {
   id: 'id',
-  title: 'title',
-  description: 'description',
-  status: 'status',
-  dueAt: 'dueAt',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt',
-  orgId: 'orgId',
   meetingId: 'meetingId',
-  assigneeId: 'assigneeId',
-  creatorId: 'creatorId',
+  userId: 'userId',
+  externalName: 'externalName',
+  externalEmail: 'externalEmail',
+  role: 'role',
+  attendedAt: 'attendedAt',
 } as const;
 
-export type TaskScalarFieldEnum = (typeof TaskScalarFieldEnum)[keyof typeof TaskScalarFieldEnum];
+export type MeetingParticipantScalarFieldEnum =
+  (typeof MeetingParticipantScalarFieldEnum)[keyof typeof MeetingParticipantScalarFieldEnum];
+
+export const TranscriptScalarFieldEnum = {
+  id: 'id',
+  meetingId: 'meetingId',
+  content: 'content',
+  format: 'format',
+  duration: 'duration',
+  wordCount: 'wordCount',
+  createdAt: 'createdAt',
+} as const;
+
+export type TranscriptScalarFieldEnum =
+  (typeof TranscriptScalarFieldEnum)[keyof typeof TranscriptScalarFieldEnum];
 
 export const DecisionScalarFieldEnum = {
   id: 'id',
   decisionRef: 'decisionRef',
   version: 'version',
+  clientId: 'clientId',
+  meetingId: 'meetingId',
+  authorId: 'authorId',
   title: 'title',
   content: 'content',
   rationale: 'rationale',
   evidence: 'evidence',
+  status: 'status',
+  tags: 'tags',
   createdAt: 'createdAt',
-  orgId: 'orgId',
-  meetingId: 'meetingId',
-  authorId: 'authorId',
 } as const;
 
 export type DecisionScalarFieldEnum =
   (typeof DecisionScalarFieldEnum)[keyof typeof DecisionScalarFieldEnum];
+
+export const TaskScalarFieldEnum = {
+  id: 'id',
+  clientId: 'clientId',
+  meetingId: 'meetingId',
+  decisionId: 'decisionId',
+  assigneeId: 'assigneeId',
+  creatorId: 'creatorId',
+  title: 'title',
+  description: 'description',
+  status: 'status',
+  priority: 'priority',
+  dueAt: 'dueAt',
+  completedAt: 'completedAt',
+  externalRef: 'externalRef',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+} as const;
+
+export type TaskScalarFieldEnum = (typeof TaskScalarFieldEnum)[keyof typeof TaskScalarFieldEnum];
+
+export const OpenQuestionScalarFieldEnum = {
+  id: 'id',
+  clientId: 'clientId',
+  meetingId: 'meetingId',
+  assigneeId: 'assigneeId',
+  resolvedByDecisionId: 'resolvedByDecisionId',
+  question: 'question',
+  context: 'context',
+  status: 'status',
+  dueAt: 'dueAt',
+  createdAt: 'createdAt',
+  resolvedAt: 'resolvedAt',
+} as const;
+
+export type OpenQuestionScalarFieldEnum =
+  (typeof OpenQuestionScalarFieldEnum)[keyof typeof OpenQuestionScalarFieldEnum];
+
+export const ImportantPointScalarFieldEnum = {
+  id: 'id',
+  clientId: 'clientId',
+  meetingId: 'meetingId',
+  speakerId: 'speakerId',
+  content: 'content',
+  category: 'category',
+  transcriptEvidence: 'transcriptEvidence',
+  createdAt: 'createdAt',
+} as const;
+
+export type ImportantPointScalarFieldEnum =
+  (typeof ImportantPointScalarFieldEnum)[keyof typeof ImportantPointScalarFieldEnum];
+
+export const PolicyGuardrailScalarFieldEnum = {
+  id: 'id',
+  orgId: 'orgId',
+  clientId: 'clientId',
+  createdById: 'createdById',
+  name: 'name',
+  description: 'description',
+  ruleType: 'ruleType',
+  pattern: 'pattern',
+  keywords: 'keywords',
+  severity: 'severity',
+  isActive: 'isActive',
+  sourceType: 'sourceType',
+  sourceId: 'sourceId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+} as const;
+
+export type PolicyGuardrailScalarFieldEnum =
+  (typeof PolicyGuardrailScalarFieldEnum)[keyof typeof PolicyGuardrailScalarFieldEnum];
+
+export const DocumentScalarFieldEnum = {
+  id: 'id',
+  clientId: 'clientId',
+  createdById: 'createdById',
+  parentId: 'parentId',
+  type: 'type',
+  title: 'title',
+  content: 'content',
+  mimeType: 'mimeType',
+  fileUrl: 'fileUrl',
+  version: 'version',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+} as const;
+
+export type DocumentScalarFieldEnum =
+  (typeof DocumentScalarFieldEnum)[keyof typeof DocumentScalarFieldEnum];
+
+export const ReminderScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  clientId: 'clientId',
+  title: 'title',
+  description: 'description',
+  dueAt: 'dueAt',
+  status: 'status',
+  linkedEntityType: 'linkedEntityType',
+  linkedEntityId: 'linkedEntityId',
+  createdAt: 'createdAt',
+} as const;
+
+export type ReminderScalarFieldEnum =
+  (typeof ReminderScalarFieldEnum)[keyof typeof ReminderScalarFieldEnum];
 
 export const SortOrder = {
   asc: 'asc',
@@ -198,12 +359,28 @@ export const SortOrder = {
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder];
 
+export const NullableJsonNullValueInput = {
+  DbNull: 'DbNull',
+  JsonNull: 'JsonNull',
+} as const;
+
+export type NullableJsonNullValueInput =
+  (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput];
+
 export const QueryMode = {
   default: 'default',
   insensitive: 'insensitive',
 } as const;
 
 export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode];
+
+export const JsonNullValueFilter = {
+  DbNull: 'DbNull',
+  JsonNull: 'JsonNull',
+  AnyNull: 'AnyNull',
+} as const;
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter];
 
 export const NullsOrder = {
   first: 'first',

@@ -38,7 +38,7 @@ export const UserService = {
       include: {
         org: true,
         _count: {
-          select: { assignedTasks: true, createdTasks: true, decisions: true },
+          select: { assignedTasks: true, createdTasks: true, authoredDecisions: true },
         },
       },
     });

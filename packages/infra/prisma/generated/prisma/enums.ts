@@ -8,24 +8,163 @@
  * 🟢 You can import this file directly.
  */
 
+export const ClientStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type ClientStatus = (typeof ClientStatus)[keyof typeof ClientStatus];
+
 export const UserRole = {
   OWNER: 'OWNER',
+  ADMIN: 'ADMIN',
   MEMBER: 'MEMBER',
 } as const;
 
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
+export const ClientMemberRole = {
+  LEAD: 'LEAD',
+  MEMBER: 'MEMBER',
+  OBSERVER: 'OBSERVER',
+} as const;
+
+export type ClientMemberRole = (typeof ClientMemberRole)[keyof typeof ClientMemberRole];
+
 export const MeetingStatus = {
   SCHEDULED: 'SCHEDULED',
   LIVE: 'LIVE',
   ENDED: 'ENDED',
+  CANCELLED: 'CANCELLED',
 } as const;
 
 export type MeetingStatus = (typeof MeetingStatus)[keyof typeof MeetingStatus];
 
+export const MeetingParticipantRole = {
+  HOST: 'HOST',
+  PARTICIPANT: 'PARTICIPANT',
+  OBSERVER: 'OBSERVER',
+} as const;
+
+export type MeetingParticipantRole =
+  (typeof MeetingParticipantRole)[keyof typeof MeetingParticipantRole];
+
+export const TranscriptFormat = {
+  RAW: 'RAW',
+  NORMALIZED: 'NORMALIZED',
+  STRUCTURED: 'STRUCTURED',
+} as const;
+
+export type TranscriptFormat = (typeof TranscriptFormat)[keyof typeof TranscriptFormat];
+
+export const DecisionStatus = {
+  ACTIVE: 'ACTIVE',
+  SUPERSEDED: 'SUPERSEDED',
+  REVOKED: 'REVOKED',
+} as const;
+
+export type DecisionStatus = (typeof DecisionStatus)[keyof typeof DecisionStatus];
+
 export const TaskStatus = {
   OPEN: 'OPEN',
+  IN_PROGRESS: 'IN_PROGRESS',
+  BLOCKED: 'BLOCKED',
   DONE: 'DONE',
+  CANCELLED: 'CANCELLED',
 } as const;
 
 export type TaskStatus = (typeof TaskStatus)[keyof typeof TaskStatus];
+
+export const TaskPriority = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+} as const;
+
+export type TaskPriority = (typeof TaskPriority)[keyof typeof TaskPriority];
+
+export const OpenQuestionStatus = {
+  OPEN: 'OPEN',
+  RESOLVED: 'RESOLVED',
+  DEFERRED: 'DEFERRED',
+} as const;
+
+export type OpenQuestionStatus = (typeof OpenQuestionStatus)[keyof typeof OpenQuestionStatus];
+
+export const ImportantPointCategory = {
+  COMMITMENT: 'COMMITMENT',
+  CONSTRAINT: 'CONSTRAINT',
+  INSIGHT: 'INSIGHT',
+  WARNING: 'WARNING',
+  RISK: 'RISK',
+  OPPORTUNITY: 'OPPORTUNITY',
+} as const;
+
+export type ImportantPointCategory =
+  (typeof ImportantPointCategory)[keyof typeof ImportantPointCategory];
+
+export const GuardrailRuleType = {
+  NDA: 'NDA',
+  LEGAL: 'LEGAL',
+  TERMINOLOGY: 'TERMINOLOGY',
+  INTERNAL: 'INTERNAL',
+  CUSTOM: 'CUSTOM',
+} as const;
+
+export type GuardrailRuleType = (typeof GuardrailRuleType)[keyof typeof GuardrailRuleType];
+
+export const GuardrailSeverity = {
+  INFO: 'INFO',
+  WARNING: 'WARNING',
+  BLOCK: 'BLOCK',
+} as const;
+
+export type GuardrailSeverity = (typeof GuardrailSeverity)[keyof typeof GuardrailSeverity];
+
+export const GuardrailSourceType = {
+  DECISION: 'DECISION',
+  IMPORTANT_POINT: 'IMPORTANT_POINT',
+  MANUAL: 'MANUAL',
+} as const;
+
+export type GuardrailSourceType = (typeof GuardrailSourceType)[keyof typeof GuardrailSourceType];
+
+export const DocumentType = {
+  NOTE: 'NOTE',
+  CONTRACT: 'CONTRACT',
+  PROPOSAL: 'PROPOSAL',
+  SOW: 'SOW',
+  BRIEF: 'BRIEF',
+  TEMPLATE: 'TEMPLATE',
+  OTHER: 'OTHER',
+} as const;
+
+export type DocumentType = (typeof DocumentType)[keyof typeof DocumentType];
+
+export const DocumentStatus = {
+  DRAFT: 'DRAFT',
+  ACTIVE: 'ACTIVE',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export type DocumentStatus = (typeof DocumentStatus)[keyof typeof DocumentStatus];
+
+export const ReminderStatus = {
+  PENDING: 'PENDING',
+  TRIGGERED: 'TRIGGERED',
+  DISMISSED: 'DISMISSED',
+  SNOOZED: 'SNOOZED',
+} as const;
+
+export type ReminderStatus = (typeof ReminderStatus)[keyof typeof ReminderStatus];
+
+export const ReminderEntityType = {
+  TASK: 'TASK',
+  MEETING: 'MEETING',
+  DECISION: 'DECISION',
+  OPEN_QUESTION: 'OPEN_QUESTION',
+} as const;
+
+export type ReminderEntityType = (typeof ReminderEntityType)[keyof typeof ReminderEntityType];
