@@ -8,44 +8,135 @@ datasource db {
   provider = "postgresql"
 }
 
+// CORE IDENTITY
+
 model Org {
   id        String   @id @default(uuid())
   name      String
+  slug      String   @unique
+  settings  Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users     User[]
-  meetings  Meeting[]
-  tasks     Task[]
-  decisions Decision[]
+  users           User[]
+  clients         Client[]
+  policyGuardrails PolicyGuardrail[]
 
   @@map("orgs")
 }
 
-model User {
-  id            String    @id @default(uuid())
-  name          String
-  email         String    @unique
-  emailVerified Boolean
-  image         String?   @default("https://www.catstalkers.com/_next/static/media/bg-footer.1b0868cc.png")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
- 
-  role          UserRole  @default(MEMBER)
+model Client {
+  id          String       @id @default(uuid())
+  orgId       String
+  org         Org          @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String?
+  status      ClientStatus @default(ACTIVE)
+  industry    String?
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
-  orgId String
-  org   Org    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  members         ClientMember[]
+  meetings        Meeting[]
+  decisions       Decision[]
+  tasks           Task[]
+  openQuestions   OpenQuestion[]
+  importantPoints ImportantPoint[]
+  documents       Document[]
+  reminders       Reminder[]
+  policyGuardrails PolicyGuardrail[]
+
+  @@unique([orgId, slug])
+  @@index([orgId])
+  @@index([status])
+  @@map("clients")
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+model User {
+  id            String   @id @default(uuid())
+  orgId         String
+  org           Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  role          UserRole @default(MEMBER)
+  timezone      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   sessions      Session[]
   accounts      Account[]
-  assignedTasks Task[]     @relation("TaskAssignee")
-  createdTasks  Task[]     @relation("TaskCreator")
-  decisions     Decision[] @relation("DecisionAuthor")
+
+  // Client assignments
+  clientMemberships ClientMember[]
+
+  // Meeting participation
+  meetingParticipations MeetingParticipant[]
+
+  // Task relations
+  assignedTasks Task[] @relation("TaskAssignee")
+  createdTasks  Task[] @relation("TaskCreator")
+
+  // Decision authorship
+  authoredDecisions Decision[] @relation("DecisionAuthor")
+
+  // Open questions
+  assignedQuestions OpenQuestion[] @relation("QuestionAssignee")
+
+  // Important points
+  spokenPoints ImportantPoint[] @relation("PointSpeaker")
+
+  // Documents
+  createdDocuments Document[] @relation("DocumentCreator")
+
+  // Reminders
+  reminders Reminder[]
+
+  // Policy guardrails
+  createdGuardrails PolicyGuardrail[] @relation("GuardrailCreator")
 
   @@index([orgId])
   @@index([email])
-  @@map("user")
+  @@map("users")
 }
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model ClientMember {
+  id         String           @id @default(uuid())
+  clientId   String
+  client     Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       ClientMemberRole @default(MEMBER)
+  assignedAt DateTime         @default(now())
+
+  @@unique([clientId, userId])
+  @@index([clientId])
+  @@index([userId])
+  @@map("client_members")
+}
+
+enum ClientMemberRole {
+  LEAD
+  MEMBER
+  OBSERVER
+}
+
+// AUTH (existing, minimal changes)
 
 model Session {
   id        String   @id
@@ -58,7 +149,7 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("session")
+  @@map("sessions")
 }
 
 model Account {
@@ -74,46 +165,49 @@ model Account {
   refreshTokenExpiresAt DateTime?
   scope                 String?
   password              String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  @@map("account")
+  @@map("accounts")
 }
 
 model Verification {
-  id         String   @id
+  id         String    @id
   identifier String
   value      String
   expiresAt  DateTime
   createdAt  DateTime? @default(now())
   updatedAt  DateTime? @updatedAt
 
-  @@map("verification")
+  @@map("verifications")
 }
 
-enum UserRole {
-  OWNER
-  MEMBER
-}
+// MEETING DOMAIN
 
 model Meeting {
-  id          String        @id @default(uuid())
-  title       String
-  description String?
-  status      MeetingStatus @default(SCHEDULED)
-  scheduledAt DateTime?
-  startedAt   DateTime?
-  endedAt     DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id            String        @id @default(uuid())
+  clientId      String
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  agenda        String?
+  status        MeetingStatus @default(SCHEDULED)
+  scheduledAt   DateTime?
+  startedAt     DateTime?
+  endedAt       DateTime?
+  calendarEventId String?
+  summary       String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  orgId String
-  org   Org    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  participants    MeetingParticipant[]
+  transcript      Transcript?
+  decisions       Decision[]
+  tasks           Task[]
+  openQuestions   OpenQuestion[]
+  importantPoints ImportantPoint[]
 
-  tasks     Task[]
-  decisions Decision[]
-
-  @@index([orgId])
+  @@index([clientId])
   @@index([status])
   @@index([scheduledAt])
   @@map("meetings")
@@ -123,64 +217,323 @@ enum MeetingStatus {
   SCHEDULED
   LIVE
   ENDED
+  CANCELLED
+}
+
+model MeetingParticipant {
+  id         String                 @id @default(uuid())
+  meetingId  String
+  meeting    Meeting                @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  externalName  String?
+  externalEmail String?
+  role       MeetingParticipantRole @default(PARTICIPANT)
+  attendedAt DateTime?
+
+  @@unique([meetingId, userId])
+  @@index([meetingId])
+  @@index([userId])
+  @@map("meeting_participants")
+}
+
+enum MeetingParticipantRole {
+  HOST
+  PARTICIPANT
+  OBSERVER
+}
+
+model Transcript {
+  id        String          @id @default(uuid())
+  meetingId String          @unique
+  meeting   Meeting         @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  content   String
+  format    TranscriptFormat @default(RAW)
+  duration  Int?
+  wordCount Int?
+  createdAt DateTime        @default(now())
+
+  @@index([meetingId])
+  @@map("transcripts")
+}
+
+enum TranscriptFormat {
+  RAW
+  NORMALIZED
+  STRUCTURED
+}
+
+// DECISIONS & TASKS
+
+model Decision {
+  id           String         @id @default(uuid())
+  decisionRef  String         @default(uuid())
+  version      Int            @default(1)
+  clientId     String
+  client       Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  meetingId    String?
+  meeting      Meeting?       @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  authorId     String?
+  author       User?          @relation("DecisionAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  title        String
+  content      String
+  rationale    String?
+  evidence     String?
+  status       DecisionStatus @default(ACTIVE)
+  tags         String[]
+  createdAt    DateTime       @default(now())
+
+  // Linked tasks
+  tasks Task[]
+
+  // Resolved questions
+  resolvedQuestions OpenQuestion[]
+
+  @@unique([decisionRef, version])
+  @@index([clientId])
+  @@index([decisionRef])
+  @@index([meetingId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("decisions")
+}
+
+enum DecisionStatus {
+  ACTIVE
+  SUPERSEDED
+  REVOKED
 }
 
 model Task {
   id          String     @id @default(uuid())
+  clientId    String
+  client      Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  meetingId   String?
+  meeting     Meeting?   @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  decisionId  String?
+  decision    Decision?  @relation(fields: [decisionId], references: [id], onDelete: SetNull)
+  assigneeId  String?
+  assignee    User?      @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  creatorId   String?
+  creator     User?      @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: SetNull)
   title       String
   description String?
   status      TaskStatus @default(OPEN)
+  priority    TaskPriority @default(MEDIUM)
   dueAt       DateTime?
+  completedAt DateTime?
+  externalRef String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  orgId String
-  org   Org    @relation(fields: [orgId], references: [id], onDelete: Cascade)
-
-  meetingId String?
-  meeting   Meeting? @relation(fields: [meetingId], references: [id], onDelete: SetNull)
-
-  assigneeId String?
-  assignee   User?   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-
-  creatorId String?
-  creator   User?   @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: SetNull)
-
-  @@index([orgId])
-  @@index([status])
-  @@index([assigneeId])
+  @@index([clientId])
   @@index([meetingId])
+  @@index([decisionId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueAt])
   @@map("tasks")
 }
 
 enum TaskStatus {
   OPEN
+  IN_PROGRESS
+  BLOCKED
   DONE
+  CANCELLED
 }
 
-model Decision {
-  id          String   @id @default(uuid())
-  decisionRef String   @default(uuid())
-  version     Int      @default(1)
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model OpenQuestion {
+  id                    String             @id @default(uuid())
+  clientId              String
+  client                Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  meetingId             String?
+  meeting               Meeting?           @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  assigneeId            String?
+  assignee              User?              @relation("QuestionAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  resolvedByDecisionId  String?
+  resolvedByDecision    Decision?          @relation(fields: [resolvedByDecisionId], references: [id], onDelete: SetNull)
+  question              String
+  context               String?
+  status                OpenQuestionStatus @default(OPEN)
+  dueAt                 DateTime?
+  createdAt             DateTime           @default(now())
+  resolvedAt            DateTime?
+
+  @@index([clientId])
+  @@index([meetingId])
+  @@index([status])
+  @@map("open_questions")
+}
+
+enum OpenQuestionStatus {
+  OPEN
+  RESOLVED
+  DEFERRED
+}
+
+model ImportantPoint {
+  id                 String                 @id @default(uuid())
+  clientId           String
+  client             Client                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  meetingId          String?
+  meeting            Meeting?               @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  speakerId          String?
+  speaker            User?                  @relation("PointSpeaker", fields: [speakerId], references: [id], onDelete: SetNull)
+  content            String
+  category           ImportantPointCategory @default(INSIGHT)
+  transcriptEvidence String?
+  createdAt          DateTime               @default(now())
+
+  @@index([clientId])
+  @@index([meetingId])
+  @@index([category])
+  @@map("important_points")
+}
+
+enum ImportantPointCategory {
+  COMMITMENT
+  CONSTRAINT
+  INSIGHT
+  WARNING
+  RISK
+  OPPORTUNITY
+}
+
+// POLICY GUARDRAILS
+
+model PolicyGuardrail {
+  id          String               @id @default(uuid())
+  orgId       String
+  org         Org                  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  clientId    String?
+  client      Client?              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdById String?
+  createdBy   User?                @relation("GuardrailCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  name        String
+  description String
+  ruleType    GuardrailRuleType
+  pattern     String?
+  keywords    String[]
+  severity    GuardrailSeverity    @default(WARNING)
+  isActive    Boolean              @default(true)
+  sourceType  GuardrailSourceType?
+  sourceId    String?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([orgId])
+  @@index([clientId])
+  @@index([ruleType])
+  @@index([isActive])
+  @@map("policy_guardrails")
+}
+
+enum GuardrailRuleType {
+  NDA
+  LEGAL
+  TERMINOLOGY
+  INTERNAL
+  CUSTOM
+}
+
+enum GuardrailSeverity {
+  INFO
+  WARNING
+  BLOCK
+}
+
+enum GuardrailSourceType {
+  DECISION
+  IMPORTANT_POINT
+  MANUAL
+}
+
+// DOCUMENTS
+
+model Document {
+  id          String         @id @default(uuid())
+  clientId    String
+  client      Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdById String?
+  createdBy   User?          @relation("DocumentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  parentId    String?
+  parent      Document?      @relation("DocumentHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Document[]     @relation("DocumentHierarchy")
+  type        DocumentType   @default(NOTE)
   title       String
   content     String
-  rationale   String?
-  evidence    String?
-  createdAt   DateTime @default(now())
+  mimeType    String?
+  fileUrl     String?
+  version     Int            @default(1)
+  status      DocumentStatus @default(DRAFT)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
-  orgId String
-  org   Org    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  @@index([clientId])
+  @@index([type])
+  @@index([status])
+  @@index([parentId])
+  @@map("documents")
+}
 
-  meetingId String?
-  meeting   Meeting? @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+enum DocumentType {
+  NOTE
+  CONTRACT
+  PROPOSAL
+  SOW
+  BRIEF
+  TEMPLATE
+  OTHER
+}
 
-  authorId String?
-  author   User?   @relation("DecisionAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+enum DocumentStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
 
-  @@unique([decisionRef, version])
-  @@index([orgId])
-  @@index([decisionRef])
-  @@index([meetingId])
-  @@index([createdAt])
-  @@map("decisions")
+// REMINDERS
+
+model Reminder {
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId         String?
+  client           Client?           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  dueAt            DateTime
+  status           ReminderStatus    @default(PENDING)
+  linkedEntityType ReminderEntityType?
+  linkedEntityId   String?
+  createdAt        DateTime          @default(now())
+
+  @@index([userId])
+  @@index([clientId])
+  @@index([status])
+  @@index([dueAt])
+  @@map("reminders")
+}
+
+enum ReminderStatus {
+  PENDING
+  TRIGGERED
+  DISMISSED
+  SNOOZED
+}
+
+enum ReminderEntityType {
+  TASK
+  MEETING
+  DECISION
+  OPEN_QUESTION
 }
