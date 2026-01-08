@@ -31,10 +31,10 @@ Larity operates in three hard-separated modes. **No data, logic, or permissions 
 **React App:**
 * Connects to **Elysia** via HTTP (REST).
 * Connects to **uWS** via persistent WebSocket.
-* **Loads:** User profile, Org context, Permissions, Upcoming meetings.
+* **Loads:** User profile, Org context, Assigned clients, Permissions, Upcoming meetings.
 
 **Data Sources:**
-* PostgreSQL (via Elysia).
+* PostgreSQL (via Elysia) — client-scoped queries.
 * Cached state (Redis).
 
 ---
@@ -45,7 +45,8 @@ Larity operates in three hard-separated modes. **No data, logic, or permissions 
 * **Trigger:** Meeting scheduled within threshold (e.g., T–15 min).
 * **Elysia Actions:**
     * **Fetch:** Calendar details (Google/Outlook), Participants, Agenda.
-    * **Pull Historical Context:** Previous meetings, Open decisions, Known risks, Deadlines, Relevant repos/PRs.
+    * **Resolve Client:** Map meeting to Client (tenant).
+    * **Pull Historical Context (client-scoped):** Previous meetings, Open decisions, Open questions, Important points, Tasks, Deadlines, PolicyGuardrails.
 
 ### 4. Pre-Meeting Intelligence
 * **Processing:**
@@ -132,11 +133,15 @@ Larity operates in three hard-separated modes. **No data, logic, or permissions 
 * **LLM Usage:** Larger models allowed. Full transcript allowed. **Evidence required.**
 
 ### 16. Memory & Knowledge Writes
-* **Storage:** PostgreSQL (authoritative).
-    * Versioned decision logs, Task tables, Risk registers.
-* **Embeddings:** `pgvector` (Only structured artifacts, not raw transcripts).
-* **Knowledge Graph:** Entities + relationships updated with full auditability.
-* *This becomes org memory.*
+* **Storage:** PostgreSQL (authoritative, client-scoped).
+    * Versioned decision logs (Decision)
+    * Task tables (Task)
+    * Open questions (OpenQuestion)
+    * Important points (ImportantPoint)
+    * Meeting summary (Meeting.summary field)
+* **Embeddings:** pgvector (Decisions, ImportantPoints, PolicyGuardrails).
+* **Scope:** All business data is client-scoped (tenant isolation).
+* *This becomes client memory, queryable across the org.*
 
 ---
 
@@ -150,9 +155,9 @@ Larity operates in three hard-separated modes. **No data, logic, or permissions 
 * **Determines:** Knowledge query, Task execution, Memory write request, Reminder, Calendar/Email/GitHub action.
 
 ### 19. Knowledge Queries
-* **Flow:** Vector search (`pgvector`) + Graph traversal + Permission filtering.
+* **Flow:** pgvector search (Decisions, ImportantPoints, Guardrails) + Permission filtering + Client scope.
 * **LLM:** Answers via Vercel AI SDK.
-* **Constraint:** Read-only unless explicitly changed.
+* **Constraint:** Read-only unless explicitly changed. Queries respect client boundaries.
 
 ### 20. Auto-Rememberence (Explicit Only)
 * **Trigger:** User says “Remember this”, “Save this”, or “Add this to memory”.
