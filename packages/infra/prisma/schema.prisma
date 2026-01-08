@@ -86,9 +86,6 @@ model User {
   assignedTasks Task[] @relation("TaskAssignee")
   createdTasks  Task[] @relation("TaskCreator")
 
-  // Decision authorship
-  authoredDecisions Decision[] @relation("DecisionAuthor")
-
   // Open questions
   assignedQuestions OpenQuestion[] @relation("QuestionAssignee")
 
@@ -273,8 +270,7 @@ model Decision {
   client       Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
   meetingId    String?
   meeting      Meeting?       @relation(fields: [meetingId], references: [id], onDelete: SetNull)
-  authorId     String?
-  author       User?          @relation("DecisionAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  // TODO v2: Add authorId field to track decision authorship
   title        String
   content      String
   rationale    String?

@@ -39,7 +39,6 @@ export type DecisionMinAggregateOutputType = {
   version: number | null;
   clientId: string | null;
   meetingId: string | null;
-  authorId: string | null;
   title: string | null;
   content: string | null;
   rationale: string | null;
@@ -54,7 +53,6 @@ export type DecisionMaxAggregateOutputType = {
   version: number | null;
   clientId: string | null;
   meetingId: string | null;
-  authorId: string | null;
   title: string | null;
   content: string | null;
   rationale: string | null;
@@ -69,7 +67,6 @@ export type DecisionCountAggregateOutputType = {
   version: number;
   clientId: number;
   meetingId: number;
-  authorId: number;
   title: number;
   content: number;
   rationale: number;
@@ -94,7 +91,6 @@ export type DecisionMinAggregateInputType = {
   version?: true;
   clientId?: true;
   meetingId?: true;
-  authorId?: true;
   title?: true;
   content?: true;
   rationale?: true;
@@ -109,7 +105,6 @@ export type DecisionMaxAggregateInputType = {
   version?: true;
   clientId?: true;
   meetingId?: true;
-  authorId?: true;
   title?: true;
   content?: true;
   rationale?: true;
@@ -124,7 +119,6 @@ export type DecisionCountAggregateInputType = {
   version?: true;
   clientId?: true;
   meetingId?: true;
-  authorId?: true;
   title?: true;
   content?: true;
   rationale?: true;
@@ -230,7 +224,6 @@ export type DecisionGroupByOutputType = {
   version: number;
   clientId: string;
   meetingId: string | null;
-  authorId: string | null;
   title: string;
   content: string;
   rationale: string | null;
@@ -266,7 +259,6 @@ export type DecisionWhereInput = {
   version?: Prisma.IntFilter<'Decision'> | number;
   clientId?: Prisma.StringFilter<'Decision'> | string;
   meetingId?: Prisma.StringNullableFilter<'Decision'> | string | null;
-  authorId?: Prisma.StringNullableFilter<'Decision'> | string | null;
   title?: Prisma.StringFilter<'Decision'> | string;
   content?: Prisma.StringFilter<'Decision'> | string;
   rationale?: Prisma.StringNullableFilter<'Decision'> | string | null;
@@ -276,7 +268,6 @@ export type DecisionWhereInput = {
   createdAt?: Prisma.DateTimeFilter<'Decision'> | Date | string;
   client?: Prisma.XOR<Prisma.ClientScalarRelationFilter, Prisma.ClientWhereInput>;
   meeting?: Prisma.XOR<Prisma.MeetingNullableScalarRelationFilter, Prisma.MeetingWhereInput> | null;
-  author?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null;
   tasks?: Prisma.TaskListRelationFilter;
   resolvedQuestions?: Prisma.OpenQuestionListRelationFilter;
 };
@@ -287,7 +278,6 @@ export type DecisionOrderByWithRelationInput = {
   version?: Prisma.SortOrder;
   clientId?: Prisma.SortOrder;
   meetingId?: Prisma.SortOrderInput | Prisma.SortOrder;
-  authorId?: Prisma.SortOrderInput | Prisma.SortOrder;
   title?: Prisma.SortOrder;
   content?: Prisma.SortOrder;
   rationale?: Prisma.SortOrderInput | Prisma.SortOrder;
@@ -297,7 +287,6 @@ export type DecisionOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder;
   client?: Prisma.ClientOrderByWithRelationInput;
   meeting?: Prisma.MeetingOrderByWithRelationInput;
-  author?: Prisma.UserOrderByWithRelationInput;
   tasks?: Prisma.TaskOrderByRelationAggregateInput;
   resolvedQuestions?: Prisma.OpenQuestionOrderByRelationAggregateInput;
 };
@@ -313,7 +302,6 @@ export type DecisionWhereUniqueInput = Prisma.AtLeast<
     version?: Prisma.IntFilter<'Decision'> | number;
     clientId?: Prisma.StringFilter<'Decision'> | string;
     meetingId?: Prisma.StringNullableFilter<'Decision'> | string | null;
-    authorId?: Prisma.StringNullableFilter<'Decision'> | string | null;
     title?: Prisma.StringFilter<'Decision'> | string;
     content?: Prisma.StringFilter<'Decision'> | string;
     rationale?: Prisma.StringNullableFilter<'Decision'> | string | null;
@@ -326,7 +314,6 @@ export type DecisionWhereUniqueInput = Prisma.AtLeast<
       Prisma.MeetingNullableScalarRelationFilter,
       Prisma.MeetingWhereInput
     > | null;
-    author?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null;
     tasks?: Prisma.TaskListRelationFilter;
     resolvedQuestions?: Prisma.OpenQuestionListRelationFilter;
   },
@@ -339,7 +326,6 @@ export type DecisionOrderByWithAggregationInput = {
   version?: Prisma.SortOrder;
   clientId?: Prisma.SortOrder;
   meetingId?: Prisma.SortOrderInput | Prisma.SortOrder;
-  authorId?: Prisma.SortOrderInput | Prisma.SortOrder;
   title?: Prisma.SortOrder;
   content?: Prisma.SortOrder;
   rationale?: Prisma.SortOrderInput | Prisma.SortOrder;
@@ -367,7 +353,6 @@ export type DecisionScalarWhereWithAggregatesInput = {
   version?: Prisma.IntWithAggregatesFilter<'Decision'> | number;
   clientId?: Prisma.StringWithAggregatesFilter<'Decision'> | string;
   meetingId?: Prisma.StringNullableWithAggregatesFilter<'Decision'> | string | null;
-  authorId?: Prisma.StringNullableWithAggregatesFilter<'Decision'> | string | null;
   title?: Prisma.StringWithAggregatesFilter<'Decision'> | string;
   content?: Prisma.StringWithAggregatesFilter<'Decision'> | string;
   rationale?: Prisma.StringNullableWithAggregatesFilter<'Decision'> | string | null;
@@ -390,7 +375,6 @@ export type DecisionCreateInput = {
   createdAt?: Date | string;
   client: Prisma.ClientCreateNestedOneWithoutDecisionsInput;
   meeting?: Prisma.MeetingCreateNestedOneWithoutDecisionsInput;
-  author?: Prisma.UserCreateNestedOneWithoutAuthoredDecisionsInput;
   tasks?: Prisma.TaskCreateNestedManyWithoutDecisionInput;
   resolvedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutResolvedByDecisionInput;
 };
@@ -401,7 +385,6 @@ export type DecisionUncheckedCreateInput = {
   version?: number;
   clientId: string;
   meetingId?: string | null;
-  authorId?: string | null;
   title: string;
   content: string;
   rationale?: string | null;
@@ -426,7 +409,6 @@ export type DecisionUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   client?: Prisma.ClientUpdateOneRequiredWithoutDecisionsNestedInput;
   meeting?: Prisma.MeetingUpdateOneWithoutDecisionsNestedInput;
-  author?: Prisma.UserUpdateOneWithoutAuthoredDecisionsNestedInput;
   tasks?: Prisma.TaskUpdateManyWithoutDecisionNestedInput;
   resolvedQuestions?: Prisma.OpenQuestionUpdateManyWithoutResolvedByDecisionNestedInput;
 };
@@ -437,7 +419,6 @@ export type DecisionUncheckedUpdateInput = {
   version?: Prisma.IntFieldUpdateOperationsInput | number;
   clientId?: Prisma.StringFieldUpdateOperationsInput | string;
   meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   content?: Prisma.StringFieldUpdateOperationsInput | string;
   rationale?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
@@ -455,7 +436,6 @@ export type DecisionCreateManyInput = {
   version?: number;
   clientId: string;
   meetingId?: string | null;
-  authorId?: string | null;
   title: string;
   content: string;
   rationale?: string | null;
@@ -484,7 +464,6 @@ export type DecisionUncheckedUpdateManyInput = {
   version?: Prisma.IntFieldUpdateOperationsInput | number;
   clientId?: Prisma.StringFieldUpdateOperationsInput | string;
   meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   content?: Prisma.StringFieldUpdateOperationsInput | string;
   rationale?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
@@ -523,7 +502,6 @@ export type DecisionCountOrderByAggregateInput = {
   version?: Prisma.SortOrder;
   clientId?: Prisma.SortOrder;
   meetingId?: Prisma.SortOrder;
-  authorId?: Prisma.SortOrder;
   title?: Prisma.SortOrder;
   content?: Prisma.SortOrder;
   rationale?: Prisma.SortOrder;
@@ -543,7 +521,6 @@ export type DecisionMaxOrderByAggregateInput = {
   version?: Prisma.SortOrder;
   clientId?: Prisma.SortOrder;
   meetingId?: Prisma.SortOrder;
-  authorId?: Prisma.SortOrder;
   title?: Prisma.SortOrder;
   content?: Prisma.SortOrder;
   rationale?: Prisma.SortOrder;
@@ -558,7 +535,6 @@ export type DecisionMinOrderByAggregateInput = {
   version?: Prisma.SortOrder;
   clientId?: Prisma.SortOrder;
   meetingId?: Prisma.SortOrder;
-  authorId?: Prisma.SortOrder;
   title?: Prisma.SortOrder;
   content?: Prisma.SortOrder;
   rationale?: Prisma.SortOrder;
@@ -659,92 +635,6 @@ export type DecisionUncheckedUpdateManyWithoutClientNestedInput = {
   updateMany?:
     | Prisma.DecisionUpdateManyWithWhereWithoutClientInput
     | Prisma.DecisionUpdateManyWithWhereWithoutClientInput[];
-  deleteMany?: Prisma.DecisionScalarWhereInput | Prisma.DecisionScalarWhereInput[];
-};
-
-export type DecisionCreateNestedManyWithoutAuthorInput = {
-  create?:
-    | Prisma.XOR<
-        Prisma.DecisionCreateWithoutAuthorInput,
-        Prisma.DecisionUncheckedCreateWithoutAuthorInput
-      >
-    | Prisma.DecisionCreateWithoutAuthorInput[]
-    | Prisma.DecisionUncheckedCreateWithoutAuthorInput[];
-  connectOrCreate?:
-    | Prisma.DecisionCreateOrConnectWithoutAuthorInput
-    | Prisma.DecisionCreateOrConnectWithoutAuthorInput[];
-  createMany?: Prisma.DecisionCreateManyAuthorInputEnvelope;
-  connect?: Prisma.DecisionWhereUniqueInput | Prisma.DecisionWhereUniqueInput[];
-};
-
-export type DecisionUncheckedCreateNestedManyWithoutAuthorInput = {
-  create?:
-    | Prisma.XOR<
-        Prisma.DecisionCreateWithoutAuthorInput,
-        Prisma.DecisionUncheckedCreateWithoutAuthorInput
-      >
-    | Prisma.DecisionCreateWithoutAuthorInput[]
-    | Prisma.DecisionUncheckedCreateWithoutAuthorInput[];
-  connectOrCreate?:
-    | Prisma.DecisionCreateOrConnectWithoutAuthorInput
-    | Prisma.DecisionCreateOrConnectWithoutAuthorInput[];
-  createMany?: Prisma.DecisionCreateManyAuthorInputEnvelope;
-  connect?: Prisma.DecisionWhereUniqueInput | Prisma.DecisionWhereUniqueInput[];
-};
-
-export type DecisionUpdateManyWithoutAuthorNestedInput = {
-  create?:
-    | Prisma.XOR<
-        Prisma.DecisionCreateWithoutAuthorInput,
-        Prisma.DecisionUncheckedCreateWithoutAuthorInput
-      >
-    | Prisma.DecisionCreateWithoutAuthorInput[]
-    | Prisma.DecisionUncheckedCreateWithoutAuthorInput[];
-  connectOrCreate?:
-    | Prisma.DecisionCreateOrConnectWithoutAuthorInput
-    | Prisma.DecisionCreateOrConnectWithoutAuthorInput[];
-  upsert?:
-    | Prisma.DecisionUpsertWithWhereUniqueWithoutAuthorInput
-    | Prisma.DecisionUpsertWithWhereUniqueWithoutAuthorInput[];
-  createMany?: Prisma.DecisionCreateManyAuthorInputEnvelope;
-  set?: Prisma.DecisionWhereUniqueInput | Prisma.DecisionWhereUniqueInput[];
-  disconnect?: Prisma.DecisionWhereUniqueInput | Prisma.DecisionWhereUniqueInput[];
-  delete?: Prisma.DecisionWhereUniqueInput | Prisma.DecisionWhereUniqueInput[];
-  connect?: Prisma.DecisionWhereUniqueInput | Prisma.DecisionWhereUniqueInput[];
-  update?:
-    | Prisma.DecisionUpdateWithWhereUniqueWithoutAuthorInput
-    | Prisma.DecisionUpdateWithWhereUniqueWithoutAuthorInput[];
-  updateMany?:
-    | Prisma.DecisionUpdateManyWithWhereWithoutAuthorInput
-    | Prisma.DecisionUpdateManyWithWhereWithoutAuthorInput[];
-  deleteMany?: Prisma.DecisionScalarWhereInput | Prisma.DecisionScalarWhereInput[];
-};
-
-export type DecisionUncheckedUpdateManyWithoutAuthorNestedInput = {
-  create?:
-    | Prisma.XOR<
-        Prisma.DecisionCreateWithoutAuthorInput,
-        Prisma.DecisionUncheckedCreateWithoutAuthorInput
-      >
-    | Prisma.DecisionCreateWithoutAuthorInput[]
-    | Prisma.DecisionUncheckedCreateWithoutAuthorInput[];
-  connectOrCreate?:
-    | Prisma.DecisionCreateOrConnectWithoutAuthorInput
-    | Prisma.DecisionCreateOrConnectWithoutAuthorInput[];
-  upsert?:
-    | Prisma.DecisionUpsertWithWhereUniqueWithoutAuthorInput
-    | Prisma.DecisionUpsertWithWhereUniqueWithoutAuthorInput[];
-  createMany?: Prisma.DecisionCreateManyAuthorInputEnvelope;
-  set?: Prisma.DecisionWhereUniqueInput | Prisma.DecisionWhereUniqueInput[];
-  disconnect?: Prisma.DecisionWhereUniqueInput | Prisma.DecisionWhereUniqueInput[];
-  delete?: Prisma.DecisionWhereUniqueInput | Prisma.DecisionWhereUniqueInput[];
-  connect?: Prisma.DecisionWhereUniqueInput | Prisma.DecisionWhereUniqueInput[];
-  update?:
-    | Prisma.DecisionUpdateWithWhereUniqueWithoutAuthorInput
-    | Prisma.DecisionUpdateWithWhereUniqueWithoutAuthorInput[];
-  updateMany?:
-    | Prisma.DecisionUpdateManyWithWhereWithoutAuthorInput
-    | Prisma.DecisionUpdateManyWithWhereWithoutAuthorInput[];
   deleteMany?: Prisma.DecisionScalarWhereInput | Prisma.DecisionScalarWhereInput[];
 };
 
@@ -923,7 +813,6 @@ export type DecisionCreateWithoutClientInput = {
   tags?: Prisma.DecisionCreatetagsInput | string[];
   createdAt?: Date | string;
   meeting?: Prisma.MeetingCreateNestedOneWithoutDecisionsInput;
-  author?: Prisma.UserCreateNestedOneWithoutAuthoredDecisionsInput;
   tasks?: Prisma.TaskCreateNestedManyWithoutDecisionInput;
   resolvedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutResolvedByDecisionInput;
 };
@@ -933,7 +822,6 @@ export type DecisionUncheckedCreateWithoutClientInput = {
   decisionRef?: string;
   version?: number;
   meetingId?: string | null;
-  authorId?: string | null;
   title: string;
   content: string;
   rationale?: string | null;
@@ -995,7 +883,6 @@ export type DecisionScalarWhereInput = {
   version?: Prisma.IntFilter<'Decision'> | number;
   clientId?: Prisma.StringFilter<'Decision'> | string;
   meetingId?: Prisma.StringNullableFilter<'Decision'> | string | null;
-  authorId?: Prisma.StringNullableFilter<'Decision'> | string | null;
   title?: Prisma.StringFilter<'Decision'> | string;
   content?: Prisma.StringFilter<'Decision'> | string;
   rationale?: Prisma.StringNullableFilter<'Decision'> | string | null;
@@ -1003,81 +890,6 @@ export type DecisionScalarWhereInput = {
   status?: Prisma.EnumDecisionStatusFilter<'Decision'> | $Enums.DecisionStatus;
   tags?: Prisma.StringNullableListFilter<'Decision'>;
   createdAt?: Prisma.DateTimeFilter<'Decision'> | Date | string;
-};
-
-export type DecisionCreateWithoutAuthorInput = {
-  id?: string;
-  decisionRef?: string;
-  version?: number;
-  title: string;
-  content: string;
-  rationale?: string | null;
-  evidence?: string | null;
-  status?: $Enums.DecisionStatus;
-  tags?: Prisma.DecisionCreatetagsInput | string[];
-  createdAt?: Date | string;
-  client: Prisma.ClientCreateNestedOneWithoutDecisionsInput;
-  meeting?: Prisma.MeetingCreateNestedOneWithoutDecisionsInput;
-  tasks?: Prisma.TaskCreateNestedManyWithoutDecisionInput;
-  resolvedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutResolvedByDecisionInput;
-};
-
-export type DecisionUncheckedCreateWithoutAuthorInput = {
-  id?: string;
-  decisionRef?: string;
-  version?: number;
-  clientId: string;
-  meetingId?: string | null;
-  title: string;
-  content: string;
-  rationale?: string | null;
-  evidence?: string | null;
-  status?: $Enums.DecisionStatus;
-  tags?: Prisma.DecisionCreatetagsInput | string[];
-  createdAt?: Date | string;
-  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutDecisionInput;
-  resolvedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutResolvedByDecisionInput;
-};
-
-export type DecisionCreateOrConnectWithoutAuthorInput = {
-  where: Prisma.DecisionWhereUniqueInput;
-  create: Prisma.XOR<
-    Prisma.DecisionCreateWithoutAuthorInput,
-    Prisma.DecisionUncheckedCreateWithoutAuthorInput
-  >;
-};
-
-export type DecisionCreateManyAuthorInputEnvelope = {
-  data: Prisma.DecisionCreateManyAuthorInput | Prisma.DecisionCreateManyAuthorInput[];
-  skipDuplicates?: boolean;
-};
-
-export type DecisionUpsertWithWhereUniqueWithoutAuthorInput = {
-  where: Prisma.DecisionWhereUniqueInput;
-  update: Prisma.XOR<
-    Prisma.DecisionUpdateWithoutAuthorInput,
-    Prisma.DecisionUncheckedUpdateWithoutAuthorInput
-  >;
-  create: Prisma.XOR<
-    Prisma.DecisionCreateWithoutAuthorInput,
-    Prisma.DecisionUncheckedCreateWithoutAuthorInput
-  >;
-};
-
-export type DecisionUpdateWithWhereUniqueWithoutAuthorInput = {
-  where: Prisma.DecisionWhereUniqueInput;
-  data: Prisma.XOR<
-    Prisma.DecisionUpdateWithoutAuthorInput,
-    Prisma.DecisionUncheckedUpdateWithoutAuthorInput
-  >;
-};
-
-export type DecisionUpdateManyWithWhereWithoutAuthorInput = {
-  where: Prisma.DecisionScalarWhereInput;
-  data: Prisma.XOR<
-    Prisma.DecisionUpdateManyMutationInput,
-    Prisma.DecisionUncheckedUpdateManyWithoutAuthorInput
-  >;
 };
 
 export type DecisionCreateWithoutMeetingInput = {
@@ -1092,7 +904,6 @@ export type DecisionCreateWithoutMeetingInput = {
   tags?: Prisma.DecisionCreatetagsInput | string[];
   createdAt?: Date | string;
   client: Prisma.ClientCreateNestedOneWithoutDecisionsInput;
-  author?: Prisma.UserCreateNestedOneWithoutAuthoredDecisionsInput;
   tasks?: Prisma.TaskCreateNestedManyWithoutDecisionInput;
   resolvedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutResolvedByDecisionInput;
 };
@@ -1102,7 +913,6 @@ export type DecisionUncheckedCreateWithoutMeetingInput = {
   decisionRef?: string;
   version?: number;
   clientId: string;
-  authorId?: string | null;
   title: string;
   content: string;
   rationale?: string | null;
@@ -1168,7 +978,6 @@ export type DecisionCreateWithoutTasksInput = {
   createdAt?: Date | string;
   client: Prisma.ClientCreateNestedOneWithoutDecisionsInput;
   meeting?: Prisma.MeetingCreateNestedOneWithoutDecisionsInput;
-  author?: Prisma.UserCreateNestedOneWithoutAuthoredDecisionsInput;
   resolvedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutResolvedByDecisionInput;
 };
 
@@ -1178,7 +987,6 @@ export type DecisionUncheckedCreateWithoutTasksInput = {
   version?: number;
   clientId: string;
   meetingId?: string | null;
-  authorId?: string | null;
   title: string;
   content: string;
   rationale?: string | null;
@@ -1230,7 +1038,6 @@ export type DecisionUpdateWithoutTasksInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   client?: Prisma.ClientUpdateOneRequiredWithoutDecisionsNestedInput;
   meeting?: Prisma.MeetingUpdateOneWithoutDecisionsNestedInput;
-  author?: Prisma.UserUpdateOneWithoutAuthoredDecisionsNestedInput;
   resolvedQuestions?: Prisma.OpenQuestionUpdateManyWithoutResolvedByDecisionNestedInput;
 };
 
@@ -1240,7 +1047,6 @@ export type DecisionUncheckedUpdateWithoutTasksInput = {
   version?: Prisma.IntFieldUpdateOperationsInput | number;
   clientId?: Prisma.StringFieldUpdateOperationsInput | string;
   meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   content?: Prisma.StringFieldUpdateOperationsInput | string;
   rationale?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
@@ -1264,7 +1070,6 @@ export type DecisionCreateWithoutResolvedQuestionsInput = {
   createdAt?: Date | string;
   client: Prisma.ClientCreateNestedOneWithoutDecisionsInput;
   meeting?: Prisma.MeetingCreateNestedOneWithoutDecisionsInput;
-  author?: Prisma.UserCreateNestedOneWithoutAuthoredDecisionsInput;
   tasks?: Prisma.TaskCreateNestedManyWithoutDecisionInput;
 };
 
@@ -1274,7 +1079,6 @@ export type DecisionUncheckedCreateWithoutResolvedQuestionsInput = {
   version?: number;
   clientId: string;
   meetingId?: string | null;
-  authorId?: string | null;
   title: string;
   content: string;
   rationale?: string | null;
@@ -1326,7 +1130,6 @@ export type DecisionUpdateWithoutResolvedQuestionsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   client?: Prisma.ClientUpdateOneRequiredWithoutDecisionsNestedInput;
   meeting?: Prisma.MeetingUpdateOneWithoutDecisionsNestedInput;
-  author?: Prisma.UserUpdateOneWithoutAuthoredDecisionsNestedInput;
   tasks?: Prisma.TaskUpdateManyWithoutDecisionNestedInput;
 };
 
@@ -1336,7 +1139,6 @@ export type DecisionUncheckedUpdateWithoutResolvedQuestionsInput = {
   version?: Prisma.IntFieldUpdateOperationsInput | number;
   clientId?: Prisma.StringFieldUpdateOperationsInput | string;
   meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   content?: Prisma.StringFieldUpdateOperationsInput | string;
   rationale?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
@@ -1352,7 +1154,6 @@ export type DecisionCreateManyClientInput = {
   decisionRef?: string;
   version?: number;
   meetingId?: string | null;
-  authorId?: string | null;
   title: string;
   content: string;
   rationale?: string | null;
@@ -1374,7 +1175,6 @@ export type DecisionUpdateWithoutClientInput = {
   tags?: Prisma.DecisionUpdatetagsInput | string[];
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   meeting?: Prisma.MeetingUpdateOneWithoutDecisionsNestedInput;
-  author?: Prisma.UserUpdateOneWithoutAuthoredDecisionsNestedInput;
   tasks?: Prisma.TaskUpdateManyWithoutDecisionNestedInput;
   resolvedQuestions?: Prisma.OpenQuestionUpdateManyWithoutResolvedByDecisionNestedInput;
 };
@@ -1384,7 +1184,6 @@ export type DecisionUncheckedUpdateWithoutClientInput = {
   decisionRef?: Prisma.StringFieldUpdateOperationsInput | string;
   version?: Prisma.IntFieldUpdateOperationsInput | number;
   meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   content?: Prisma.StringFieldUpdateOperationsInput | string;
   rationale?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
@@ -1401,71 +1200,6 @@ export type DecisionUncheckedUpdateManyWithoutClientInput = {
   decisionRef?: Prisma.StringFieldUpdateOperationsInput | string;
   version?: Prisma.IntFieldUpdateOperationsInput | number;
   meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  title?: Prisma.StringFieldUpdateOperationsInput | string;
-  content?: Prisma.StringFieldUpdateOperationsInput | string;
-  rationale?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  evidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  status?: Prisma.EnumDecisionStatusFieldUpdateOperationsInput | $Enums.DecisionStatus;
-  tags?: Prisma.DecisionUpdatetagsInput | string[];
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-};
-
-export type DecisionCreateManyAuthorInput = {
-  id?: string;
-  decisionRef?: string;
-  version?: number;
-  clientId: string;
-  meetingId?: string | null;
-  title: string;
-  content: string;
-  rationale?: string | null;
-  evidence?: string | null;
-  status?: $Enums.DecisionStatus;
-  tags?: Prisma.DecisionCreatetagsInput | string[];
-  createdAt?: Date | string;
-};
-
-export type DecisionUpdateWithoutAuthorInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string;
-  decisionRef?: Prisma.StringFieldUpdateOperationsInput | string;
-  version?: Prisma.IntFieldUpdateOperationsInput | number;
-  title?: Prisma.StringFieldUpdateOperationsInput | string;
-  content?: Prisma.StringFieldUpdateOperationsInput | string;
-  rationale?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  evidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  status?: Prisma.EnumDecisionStatusFieldUpdateOperationsInput | $Enums.DecisionStatus;
-  tags?: Prisma.DecisionUpdatetagsInput | string[];
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  client?: Prisma.ClientUpdateOneRequiredWithoutDecisionsNestedInput;
-  meeting?: Prisma.MeetingUpdateOneWithoutDecisionsNestedInput;
-  tasks?: Prisma.TaskUpdateManyWithoutDecisionNestedInput;
-  resolvedQuestions?: Prisma.OpenQuestionUpdateManyWithoutResolvedByDecisionNestedInput;
-};
-
-export type DecisionUncheckedUpdateWithoutAuthorInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string;
-  decisionRef?: Prisma.StringFieldUpdateOperationsInput | string;
-  version?: Prisma.IntFieldUpdateOperationsInput | number;
-  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
-  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  title?: Prisma.StringFieldUpdateOperationsInput | string;
-  content?: Prisma.StringFieldUpdateOperationsInput | string;
-  rationale?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  evidence?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  status?: Prisma.EnumDecisionStatusFieldUpdateOperationsInput | $Enums.DecisionStatus;
-  tags?: Prisma.DecisionUpdatetagsInput | string[];
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  tasks?: Prisma.TaskUncheckedUpdateManyWithoutDecisionNestedInput;
-  resolvedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutResolvedByDecisionNestedInput;
-};
-
-export type DecisionUncheckedUpdateManyWithoutAuthorInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string;
-  decisionRef?: Prisma.StringFieldUpdateOperationsInput | string;
-  version?: Prisma.IntFieldUpdateOperationsInput | number;
-  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
-  meetingId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   content?: Prisma.StringFieldUpdateOperationsInput | string;
   rationale?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
@@ -1480,7 +1214,6 @@ export type DecisionCreateManyMeetingInput = {
   decisionRef?: string;
   version?: number;
   clientId: string;
-  authorId?: string | null;
   title: string;
   content: string;
   rationale?: string | null;
@@ -1502,7 +1235,6 @@ export type DecisionUpdateWithoutMeetingInput = {
   tags?: Prisma.DecisionUpdatetagsInput | string[];
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   client?: Prisma.ClientUpdateOneRequiredWithoutDecisionsNestedInput;
-  author?: Prisma.UserUpdateOneWithoutAuthoredDecisionsNestedInput;
   tasks?: Prisma.TaskUpdateManyWithoutDecisionNestedInput;
   resolvedQuestions?: Prisma.OpenQuestionUpdateManyWithoutResolvedByDecisionNestedInput;
 };
@@ -1512,7 +1244,6 @@ export type DecisionUncheckedUpdateWithoutMeetingInput = {
   decisionRef?: Prisma.StringFieldUpdateOperationsInput | string;
   version?: Prisma.IntFieldUpdateOperationsInput | number;
   clientId?: Prisma.StringFieldUpdateOperationsInput | string;
-  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   content?: Prisma.StringFieldUpdateOperationsInput | string;
   rationale?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
@@ -1529,7 +1260,6 @@ export type DecisionUncheckedUpdateManyWithoutMeetingInput = {
   decisionRef?: Prisma.StringFieldUpdateOperationsInput | string;
   version?: Prisma.IntFieldUpdateOperationsInput | number;
   clientId?: Prisma.StringFieldUpdateOperationsInput | string;
-  authorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   title?: Prisma.StringFieldUpdateOperationsInput | string;
   content?: Prisma.StringFieldUpdateOperationsInput | string;
   rationale?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
@@ -1594,7 +1324,6 @@ export type DecisionSelect<
     version?: boolean;
     clientId?: boolean;
     meetingId?: boolean;
-    authorId?: boolean;
     title?: boolean;
     content?: boolean;
     rationale?: boolean;
@@ -1604,7 +1333,6 @@ export type DecisionSelect<
     createdAt?: boolean;
     client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
     meeting?: boolean | Prisma.Decision$meetingArgs<ExtArgs>;
-    author?: boolean | Prisma.Decision$authorArgs<ExtArgs>;
     tasks?: boolean | Prisma.Decision$tasksArgs<ExtArgs>;
     resolvedQuestions?: boolean | Prisma.Decision$resolvedQuestionsArgs<ExtArgs>;
     _count?: boolean | Prisma.DecisionCountOutputTypeDefaultArgs<ExtArgs>;
@@ -1621,7 +1349,6 @@ export type DecisionSelectCreateManyAndReturn<
     version?: boolean;
     clientId?: boolean;
     meetingId?: boolean;
-    authorId?: boolean;
     title?: boolean;
     content?: boolean;
     rationale?: boolean;
@@ -1631,7 +1358,6 @@ export type DecisionSelectCreateManyAndReturn<
     createdAt?: boolean;
     client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
     meeting?: boolean | Prisma.Decision$meetingArgs<ExtArgs>;
-    author?: boolean | Prisma.Decision$authorArgs<ExtArgs>;
   },
   ExtArgs['result']['decision']
 >;
@@ -1645,7 +1371,6 @@ export type DecisionSelectUpdateManyAndReturn<
     version?: boolean;
     clientId?: boolean;
     meetingId?: boolean;
-    authorId?: boolean;
     title?: boolean;
     content?: boolean;
     rationale?: boolean;
@@ -1655,7 +1380,6 @@ export type DecisionSelectUpdateManyAndReturn<
     createdAt?: boolean;
     client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
     meeting?: boolean | Prisma.Decision$meetingArgs<ExtArgs>;
-    author?: boolean | Prisma.Decision$authorArgs<ExtArgs>;
   },
   ExtArgs['result']['decision']
 >;
@@ -1666,7 +1390,6 @@ export type DecisionSelectScalar = {
   version?: boolean;
   clientId?: boolean;
   meetingId?: boolean;
-  authorId?: boolean;
   title?: boolean;
   content?: boolean;
   rationale?: boolean;
@@ -1684,7 +1407,6 @@ export type DecisionOmit<
   | 'version'
   | 'clientId'
   | 'meetingId'
-  | 'authorId'
   | 'title'
   | 'content'
   | 'rationale'
@@ -1699,7 +1421,6 @@ export type DecisionInclude<
 > = {
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
   meeting?: boolean | Prisma.Decision$meetingArgs<ExtArgs>;
-  author?: boolean | Prisma.Decision$authorArgs<ExtArgs>;
   tasks?: boolean | Prisma.Decision$tasksArgs<ExtArgs>;
   resolvedQuestions?: boolean | Prisma.Decision$resolvedQuestionsArgs<ExtArgs>;
   _count?: boolean | Prisma.DecisionCountOutputTypeDefaultArgs<ExtArgs>;
@@ -1709,14 +1430,12 @@ export type DecisionIncludeCreateManyAndReturn<
 > = {
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
   meeting?: boolean | Prisma.Decision$meetingArgs<ExtArgs>;
-  author?: boolean | Prisma.Decision$authorArgs<ExtArgs>;
 };
 export type DecisionIncludeUpdateManyAndReturn<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
   meeting?: boolean | Prisma.Decision$meetingArgs<ExtArgs>;
-  author?: boolean | Prisma.Decision$authorArgs<ExtArgs>;
 };
 
 export type $DecisionPayload<
@@ -1726,7 +1445,6 @@ export type $DecisionPayload<
   objects: {
     client: Prisma.$ClientPayload<ExtArgs>;
     meeting: Prisma.$MeetingPayload<ExtArgs> | null;
-    author: Prisma.$UserPayload<ExtArgs> | null;
     tasks: Prisma.$TaskPayload<ExtArgs>[];
     resolvedQuestions: Prisma.$OpenQuestionPayload<ExtArgs>[];
   };
@@ -1737,7 +1455,6 @@ export type $DecisionPayload<
       version: number;
       clientId: string;
       meetingId: string | null;
-      authorId: string | null;
       title: string;
       content: string;
       rationale: string | null;
@@ -2307,19 +2024,6 @@ export interface Prisma__DecisionClient<
     ExtArgs,
     GlobalOmitOptions
   >;
-  author<T extends Prisma.Decision$authorArgs<ExtArgs> = {}>(
-    args?: Prisma.Subset<T, Prisma.Decision$authorArgs<ExtArgs>>
-  ): Prisma.Prisma__UserClient<
-    runtime.Types.Result.GetResult<
-      Prisma.$UserPayload<ExtArgs>,
-      T,
-      'findUniqueOrThrow',
-      GlobalOmitOptions
-    > | null,
-    null,
-    ExtArgs,
-    GlobalOmitOptions
-  >;
   tasks<T extends Prisma.Decision$tasksArgs<ExtArgs> = {}>(
     args?: Prisma.Subset<T, Prisma.Decision$tasksArgs<ExtArgs>>
   ): Prisma.PrismaPromise<
@@ -2373,7 +2077,6 @@ export interface DecisionFieldRefs {
   readonly version: Prisma.FieldRef<'Decision', 'Int'>;
   readonly clientId: Prisma.FieldRef<'Decision', 'String'>;
   readonly meetingId: Prisma.FieldRef<'Decision', 'String'>;
-  readonly authorId: Prisma.FieldRef<'Decision', 'String'>;
   readonly title: Prisma.FieldRef<'Decision', 'String'>;
   readonly content: Prisma.FieldRef<'Decision', 'String'>;
   readonly rationale: Prisma.FieldRef<'Decision', 'String'>;
@@ -2822,27 +2525,6 @@ export type Decision$meetingArgs<
    */
   include?: Prisma.MeetingInclude<ExtArgs> | null;
   where?: Prisma.MeetingWhereInput;
-};
-
-/**
- * Decision.author
- */
-export type Decision$authorArgs<
-  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
-> = {
-  /**
-   * Select specific fields to fetch from the User
-   */
-  select?: Prisma.UserSelect<ExtArgs> | null;
-  /**
-   * Omit specific fields from the User
-   */
-  omit?: Prisma.UserOmit<ExtArgs> | null;
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.UserInclude<ExtArgs> | null;
-  where?: Prisma.UserWhereInput;
 };
 
 /**

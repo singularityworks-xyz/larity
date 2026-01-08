@@ -232,7 +232,6 @@ export const DecisionScalarFieldEnum = {
   version: 'version',
   clientId: 'clientId',
   meetingId: 'meetingId',
-  authorId: 'authorId',
   title: 'title',
   content: 'content',
   rationale: 'rationale',

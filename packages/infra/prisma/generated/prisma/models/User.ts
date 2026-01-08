@@ -225,7 +225,6 @@ export type UserWhereInput = {
   meetingParticipations?: Prisma.MeetingParticipantListRelationFilter;
   assignedTasks?: Prisma.TaskListRelationFilter;
   createdTasks?: Prisma.TaskListRelationFilter;
-  authoredDecisions?: Prisma.DecisionListRelationFilter;
   assignedQuestions?: Prisma.OpenQuestionListRelationFilter;
   spokenPoints?: Prisma.ImportantPointListRelationFilter;
   createdDocuments?: Prisma.DocumentListRelationFilter;
@@ -251,7 +250,6 @@ export type UserOrderByWithRelationInput = {
   meetingParticipations?: Prisma.MeetingParticipantOrderByRelationAggregateInput;
   assignedTasks?: Prisma.TaskOrderByRelationAggregateInput;
   createdTasks?: Prisma.TaskOrderByRelationAggregateInput;
-  authoredDecisions?: Prisma.DecisionOrderByRelationAggregateInput;
   assignedQuestions?: Prisma.OpenQuestionOrderByRelationAggregateInput;
   spokenPoints?: Prisma.ImportantPointOrderByRelationAggregateInput;
   createdDocuments?: Prisma.DocumentOrderByRelationAggregateInput;
@@ -281,7 +279,6 @@ export type UserWhereUniqueInput = Prisma.AtLeast<
     meetingParticipations?: Prisma.MeetingParticipantListRelationFilter;
     assignedTasks?: Prisma.TaskListRelationFilter;
     createdTasks?: Prisma.TaskListRelationFilter;
-    authoredDecisions?: Prisma.DecisionListRelationFilter;
     assignedQuestions?: Prisma.OpenQuestionListRelationFilter;
     spokenPoints?: Prisma.ImportantPointListRelationFilter;
     createdDocuments?: Prisma.DocumentListRelationFilter;
@@ -340,7 +337,6 @@ export type UserCreateInput = {
   meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
@@ -365,7 +361,6 @@ export type UserUncheckedCreateInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
@@ -390,7 +385,6 @@ export type UserUpdateInput = {
   meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
@@ -415,7 +409,6 @@ export type UserUncheckedUpdateInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
@@ -708,34 +701,6 @@ export type UserUpdateOneWithoutMeetingParticipationsNestedInput = {
   >;
 };
 
-export type UserCreateNestedOneWithoutAuthoredDecisionsInput = {
-  create?: Prisma.XOR<
-    Prisma.UserCreateWithoutAuthoredDecisionsInput,
-    Prisma.UserUncheckedCreateWithoutAuthoredDecisionsInput
-  >;
-  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAuthoredDecisionsInput;
-  connect?: Prisma.UserWhereUniqueInput;
-};
-
-export type UserUpdateOneWithoutAuthoredDecisionsNestedInput = {
-  create?: Prisma.XOR<
-    Prisma.UserCreateWithoutAuthoredDecisionsInput,
-    Prisma.UserUncheckedCreateWithoutAuthoredDecisionsInput
-  >;
-  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAuthoredDecisionsInput;
-  upsert?: Prisma.UserUpsertWithoutAuthoredDecisionsInput;
-  disconnect?: Prisma.UserWhereInput | boolean;
-  delete?: Prisma.UserWhereInput | boolean;
-  connect?: Prisma.UserWhereUniqueInput;
-  update?: Prisma.XOR<
-    Prisma.XOR<
-      Prisma.UserUpdateToOneWithWhereWithoutAuthoredDecisionsInput,
-      Prisma.UserUpdateWithoutAuthoredDecisionsInput
-    >,
-    Prisma.UserUncheckedUpdateWithoutAuthoredDecisionsInput
-  >;
-};
-
 export type UserCreateNestedOneWithoutAssignedTasksInput = {
   create?: Prisma.XOR<
     Prisma.UserCreateWithoutAssignedTasksInput,
@@ -946,7 +911,6 @@ export type UserCreateWithoutOrgInput = {
   meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
@@ -970,7 +934,6 @@ export type UserUncheckedCreateWithoutOrgInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
@@ -1039,7 +1002,6 @@ export type UserCreateWithoutClientMembershipsInput = {
   meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
@@ -1063,7 +1025,6 @@ export type UserUncheckedCreateWithoutClientMembershipsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
@@ -1115,7 +1076,6 @@ export type UserUpdateWithoutClientMembershipsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
@@ -1139,7 +1099,6 @@ export type UserUncheckedUpdateWithoutClientMembershipsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
@@ -1163,7 +1122,6 @@ export type UserCreateWithoutSessionsInput = {
   meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
@@ -1187,7 +1145,6 @@ export type UserUncheckedCreateWithoutSessionsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
@@ -1239,7 +1196,6 @@ export type UserUpdateWithoutSessionsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
@@ -1263,7 +1219,6 @@ export type UserUncheckedUpdateWithoutSessionsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
@@ -1287,7 +1242,6 @@ export type UserCreateWithoutAccountsInput = {
   meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
@@ -1311,7 +1265,6 @@ export type UserUncheckedCreateWithoutAccountsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
@@ -1363,7 +1316,6 @@ export type UserUpdateWithoutAccountsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
@@ -1387,7 +1339,6 @@ export type UserUncheckedUpdateWithoutAccountsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
@@ -1411,7 +1362,6 @@ export type UserCreateWithoutMeetingParticipationsInput = {
   clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
@@ -1435,7 +1385,6 @@ export type UserUncheckedCreateWithoutMeetingParticipationsInput = {
   clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
@@ -1487,7 +1436,6 @@ export type UserUpdateWithoutMeetingParticipationsInput = {
   clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
@@ -1509,131 +1457,6 @@ export type UserUncheckedUpdateWithoutMeetingParticipationsInput = {
   sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
   accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
   clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
-  assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
-  createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
-  assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
-  spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
-  createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
-  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
-  createdGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutCreatedByNestedInput;
-};
-
-export type UserCreateWithoutAuthoredDecisionsInput = {
-  id?: string;
-  name: string;
-  email: string;
-  emailVerified?: boolean;
-  image?: string | null;
-  role?: $Enums.UserRole;
-  timezone?: string | null;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
-  org?: Prisma.OrgCreateNestedOneWithoutUsersInput;
-  sessions?: Prisma.SessionCreateNestedManyWithoutUserInput;
-  accounts?: Prisma.AccountCreateNestedManyWithoutUserInput;
-  clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
-  meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
-  assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
-  createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
-  spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
-  createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
-  reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
-  createdGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutCreatedByInput;
-};
-
-export type UserUncheckedCreateWithoutAuthoredDecisionsInput = {
-  id?: string;
-  orgId?: string | null;
-  name: string;
-  email: string;
-  emailVerified?: boolean;
-  image?: string | null;
-  role?: $Enums.UserRole;
-  timezone?: string | null;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
-  sessions?: Prisma.SessionUncheckedCreateNestedManyWithoutUserInput;
-  accounts?: Prisma.AccountUncheckedCreateNestedManyWithoutUserInput;
-  clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
-  meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
-  assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
-  createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
-  spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
-  createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
-  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
-  createdGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutCreatedByInput;
-};
-
-export type UserCreateOrConnectWithoutAuthoredDecisionsInput = {
-  where: Prisma.UserWhereUniqueInput;
-  create: Prisma.XOR<
-    Prisma.UserCreateWithoutAuthoredDecisionsInput,
-    Prisma.UserUncheckedCreateWithoutAuthoredDecisionsInput
-  >;
-};
-
-export type UserUpsertWithoutAuthoredDecisionsInput = {
-  update: Prisma.XOR<
-    Prisma.UserUpdateWithoutAuthoredDecisionsInput,
-    Prisma.UserUncheckedUpdateWithoutAuthoredDecisionsInput
-  >;
-  create: Prisma.XOR<
-    Prisma.UserCreateWithoutAuthoredDecisionsInput,
-    Prisma.UserUncheckedCreateWithoutAuthoredDecisionsInput
-  >;
-  where?: Prisma.UserWhereInput;
-};
-
-export type UserUpdateToOneWithWhereWithoutAuthoredDecisionsInput = {
-  where?: Prisma.UserWhereInput;
-  data: Prisma.XOR<
-    Prisma.UserUpdateWithoutAuthoredDecisionsInput,
-    Prisma.UserUncheckedUpdateWithoutAuthoredDecisionsInput
-  >;
-};
-
-export type UserUpdateWithoutAuthoredDecisionsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string;
-  name?: Prisma.StringFieldUpdateOperationsInput | string;
-  email?: Prisma.StringFieldUpdateOperationsInput | string;
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
-  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  org?: Prisma.OrgUpdateOneWithoutUsersNestedInput;
-  sessions?: Prisma.SessionUpdateManyWithoutUserNestedInput;
-  accounts?: Prisma.AccountUpdateManyWithoutUserNestedInput;
-  clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
-  meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
-  assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
-  createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
-  spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
-  createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
-  reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
-  createdGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutCreatedByNestedInput;
-};
-
-export type UserUncheckedUpdateWithoutAuthoredDecisionsInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string;
-  orgId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  name?: Prisma.StringFieldUpdateOperationsInput | string;
-  email?: Prisma.StringFieldUpdateOperationsInput | string;
-  emailVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean;
-  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole;
-  timezone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  sessions?: Prisma.SessionUncheckedUpdateManyWithoutUserNestedInput;
-  accounts?: Prisma.AccountUncheckedUpdateManyWithoutUserNestedInput;
-  clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
-  meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
@@ -1659,7 +1482,6 @@ export type UserCreateWithoutAssignedTasksInput = {
   clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
   meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
@@ -1683,7 +1505,6 @@ export type UserUncheckedCreateWithoutAssignedTasksInput = {
   clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
   meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
@@ -1715,7 +1536,6 @@ export type UserCreateWithoutCreatedTasksInput = {
   clientMemberships?: Prisma.ClientMemberCreateNestedManyWithoutUserInput;
   meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
-  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
@@ -1739,7 +1559,6 @@ export type UserUncheckedCreateWithoutCreatedTasksInput = {
   clientMemberships?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutUserInput;
   meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
-  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
@@ -1791,7 +1610,6 @@ export type UserUpdateWithoutAssignedTasksInput = {
   clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
   meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
@@ -1815,7 +1633,6 @@ export type UserUncheckedUpdateWithoutAssignedTasksInput = {
   clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
   meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
@@ -1859,7 +1676,6 @@ export type UserUpdateWithoutCreatedTasksInput = {
   clientMemberships?: Prisma.ClientMemberUpdateManyWithoutUserNestedInput;
   meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
-  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
@@ -1883,7 +1699,6 @@ export type UserUncheckedUpdateWithoutCreatedTasksInput = {
   clientMemberships?: Prisma.ClientMemberUncheckedUpdateManyWithoutUserNestedInput;
   meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
-  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
@@ -1908,7 +1723,6 @@ export type UserCreateWithoutAssignedQuestionsInput = {
   meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
   spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
   reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
@@ -1932,7 +1746,6 @@ export type UserUncheckedCreateWithoutAssignedQuestionsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
   spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
   reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
@@ -1984,7 +1797,6 @@ export type UserUpdateWithoutAssignedQuestionsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
   spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
   reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
@@ -2008,7 +1820,6 @@ export type UserUncheckedUpdateWithoutAssignedQuestionsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
   spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
   reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
@@ -2032,7 +1843,6 @@ export type UserCreateWithoutSpokenPointsInput = {
   meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
   createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
   reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
@@ -2056,7 +1866,6 @@ export type UserUncheckedCreateWithoutSpokenPointsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
   createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
   reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
@@ -2108,7 +1917,6 @@ export type UserUpdateWithoutSpokenPointsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
   createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
   reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
@@ -2132,7 +1940,6 @@ export type UserUncheckedUpdateWithoutSpokenPointsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
   reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
@@ -2156,7 +1963,6 @@ export type UserCreateWithoutCreatedGuardrailsInput = {
   meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
@@ -2180,7 +1986,6 @@ export type UserUncheckedCreateWithoutCreatedGuardrailsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
@@ -2232,7 +2037,6 @@ export type UserUpdateWithoutCreatedGuardrailsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
@@ -2256,7 +2060,6 @@ export type UserUncheckedUpdateWithoutCreatedGuardrailsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
@@ -2280,7 +2083,6 @@ export type UserCreateWithoutCreatedDocumentsInput = {
   meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
   reminders?: Prisma.ReminderCreateNestedManyWithoutUserInput;
@@ -2304,7 +2106,6 @@ export type UserUncheckedCreateWithoutCreatedDocumentsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
   reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutUserInput;
@@ -2356,7 +2157,6 @@ export type UserUpdateWithoutCreatedDocumentsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
   reminders?: Prisma.ReminderUpdateManyWithoutUserNestedInput;
@@ -2380,7 +2180,6 @@ export type UserUncheckedUpdateWithoutCreatedDocumentsInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
   reminders?: Prisma.ReminderUncheckedUpdateManyWithoutUserNestedInput;
@@ -2404,7 +2203,6 @@ export type UserCreateWithoutRemindersInput = {
   meetingParticipations?: Prisma.MeetingParticipantCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentCreateNestedManyWithoutCreatedByInput;
@@ -2428,7 +2226,6 @@ export type UserUncheckedCreateWithoutRemindersInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutUserInput;
   assignedTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutAssigneeInput;
   createdTasks?: Prisma.TaskUncheckedCreateNestedManyWithoutCreatorInput;
-  authoredDecisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutAuthorInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutAssigneeInput;
   spokenPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutSpeakerInput;
   createdDocuments?: Prisma.DocumentUncheckedCreateNestedManyWithoutCreatedByInput;
@@ -2480,7 +2277,6 @@ export type UserUpdateWithoutRemindersInput = {
   meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
@@ -2504,7 +2300,6 @@ export type UserUncheckedUpdateWithoutRemindersInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
@@ -2539,7 +2334,6 @@ export type UserUpdateWithoutOrgInput = {
   meetingParticipations?: Prisma.MeetingParticipantUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUpdateManyWithoutCreatedByNestedInput;
@@ -2563,7 +2357,6 @@ export type UserUncheckedUpdateWithoutOrgInput = {
   meetingParticipations?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutUserNestedInput;
   assignedTasks?: Prisma.TaskUncheckedUpdateManyWithoutAssigneeNestedInput;
   createdTasks?: Prisma.TaskUncheckedUpdateManyWithoutCreatorNestedInput;
-  authoredDecisions?: Prisma.DecisionUncheckedUpdateManyWithoutAuthorNestedInput;
   assignedQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutAssigneeNestedInput;
   spokenPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutSpeakerNestedInput;
   createdDocuments?: Prisma.DocumentUncheckedUpdateManyWithoutCreatedByNestedInput;
@@ -2594,7 +2387,6 @@ export type UserCountOutputType = {
   meetingParticipations: number;
   assignedTasks: number;
   createdTasks: number;
-  authoredDecisions: number;
   assignedQuestions: number;
   spokenPoints: number;
   createdDocuments: number;
@@ -2611,7 +2403,6 @@ export type UserCountOutputTypeSelect<
   meetingParticipations?: boolean | UserCountOutputTypeCountMeetingParticipationsArgs;
   assignedTasks?: boolean | UserCountOutputTypeCountAssignedTasksArgs;
   createdTasks?: boolean | UserCountOutputTypeCountCreatedTasksArgs;
-  authoredDecisions?: boolean | UserCountOutputTypeCountAuthoredDecisionsArgs;
   assignedQuestions?: boolean | UserCountOutputTypeCountAssignedQuestionsArgs;
   spokenPoints?: boolean | UserCountOutputTypeCountSpokenPointsArgs;
   createdDocuments?: boolean | UserCountOutputTypeCountCreatedDocumentsArgs;
@@ -2688,15 +2479,6 @@ export type UserCountOutputTypeCountCreatedTasksArgs<
 /**
  * UserCountOutputType without action
  */
-export type UserCountOutputTypeCountAuthoredDecisionsArgs<
-  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
-> = {
-  where?: Prisma.DecisionWhereInput;
-};
-
-/**
- * UserCountOutputType without action
- */
 export type UserCountOutputTypeCountAssignedQuestionsArgs<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
@@ -2760,7 +2542,6 @@ export type UserSelect<
     meetingParticipations?: boolean | Prisma.User$meetingParticipationsArgs<ExtArgs>;
     assignedTasks?: boolean | Prisma.User$assignedTasksArgs<ExtArgs>;
     createdTasks?: boolean | Prisma.User$createdTasksArgs<ExtArgs>;
-    authoredDecisions?: boolean | Prisma.User$authoredDecisionsArgs<ExtArgs>;
     assignedQuestions?: boolean | Prisma.User$assignedQuestionsArgs<ExtArgs>;
     spokenPoints?: boolean | Prisma.User$spokenPointsArgs<ExtArgs>;
     createdDocuments?: boolean | Prisma.User$createdDocumentsArgs<ExtArgs>;
@@ -2847,7 +2628,6 @@ export type UserInclude<
   meetingParticipations?: boolean | Prisma.User$meetingParticipationsArgs<ExtArgs>;
   assignedTasks?: boolean | Prisma.User$assignedTasksArgs<ExtArgs>;
   createdTasks?: boolean | Prisma.User$createdTasksArgs<ExtArgs>;
-  authoredDecisions?: boolean | Prisma.User$authoredDecisionsArgs<ExtArgs>;
   assignedQuestions?: boolean | Prisma.User$assignedQuestionsArgs<ExtArgs>;
   spokenPoints?: boolean | Prisma.User$spokenPointsArgs<ExtArgs>;
   createdDocuments?: boolean | Prisma.User$createdDocumentsArgs<ExtArgs>;
@@ -2878,7 +2658,6 @@ export type $UserPayload<
     meetingParticipations: Prisma.$MeetingParticipantPayload<ExtArgs>[];
     assignedTasks: Prisma.$TaskPayload<ExtArgs>[];
     createdTasks: Prisma.$TaskPayload<ExtArgs>[];
-    authoredDecisions: Prisma.$DecisionPayload<ExtArgs>[];
     assignedQuestions: Prisma.$OpenQuestionPayload<ExtArgs>[];
     spokenPoints: Prisma.$ImportantPointPayload<ExtArgs>[];
     createdDocuments: Prisma.$DocumentPayload<ExtArgs>[];
@@ -3474,17 +3253,6 @@ export interface Prisma__UserClient<
     args?: Prisma.Subset<T, Prisma.User$createdTasksArgs<ExtArgs>>
   ): Prisma.PrismaPromise<
     | runtime.Types.Result.GetResult<Prisma.$TaskPayload<ExtArgs>, T, 'findMany', GlobalOmitOptions>
-    | Null
-  >;
-  authoredDecisions<T extends Prisma.User$authoredDecisionsArgs<ExtArgs> = {}>(
-    args?: Prisma.Subset<T, Prisma.User$authoredDecisionsArgs<ExtArgs>>
-  ): Prisma.PrismaPromise<
-    | runtime.Types.Result.GetResult<
-        Prisma.$DecisionPayload<ExtArgs>,
-        T,
-        'findMany',
-        GlobalOmitOptions
-      >
     | Null
   >;
   assignedQuestions<T extends Prisma.User$assignedQuestionsArgs<ExtArgs> = {}>(
@@ -4184,32 +3952,6 @@ export type User$createdTasksArgs<
   take?: number;
   skip?: number;
   distinct?: Prisma.TaskScalarFieldEnum | Prisma.TaskScalarFieldEnum[];
-};
-
-/**
- * User.authoredDecisions
- */
-export type User$authoredDecisionsArgs<
-  ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
-> = {
-  /**
-   * Select specific fields to fetch from the Decision
-   */
-  select?: Prisma.DecisionSelect<ExtArgs> | null;
-  /**
-   * Omit specific fields from the Decision
-   */
-  omit?: Prisma.DecisionOmit<ExtArgs> | null;
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.DecisionInclude<ExtArgs> | null;
-  where?: Prisma.DecisionWhereInput;
-  orderBy?: Prisma.DecisionOrderByWithRelationInput | Prisma.DecisionOrderByWithRelationInput[];
-  cursor?: Prisma.DecisionWhereUniqueInput;
-  take?: number;
-  skip?: number;
-  distinct?: Prisma.DecisionScalarFieldEnum | Prisma.DecisionScalarFieldEnum[];
 };
 
 /**
