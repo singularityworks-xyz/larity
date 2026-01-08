@@ -27,3 +27,16 @@ export const requireAuth = new Elysia({ name: 'require-auth' })
       };
     }
   });
+
+// Temporary stubs for testing without auth
+// export const authMiddleware = new Elysia({ name: 'auth-middleware' }).derive(
+//   { as: 'global' },
+//   async () => {
+//     return {
+//       session: null,
+//       user: null,
+//     };
+//   }
+// );
+
+// export const requireAuth = new Elysia({ name: 'require-auth' }).use(authMiddleware);
