@@ -26,50 +26,86 @@ export type AggregateClientMember = {
 export type ClientMemberMinAggregateOutputType = {
   id: string | null;
   clientId: string | null;
-  userId: string | null;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  title: string | null;
+  department: string | null;
+  notes: string | null;
   role: $Enums.ClientMemberRole | null;
-  assignedAt: Date | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 };
 
 export type ClientMemberMaxAggregateOutputType = {
   id: string | null;
   clientId: string | null;
-  userId: string | null;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  title: string | null;
+  department: string | null;
+  notes: string | null;
   role: $Enums.ClientMemberRole | null;
-  assignedAt: Date | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 };
 
 export type ClientMemberCountAggregateOutputType = {
   id: number;
   clientId: number;
-  userId: number;
+  name: number;
+  email: number;
+  phone: number;
+  title: number;
+  department: number;
+  notes: number;
   role: number;
-  assignedAt: number;
+  createdAt: number;
+  updatedAt: number;
   _all: number;
 };
 
 export type ClientMemberMinAggregateInputType = {
   id?: true;
   clientId?: true;
-  userId?: true;
+  name?: true;
+  email?: true;
+  phone?: true;
+  title?: true;
+  department?: true;
+  notes?: true;
   role?: true;
-  assignedAt?: true;
+  createdAt?: true;
+  updatedAt?: true;
 };
 
 export type ClientMemberMaxAggregateInputType = {
   id?: true;
   clientId?: true;
-  userId?: true;
+  name?: true;
+  email?: true;
+  phone?: true;
+  title?: true;
+  department?: true;
+  notes?: true;
   role?: true;
-  assignedAt?: true;
+  createdAt?: true;
+  updatedAt?: true;
 };
 
 export type ClientMemberCountAggregateInputType = {
   id?: true;
   clientId?: true;
-  userId?: true;
+  name?: true;
+  email?: true;
+  phone?: true;
+  title?: true;
+  department?: true;
+  notes?: true;
   role?: true;
-  assignedAt?: true;
+  createdAt?: true;
+  updatedAt?: true;
   _all?: true;
 };
 
@@ -153,9 +189,15 @@ export type ClientMemberGroupByArgs<
 export type ClientMemberGroupByOutputType = {
   id: string;
   clientId: string;
-  userId: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  title: string | null;
+  department: string | null;
+  notes: string | null;
   role: $Enums.ClientMemberRole;
-  assignedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
   _count: ClientMemberCountAggregateOutputType | null;
   _min: ClientMemberMinAggregateOutputType | null;
   _max: ClientMemberMaxAggregateOutputType | null;
@@ -179,46 +221,67 @@ export type ClientMemberWhereInput = {
   NOT?: Prisma.ClientMemberWhereInput | Prisma.ClientMemberWhereInput[];
   id?: Prisma.StringFilter<'ClientMember'> | string;
   clientId?: Prisma.StringFilter<'ClientMember'> | string;
-  userId?: Prisma.StringFilter<'ClientMember'> | string;
+  name?: Prisma.StringFilter<'ClientMember'> | string;
+  email?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
+  phone?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
+  title?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
+  department?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
+  notes?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
   role?: Prisma.EnumClientMemberRoleFilter<'ClientMember'> | $Enums.ClientMemberRole;
-  assignedAt?: Prisma.DateTimeFilter<'ClientMember'> | Date | string;
+  createdAt?: Prisma.DateTimeFilter<'ClientMember'> | Date | string;
+  updatedAt?: Prisma.DateTimeFilter<'ClientMember'> | Date | string;
   client?: Prisma.XOR<Prisma.ClientScalarRelationFilter, Prisma.ClientWhereInput>;
-  user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>;
 };
 
 export type ClientMemberOrderByWithRelationInput = {
   id?: Prisma.SortOrder;
   clientId?: Prisma.SortOrder;
-  userId?: Prisma.SortOrder;
+  name?: Prisma.SortOrder;
+  email?: Prisma.SortOrderInput | Prisma.SortOrder;
+  phone?: Prisma.SortOrderInput | Prisma.SortOrder;
+  title?: Prisma.SortOrderInput | Prisma.SortOrder;
+  department?: Prisma.SortOrderInput | Prisma.SortOrder;
+  notes?: Prisma.SortOrderInput | Prisma.SortOrder;
   role?: Prisma.SortOrder;
-  assignedAt?: Prisma.SortOrder;
+  createdAt?: Prisma.SortOrder;
+  updatedAt?: Prisma.SortOrder;
   client?: Prisma.ClientOrderByWithRelationInput;
-  user?: Prisma.UserOrderByWithRelationInput;
 };
 
 export type ClientMemberWhereUniqueInput = Prisma.AtLeast<
   {
     id?: string;
-    clientId_userId?: Prisma.ClientMemberClientIdUserIdCompoundUniqueInput;
+    clientId_email?: Prisma.ClientMemberClientIdEmailCompoundUniqueInput;
     AND?: Prisma.ClientMemberWhereInput | Prisma.ClientMemberWhereInput[];
     OR?: Prisma.ClientMemberWhereInput[];
     NOT?: Prisma.ClientMemberWhereInput | Prisma.ClientMemberWhereInput[];
     clientId?: Prisma.StringFilter<'ClientMember'> | string;
-    userId?: Prisma.StringFilter<'ClientMember'> | string;
+    name?: Prisma.StringFilter<'ClientMember'> | string;
+    email?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
+    phone?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
+    title?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
+    department?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
+    notes?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
     role?: Prisma.EnumClientMemberRoleFilter<'ClientMember'> | $Enums.ClientMemberRole;
-    assignedAt?: Prisma.DateTimeFilter<'ClientMember'> | Date | string;
+    createdAt?: Prisma.DateTimeFilter<'ClientMember'> | Date | string;
+    updatedAt?: Prisma.DateTimeFilter<'ClientMember'> | Date | string;
     client?: Prisma.XOR<Prisma.ClientScalarRelationFilter, Prisma.ClientWhereInput>;
-    user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>;
   },
-  'id' | 'clientId_userId'
+  'id' | 'clientId_email'
 >;
 
 export type ClientMemberOrderByWithAggregationInput = {
   id?: Prisma.SortOrder;
   clientId?: Prisma.SortOrder;
-  userId?: Prisma.SortOrder;
+  name?: Prisma.SortOrder;
+  email?: Prisma.SortOrderInput | Prisma.SortOrder;
+  phone?: Prisma.SortOrderInput | Prisma.SortOrder;
+  title?: Prisma.SortOrderInput | Prisma.SortOrder;
+  department?: Prisma.SortOrderInput | Prisma.SortOrder;
+  notes?: Prisma.SortOrderInput | Prisma.SortOrder;
   role?: Prisma.SortOrder;
-  assignedAt?: Prisma.SortOrder;
+  createdAt?: Prisma.SortOrder;
+  updatedAt?: Prisma.SortOrder;
   _count?: Prisma.ClientMemberCountOrderByAggregateInput;
   _max?: Prisma.ClientMemberMaxOrderByAggregateInput;
   _min?: Prisma.ClientMemberMinOrderByAggregateInput;
@@ -234,63 +297,112 @@ export type ClientMemberScalarWhereWithAggregatesInput = {
     | Prisma.ClientMemberScalarWhereWithAggregatesInput[];
   id?: Prisma.StringWithAggregatesFilter<'ClientMember'> | string;
   clientId?: Prisma.StringWithAggregatesFilter<'ClientMember'> | string;
-  userId?: Prisma.StringWithAggregatesFilter<'ClientMember'> | string;
+  name?: Prisma.StringWithAggregatesFilter<'ClientMember'> | string;
+  email?: Prisma.StringNullableWithAggregatesFilter<'ClientMember'> | string | null;
+  phone?: Prisma.StringNullableWithAggregatesFilter<'ClientMember'> | string | null;
+  title?: Prisma.StringNullableWithAggregatesFilter<'ClientMember'> | string | null;
+  department?: Prisma.StringNullableWithAggregatesFilter<'ClientMember'> | string | null;
+  notes?: Prisma.StringNullableWithAggregatesFilter<'ClientMember'> | string | null;
   role?: Prisma.EnumClientMemberRoleWithAggregatesFilter<'ClientMember'> | $Enums.ClientMemberRole;
-  assignedAt?: Prisma.DateTimeWithAggregatesFilter<'ClientMember'> | Date | string;
+  createdAt?: Prisma.DateTimeWithAggregatesFilter<'ClientMember'> | Date | string;
+  updatedAt?: Prisma.DateTimeWithAggregatesFilter<'ClientMember'> | Date | string;
 };
 
 export type ClientMemberCreateInput = {
   id?: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  title?: string | null;
+  department?: string | null;
+  notes?: string | null;
   role?: $Enums.ClientMemberRole;
-  assignedAt?: Date | string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
   client: Prisma.ClientCreateNestedOneWithoutMembersInput;
-  user: Prisma.UserCreateNestedOneWithoutClientMembershipsInput;
 };
 
 export type ClientMemberUncheckedCreateInput = {
   id?: string;
   clientId: string;
-  userId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  title?: string | null;
+  department?: string | null;
+  notes?: string | null;
   role?: $Enums.ClientMemberRole;
-  assignedAt?: Date | string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 };
 
 export type ClientMemberUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole;
-  assignedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
   client?: Prisma.ClientUpdateOneRequiredWithoutMembersNestedInput;
-  user?: Prisma.UserUpdateOneRequiredWithoutClientMembershipsNestedInput;
 };
 
 export type ClientMemberUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   clientId?: Prisma.StringFieldUpdateOperationsInput | string;
-  userId?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole;
-  assignedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 
 export type ClientMemberCreateManyInput = {
   id?: string;
   clientId: string;
-  userId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  title?: string | null;
+  department?: string | null;
+  notes?: string | null;
   role?: $Enums.ClientMemberRole;
-  assignedAt?: Date | string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 };
 
 export type ClientMemberUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole;
-  assignedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 
 export type ClientMemberUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
   clientId?: Prisma.StringFieldUpdateOperationsInput | string;
-  userId?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole;
-  assignedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 
 export type ClientMemberListRelationFilter = {
@@ -303,33 +415,51 @@ export type ClientMemberOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder;
 };
 
-export type ClientMemberClientIdUserIdCompoundUniqueInput = {
+export type ClientMemberClientIdEmailCompoundUniqueInput = {
   clientId: string;
-  userId: string;
+  email: string;
 };
 
 export type ClientMemberCountOrderByAggregateInput = {
   id?: Prisma.SortOrder;
   clientId?: Prisma.SortOrder;
-  userId?: Prisma.SortOrder;
+  name?: Prisma.SortOrder;
+  email?: Prisma.SortOrder;
+  phone?: Prisma.SortOrder;
+  title?: Prisma.SortOrder;
+  department?: Prisma.SortOrder;
+  notes?: Prisma.SortOrder;
   role?: Prisma.SortOrder;
-  assignedAt?: Prisma.SortOrder;
+  createdAt?: Prisma.SortOrder;
+  updatedAt?: Prisma.SortOrder;
 };
 
 export type ClientMemberMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder;
   clientId?: Prisma.SortOrder;
-  userId?: Prisma.SortOrder;
+  name?: Prisma.SortOrder;
+  email?: Prisma.SortOrder;
+  phone?: Prisma.SortOrder;
+  title?: Prisma.SortOrder;
+  department?: Prisma.SortOrder;
+  notes?: Prisma.SortOrder;
   role?: Prisma.SortOrder;
-  assignedAt?: Prisma.SortOrder;
+  createdAt?: Prisma.SortOrder;
+  updatedAt?: Prisma.SortOrder;
 };
 
 export type ClientMemberMinOrderByAggregateInput = {
   id?: Prisma.SortOrder;
   clientId?: Prisma.SortOrder;
-  userId?: Prisma.SortOrder;
+  name?: Prisma.SortOrder;
+  email?: Prisma.SortOrder;
+  phone?: Prisma.SortOrder;
+  title?: Prisma.SortOrder;
+  department?: Prisma.SortOrder;
+  notes?: Prisma.SortOrder;
   role?: Prisma.SortOrder;
-  assignedAt?: Prisma.SortOrder;
+  createdAt?: Prisma.SortOrder;
+  updatedAt?: Prisma.SortOrder;
 };
 
 export type ClientMemberCreateNestedManyWithoutClientInput = {
@@ -418,108 +548,34 @@ export type ClientMemberUncheckedUpdateManyWithoutClientNestedInput = {
   deleteMany?: Prisma.ClientMemberScalarWhereInput | Prisma.ClientMemberScalarWhereInput[];
 };
 
-export type ClientMemberCreateNestedManyWithoutUserInput = {
-  create?:
-    | Prisma.XOR<
-        Prisma.ClientMemberCreateWithoutUserInput,
-        Prisma.ClientMemberUncheckedCreateWithoutUserInput
-      >
-    | Prisma.ClientMemberCreateWithoutUserInput[]
-    | Prisma.ClientMemberUncheckedCreateWithoutUserInput[];
-  connectOrCreate?:
-    | Prisma.ClientMemberCreateOrConnectWithoutUserInput
-    | Prisma.ClientMemberCreateOrConnectWithoutUserInput[];
-  createMany?: Prisma.ClientMemberCreateManyUserInputEnvelope;
-  connect?: Prisma.ClientMemberWhereUniqueInput | Prisma.ClientMemberWhereUniqueInput[];
-};
-
-export type ClientMemberUncheckedCreateNestedManyWithoutUserInput = {
-  create?:
-    | Prisma.XOR<
-        Prisma.ClientMemberCreateWithoutUserInput,
-        Prisma.ClientMemberUncheckedCreateWithoutUserInput
-      >
-    | Prisma.ClientMemberCreateWithoutUserInput[]
-    | Prisma.ClientMemberUncheckedCreateWithoutUserInput[];
-  connectOrCreate?:
-    | Prisma.ClientMemberCreateOrConnectWithoutUserInput
-    | Prisma.ClientMemberCreateOrConnectWithoutUserInput[];
-  createMany?: Prisma.ClientMemberCreateManyUserInputEnvelope;
-  connect?: Prisma.ClientMemberWhereUniqueInput | Prisma.ClientMemberWhereUniqueInput[];
-};
-
-export type ClientMemberUpdateManyWithoutUserNestedInput = {
-  create?:
-    | Prisma.XOR<
-        Prisma.ClientMemberCreateWithoutUserInput,
-        Prisma.ClientMemberUncheckedCreateWithoutUserInput
-      >
-    | Prisma.ClientMemberCreateWithoutUserInput[]
-    | Prisma.ClientMemberUncheckedCreateWithoutUserInput[];
-  connectOrCreate?:
-    | Prisma.ClientMemberCreateOrConnectWithoutUserInput
-    | Prisma.ClientMemberCreateOrConnectWithoutUserInput[];
-  upsert?:
-    | Prisma.ClientMemberUpsertWithWhereUniqueWithoutUserInput
-    | Prisma.ClientMemberUpsertWithWhereUniqueWithoutUserInput[];
-  createMany?: Prisma.ClientMemberCreateManyUserInputEnvelope;
-  set?: Prisma.ClientMemberWhereUniqueInput | Prisma.ClientMemberWhereUniqueInput[];
-  disconnect?: Prisma.ClientMemberWhereUniqueInput | Prisma.ClientMemberWhereUniqueInput[];
-  delete?: Prisma.ClientMemberWhereUniqueInput | Prisma.ClientMemberWhereUniqueInput[];
-  connect?: Prisma.ClientMemberWhereUniqueInput | Prisma.ClientMemberWhereUniqueInput[];
-  update?:
-    | Prisma.ClientMemberUpdateWithWhereUniqueWithoutUserInput
-    | Prisma.ClientMemberUpdateWithWhereUniqueWithoutUserInput[];
-  updateMany?:
-    | Prisma.ClientMemberUpdateManyWithWhereWithoutUserInput
-    | Prisma.ClientMemberUpdateManyWithWhereWithoutUserInput[];
-  deleteMany?: Prisma.ClientMemberScalarWhereInput | Prisma.ClientMemberScalarWhereInput[];
-};
-
-export type ClientMemberUncheckedUpdateManyWithoutUserNestedInput = {
-  create?:
-    | Prisma.XOR<
-        Prisma.ClientMemberCreateWithoutUserInput,
-        Prisma.ClientMemberUncheckedCreateWithoutUserInput
-      >
-    | Prisma.ClientMemberCreateWithoutUserInput[]
-    | Prisma.ClientMemberUncheckedCreateWithoutUserInput[];
-  connectOrCreate?:
-    | Prisma.ClientMemberCreateOrConnectWithoutUserInput
-    | Prisma.ClientMemberCreateOrConnectWithoutUserInput[];
-  upsert?:
-    | Prisma.ClientMemberUpsertWithWhereUniqueWithoutUserInput
-    | Prisma.ClientMemberUpsertWithWhereUniqueWithoutUserInput[];
-  createMany?: Prisma.ClientMemberCreateManyUserInputEnvelope;
-  set?: Prisma.ClientMemberWhereUniqueInput | Prisma.ClientMemberWhereUniqueInput[];
-  disconnect?: Prisma.ClientMemberWhereUniqueInput | Prisma.ClientMemberWhereUniqueInput[];
-  delete?: Prisma.ClientMemberWhereUniqueInput | Prisma.ClientMemberWhereUniqueInput[];
-  connect?: Prisma.ClientMemberWhereUniqueInput | Prisma.ClientMemberWhereUniqueInput[];
-  update?:
-    | Prisma.ClientMemberUpdateWithWhereUniqueWithoutUserInput
-    | Prisma.ClientMemberUpdateWithWhereUniqueWithoutUserInput[];
-  updateMany?:
-    | Prisma.ClientMemberUpdateManyWithWhereWithoutUserInput
-    | Prisma.ClientMemberUpdateManyWithWhereWithoutUserInput[];
-  deleteMany?: Prisma.ClientMemberScalarWhereInput | Prisma.ClientMemberScalarWhereInput[];
-};
-
 export type EnumClientMemberRoleFieldUpdateOperationsInput = {
   set?: $Enums.ClientMemberRole;
 };
 
 export type ClientMemberCreateWithoutClientInput = {
   id?: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  title?: string | null;
+  department?: string | null;
+  notes?: string | null;
   role?: $Enums.ClientMemberRole;
-  assignedAt?: Date | string;
-  user: Prisma.UserCreateNestedOneWithoutClientMembershipsInput;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 };
 
 export type ClientMemberUncheckedCreateWithoutClientInput = {
   id?: string;
-  userId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  title?: string | null;
+  department?: string | null;
+  notes?: string | null;
   role?: $Enums.ClientMemberRole;
-  assignedAt?: Date | string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 };
 
 export type ClientMemberCreateOrConnectWithoutClientInput = {
@@ -569,120 +625,67 @@ export type ClientMemberScalarWhereInput = {
   NOT?: Prisma.ClientMemberScalarWhereInput | Prisma.ClientMemberScalarWhereInput[];
   id?: Prisma.StringFilter<'ClientMember'> | string;
   clientId?: Prisma.StringFilter<'ClientMember'> | string;
-  userId?: Prisma.StringFilter<'ClientMember'> | string;
+  name?: Prisma.StringFilter<'ClientMember'> | string;
+  email?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
+  phone?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
+  title?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
+  department?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
+  notes?: Prisma.StringNullableFilter<'ClientMember'> | string | null;
   role?: Prisma.EnumClientMemberRoleFilter<'ClientMember'> | $Enums.ClientMemberRole;
-  assignedAt?: Prisma.DateTimeFilter<'ClientMember'> | Date | string;
-};
-
-export type ClientMemberCreateWithoutUserInput = {
-  id?: string;
-  role?: $Enums.ClientMemberRole;
-  assignedAt?: Date | string;
-  client: Prisma.ClientCreateNestedOneWithoutMembersInput;
-};
-
-export type ClientMemberUncheckedCreateWithoutUserInput = {
-  id?: string;
-  clientId: string;
-  role?: $Enums.ClientMemberRole;
-  assignedAt?: Date | string;
-};
-
-export type ClientMemberCreateOrConnectWithoutUserInput = {
-  where: Prisma.ClientMemberWhereUniqueInput;
-  create: Prisma.XOR<
-    Prisma.ClientMemberCreateWithoutUserInput,
-    Prisma.ClientMemberUncheckedCreateWithoutUserInput
-  >;
-};
-
-export type ClientMemberCreateManyUserInputEnvelope = {
-  data: Prisma.ClientMemberCreateManyUserInput | Prisma.ClientMemberCreateManyUserInput[];
-  skipDuplicates?: boolean;
-};
-
-export type ClientMemberUpsertWithWhereUniqueWithoutUserInput = {
-  where: Prisma.ClientMemberWhereUniqueInput;
-  update: Prisma.XOR<
-    Prisma.ClientMemberUpdateWithoutUserInput,
-    Prisma.ClientMemberUncheckedUpdateWithoutUserInput
-  >;
-  create: Prisma.XOR<
-    Prisma.ClientMemberCreateWithoutUserInput,
-    Prisma.ClientMemberUncheckedCreateWithoutUserInput
-  >;
-};
-
-export type ClientMemberUpdateWithWhereUniqueWithoutUserInput = {
-  where: Prisma.ClientMemberWhereUniqueInput;
-  data: Prisma.XOR<
-    Prisma.ClientMemberUpdateWithoutUserInput,
-    Prisma.ClientMemberUncheckedUpdateWithoutUserInput
-  >;
-};
-
-export type ClientMemberUpdateManyWithWhereWithoutUserInput = {
-  where: Prisma.ClientMemberScalarWhereInput;
-  data: Prisma.XOR<
-    Prisma.ClientMemberUpdateManyMutationInput,
-    Prisma.ClientMemberUncheckedUpdateManyWithoutUserInput
-  >;
+  createdAt?: Prisma.DateTimeFilter<'ClientMember'> | Date | string;
+  updatedAt?: Prisma.DateTimeFilter<'ClientMember'> | Date | string;
 };
 
 export type ClientMemberCreateManyClientInput = {
   id?: string;
-  userId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  title?: string | null;
+  department?: string | null;
+  notes?: string | null;
   role?: $Enums.ClientMemberRole;
-  assignedAt?: Date | string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 };
 
 export type ClientMemberUpdateWithoutClientInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole;
-  assignedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  user?: Prisma.UserUpdateOneRequiredWithoutClientMembershipsNestedInput;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 
 export type ClientMemberUncheckedUpdateWithoutClientInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
-  userId?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole;
-  assignedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 
 export type ClientMemberUncheckedUpdateManyWithoutClientInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string;
-  userId?: Prisma.StringFieldUpdateOperationsInput | string;
+  name?: Prisma.StringFieldUpdateOperationsInput | string;
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null;
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole;
-  assignedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-};
-
-export type ClientMemberCreateManyUserInput = {
-  id?: string;
-  clientId: string;
-  role?: $Enums.ClientMemberRole;
-  assignedAt?: Date | string;
-};
-
-export type ClientMemberUpdateWithoutUserInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string;
-  role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole;
-  assignedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-  client?: Prisma.ClientUpdateOneRequiredWithoutMembersNestedInput;
-};
-
-export type ClientMemberUncheckedUpdateWithoutUserInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string;
-  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
-  role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole;
-  assignedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
-};
-
-export type ClientMemberUncheckedUpdateManyWithoutUserInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string;
-  clientId?: Prisma.StringFieldUpdateOperationsInput | string;
-  role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole;
-  assignedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string;
 };
 
 export type ClientMemberSelect<
@@ -691,11 +694,16 @@ export type ClientMemberSelect<
   {
     id?: boolean;
     clientId?: boolean;
-    userId?: boolean;
+    name?: boolean;
+    email?: boolean;
+    phone?: boolean;
+    title?: boolean;
+    department?: boolean;
+    notes?: boolean;
     role?: boolean;
-    assignedAt?: boolean;
+    createdAt?: boolean;
+    updatedAt?: boolean;
     client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
   },
   ExtArgs['result']['clientMember']
 >;
@@ -706,11 +714,16 @@ export type ClientMemberSelectCreateManyAndReturn<
   {
     id?: boolean;
     clientId?: boolean;
-    userId?: boolean;
+    name?: boolean;
+    email?: boolean;
+    phone?: boolean;
+    title?: boolean;
+    department?: boolean;
+    notes?: boolean;
     role?: boolean;
-    assignedAt?: boolean;
+    createdAt?: boolean;
+    updatedAt?: boolean;
     client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
   },
   ExtArgs['result']['clientMember']
 >;
@@ -721,11 +734,16 @@ export type ClientMemberSelectUpdateManyAndReturn<
   {
     id?: boolean;
     clientId?: boolean;
-    userId?: boolean;
+    name?: boolean;
+    email?: boolean;
+    phone?: boolean;
+    title?: boolean;
+    department?: boolean;
+    notes?: boolean;
     role?: boolean;
-    assignedAt?: boolean;
+    createdAt?: boolean;
+    updatedAt?: boolean;
     client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
-    user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
   },
   ExtArgs['result']['clientMember']
 >;
@@ -733,34 +751,47 @@ export type ClientMemberSelectUpdateManyAndReturn<
 export type ClientMemberSelectScalar = {
   id?: boolean;
   clientId?: boolean;
-  userId?: boolean;
+  name?: boolean;
+  email?: boolean;
+  phone?: boolean;
+  title?: boolean;
+  department?: boolean;
+  notes?: boolean;
   role?: boolean;
-  assignedAt?: boolean;
+  createdAt?: boolean;
+  updatedAt?: boolean;
 };
 
 export type ClientMemberOmit<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = runtime.Types.Extensions.GetOmit<
-  'id' | 'clientId' | 'userId' | 'role' | 'assignedAt',
+  | 'id'
+  | 'clientId'
+  | 'name'
+  | 'email'
+  | 'phone'
+  | 'title'
+  | 'department'
+  | 'notes'
+  | 'role'
+  | 'createdAt'
+  | 'updatedAt',
   ExtArgs['result']['clientMember']
 >;
 export type ClientMemberInclude<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
 };
 export type ClientMemberIncludeCreateManyAndReturn<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
 };
 export type ClientMemberIncludeUpdateManyAndReturn<
   ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs,
 > = {
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>;
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>;
 };
 
 export type $ClientMemberPayload<
@@ -769,15 +800,20 @@ export type $ClientMemberPayload<
   name: 'ClientMember';
   objects: {
     client: Prisma.$ClientPayload<ExtArgs>;
-    user: Prisma.$UserPayload<ExtArgs>;
   };
   scalars: runtime.Types.Extensions.GetPayloadResult<
     {
       id: string;
       clientId: string;
-      userId: string;
+      name: string;
+      email: string | null;
+      phone: string | null;
+      title: string | null;
+      department: string | null;
+      notes: string | null;
       role: $Enums.ClientMemberRole;
-      assignedAt: Date;
+      createdAt: Date;
+      updatedAt: Date;
     },
     ExtArgs['result']['clientMember']
   >;
@@ -1330,20 +1366,6 @@ export interface Prisma__ClientMemberClient<
     ExtArgs,
     GlobalOmitOptions
   >;
-  user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(
-    args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>
-  ): Prisma.Prisma__UserClient<
-    | runtime.Types.Result.GetResult<
-        Prisma.$UserPayload<ExtArgs>,
-        T,
-        'findUniqueOrThrow',
-        GlobalOmitOptions
-      >
-    | Null,
-    Null,
-    ExtArgs,
-    GlobalOmitOptions
-  >;
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1377,9 +1399,15 @@ export interface Prisma__ClientMemberClient<
 export interface ClientMemberFieldRefs {
   readonly id: Prisma.FieldRef<'ClientMember', 'String'>;
   readonly clientId: Prisma.FieldRef<'ClientMember', 'String'>;
-  readonly userId: Prisma.FieldRef<'ClientMember', 'String'>;
+  readonly name: Prisma.FieldRef<'ClientMember', 'String'>;
+  readonly email: Prisma.FieldRef<'ClientMember', 'String'>;
+  readonly phone: Prisma.FieldRef<'ClientMember', 'String'>;
+  readonly title: Prisma.FieldRef<'ClientMember', 'String'>;
+  readonly department: Prisma.FieldRef<'ClientMember', 'String'>;
+  readonly notes: Prisma.FieldRef<'ClientMember', 'String'>;
   readonly role: Prisma.FieldRef<'ClientMember', 'ClientMemberRole'>;
-  readonly assignedAt: Prisma.FieldRef<'ClientMember', 'DateTime'>;
+  readonly createdAt: Prisma.FieldRef<'ClientMember', 'DateTime'>;
+  readonly updatedAt: Prisma.FieldRef<'ClientMember', 'DateTime'>;
 }
 
 // Custom InputTypes

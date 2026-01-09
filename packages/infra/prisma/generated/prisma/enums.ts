@@ -25,9 +25,10 @@ export const UserRole = {
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 export const ClientMemberRole = {
-  LEAD: 'LEAD',
-  MEMBER: 'MEMBER',
-  OBSERVER: 'OBSERVER',
+  PRIMARY_CONTACT: 'PRIMARY_CONTACT',
+  CONTACT: 'CONTACT',
+  STAKEHOLDER: 'STAKEHOLDER',
+  DECISION_MAKER: 'DECISION_MAKER',
 } as const;
 
 export type ClientMemberRole = (typeof ClientMemberRole)[keyof typeof ClientMemberRole];
