@@ -1,42 +1,46 @@
 import { z } from 'zod';
 
-// Better-auth uses 32-character alphanumeric IDs, not UUIDs
-const betterAuthId = z
-  .string()
-  .length(32, 'Invalid user ID')
-  .regex(/^[a-zA-Z0-9]+$/, 'Invalid user ID');
-
-// Enums
-export const ClientMemberRole = z.enum(['LEAD', 'MEMBER', 'OBSERVER']);
+// Enums - Updated to reflect client contacts (not users)
+export const ClientMemberRole = z.enum([
+  'PRIMARY_CONTACT',
+  'CONTACT',
+  'STAKEHOLDER',
+  'DECISION_MAKER',
+]);
 export type ClientMemberRole = z.infer<typeof ClientMemberRole>;
 
 // ID schemas
 export const clientMemberIdSchema = z.object({
-  id: z.string().uuid('Invalid client member ID'),
-});
-
-export const clientMemberParamsSchema = z.object({
-  clientId: z.string().uuid('Invalid client ID'),
-  userId: betterAuthId,
+  id: z.uuid('Invalid client member ID'),
 });
 
 // Create schema
 export const createClientMemberSchema = z.object({
   clientId: z.uuid('Invalid client ID'),
-  userId: betterAuthId,
-  role: ClientMemberRole.default('MEMBER'),
+  name: z.string().min(1, 'Name is required').max(255, 'Name must be less than 255 characters'),
+  email: z.email('Invalid email').max(255).optional(),
+  phone: z.string().max(50).optional(),
+  title: z.string().max(100).optional(),
+  department: z.string().max(100).optional(),
+  notes: z.string().max(2000).optional(),
+  role: ClientMemberRole.default('CONTACT'),
 });
 
 // Update schema
 export const updateClientMemberSchema = z.object({
-  role: ClientMemberRole,
+  name: z.string().min(1).max(255).optional(),
+  email: z.email().max(255).optional(),
+  phone: z.string().max(50).optional(),
+  title: z.string().max(100).optional(),
+  department: z.string().max(100).optional(),
+  notes: z.string().max(2000).optional(),
+  role: ClientMemberRole.optional(),
 });
 
 // Query schema
 export const clientMemberQuerySchema = z
   .object({
     clientId: z.string().uuid().optional(),
-    userId: betterAuthId.optional(),
     role: ClientMemberRole.optional(),
   })
   .optional();

@@ -76,9 +76,6 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
-  // Client assignments
-  clientMemberships ClientMember[]
-
   // Meeting participation
   meetingParticipations MeetingParticipant[]
 
@@ -112,25 +109,35 @@ enum UserRole {
   MEMBER
 }
 
+// ClientMembers are NOT users - they are external contacts stored for organizational knowledge
 model ClientMember {
   id         String           @id @default(uuid())
   clientId   String
   client     Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  userId     String
-  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role       ClientMemberRole @default(MEMBER)
-  assignedAt DateTime         @default(now())
+  
+  // Contact information (not linked to User)
+  name       String
+  email      String?
+  phone      String?
+  title      String?          // Job title
+  department String?
+  notes      String?
+  
+  role       ClientMemberRole @default(CONTACT)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
 
-  @@unique([clientId, userId])
+  @@unique([clientId, email])
   @@index([clientId])
-  @@index([userId])
+  @@index([email])
   @@map("client_members")
 }
 
 enum ClientMemberRole {
-  LEAD
-  MEMBER
-  OBSERVER
+  PRIMARY_CONTACT
+  CONTACT
+  STAKEHOLDER
+  DECISION_MAKER
 }
 
 // AUTH (existing, minimal changes)

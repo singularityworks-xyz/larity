@@ -49,8 +49,7 @@ export const clientQuerySchema = z
     orgId: z.uuid().optional(),
     status: ClientStatus.optional(),
   })
-  .extend(paginationSchema.shape)
-  .optional();
+  .extend(paginationSchema.shape);
 
 // Type exports
 export type CreateClientInput = z.infer<typeof createClientSchema>;
