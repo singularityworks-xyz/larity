@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { execSync } from 'node:child_process';
+import { promisify } from 'node:util';
 import amqp from 'amqplib';
-import { execSync } from 'child_process';
-import { promisify } from 'util';
 
 import { closeConnection } from '../connection';
 import { consume } from '../consume';

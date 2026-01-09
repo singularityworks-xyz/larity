@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { type ChildProcess, spawn } from 'child_process';
+import { type ChildProcess, spawn } from 'node:child_process';
+import { promisify } from 'node:util';
 import Redis from 'ioredis';
-import { promisify } from 'util';
 
 // Import the modules to test (without mocking)
 import { connectRedis, redis } from '../client';

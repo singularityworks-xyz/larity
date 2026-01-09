@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import { prisma } from '../lib/prisma';
 import type { CreateDecisionInput, ReviseDecisionInput } from '../validators';
 
