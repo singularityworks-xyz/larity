@@ -1,8 +1,11 @@
+/** biome-ignore-all lint/style/noNonNullAssertion: <required for auth> */
 import { Elysia } from 'elysia';
+import { requireAuth } from '../middleware/auth';
 import { OrgService } from '../services';
 import { createOrgSchema, orgIdSchema, orgQuerySchema, updateOrgSchema } from '../validators';
 
 export const orgsRoutes = new Elysia({ prefix: '/orgs' })
+  .use(requireAuth)
   // List all orgs
   .get(
     '/',
@@ -28,9 +31,9 @@ export const orgsRoutes = new Elysia({ prefix: '/orgs' })
   // Create org
   .post(
     '/',
-    async ({ body, set }) => {
+    async ({ body, user, set }) => {
       try {
-        const org = await OrgService.create(body);
+        const org = await OrgService.create(body, user!.id);
         return { success: true, data: org };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -43,10 +46,17 @@ export const orgsRoutes = new Elysia({ prefix: '/orgs' })
     },
     { body: createOrgSchema }
   )
-  // Update org
+  // Update org (owner only)
   .patch(
     '/:id',
-    async ({ params, body, set }) => {
+    async ({ params, body, user, set }) => {
+      // Check if user is owner
+      const isOwner = await OrgService.isOwner(params.id, user!.id);
+      if (!isOwner) {
+        set.status = 403;
+        return { success: false, error: 'Only the org owner can update the organization' };
+      }
+
       try {
         const org = await OrgService.update(params.id, body);
         return { success: true, data: org };
@@ -65,10 +75,17 @@ export const orgsRoutes = new Elysia({ prefix: '/orgs' })
     },
     { params: orgIdSchema, body: updateOrgSchema }
   )
-  // Delete org
+  // Delete org (owner only)
   .delete(
     '/:id',
-    async ({ params, set }) => {
+    async ({ params, user, set }) => {
+      // Check if user is owner
+      const isOwner = await OrgService.isOwner(params.id, user!.id);
+      if (!isOwner) {
+        set.status = 403;
+        return { success: false, error: 'Only the org owner can delete the organization' };
+      }
+
       try {
         await OrgService.delete(params.id);
         return { success: true, message: 'Org deleted' };
