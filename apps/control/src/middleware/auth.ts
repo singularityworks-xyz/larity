@@ -28,6 +28,26 @@ export const requireAuth = new Elysia({ name: 'require-auth' })
     }
   });
 
+// Require OWNER or ADMIN role for sensitive operations
+export const requireOwnerOrAdmin = new Elysia({ name: 'require-owner-admin' })
+  .use(requireAuth)
+  .onBeforeHandle({ as: 'scoped' }, ({ user, set }) => {
+    const role = user?.role as string | undefined;
+    if (role !== 'OWNER' && role !== 'ADMIN') {
+      set.status = 403;
+      return {
+        success: false,
+        error: 'Forbidden',
+        message: 'This action requires OWNER or ADMIN role',
+      };
+    }
+  });
+
+// Helper to check if user has owner/admin role (for inline checks)
+export function isOwnerOrAdmin(user: { role?: string } | null): boolean {
+  return user?.role === 'OWNER' || user?.role === 'ADMIN';
+}
+
 // Temporary stubs for testing without auth
 // export const authMiddleware = new Elysia({ name: 'auth-middleware' }).derive(
 //   { as: 'global' },
