@@ -1,7 +1,9 @@
+export type Speaker = 'YOU' | 'THEM';
+
 export interface Utterance {
   utteranceId: string;
   sessionId: string;
-  speaker: 'YOU' | 'THEM';
+  speaker: Speaker;
   text: string;
   timestamp: number;
   confidenceScore: number;
@@ -9,4 +11,12 @@ export interface Utterance {
   duration: number;
   wordCount: number;
   mergedCount: number;
+}
+
+export interface FinalizeResult {
+  text: string;
+  confidence: number;
+  timestamp: number;
+  duration: number;
+  startOffset: number;
 }
