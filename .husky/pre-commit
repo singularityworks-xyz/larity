@@ -1,5 +1,5 @@
 # Run format check and linting
-echo "🔍 Running format check and linting..."
+echo "🔍 Format & Lint failed"
 bun run format:check || {
   echo "❌ Format check failed. Please run 'bun run format' to fix formatting issues."
   exit 1
