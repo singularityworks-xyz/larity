@@ -14,7 +14,7 @@ export type SocketData = {
   sessionId: string;
   connectedAt: number;
   lastFrameTs: number;
-}
+};
 
 /**
  * Typed WebSocket with our user data
@@ -28,7 +28,7 @@ export type SessionEntry = {
   socket: RealtimeSocket;
   connectedAt: number;
   lastFrameTs: number;
-}
+};
 
 /**
  * Payload structure for audio frames published to Redis
@@ -38,7 +38,7 @@ export type AudioFramePayload = {
   ts: number;
   frame: Buffer;
   source: 'mic' | 'system';
-}
+};
 
 /**
  * Session lifecycle event payloads
@@ -46,10 +46,10 @@ export type AudioFramePayload = {
 export type SessionStartEvent = {
   sessionId: string;
   ts: number;
-}
+};
 
 export type SessionEndEvent = {
   sessionId: string;
   ts: number;
   duration: number;
-}
+};
