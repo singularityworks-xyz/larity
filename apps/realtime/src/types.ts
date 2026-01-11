@@ -10,7 +10,7 @@ import type { WebSocket } from 'uWebSockets.js';
  * Data attached to each WebSocket connection.
  * uWebSockets stores this in ws.getUserData()
  */
-export interface SocketData {
+export type SocketData = {
   sessionId: string;
   connectedAt: number;
   lastFrameTs: number;
@@ -24,7 +24,7 @@ export type RealtimeSocket = WebSocket<SocketData>;
 /**
  * Session entry stored in the in-memory registry
  */
-export interface SessionEntry {
+export type SessionEntry = {
   socket: RealtimeSocket;
   connectedAt: number;
   lastFrameTs: number;
@@ -33,21 +33,22 @@ export interface SessionEntry {
 /**
  * Payload structure for audio frames published to Redis
  */
-export interface AudioFramePayload {
+export type AudioFramePayload = {
   sessionId: string;
   ts: number;
   frame: Buffer;
+  source: 'mic' | 'system';
 }
 
 /**
  * Session lifecycle event payloads
  */
-export interface SessionStartEvent {
+export type SessionStartEvent = {
   sessionId: string;
   ts: number;
 }
 
-export interface SessionEndEvent {
+export type SessionEndEvent = {
   sessionId: string;
   ts: number;
   duration: number;
