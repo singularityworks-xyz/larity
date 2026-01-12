@@ -152,41 +152,79 @@ Redis Channels:
 **packages/meeting-mode**
 
 - [ ] Define `Constraint` interface (type, value, source, confidence)
-- [ ] Define `Commitment` interface (statement, speaker, status)
+- [ ] Define `Commitment` interface (expanded for both YOU and THEM):
+  ```ts
+  interface Commitment {
+    id: string
+    statement: string
+    normalizedStatement: string      // Canonical form for comparison
+    speaker: 'YOU' | 'THEM'
+    speakerName?: string             // For THEM: "John from Acme"
+    topicId: string
+    type: CommitmentType             // timeline, scope, resource, price, etc.
+    status: 'tentative' | 'confirmed' | 'contradicted' | 'superseded'
+    timestamp: number
+    utteranceId: string
+    relatedCommitments: string[]     // IDs of related commitments
+    contradicts?: string             // ID of contradicted commitment
+    supersedes?: string              // ID of superseded commitment
+    extractedData?: {
+      deadline?: string
+      quantity?: number
+      scope?: string[]
+    }
+  }
+  ```
 - [ ] Implement constraint extraction from preloaded data (decisions, policies)
 - [ ] Build constraint detection from utterances:
   - [ ] Date/deadline parser
   - [ ] Capacity keywords
   - [ ] Dependency phrases
   - [ ] Policy terms
-- [ ] Implement commitment tracking with provisional status
+- [ ] Implement commitment tracking for both YOU and THEM
+- [ ] Add commitment relationship analysis (contradiction, supersession, confirmation)
 - [ ] Add delta comparison logic (new vs existing constraints)
 - [ ] Persist ledgers in Redis per session
 
-**Deliverable:** Explicit constraint and commitment tracking throughout meeting.
+**Deliverable:** Explicit constraint and commitment tracking for both parties throughout meeting.
 
-### Day 12-13: Trigger System (Tiers 1-3)
+### Day 12-13: Trigger System (Tiers 1-3) & Pattern Libraries
 
 **packages/meeting-mode**
+
+- [ ] **Pattern Library Infrastructure**
+  - [ ] Create loadable, configurable pattern library structure
+  - [ ] Implement pattern matching engine with regex support
+  - [ ] Add pattern categories: risky, pressure, emotional, scope, clarity, info-risk
 
 - [ ] **Tier 1: Deterministic Fast Path (<50ms)**
   - [ ] Policy keyword regex patterns
   - [ ] Date/deadline parser with extraction
   - [ ] Forbidden terms keyword set (NDA, etc.)
   - [ ] Scope change pattern matcher
+  - [ ] **Risky language patterns** (unconditional, underestimation, open-ended, authority)
+  - [ ] **Pressure tactic patterns** (social proof, urgency, authority, guilt, threat)
+  - [ ] **Information risk patterns** (client names, financial, roadmap, technical secrets)
+  - [ ] **Emotional indicator patterns** (defensive, apologetic, reactive, dismissive)
   - [ ] Emit instant alerts for matches
-- [ ] **Tier 2: Intent Classification (<100ms)**
+
+- [ ] **Tier 2: Intent & Commitment Classification (<100ms)**
   - [ ] Integrate small classifier (local model or lightweight API)
-  - [ ] Labels: `commitment`, `decision`, `question`, `concern`, `risk`, `filler`
+  - [ ] Labels: `commitment`, `decision`, `question`, `concern`, `risk`, `filler`, `scope_change`, `backtrack`
+  - [ ] **Extract commitment type** if classified as commitment
+  - [ ] **Extract speaker intent**: promising, requesting, confirming, refusing, hedging
   - [ ] Confidence threshold filtering (drop low confidence)
-- [ ] **Tier 3: Topic Novelty Check (<50ms)**
+
+- [ ] **Tier 3: Topic Novelty & Relationship Check (<50ms)**
   - [ ] Debounce logic per topic (same thing said twice)
   - [ ] Material difference detection (semantic comparison)
+  - [ ] **Related commitment search** (embedding similarity)
+  - [ ] **Topic shift detection** (triggers completeness check)
   - [ ] Repetition suppression
 
-**Deliverable:** ~90% of utterances filtered out, only high-signal ones proceed to LLM.
+**Deliverable:** ~90% of utterances filtered out, pattern libraries detect high-signal events.
 
-### Day 14: Speaker-Aware Processing
+### Day 14: Speaker-Aware Processing & Topic Completeness
 
 **packages/meeting-mode**
 
@@ -197,14 +235,28 @@ Redis Channels:
   - [ ] YOU: 0.7 threshold, parallel processing
   - [ ] THEM: 0.85 threshold, sequential processing
 - [ ] Add priority queue position for LLM calls
+- [ ] **Implement topic completeness tracking**:
+  ```ts
+  interface TopicCompleteness {
+    hasOwner: boolean
+    ownerName?: string
+    hasDeadline: boolean
+    deadline?: string
+    hasActionItems: boolean
+    actionItems: string[]
+    hasExplicitConfirmation: boolean
+  }
+  ```
+- [ ] Add vague language detection patterns (vague ownership, timeline, confirmation)
+- [ ] Trigger completeness check on topic shift
 
-**Deliverable:** Responsiveness prioritized when user is speaking.
+**Deliverable:** Responsiveness prioritized when user is speaking, topic clarity tracked.
 
 ---
 
-## Week 3: LLM Integration & Optimizations
+## Week 3: LLM Integration & Live Alert System
 
-**Goal:** Enable real-time risk detection and suggestions with optimized latency.
+**Goal:** Enable real-time risk detection, all 6 alert categories, and optimized latency.
 
 ### Day 15-16: LLM Integration (Tier 4)
 
@@ -215,22 +267,25 @@ Redis Channels:
   ```ts
   interface LLMResponse {
     type: 'warning' | 'suggestion' | 'clarification' | 'none'
-    severity: 'low' | 'medium' | 'high'
+    severity: 'low' | 'medium' | 'high' | 'critical'
     message: string
     suggestion?: string
     confidence: number
     shouldSurface: boolean
+    reasoning?: string  // For logging, not shown to user
   }
   ```
 - [ ] Implement narrow prompt templates:
   - [ ] Risk evaluation: "Does this statement create risk given these constraints?"
-  - [ ] Contradiction detection: "Does this contradict any known constraints?"
+  - [ ] **Self-contradiction detection**: "Does this contradict previous commitments?"
+  - [ ] **Risky statement validation**: "Is this genuinely risky in context?"
+  - [ ] **Tone assessment**: "Is this response defensive/reactive?"
   - [ ] Clarification suggestion: "What clarifying question would help?"
 - [ ] Add streaming response handling
 - [ ] Implement timeout (400ms max) and fallback logic (fail-silent)
 - [ ] Add response validation and schema enforcement
 
-**Deliverable:** LLM can be invoked for specific, narrow validation tasks.
+**Deliverable:** LLM can be invoked for all 6 alert category validations.
 
 ### Day 17-18: Speculative Processing
 
@@ -267,26 +322,141 @@ Redis Channels:
 
 **Deliverable:** Relevant constraints are pre-loaded before topics are discussed.
 
-### Day 21: Alert Generation & Publishing
+### Day 21: Alert Generation & Queue Management
 
 **packages/meeting-mode**
 
-- [ ] Define alert types and severity levels
+- [ ] Define alert types and all 6 categories:
+  ```ts
+  type AlertCategory =
+    | 'self_contradiction'
+    | 'risky_commitment'
+    | 'scope_creep'
+    | 'their_backtrack'
+    | 'missing_clarity'
+    | 'information_risk'
+    | 'tone_warning'
+    | 'pressure_detected'
+    | 'policy_violation'
+  ```
 - [ ] Implement alert generation from trigger results
-- [ ] Add alert deduplication (don't repeat same alert)
-- [ ] Build alert queue with expiry (10-15 seconds relevance window)
+- [ ] **Build Alert Queue Manager**:
+  - [ ] Priority ordering by category
+  - [ ] Max 2 visible alerts at a time
+  - [ ] Pending queue for overflow
+  - [ ] Recently shown tracking for deduplication
+- [ ] Add alert deduplication (don't repeat same alert within debounce window)
+- [ ] Build alert queue with expiry (10-30 seconds based on severity)
 - [ ] Publish alerts to Redis channel `meeting.alert.{sessionId}`
 - [ ] Add alert logging for post-meeting analysis
 
-**Deliverable:** Alerts are generated, deduplicated, and published for UI consumption.
+**Deliverable:** Alerts are generated, prioritized, deduplicated, and published for UI consumption.
+
+---
+
+## Week 3.5: Live Alert System - All 6 Categories
+
+**Goal:** Complete implementation of all 6 alert detection categories.
+
+### Day 22-23: Self-Contradiction & Risky Statement Alerts
+
+**packages/meeting-mode**
+
+- [ ] **Self-Contradiction Detection (Category 1)**
+  - [ ] Commitment extraction from utterances
+  - [ ] Related commitment matching (embedding similarity)
+  - [ ] Contradiction types: timeline, scope, capability, quantity
+  - [ ] LLM validation for semantic contradiction
+  - [ ] Alert generation with original vs new statement
+
+- [ ] **Risky Statement Detection (Category 2)**
+  - [ ] Unconditional commitment patterns ("definitely", "guaranteed")
+  - [ ] Underestimation language ("easy", "simple", "quick")
+  - [ ] Open-ended promises ("whatever you need")
+  - [ ] Authority overreach ("I'll approve")
+  - [ ] Price/discount commitments
+  - [ ] Blame acceptance patterns
+  - [ ] LLM contextual validation
+
+**Deliverable:** Self-contradictions and risky statements detected and surfaced.
+
+### Day 24-25: Other Party Behavior Alerts
+
+**packages/meeting-mode**
+
+- [ ] **Scope Creep Detection (Category 3a)**
+  - [ ] Baseline scope tracking from preloaded + confirmed
+  - [ ] Scope addition pattern matching ("can you also", "while you're at it")
+  - [ ] Comparison against agreed scope
+  - [ ] Alert with scope item details
+
+- [ ] **Their Backtrack Detection (Category 3b)**
+  - [ ] Track THEIR commitments in ledger
+  - [ ] Backtrack pattern recognition ("actually", "on second thought")
+  - [ ] LLM confirmation of backtrack
+  - [ ] Alert with original vs changed commitment
+
+- [ ] **Pressure Tactic Detection (Category 3c)**
+  - [ ] Social proof patterns ("everyone else does")
+  - [ ] Artificial urgency ("need answer now", "offer expires")
+  - [ ] Authority pressure ("CEO expects")
+  - [ ] Guilt/obligation ("after everything we've done")
+  - [ ] Implicit threat patterns
+
+**Deliverable:** Scope creep, backtracking, and pressure tactics detected.
+
+### Day 26: Missing Clarity & Information Risk Alerts
+
+**packages/meeting-mode**
+
+- [ ] **Missing Clarity Detection (Category 4)**
+  - [ ] Topic shift detection trigger
+  - [ ] Completeness evaluation on outgoing topic:
+    - [ ] Owner check (missing or vague)
+    - [ ] Deadline check (missing or vague)
+    - [ ] Action items check (none or vague)
+    - [ ] Confirmation check (none or vague)
+  - [ ] Skip trivial topics (no commitments/risks)
+  - [ ] Alert with missing items list
+
+- [ ] **Information Risk Detection (Category 5)**
+  - [ ] Client name list preloading
+  - [ ] Client name matching (exact + fuzzy)
+  - [ ] Financial disclosure patterns (margin, cost, revenue)
+  - [ ] Roadmap/strategy leak patterns
+  - [ ] Technical secret detection (API keys, credentials)
+  - [ ] Third-party confidential info
+
+**Deliverable:** Missing clarity and information risks surfaced.
+
+### Day 27: Emotional/Tone Alerts & Alert Refinement
+
+**packages/meeting-mode**
+
+- [ ] **Emotional/Tone Detection (Category 6)**
+  - [ ] Defensive tone patterns ("not my fault", "already explained")
+  - [ ] Over-apologetic patterns (multiple apologies)
+  - [ ] Reactive response patterns ("absolutely not", "that's ridiculous")
+  - [ ] Dismissive patterns ("doesn't matter", "whatever")
+  - [ ] Frustrated patterns ("how many times", "once again")
+  - [ ] LLM contextual validation
+
+- [ ] **Alert System Refinement**
+  - [ ] Confidence threshold tuning per category
+  - [ ] Cross-category deduplication
+  - [ ] Alert priority balancing
+  - [ ] Silent collaborator mode thresholds
+  - [ ] Performance optimization
+
+**Deliverable:** All 6 alert categories fully implemented and refined.
 
 ---
 
 ## Week 4: Frontend & End-to-End Integration
 
-**Goal:** Build the meeting mode UI and complete the end-to-end flow.
+**Goal:** Build the meeting mode UI with all alert categories and complete the end-to-end flow.
 
-### Day 22-23: Desktop App Foundation
+### Day 28-29: Desktop App Foundation
 
 **apps/desktop**
 
@@ -300,7 +470,7 @@ Redis Channels:
 
 **Deliverable:** Desktop app can capture audio and stream to realtime server.
 
-### Day 24-25: Ambient UI Components
+### Day 30-31: Ambient UI Components
 
 **apps/desktop**
 
@@ -313,6 +483,9 @@ Redis Channels:
   - [ ] Display count of tracked constraints
   - [ ] Pulse animation on increment
   - [ ] Tooltip with constraint summary
+- [ ] **Commitment Counter Component**
+  - [ ] Display YOUR vs THEIR commitment counts
+  - [ ] Visual indicator for contradictions detected
 - [ ] **Listening Heartbeat Component**
   - [ ] Visual audio processing indicator (waveform or pulse)
   - [ ] Disappears on stream drop (error signal)
@@ -320,21 +493,34 @@ Redis Channels:
 
 **Deliverable:** Ambient awareness layer proving system is alive.
 
-### Day 26-27: Alert System UI
+### Day 32-33: Alert System UI (All 6 Categories)
 
 **apps/desktop**
 
 - [ ] Subscribe to `meeting.alert.{sessionId}` Redis channel (via WebSocket)
-- [ ] Build alert queue in React state (max 2 visible)
-- [ ] Implement auto-expire (fade after 10-15 seconds)
-- [ ] Create dismissible alert component
+- [ ] Build alert queue in React state (max 2 visible, priority-ordered)
+- [ ] Implement auto-expire (10-30 seconds based on severity)
+- [ ] Create dismissible alert component with:
+  - [ ] Title (category-based)
+  - [ ] Message (actionable)
+  - [ ] Suggestion (optional alternative phrasing)
+  - [ ] Dismiss button
 - [ ] Add alert animations (slide in from right, fade out)
-- [ ] Style alerts by severity (info, warning, critical)
+- [ ] **Style alerts by category**:
+  - [ ] Self-contradiction: Yellow border, sync icon
+  - [ ] Risky statement: Orange border, warning icon
+  - [ ] Scope creep: Blue border, expand icon
+  - [ ] Their backtrack: Purple border, undo icon
+  - [ ] Pressure tactics: Red border, alert icon
+  - [ ] Missing clarity: Gray border, question icon
+  - [ ] Information risk: Red border, lock icon
+  - [ ] Tone warning: Yellow border, mood icon
 - [ ] Add "Checking..." indicator for pending LLM calls
+- [ ] Implement hover-to-pause expiry
 
-**Deliverable:** Non-intrusive, contextual alerts surface to user.
+**Deliverable:** All 6 alert categories render with distinct styling.
 
-### Day 28: Meeting Mode Screen
+### Day 34: Meeting Mode Screen
 
 **apps/desktop**
 
@@ -347,18 +533,28 @@ Redis Channels:
 - [ ] Display session state (connected, duration, utterance count)
 - [ ] Add basic live transcript viewer (scrolling list)
 - [ ] Show constraint/commitment counts
+- [ ] Add alert category toggle (enable/disable specific categories)
 
-**Deliverable:** Complete meeting mode UI.
+**Deliverable:** Complete meeting mode UI with all alert categories.
 
-### Day 29-30: End-to-End Integration & Testing
+### Day 35-36: End-to-End Integration & Testing
 
 **All apps**
 
 - [ ] Integration test: full pipeline
   ```
   Audio capture → WebSocket → Redis → Deepgram → Utterance →
-  Triggers → LLM → Alert → UI
+  Triggers → All 6 Alert Categories → Alert Queue → UI
   ```
+- [ ] Test each alert category end-to-end:
+  - [ ] Self-contradiction scenario
+  - [ ] Risky statement scenario
+  - [ ] Scope creep scenario
+  - [ ] Their backtrack scenario
+  - [ ] Pressure tactic scenario
+  - [ ] Missing clarity scenario
+  - [ ] Information risk scenario
+  - [ ] Tone warning scenario
 - [ ] Performance testing against latency budgets:
   - [ ] Audio → Utterance: < 100ms
   - [ ] Tier 1 checks: < 50ms
@@ -369,7 +565,7 @@ Redis Channels:
 - [ ] Fix bugs and edge cases
 - [ ] Create demo workflow documentation
 
-**Deliverable:** Working meeting mode end-to-end.
+**Deliverable:** Working meeting mode with all 6 alert categories end-to-end.
 
 ---
 
@@ -377,7 +573,7 @@ Redis Channels:
 
 **Goal:** Process completed meetings, extract insights, and write to persistent memory.
 
-### Day 31-32: Worker Infrastructure
+### Day 37-38: Worker Infrastructure
 
 **apps/workers**
 
@@ -390,7 +586,7 @@ Redis Channels:
 
 **Deliverable:** Worker infrastructure ready to consume jobs.
 
-### Day 33-34: Transcript Processing Worker
+### Day 39-40: Transcript Processing Worker
 
 **apps/workers**
 
@@ -403,7 +599,7 @@ Redis Channels:
 
 **Deliverable:** High-quality refined transcripts from Whisper.
 
-### Day 35: Speaker Diarization
+### Day 41: Speaker Diarization
 
 **apps/workers**
 
@@ -415,7 +611,7 @@ Redis Channels:
 
 **Deliverable:** Transcripts have accurate speaker attribution.
 
-### Day 36-37: Decision & Task Extraction
+### Day 42-43: Decision & Task Extraction
 
 **apps/workers**
 
@@ -431,7 +627,7 @@ Redis Channels:
 
 **Deliverable:** Structured data extracted from transcripts.
 
-### Day 38-39: Memory Writes
+### Day 44-45: Memory Writes
 
 **apps/workers**
 
@@ -445,7 +641,7 @@ Redis Channels:
 
 **Deliverable:** Meeting insights persisted to database, searchable.
 
-### Day 40: Post-Meeting Integration
+### Day 46: Post-Meeting Integration
 
 **apps/control + apps/workers**
 
@@ -463,7 +659,7 @@ Redis Channels:
 
 **Goal:** Build the conversational assistant with knowledge access and action execution.
 
-### Day 41-42: Vector Search Setup
+### Day 47-48: Vector Search Setup
 
 **packages/infra + apps/control**
 
@@ -478,7 +674,7 @@ Redis Channels:
 
 **Deliverable:** Semantic search across organizational memory.
 
-### Day 43-44: Assistant Core
+### Day 49-50: Assistant Core
 
 **packages/assistant** (new package)
 
@@ -496,7 +692,7 @@ Redis Channels:
 
 **Deliverable:** Assistant can answer questions using organizational memory.
 
-### Day 45-46: Action Execution
+### Day 51-52: Action Execution
 
 **packages/assistant + apps/control**
 
@@ -520,7 +716,7 @@ Redis Channels:
 
 **Deliverable:** Assistant can execute actions on user's behalf.
 
-### Day 47-48: Auto-Rememberance
+### Day 53-54: Auto-Rememberance
 
 **packages/assistant**
 
@@ -538,7 +734,7 @@ Redis Channels:
 
 **Deliverable:** Explicit user-commanded memory writes.
 
-### Day 49-50: Assistant UI
+### Day 55-56: Assistant UI
 
 **apps/desktop**
 
@@ -553,7 +749,7 @@ Redis Channels:
 
 **Deliverable:** Functional assistant interface in desktop app.
 
-### Day 51-52: Assistant Integration & Polish
+### Day 57-58: Assistant Integration & Polish
 
 **All apps**
 
@@ -574,13 +770,14 @@ Redis Channels:
 | Week | Days | Focus | Key Deliverables |
 |------|------|-------|------------------|
 | 1 | 1-7 | STT Pipeline | Deepgram integration, utterance finalizer, session lifecycle |
-| 2 | 8-14 | State & Triggers | Topic state, ledgers, trigger tiers 1-3, speaker-aware |
-| 3 | 15-21 | LLM & Optimization | Tier 4 LLM, speculative processing, alerts |
-| 4 | 22-30 | Frontend | Desktop UI, ambient components, end-to-end testing |
-| 5 | 31-40 | Post-Meeting | Workers, Whisper, diarization, extraction, memory writes |
-| 6 | 41-52 | Assistant | Vector search, RAG, actions, auto-rememberance, UI |
+| 2 | 8-14 | State & Triggers | Topic state, ledgers (YOU + THEM), trigger tiers 1-3, pattern libraries, speaker-aware |
+| 3 | 15-21 | LLM & Alert Foundation | Tier 4 LLM, speculative processing, alert queue manager |
+| 3.5 | 22-27 | Live Alert System | All 6 alert categories: self-contradiction, risky statements, scope creep, backtracking, pressure tactics, missing clarity, info risk, tone |
+| 4 | 28-36 | Frontend | Desktop UI, ambient components, alert UI for all categories, end-to-end testing |
+| 5 | 37-46 | Post-Meeting | Workers, Whisper, diarization, extraction, memory writes |
+| 6 | 47-58 | Assistant | Vector search, RAG, actions, auto-rememberance, UI |
 
-**Total: 52 working days (~10.5 weeks with weekends, or 7.5 weeks at 7 days/week)**
+**Total: 58 working days (~11.5 weeks with weekends, or 8.5 weeks at 7 days/week)**
 
 ---
 
@@ -602,32 +799,53 @@ packages/
 │   │   └── types.ts
 │   ├── subscriber.ts         # Redis audio subscriber
 │   └── index.ts
-├── meeting-mode/             # Week 1-3
+├── meeting-mode/             # Week 1-3.5
 │   ├── utterance/
 │   │   ├── finalizer.ts
 │   │   ├── ring-buffer.ts
 │   │   └── types.ts
 │   ├── state/
 │   │   ├── topic-state.ts
+│   │   ├── topic-completeness.ts    # Topic clarity tracking
 │   │   ├── constraint-ledger.ts
-│   │   ├── commitment-ledger.ts
+│   │   ├── commitment-ledger.ts     # Tracks YOU + THEM commitments
 │   │   └── session-state.ts
+│   ├── patterns/                    # Pattern libraries for detection
+│   │   ├── risky-language.ts        # Unconditional, underestimation, open-ended
+│   │   ├── pressure-tactics.ts      # Social proof, urgency, guilt, threats
+│   │   ├── scope-creep.ts           # Scope addition patterns
+│   │   ├── backtrack.ts             # Their backtracking patterns
+│   │   ├── info-risk.ts             # Client names, financial, roadmap
+│   │   ├── emotional.ts             # Defensive, apologetic, reactive
+│   │   ├── vague-language.ts        # Vague ownership, timeline, confirmation
+│   │   └── index.ts
 │   ├── triggers/
-│   │   ├── tier1-deterministic.ts
-│   │   ├── tier2-classifier.ts
-│   │   ├── tier3-novelty.ts
-│   │   ├── tier4-llm.ts
+│   │   ├── tier1-deterministic.ts   # Pattern matching
+│   │   ├── tier2-classifier.ts      # Intent + commitment extraction
+│   │   ├── tier3-novelty.ts         # Relationship + topic shift
+│   │   ├── tier4-llm.ts             # LLM validation for all categories
 │   │   └── pipeline.ts
 │   ├── llm/
 │   │   ├── client.ts
-│   │   ├── prompts.ts
+│   │   ├── prompts.ts               # Prompts for all 6 alert categories
 │   │   └── schemas.ts
 │   ├── speculative/
 │   │   ├── processor.ts
 │   │   └── cache.ts
 │   ├── alerts/
+│   │   ├── categories/              # All 6 alert category implementations
+│   │   │   ├── self-contradiction.ts
+│   │   │   ├── risky-statement.ts
+│   │   │   ├── scope-creep.ts
+│   │   │   ├── their-backtrack.ts
+│   │   │   ├── pressure-tactics.ts
+│   │   │   ├── missing-clarity.ts
+│   │   │   ├── info-risk.ts
+│   │   │   └── tone-warning.ts
+│   │   ├── queue-manager.ts         # Priority queue, dedup, expiry
 │   │   ├── generator.ts
-│   │   └── publisher.ts
+│   │   ├── publisher.ts
+│   │   └── types.ts
 │   └── index.ts
 ├── extraction/               # Week 5
 │   ├── decisions.ts
@@ -711,10 +929,29 @@ apps/
 | Whisper API latency | Async processing, user doesn't wait for it |
 | Vector search slow | Add indexes, limit result count, cache frequent queries |
 | Speaker diarization accuracy | Use as hint, allow manual correction post-meeting |
+| **Self-contradiction false positives** | LLM validation required, high confidence threshold (0.75) |
+| **Pattern library false positives** | Tier 1 flags, Tier 4 validates context before surfacing |
+| **Alert fatigue** | Max 2 visible, priority queue, category-specific thresholds |
+| **Commitment extraction inaccuracy** | Normalize to canonical form, use embedding similarity |
+| **Scope creep false detection** | Require baseline scope preload, compare against agreed items |
+| **Pressure tactic over-detection** | Context validation via LLM, debounce similar alerts |
 
 ---
 
 ## Success Metrics
+
+### End of Week 3.5 (Alert System Complete)
+
+| Metric | Target |
+|--------|--------|
+| Self-contradiction detection accuracy | > 85% |
+| Risky statement detection accuracy | > 80% |
+| Scope creep detection accuracy | > 75% |
+| Pressure tactic detection accuracy | > 80% |
+| Information risk detection accuracy | > 90% |
+| False positive rate (all categories) | < 15% |
+| Alert queue processing latency | < 50ms |
+| Pattern matching (Tier 1) latency | < 50ms |
 
 ### End of Week 4 (Meeting Mode Complete)
 
@@ -723,11 +960,13 @@ apps/
 | Audio → Utterance latency | < 100ms |
 | Tier 1 check latency | < 50ms |
 | Tier 2 classification latency | < 100ms |
+| Tier 3 relationship check latency | < 50ms |
 | LLM response (streaming start) | < 400ms |
 | Utterance drop rate (Tier 1-3) | ~90% |
 | Speculative processing hit rate | > 80% |
 | Alert render latency | < 32ms |
 | End-to-end (utterance → alert) | < 800ms |
+| All 6 alert categories functional | 100% |
 
 ### End of Week 5 (Post-Meeting Complete)
 
@@ -768,9 +1007,11 @@ apps/
 ## Notes
 
 - This timeline assumes 1 developer working full-time
-- 52 working days = ~7.5 weeks at 7 days/week, or ~10.5 weeks with weekends
+- 58 working days = ~8.5 weeks at 7 days/week, or ~11.5 weeks with weekends
 - Realtime server and infrastructure are already complete — significant head start
 - Week 1 focuses on connecting Deepgram to existing audio pipeline
+- **Week 3.5 adds 6 days for comprehensive Live Alert System (all 6 categories)**
 - Week 5-6 can be parallelized if additional developer available
 - Adjust based on actual velocity after Week 1
 - No Chrome extension — desktop-first approach
+- **Alert system is core differentiator — prioritize quality over speed**
