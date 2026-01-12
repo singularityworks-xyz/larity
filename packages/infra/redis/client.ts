@@ -1,4 +1,4 @@
-import Redis from 'ioredis';
+import Redis, { type Redis as RedisInstance } from 'ioredis';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
@@ -17,4 +17,13 @@ export async function connectRedis() {
     console.error('Redis connection error:', error);
     return false;
   }
+}
+
+export function getRedisClient(): RedisInstance {
+  return redis;
+}
+
+export async function disconnectRedis(): Promise<void> {
+  redis.disconnect();
+  console.log('[Redis] Disconnected');
 }
