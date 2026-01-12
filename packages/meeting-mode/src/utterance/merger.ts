@@ -1,5 +1,5 @@
-import type { Utterance } from './types';
 import { MERGE_GAP_MS } from '../env';
+import type { Utterance } from './types';
 
 export class UtteranceMerger {
   private readonly gapThreshold: number;

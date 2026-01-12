@@ -1,8 +1,8 @@
 import type { SttResult } from '../../../stt/src/types';
-import type { Utterance } from './types';
+import { utteranceChannel } from '../channels';
 import { PartialBuffer } from './buffer';
 import { UtteranceMerger } from './merger';
-import { utteranceChannel } from '../channels';
+import type { Utterance } from './types';
 
 export interface UtterancePublisher {
   publish(channel: string, message: string): Promise<number>;

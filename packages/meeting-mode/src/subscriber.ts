@@ -1,8 +1,8 @@
 import Redis from 'ioredis';
-import { STT_FINAL_PATTERN, SESSION_END } from './channels';
+import type { SessionEndEvent, SttResult } from '../../stt/src/types';
+import { SESSION_END, STT_FINAL_PATTERN } from './channels';
 import { REDIS_URL } from './env';
 import type { UtteranceFinalizer } from './utterance/finalizer';
-import type { SttResult, SessionEndEvent } from '../../stt/src/types';
 
 let subscriber: Redis | null = null;
 
@@ -87,12 +87,10 @@ export async function startSubscriber(finalizer: UtteranceFinalizer): Promise<vo
 
 export async function stopSubscriber(): Promise<void> {
   if (subscriber) {
-    await subscriber.punsubscribe();
-    await subscriber.unsubscribe();
-
-    await subscriber.quit();
+    console.log('[Subscriber] Stopping...');
+    subscriber.disconnect();
     subscriber = null;
-
-    console.log('[Subscriber] Disconnected from Redis');
+    finalizerRef = null;
+    console.log('[Subscriber] Disconnected');
   }
 }
