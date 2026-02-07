@@ -2,6 +2,7 @@ import type { SttResult } from "../../../stt/src/types";
 import { utteranceChannel } from "../channels";
 import { PartialBuffer } from "./buffer";
 import { UtteranceMerger } from "./merger";
+import { RingBuffer } from "./ring-buffer";
 import type { Utterance } from "./types";
 
 export interface UtterancePublisher {
@@ -13,7 +14,7 @@ export class UtteranceFinalizer {
   private readonly mergers = new Map<string, UtteranceMerger>();
   private readonly sequences = new Map<string, number>();
   private readonly publisher: UtterancePublisher;
-
+  private readonly ringBuffers = new Map<string, RingBuffer>();
   constructor(publisher: UtterancePublisher) {
     this.publisher = publisher;
   }
@@ -64,6 +65,13 @@ export class UtteranceFinalizer {
     if (toPublish) {
       await this.publishUtterance(toPublish);
     }
+
+    let ringBuffer = this.ringBuffers.get(sessionId);
+    if (!ringBuffer) {
+      ringBuffer = new RingBuffer({ maxSize: 100, maxAgeMs: 120_000 });
+      this.ringBuffers.set(sessionId, ringBuffer);
+    }
+    ringBuffer.push(utterance);
   }
 
   async closeSession(sessionId: string): Promise<void> {
@@ -80,6 +88,7 @@ export class UtteranceFinalizer {
     this.buffer.delete(sessionId);
     this.mergers.delete(sessionId);
     this.sequences.delete(sessionId);
+    this.ringBuffers.delete(sessionId);
   }
 
   async closeAll(): Promise<void> {
