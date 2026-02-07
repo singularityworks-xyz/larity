@@ -176,7 +176,7 @@ describe("Redis Infrastructure Tests", () => {
       });
 
       it("should fail to acquire lock when already locked", async () => {
-        // biome-ignore lint/suspicious/noExplicitAny: mock needs to return null to simulate NX failure
+        // Mock returning null to simulate NX failure (key already exists)
         redis.set = mock(() => Promise.resolve(null)) as any;
 
         const result = await acquireLock("test-lock");
