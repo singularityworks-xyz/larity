@@ -7,6 +7,7 @@ export { decisionsRoutes } from "./decisions.routes";
 // Documents & reminders
 export { documentsRoutes } from "./documents.routes";
 export { importantPointsRoutes } from "./important-points.routes";
+export { meetingSessionRoutes } from "./meeting-session.routes";
 // Meeting domain
 export { meetingsRoutes } from "./meetings.routes";
 export { openQuestionsRoutes } from "./open-questions.routes";

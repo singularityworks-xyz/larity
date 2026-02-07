@@ -105,13 +105,13 @@ Redis Channels:
 
 **apps/control + packages/meeting-mode**
 
-- [x] Add `/meeting-session/start` endpoint (creates session, returns sessionId)
-- [x] Add `/meeting-session/end` endpoint (finalizes session)
-- [x] Add `/meeting-session/:id/status` endpoint (session state)
-- [x] Implement session state in Redis (active sessions with metadata)
-- [x] Add session validation for realtime connections
-- [x] Wire control plane to listen for `realtime.session.start/end` events
-- [x] Update Meeting model status on session lifecycle
+- [ ] Add `/meeting-session/start` endpoint (creates session, returns sessionId)
+- [ ] Add `/meeting-session/end` endpoint (finalizes session)
+- [ ] Add `/meeting-session/:id/status` endpoint (session state)
+- [ ] Implement session state in Redis (active sessions with metadata)
+- [ ] Add session validation for realtime connections
+- [ ] Wire control plane to listen for `realtime.session.start/end` events
+- [ ] Update Meeting model status on session lifecycle
 
 **Deliverable:** Meeting sessions are tracked authoritatively in the control plane.
 

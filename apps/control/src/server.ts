@@ -9,6 +9,7 @@ import {
   decisionsRoutes,
   documentsRoutes,
   importantPointsRoutes,
+  meetingSessionRoutes,
   meetingsRoutes,
   openQuestionsRoutes,
   orgsRoutes,
@@ -85,6 +86,7 @@ export const app = new Elysia()
       // Documents & reminders
       .use(documentsRoutes)
       .use(remindersRoutes)
+      .use(meetingSessionRoutes)
   );
 
 export type App = typeof app;
