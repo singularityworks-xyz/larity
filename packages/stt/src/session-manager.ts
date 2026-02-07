@@ -5,9 +5,9 @@
  * Enforces connection limits and provides session lifecycle methods.
  */
 
-import { DeepgramConnection } from './deepgram/connection';
-import { MAX_CONNECTIONS } from './env';
-import type { AudioSource } from './types';
+import { DeepgramConnection } from "./deepgram/connection";
+import { MAX_CONNECTIONS } from "./env";
+import type { AudioSource } from "./types";
 
 /**
  * SessionManager maintains active Deepgram connections.
@@ -18,12 +18,12 @@ import type { AudioSource } from './types';
  * - Enforce max concurrent connections limit
  */
 class SessionManager {
-  private connections: Map<string, DeepgramConnection> = new Map();
+  private readonly connections: Map<string, DeepgramConnection> = new Map();
 
   /**
    * Create a new Deepgram connection for a session
    */
-  async createSession(sessionId: string): Promise<boolean> {
+  createSession(sessionId: string): boolean {
     // Check if session already exists
     if (this.connections.has(sessionId)) {
       console.log(`[SessionManager] Session ${sessionId} already exists`);
@@ -70,7 +70,11 @@ class SessionManager {
   /**
    * Send audio to a session's Deepgram connection
    */
-  async sendAudio(sessionId: string, audioBuffer: Buffer, source: AudioSource): Promise<void> {
+  async sendAudio(
+    sessionId: string,
+    audioBuffer: Buffer,
+    source: AudioSource
+  ): Promise<void> {
     const connection = this.connections.get(sessionId);
     if (!connection) {
       // Silently drop - session may have ended
@@ -98,14 +102,16 @@ class SessionManager {
    * Close all sessions (for graceful shutdown)
    */
   async closeAll(): Promise<void> {
-    console.log(`[SessionManager] Closing all ${this.connections.size} sessions...`);
+    console.log(
+      `[SessionManager] Closing all ${this.connections.size} sessions...`
+    );
 
     const closePromises = Array.from(this.connections.keys()).map((sessionId) =>
       this.closeSession(sessionId)
     );
 
     await Promise.all(closePromises);
-    console.log('[SessionManager] All sessions closed');
+    console.log("[SessionManager] All sessions closed");
   }
 }
 

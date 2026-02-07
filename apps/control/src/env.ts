@@ -1,16 +1,16 @@
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { config } from 'dotenv';
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { config } from "dotenv";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const projectRoot = join(__dirname, '../../../');
-const envPath = join(projectRoot, '.env');
+const projectRoot = join(__dirname, "../../../");
+const envPath = join(projectRoot, ".env");
 
 config({ path: envPath });
 
 // Environment variable validation
-const requiredEnvVars = ['DATABASE_URL'] as const;
+const requiredEnvVars = ["DATABASE_URL"] as const;
 
 export function validateEnv() {
   const missing: string[] = [];
@@ -22,15 +22,17 @@ export function validateEnv() {
   }
 
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    throw new Error(
+      `Missing required environment variables: ${missing.join(", ")}`
+    );
   }
 }
 
 export const env = {
-  PORT: process.env.PORT ?? '3000',
-  NODE_ENV: process.env.NODE_ENV ?? 'development',
+  PORT: process.env.PORT ?? "3000",
+  NODE_ENV: process.env.NODE_ENV ?? "development",
   DATABASE_URL: process.env.DATABASE_URL as string,
-  FRONTEND_URL: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+  FRONTEND_URL: process.env.FRONTEND_URL ?? "http://localhost:5173",
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,

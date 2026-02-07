@@ -12,21 +12,23 @@
  *   bun run apps/realtime/scripts/stress-test.ts 50 10 60
  */
 
-const connectionCount = parseInt(process.argv[2] || '10', 10);
-const framesPerSecond = parseInt(process.argv[3] || '20', 10);
-const durationSeconds = parseInt(process.argv[4] || '10', 10);
+const connectionCount = Number.parseInt(process.argv[2] || "10", 10);
+const framesPerSecond = Number.parseInt(process.argv[3] || "20", 10);
+const durationSeconds = Number.parseInt(process.argv[4] || "10", 10);
 
-const wsUrl = 'ws://localhost:9001';
+const wsUrl = "ws://localhost:9001";
 const frameIntervalMs = 1000 / framesPerSecond;
 
-console.log('========================================');
-console.log('  Realtime Plane Stress Test');
-console.log('========================================');
+console.log("========================================");
+console.log("  Realtime Plane Stress Test");
+console.log("========================================");
 console.log(`Connections:     ${connectionCount}`);
 console.log(`Frames/sec:      ${framesPerSecond} per connection`);
 console.log(`Duration:        ${durationSeconds}s`);
-console.log(`Total frames:    ~${connectionCount * framesPerSecond * durationSeconds}`);
-console.log('----------------------------------------\n');
+console.log(
+  `Total frames:    ~${connectionCount * framesPerSecond * durationSeconds}`
+);
+console.log("----------------------------------------\n");
 
 // Statistics
 const stats = {
@@ -38,7 +40,7 @@ const stats = {
 };
 
 // Create fake audio frame
-function createFakeAudioFrame(size: number = 512): ArrayBuffer {
+function createFakeAudioFrame(size = 512): ArrayBuffer {
   const buffer = new ArrayBuffer(size);
   const view = new Uint8Array(buffer);
   for (let i = 0; i < size; i++) {
@@ -58,7 +60,9 @@ function createConnection(id: number): Promise<void> {
 
     ws.onopen = () => {
       stats.connected++;
-      console.log(`[conn-${id}] Connected (${stats.connected}/${connectionCount})`);
+      console.log(
+        `[conn-${id}] Connected (${stats.connected}/${connectionCount})`
+      );
 
       // Start sending frames
       intervalId = setInterval(() => {
@@ -78,14 +82,16 @@ function createConnection(id: number): Promise<void> {
     ws.onclose = () => {
       stats.disconnected++;
       stats.framesPerConnection.set(sessionId, localFrameCount);
-      if (intervalId) clearInterval(intervalId);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
       resolve();
     };
 
     // Schedule close after duration
     setTimeout(() => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.close(1000, 'Test complete');
+        ws.close(1000, "Test complete");
       }
     }, durationSeconds * 1000);
   });
@@ -101,7 +107,7 @@ const progressInterval = setInterval(() => {
 
 // Run the test
 const startTime = Date.now();
-console.log('[stress] Starting connections...\n');
+console.log("[stress] Starting connections...\n");
 
 // Stagger connection creation to avoid overwhelming the server
 const connectionPromises: Promise<void>[] = [];
@@ -119,16 +125,16 @@ Promise.all(connectionPromises).then(() => {
   const avgFramesPerConnection = stats.framesSent / connectionCount;
   const framesPerSecActual = stats.framesSent / totalDuration;
 
-  console.log('\n========================================');
-  console.log('  Stress Test Results');
-  console.log('========================================');
+  console.log("\n========================================");
+  console.log("  Stress Test Results");
+  console.log("========================================");
   console.log(`Duration:          ${totalDuration.toFixed(1)}s`);
   console.log(`Peak Connections:  ${stats.connected}`);
   console.log(`Total Frames:      ${stats.framesSent}`);
   console.log(`Avg Frames/Conn:   ${avgFramesPerConnection.toFixed(1)}`);
   console.log(`Actual Frames/sec: ${framesPerSecActual.toFixed(1)}`);
   console.log(`Errors:            ${stats.errors}`);
-  console.log('========================================');
+  console.log("========================================");
 
   process.exit(0);
 });

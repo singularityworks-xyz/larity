@@ -1,14 +1,14 @@
-import { applyPagination } from '../lib/pagination';
-import { prisma } from '../lib/prisma';
+import { applyPagination } from "../lib/pagination";
+import { prisma } from "../lib/prisma";
 import type {
   CreateMeetingInput,
   MeetingExtractionInput,
   MeetingQueryInput,
   UpdateMeetingInput,
-} from '../validators';
+} from "../validators";
 
 export const MeetingService = {
-  async create(data: CreateMeetingInput) {
+  create(data: CreateMeetingInput) {
     return prisma.meeting.create({
       data,
       include: {
@@ -17,7 +17,7 @@ export const MeetingService = {
     });
   },
 
-  async findById(id: string) {
+  findById(id: string) {
     return prisma.meeting.findUnique({
       where: { id },
       include: {
@@ -34,7 +34,7 @@ export const MeetingService = {
           },
         },
         decisions: {
-          orderBy: { version: 'desc' },
+          orderBy: { version: "desc" },
         },
         openQuestions: {
           include: {
@@ -50,11 +50,16 @@ export const MeetingService = {
     });
   },
 
-  async findAll(query?: MeetingQueryInput) {
+  findAll(query?: MeetingQueryInput) {
     return prisma.meeting.findMany({
       where: {
         clientId: query?.clientId,
-        status: query?.status as 'SCHEDULED' | 'LIVE' | 'ENDED' | 'CANCELLED' | undefined,
+        status: query?.status as
+          | "SCHEDULED"
+          | "LIVE"
+          | "ENDED"
+          | "CANCELLED"
+          | undefined,
         scheduledAt: {
           ...(query?.scheduledAfter && { gte: query.scheduledAfter }),
           ...(query?.scheduledBefore && { lte: query.scheduledBefore }),
@@ -72,12 +77,12 @@ export const MeetingService = {
           },
         },
       },
-      orderBy: { scheduledAt: 'desc' },
+      orderBy: { scheduledAt: "desc" },
       ...applyPagination(query),
     });
   },
 
-  async update(id: string, data: UpdateMeetingInput) {
+  update(id: string, data: UpdateMeetingInput) {
     return prisma.meeting.update({
       where: { id },
       data,
@@ -87,7 +92,7 @@ export const MeetingService = {
     });
   },
 
-  async delete(id: string) {
+  delete(id: string) {
     return prisma.meeting.delete({
       where: { id },
     });
@@ -101,10 +106,10 @@ export const MeetingService = {
     });
 
     if (!meeting) {
-      throw new Error('Meeting not found');
+      throw new Error("Meeting not found");
     }
 
-    if (meeting.status !== 'SCHEDULED') {
+    if (meeting.status !== "SCHEDULED") {
       throw new Error(
         `Cannot start meeting with status '${meeting.status}'. Only SCHEDULED meetings can be started.`
       );
@@ -113,7 +118,7 @@ export const MeetingService = {
     return prisma.meeting.update({
       where: { id },
       data: {
-        status: 'LIVE',
+        status: "LIVE",
         startedAt: new Date(),
       },
       include: {
@@ -135,10 +140,10 @@ export const MeetingService = {
     });
 
     if (!meeting) {
-      throw new Error('Meeting not found');
+      throw new Error("Meeting not found");
     }
 
-    if (meeting.status !== 'LIVE') {
+    if (meeting.status !== "LIVE") {
       throw new Error(
         `Cannot end meeting with status '${meeting.status}'. Only LIVE meetings can be ended.`
       );
@@ -147,7 +152,7 @@ export const MeetingService = {
     return prisma.meeting.update({
       where: { id },
       data: {
-        status: 'ENDED',
+        status: "ENDED",
         endedAt: new Date(),
       },
       include: {
@@ -164,10 +169,10 @@ export const MeetingService = {
     });
 
     if (!meeting) {
-      throw new Error('Meeting not found');
+      throw new Error("Meeting not found");
     }
 
-    if (meeting.status !== 'SCHEDULED') {
+    if (meeting.status !== "SCHEDULED") {
       throw new Error(
         `Cannot cancel meeting with status '${meeting.status}'. Only SCHEDULED meetings can be cancelled.`
       );
@@ -175,7 +180,7 @@ export const MeetingService = {
 
     return prisma.meeting.update({
       where: { id },
-      data: { status: 'CANCELLED' },
+      data: { status: "CANCELLED" },
     });
   },
 
@@ -187,7 +192,7 @@ export const MeetingService = {
     });
 
     if (!meeting) {
-      throw new Error('Meeting not found');
+      throw new Error("Meeting not found");
     }
 
     const { clientId } = meeting;

@@ -1,14 +1,19 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: <required for auth> */
-import { Elysia } from 'elysia';
-import { requireAuth } from '../middleware/auth';
-import { OrgService } from '../services';
-import { createOrgSchema, orgIdSchema, orgQuerySchema, updateOrgSchema } from '../validators';
+import { Elysia } from "elysia";
+import { requireAuth } from "../middleware/auth";
+import { OrgService } from "../services";
+import {
+  createOrgSchema,
+  orgIdSchema,
+  orgQuerySchema,
+  updateOrgSchema,
+} from "../validators";
 
-export const orgsRoutes = new Elysia({ prefix: '/orgs' })
+export const orgsRoutes = new Elysia({ prefix: "/orgs" })
   .use(requireAuth)
   // List all orgs
   .get(
-    '/',
+    "/",
     async ({ query }) => {
       const orgs = await OrgService.findAll(query);
       return { success: true, data: orgs };
@@ -17,12 +22,12 @@ export const orgsRoutes = new Elysia({ prefix: '/orgs' })
   )
   // Get org by id
   .get(
-    '/:id',
+    "/:id",
     async ({ params, set }) => {
       const org = await OrgService.findById(params.id);
       if (!org) {
         set.status = 404;
-        return { success: false, error: 'Org not found' };
+        return { success: false, error: "Org not found" };
       }
       return { success: true, data: org };
     },
@@ -30,16 +35,19 @@ export const orgsRoutes = new Elysia({ prefix: '/orgs' })
   )
   // Create org
   .post(
-    '/',
+    "/",
     async ({ body, user, set }) => {
       try {
         const org = await OrgService.create(body, user!.id);
         return { success: true, data: org };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2002') {
+        if (err.code === "P2002") {
           set.status = 409;
-          return { success: false, error: 'Organization with this slug already exists' };
+          return {
+            success: false,
+            error: "Organization with this slug already exists",
+          };
         }
         throw e;
       }
@@ -48,13 +56,16 @@ export const orgsRoutes = new Elysia({ prefix: '/orgs' })
   )
   // Update org (owner only)
   .patch(
-    '/:id',
+    "/:id",
     async ({ params, body, user, set }) => {
       // Check if user is owner
       const isOwner = await OrgService.isOwner(params.id, user!.id);
       if (!isOwner) {
         set.status = 403;
-        return { success: false, error: 'Only the org owner can update the organization' };
+        return {
+          success: false,
+          error: "Only the org owner can update the organization",
+        };
       }
 
       try {
@@ -62,13 +73,16 @@ export const orgsRoutes = new Elysia({ prefix: '/orgs' })
         return { success: true, data: org };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Org not found' };
+          return { success: false, error: "Org not found" };
         }
-        if (err.code === 'P2002') {
+        if (err.code === "P2002") {
           set.status = 409;
-          return { success: false, error: 'Organization with this slug already exists' };
+          return {
+            success: false,
+            error: "Organization with this slug already exists",
+          };
         }
         throw e;
       }
@@ -77,23 +91,26 @@ export const orgsRoutes = new Elysia({ prefix: '/orgs' })
   )
   // Delete org (owner only)
   .delete(
-    '/:id',
+    "/:id",
     async ({ params, user, set }) => {
       // Check if user is owner
       const isOwner = await OrgService.isOwner(params.id, user!.id);
       if (!isOwner) {
         set.status = 403;
-        return { success: false, error: 'Only the org owner can delete the organization' };
+        return {
+          success: false,
+          error: "Only the org owner can delete the organization",
+        };
       }
 
       try {
         await OrgService.delete(params.id);
-        return { success: true, message: 'Org deleted' };
+        return { success: true, message: "Org deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Org not found' };
+          return { success: false, error: "Org not found" };
         }
         throw e;
       }

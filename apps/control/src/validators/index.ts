@@ -1,20 +1,20 @@
 // Core identity
-
-export * from './client';
-export * from './client-member';
+// biome-ignore lint/performance/noBarrelFile: structure convention
+export * from "./client";
+export * from "./client-member";
 // Decisions & tasks
-export * from './decision';
+export * from "./decision";
 // Documents & reminders
-export * from './document';
-export * from './important-point';
+export * from "./document";
+export * from "./important-point";
 // Meeting domain
-export * from './meeting';
-export * from './meeting-participant';
-export * from './open-question';
-export * from './org';
+export * from "./meeting";
+export * from "./meeting-participant";
+export * from "./open-question";
+export * from "./org";
 // Policy & compliance
-export * from './policy-guardrail';
-export * from './reminder';
-export * from './task';
-export * from './transcript';
-export * from './user';
+export * from "./policy-guardrail";
+export * from "./reminder";
+export * from "./task";
+export * from "./transcript";
+export * from "./user";

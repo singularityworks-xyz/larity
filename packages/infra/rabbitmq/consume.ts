@@ -1,13 +1,18 @@
-import { getChannel } from './connection';
+import { getChannel } from "./connection";
 
-export async function consume<T>(queue: string, handler: (data: T) => Promise<void>) {
+export async function consume<T>(
+  queue: string,
+  handler: (data: T) => Promise<void>
+) {
   const ch = await getChannel();
 
   console.log(`[RabbitMQ] Consumer starting for queue: ${queue}`);
 
   await ch.consume(queue, async (msg) => {
     if (!msg) {
-      console.warn(`[RabbitMQ] Consumer cancelled by server for queue: ${queue}`);
+      console.warn(
+        `[RabbitMQ] Consumer cancelled by server for queue: ${queue}`
+      );
       return;
     }
 

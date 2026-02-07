@@ -1,29 +1,39 @@
-import { z } from 'zod';
-import { paginationSchema } from '../lib/pagination';
+import { z } from "zod";
+import { paginationSchema } from "../lib/pagination";
 
 // Better-auth uses 32-character alphanumeric IDs, not UUIDs
 const betterAuthId = z
   .string()
-  .length(32, 'Invalid user ID')
-  .regex(/^[a-zA-Z0-9]+$/, 'Invalid user ID');
+  .length(32, "Invalid user ID")
+  .regex(/^[a-zA-Z0-9]+$/, "Invalid user ID");
 
 // Enums
-export const ReminderStatus = z.enum(['PENDING', 'TRIGGERED', 'DISMISSED', 'SNOOZED']);
+export const ReminderStatus = z.enum([
+  "PENDING",
+  "TRIGGERED",
+  "DISMISSED",
+  "SNOOZED",
+]);
 export type ReminderStatus = z.infer<typeof ReminderStatus>;
 
-export const ReminderEntityType = z.enum(['TASK', 'MEETING', 'DECISION', 'OPEN_QUESTION']);
+export const ReminderEntityType = z.enum([
+  "TASK",
+  "MEETING",
+  "DECISION",
+  "OPEN_QUESTION",
+]);
 export type ReminderEntityType = z.infer<typeof ReminderEntityType>;
 
 // ID schemas
 export const reminderIdSchema = z.object({
-  id: z.uuid('Invalid reminder ID'),
+  id: z.uuid("Invalid reminder ID"),
 });
 
 // Create schema
 export const createReminderSchema = z.object({
   userId: betterAuthId,
-  clientId: z.uuid('Invalid client ID').optional(),
-  title: z.string().min(1, 'Title is required').max(255),
+  clientId: z.uuid("Invalid client ID").optional(),
+  title: z.string().min(1, "Title is required").max(255),
   description: z.string().max(2000).optional(),
   dueAt: z.coerce.date(),
   linkedEntityType: ReminderEntityType.optional(),

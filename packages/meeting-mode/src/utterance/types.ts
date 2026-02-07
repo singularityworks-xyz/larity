@@ -1,4 +1,4 @@
-export type Speaker = 'YOU' | 'THEM';
+export type Speaker = "YOU" | "THEM";
 
 export interface Utterance {
   utteranceId: string;

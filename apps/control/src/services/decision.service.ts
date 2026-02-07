@@ -1,9 +1,9 @@
-import { randomUUID } from 'node:crypto';
-import { prisma } from '../lib/prisma';
-import type { CreateDecisionInput, ReviseDecisionInput } from '../validators';
+import { randomUUID } from "node:crypto";
+import { prisma } from "../lib/prisma";
+import type { CreateDecisionInput, ReviseDecisionInput } from "../validators";
 
 export const DecisionService = {
-  async create(data: CreateDecisionInput) {
+  create(data: CreateDecisionInput) {
     return prisma.decision.create({
       data: {
         decisionRef: randomUUID(),
@@ -26,17 +26,17 @@ export const DecisionService = {
   async createRevision(decisionRef: string, data: ReviseDecisionInput) {
     const latest = await prisma.decision.findFirst({
       where: { decisionRef },
-      orderBy: { version: 'desc' },
+      orderBy: { version: "desc" },
     });
 
     if (!latest) {
-      throw new Error('Decision not found');
+      throw new Error("Decision not found");
     }
 
     // Mark previous version as superseded
     await prisma.decision.update({
       where: { id: latest.id },
-      data: { status: 'SUPERSEDED' },
+      data: { status: "SUPERSEDED" },
     });
 
     return prisma.decision.create({
@@ -50,7 +50,7 @@ export const DecisionService = {
         evidence: data.evidence ?? latest.evidence,
         meetingId: latest.meetingId,
         tags: data.tags ?? latest.tags,
-        status: 'ACTIVE',
+        status: "ACTIVE",
       },
       include: {
         client: { select: { id: true, name: true, slug: true } },
@@ -59,7 +59,7 @@ export const DecisionService = {
     });
   },
 
-  async findById(id: string) {
+  findById(id: string) {
     return prisma.decision.findUnique({
       where: { id },
       include: {
@@ -71,10 +71,10 @@ export const DecisionService = {
     });
   },
 
-  async findLatestByRef(decisionRef: string) {
+  findLatestByRef(decisionRef: string) {
     return prisma.decision.findFirst({
       where: { decisionRef },
-      orderBy: { version: 'desc' },
+      orderBy: { version: "desc" },
       include: {
         client: { select: { id: true, name: true, slug: true } },
         meeting: { select: { id: true, title: true } },
@@ -83,10 +83,10 @@ export const DecisionService = {
     });
   },
 
-  async findAllVersions(decisionRef: string) {
+  findAllVersions(decisionRef: string) {
     return prisma.decision.findMany({
       where: { decisionRef },
-      orderBy: { version: 'desc' },
+      orderBy: { version: "desc" },
       include: {
         client: { select: { id: true, name: true, slug: true } },
         meeting: { select: { id: true, title: true } },
@@ -94,7 +94,7 @@ export const DecisionService = {
     });
   },
 
-  async findByRefAndVersion(decisionRef: string, version: number) {
+  findByRefAndVersion(decisionRef: string, version: number) {
     return prisma.decision.findUnique({
       where: { decisionRef_version: { decisionRef, version } },
       include: {
@@ -118,13 +118,17 @@ export const DecisionService = {
       where: {
         clientId: query?.clientId,
         meetingId: query?.meetingId,
-        status: query?.status as 'ACTIVE' | 'SUPERSEDED' | 'REVOKED' | undefined,
+        status: query?.status as
+          | "ACTIVE"
+          | "SUPERSEDED"
+          | "REVOKED"
+          | undefined,
       },
       include: {
         client: { select: { id: true, name: true, slug: true } },
         meeting: { select: { id: true, title: true } },
       },
-      orderBy: [{ decisionRef: 'asc' }, { version: 'desc' }],
+      orderBy: [{ decisionRef: "asc" }, { version: "desc" }],
     });
 
     // Filter to only latest versions (unless status filter is applied)
@@ -145,30 +149,30 @@ export const DecisionService = {
 
   async revoke(decisionRef: string) {
     const latest = await prisma.decision.findFirst({
-      where: { decisionRef, status: 'ACTIVE' },
-      orderBy: { version: 'desc' },
+      where: { decisionRef, status: "ACTIVE" },
+      orderBy: { version: "desc" },
     });
 
     if (!latest) {
-      throw new Error('Active decision not found');
+      throw new Error("Active decision not found");
     }
 
     return prisma.decision.update({
       where: { id: latest.id },
-      data: { status: 'REVOKED' },
+      data: { status: "REVOKED" },
       include: {
         client: { select: { id: true, name: true, slug: true } },
       },
     });
   },
 
-  async deleteByRef(decisionRef: string) {
+  deleteByRef(decisionRef: string) {
     return prisma.decision.deleteMany({
       where: { decisionRef },
     });
   },
 
-  async deleteById(id: string) {
+  deleteById(id: string) {
     return prisma.decision.delete({
       where: { id },
     });

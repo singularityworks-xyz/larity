@@ -25,15 +25,15 @@ export interface DeepgramLiveConfig {
  * Assumes linear16 @ 16kHz mono (common for speech)
  */
 export const DEFAULT_DG_CONFIG = {
-  model: 'nova-3',
-  language: 'en-US',
+  model: "nova-3",
+  language: "en-US",
   punctuate: true,
   interim_results: true,
   smart_format: true,
   endpointing: 600, // 300ms silence = end of utterance
   vad_events: true,
-  encoding: 'linear16',
-  sample_rate: 16000,
+  encoding: "linear16",
+  sample_rate: 16_000,
   channels: 1,
   keepAlive: true, // Prevent idle disconnections
 } as const;
@@ -63,7 +63,7 @@ export interface ChannelResult {
  * Deepgram transcript result event
  */
 export interface TranscriptResult {
-  type: 'Results';
+  type: "Results";
   channel_index: number[];
   duration: number;
   start: number;

@@ -1,6 +1,9 @@
-import { isPrismaError, PrismaErrorCode } from '../lib/errors';
-import { prisma } from '../lib/prisma';
-import type { CreateTranscriptInput, UpdateTranscriptInput } from '../validators';
+import { isPrismaError, PrismaErrorCode } from "../lib/errors";
+import { prisma } from "../lib/prisma";
+import type {
+  CreateTranscriptInput,
+  UpdateTranscriptInput,
+} from "../validators";
 
 export const TranscriptService = {
   async create(data: CreateTranscriptInput) {
@@ -15,13 +18,13 @@ export const TranscriptService = {
       });
     } catch (e) {
       if (isPrismaError(e) && e.code === PrismaErrorCode.UNIQUE_CONSTRAINT) {
-        throw new Error('Transcript already exists for this meeting');
+        throw new Error("Transcript already exists for this meeting");
       }
       throw e;
     }
   },
 
-  async findById(id: string) {
+  findById(id: string) {
     return prisma.transcript.findUnique({
       where: { id },
       include: {
@@ -30,7 +33,7 @@ export const TranscriptService = {
     });
   },
 
-  async findByMeeting(meetingId: string) {
+  findByMeeting(meetingId: string) {
     return prisma.transcript.findUnique({
       where: { meetingId },
       include: {
@@ -39,7 +42,7 @@ export const TranscriptService = {
     });
   },
 
-  async update(id: string, data: UpdateTranscriptInput) {
+  update(id: string, data: UpdateTranscriptInput) {
     return prisma.transcript.update({
       where: { id },
       data,
@@ -49,7 +52,7 @@ export const TranscriptService = {
     });
   },
 
-  async delete(id: string) {
+  delete(id: string) {
     return prisma.transcript.delete({
       where: { id },
     });

@@ -16,7 +16,7 @@
  * If the process restarts, this map is empty. That is fine.
  */
 
-import type { RealtimeSocket, SessionEntry } from './types';
+import type { RealtimeSocket, SessionEntry } from "./types";
 
 /**
  * In-memory session registry

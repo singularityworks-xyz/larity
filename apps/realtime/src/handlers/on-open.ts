@@ -13,9 +13,9 @@
  * No auth. No validation beyond presence.
  */
 
-import { publishSessionStart } from '../redis/publisher';
-import { addSession } from '../session';
-import type { RealtimeSocket } from '../types';
+import { publishSessionStart } from "../redis/publisher";
+import { addSession } from "../session";
+import type { RealtimeSocket } from "../types";
 
 /**
  * Handle new WebSocket connection

@@ -14,9 +14,9 @@
  * Downstream services infer "audio ended" from this signal.
  */
 
-import { publishSessionEnd } from '../redis/publisher';
-import { removeSession } from '../session';
-import type { RealtimeSocket } from '../types';
+import { publishSessionEnd } from "../redis/publisher";
+import { removeSession } from "../session";
+import type { RealtimeSocket } from "../types";
 
 /**
  * Handle WebSocket connection close
@@ -25,7 +25,11 @@ import type { RealtimeSocket } from '../types';
  * @param code - Close code
  * @param message - Close message (ArrayBuffer)
  */
-export function onClose(ws: RealtimeSocket, code: number, _message: ArrayBuffer): void {
+export function onClose(
+  ws: RealtimeSocket,
+  code: number,
+  _message: ArrayBuffer
+): void {
   const data = ws.getUserData();
   const { sessionId, connectedAt } = data;
 
@@ -35,7 +39,9 @@ export function onClose(ws: RealtimeSocket, code: number, _message: ArrayBuffer)
   const now = Date.now();
   const duration = session ? now - session.connectedAt : now - connectedAt;
 
-  console.log(`[onClose] Session ended: ${sessionId} (code: ${code}, duration: ${duration}ms)`);
+  console.log(
+    `[onClose] Session ended: ${sessionId} (code: ${code}, duration: ${duration}ms)`
+  );
 
   // Publish session end event to Redis (fire and forget)
   publishSessionEnd({

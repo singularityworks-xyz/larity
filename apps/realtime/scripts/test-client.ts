@@ -12,22 +12,22 @@
  */
 
 const sessionId = process.argv[2] || `test-session-${Date.now()}`;
-const frameCount = parseInt(process.argv[3] || '20', 10);
-const intervalMs = parseInt(process.argv[4] || '100', 10);
+const frameCount = Number.parseInt(process.argv[3] || "20", 10);
+const intervalMs = Number.parseInt(process.argv[4] || "100", 10);
 
 const wsUrl = `ws://localhost:9001/?sessionId=${sessionId}`;
 
-console.log('========================================');
-console.log('  Realtime Plane Test Client');
-console.log('========================================');
+console.log("========================================");
+console.log("  Realtime Plane Test Client");
+console.log("========================================");
 console.log(`Session ID:    ${sessionId}`);
 console.log(`Frame Count:   ${frameCount}`);
 console.log(`Interval:      ${intervalMs}ms`);
 console.log(`WebSocket URL: ${wsUrl}`);
-console.log('----------------------------------------');
+console.log("----------------------------------------");
 
 // Create a fake audio frame (random binary data simulating audio)
-function createFakeAudioFrame(size: number = 1024): ArrayBuffer {
+function createFakeAudioFrame(size = 1024): ArrayBuffer {
   const buffer = new ArrayBuffer(size);
   const view = new Uint8Array(buffer);
   for (let i = 0; i < size; i++) {
@@ -40,16 +40,16 @@ function createFakeAudioFrame(size: number = 1024): ArrayBuffer {
 const ws = new WebSocket(wsUrl);
 
 ws.onopen = () => {
-  console.log('[client] Connected to realtime plane');
-  console.log('[client] Starting to send audio frames...\n');
+  console.log("[client] Connected to realtime plane");
+  console.log("[client] Starting to send audio frames...\n");
 
   let framesSent = 0;
 
   const sendFrame = () => {
     if (framesSent >= frameCount) {
       console.log(`\n[client] Finished sending ${frameCount} frames`);
-      console.log('[client] Closing connection...');
-      ws.close(1000, 'Test complete');
+      console.log("[client] Closing connection...");
+      ws.close(1000, "Test complete");
       return;
     }
 
@@ -70,15 +70,17 @@ ws.onopen = () => {
 };
 
 ws.onmessage = (event) => {
-  console.log('[client] Received message from server:', event.data);
+  console.log("[client] Received message from server:", event.data);
 };
 
 ws.onerror = (event) => {
-  console.error('[client] WebSocket error:', event);
+  console.error("[client] WebSocket error:", event);
 };
 
 ws.onclose = (event) => {
-  console.log(`[client] Connection closed (code: ${event.code}, reason: ${event.reason})`);
-  console.log('========================================');
+  console.log(
+    `[client] Connection closed (code: ${event.code}, reason: ${event.reason})`
+  );
+  console.log("========================================");
   process.exit(0);
 };

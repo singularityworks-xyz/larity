@@ -1,6 +1,6 @@
-import type { SttResult } from '../../../stt/src/types';
-import { MAX_BUFFER_SIZE } from '../env';
-import type { FinalizeResult } from './types';
+import type { SttResult } from "../../../stt/src/types";
+import { MAX_BUFFER_SIZE } from "../env";
+import type { FinalizeResult } from "./types";
 
 export class PartialBuffer {
   private partials: SttResult[] = [];
@@ -15,7 +15,9 @@ export class PartialBuffer {
       const overflow = this.partials.length - MAX_BUFFER_SIZE;
       this.partials.splice(0, overflow);
 
-      console.warn(`[PartialBuffer] overflow: removed ${overflow} oldest entries`);
+      console.warn(
+        `[PartialBuffer] overflow: removed ${overflow} oldest entries`
+      );
     }
   }
   finalize(finalResult: SttResult): FinalizeResult {

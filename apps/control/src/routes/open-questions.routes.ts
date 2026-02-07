@@ -1,17 +1,17 @@
-import { Elysia } from 'elysia';
-import { z } from 'zod';
-import { OpenQuestionService } from '../services';
+import { Elysia } from "elysia";
+import { z } from "zod";
+import { OpenQuestionService } from "../services";
 import {
   createOpenQuestionSchema,
   openQuestionIdSchema,
   openQuestionQuerySchema,
   updateOpenQuestionSchema,
-} from '../validators';
+} from "../validators";
 
-export const openQuestionsRoutes = new Elysia({ prefix: '/open-questions' })
+export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
   // List all open questions
   .get(
-    '/',
+    "/",
     async ({ query }) => {
       const questions = await OpenQuestionService.findAll(query);
       return { success: true, data: questions };
@@ -20,12 +20,12 @@ export const openQuestionsRoutes = new Elysia({ prefix: '/open-questions' })
   )
   // Get open question by id
   .get(
-    '/:id',
+    "/:id",
     async ({ params, set }) => {
       const question = await OpenQuestionService.findById(params.id);
       if (!question) {
         set.status = 404;
-        return { success: false, error: 'Open question not found' };
+        return { success: false, error: "Open question not found" };
       }
       return { success: true, data: question };
     },
@@ -33,16 +33,19 @@ export const openQuestionsRoutes = new Elysia({ prefix: '/open-questions' })
   )
   // Create open question
   .post(
-    '/',
+    "/",
     async ({ body, set }) => {
       try {
         const question = await OpenQuestionService.create(body);
         return { success: true, data: question };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2003') {
+        if (err.code === "P2003") {
           set.status = 400;
-          return { success: false, error: 'Invalid reference (client, meeting, or assignee)' };
+          return {
+            success: false,
+            error: "Invalid reference (client, meeting, or assignee)",
+          };
         }
         throw e;
       }
@@ -51,16 +54,16 @@ export const openQuestionsRoutes = new Elysia({ prefix: '/open-questions' })
   )
   // Update open question
   .patch(
-    '/:id',
+    "/:id",
     async ({ params, body, set }) => {
       try {
         const question = await OpenQuestionService.update(params.id, body);
         return { success: true, data: question };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Open question not found' };
+          return { success: false, error: "Open question not found" };
         }
         throw e;
       }
@@ -69,16 +72,16 @@ export const openQuestionsRoutes = new Elysia({ prefix: '/open-questions' })
   )
   // Delete open question
   .delete(
-    '/:id',
+    "/:id",
     async ({ params, set }) => {
       try {
         await OpenQuestionService.delete(params.id);
-        return { success: true, message: 'Open question deleted' };
+        return { success: true, message: "Open question deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Open question not found' };
+          return { success: false, error: "Open question not found" };
         }
         throw e;
       }
@@ -87,16 +90,19 @@ export const openQuestionsRoutes = new Elysia({ prefix: '/open-questions' })
   )
   // Resolve open question
   .post(
-    '/:id/resolve',
+    "/:id/resolve",
     async ({ params, body, set }) => {
       try {
-        const question = await OpenQuestionService.resolve(params.id, body?.decisionId);
+        const question = await OpenQuestionService.resolve(
+          params.id,
+          body?.decisionId
+        );
         return { success: true, data: question };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Open question not found' };
+          return { success: false, error: "Open question not found" };
         }
         throw e;
       }
@@ -108,16 +114,16 @@ export const openQuestionsRoutes = new Elysia({ prefix: '/open-questions' })
   )
   // Defer open question
   .post(
-    '/:id/defer',
+    "/:id/defer",
     async ({ params, set }) => {
       try {
         const question = await OpenQuestionService.defer(params.id);
         return { success: true, data: question };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Open question not found' };
+          return { success: false, error: "Open question not found" };
         }
         throw e;
       }
@@ -126,16 +132,16 @@ export const openQuestionsRoutes = new Elysia({ prefix: '/open-questions' })
   )
   // Reopen question
   .post(
-    '/:id/reopen',
+    "/:id/reopen",
     async ({ params, set }) => {
       try {
         const question = await OpenQuestionService.reopen(params.id);
         return { success: true, data: question };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Open question not found' };
+          return { success: false, error: "Open question not found" };
         }
         throw e;
       }

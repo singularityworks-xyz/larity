@@ -1,18 +1,18 @@
-import { Elysia } from 'elysia';
-import { z } from 'zod';
-import { DecisionService } from '../services';
+import { Elysia } from "elysia";
+import { z } from "zod";
+import { DecisionService } from "../services";
 import {
   createDecisionSchema,
   decisionIdSchema,
   decisionQuerySchema,
   decisionRefSchema,
   reviseDecisionSchema,
-} from '../validators';
+} from "../validators";
 
-export const decisionsRoutes = new Elysia({ prefix: '/decisions' })
+export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
   // List all decisions (latest versions only, with optional filters)
   .get(
-    '/',
+    "/",
     async ({ query }) => {
       const decisions = await DecisionService.findAll(query);
       return { success: true, data: decisions };
@@ -21,12 +21,12 @@ export const decisionsRoutes = new Elysia({ prefix: '/decisions' })
   )
   // Get decision by id (specific record)
   .get(
-    '/:id',
+    "/:id",
     async ({ params, set }) => {
       const decision = await DecisionService.findById(params.id);
       if (!decision) {
         set.status = 404;
-        return { success: false, error: 'Decision not found' };
+        return { success: false, error: "Decision not found" };
       }
       return { success: true, data: decision };
     },
@@ -34,12 +34,14 @@ export const decisionsRoutes = new Elysia({ prefix: '/decisions' })
   )
   // Get latest version of a decision by ref
   .get(
-    '/ref/:decisionRef',
+    "/ref/:decisionRef",
     async ({ params, set }) => {
-      const decision = await DecisionService.findLatestByRef(params.decisionRef);
+      const decision = await DecisionService.findLatestByRef(
+        params.decisionRef
+      );
       if (!decision) {
         set.status = 404;
-        return { success: false, error: 'Decision not found' };
+        return { success: false, error: "Decision not found" };
       }
       return { success: true, data: decision };
     },
@@ -47,12 +49,14 @@ export const decisionsRoutes = new Elysia({ prefix: '/decisions' })
   )
   // Get all versions of a decision (full history)
   .get(
-    '/ref/:decisionRef/history',
+    "/ref/:decisionRef/history",
     async ({ params, set }) => {
-      const versions = await DecisionService.findAllVersions(params.decisionRef);
+      const versions = await DecisionService.findAllVersions(
+        params.decisionRef
+      );
       if (versions.length === 0) {
         set.status = 404;
-        return { success: false, error: 'Decision not found' };
+        return { success: false, error: "Decision not found" };
       }
       return { success: true, data: versions };
     },
@@ -60,7 +64,7 @@ export const decisionsRoutes = new Elysia({ prefix: '/decisions' })
   )
   // Get specific version of a decision
   .get(
-    '/ref/:decisionRef/version/:version',
+    "/ref/:decisionRef/version/:version",
     async ({ params, set }) => {
       const decision = await DecisionService.findByRefAndVersion(
         params.decisionRef,
@@ -68,7 +72,7 @@ export const decisionsRoutes = new Elysia({ prefix: '/decisions' })
       );
       if (!decision) {
         set.status = 404;
-        return { success: false, error: 'Decision version not found' };
+        return { success: false, error: "Decision version not found" };
       }
       return { success: true, data: decision };
     },
@@ -81,16 +85,19 @@ export const decisionsRoutes = new Elysia({ prefix: '/decisions' })
   )
   // Create new decision (version 1)
   .post(
-    '/',
+    "/",
     async ({ body, set }) => {
       try {
         const decision = await DecisionService.create(body);
         return { success: true, data: decision };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2003') {
+        if (err.code === "P2003") {
           set.status = 400;
-          return { success: false, error: 'Invalid reference (client, meeting, or author)' };
+          return {
+            success: false,
+            error: "Invalid reference (client, meeting, or author)",
+          };
         }
         throw e;
       }
@@ -99,16 +106,19 @@ export const decisionsRoutes = new Elysia({ prefix: '/decisions' })
   )
   // Create new revision of an existing decision
   .post(
-    '/ref/:decisionRef/revise',
+    "/ref/:decisionRef/revise",
     async ({ params, body, set }) => {
       try {
-        const decision = await DecisionService.createRevision(params.decisionRef, body);
+        const decision = await DecisionService.createRevision(
+          params.decisionRef,
+          body
+        );
         return { success: true, data: decision };
       } catch (e: unknown) {
         const err = e as Error;
-        if (err.message === 'Decision not found') {
+        if (err.message === "Decision not found") {
           set.status = 404;
-          return { success: false, error: 'Decision not found' };
+          return { success: false, error: "Decision not found" };
         }
         throw e;
       }
@@ -120,16 +130,16 @@ export const decisionsRoutes = new Elysia({ prefix: '/decisions' })
   )
   // Revoke a decision
   .post(
-    '/ref/:decisionRef/revoke',
+    "/ref/:decisionRef/revoke",
     async ({ params, set }) => {
       try {
         const decision = await DecisionService.revoke(params.decisionRef);
         return { success: true, data: decision };
       } catch (e: unknown) {
         const err = e as Error;
-        if (err.message === 'Active decision not found') {
+        if (err.message === "Active decision not found") {
           set.status = 404;
-          return { success: false, error: 'Active decision not found' };
+          return { success: false, error: "Active decision not found" };
         }
         throw e;
       }
@@ -138,12 +148,12 @@ export const decisionsRoutes = new Elysia({ prefix: '/decisions' })
   )
   // Delete all versions of a decision
   .delete(
-    '/ref/:decisionRef',
+    "/ref/:decisionRef",
     async ({ params, set }) => {
       const result = await DecisionService.deleteByRef(params.decisionRef);
       if (result.count === 0) {
         set.status = 404;
-        return { success: false, error: 'Decision not found' };
+        return { success: false, error: "Decision not found" };
       }
       return { success: true, message: `Deleted ${result.count} version(s)` };
     },
@@ -151,16 +161,16 @@ export const decisionsRoutes = new Elysia({ prefix: '/decisions' })
   )
   // Delete specific decision record by id
   .delete(
-    '/:id',
+    "/:id",
     async ({ params, set }) => {
       try {
         await DecisionService.deleteById(params.id);
-        return { success: true, message: 'Decision deleted' };
+        return { success: true, message: "Decision deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Decision not found' };
+          return { success: false, error: "Decision not found" };
         }
         throw e;
       }

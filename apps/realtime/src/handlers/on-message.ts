@@ -20,9 +20,9 @@
  * This protects latency.
  */
 
-import { publishAudioFrame } from '../redis/publisher';
-import { updateLastFrameTs } from '../session';
-import type { RealtimeSocket } from '../types';
+import { publishAudioFrame } from "../redis/publisher";
+import { updateLastFrameTs } from "../session";
+import type { RealtimeSocket } from "../types";
 
 /**
  * Handle incoming WebSocket message
@@ -31,10 +31,14 @@ import type { RealtimeSocket } from '../types';
  * @param message - Raw message data (ArrayBuffer)
  * @param isBinary - Whether the message is binary
  */
-export function onMessage(ws: RealtimeSocket, message: ArrayBuffer, isBinary: boolean): void {
+export function onMessage(
+  ws: RealtimeSocket,
+  message: ArrayBuffer,
+  isBinary: boolean
+): void {
   // Reject non-binary frames immediately
   if (!isBinary) {
-    console.warn('[onMessage] Received non-binary frame, ignoring');
+    console.warn("[onMessage] Received non-binary frame, ignoring");
     return;
   }
 

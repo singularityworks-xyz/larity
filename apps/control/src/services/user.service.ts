@@ -1,8 +1,8 @@
-import { prisma } from '../lib/prisma';
-import type { CreateUserInput, UpdateUserInput } from '../validators';
+import { prisma } from "../lib/prisma";
+import type { CreateUserInput, UpdateUserInput } from "../validators";
 
 export const UserService = {
-  async create(data: CreateUserInput) {
+  create(data: CreateUserInput) {
     return prisma.user.create({
       data: {
         ...data,
@@ -14,14 +14,16 @@ export const UserService = {
     });
   },
 
-  async findById(id: string) {
+  findById(id: string) {
     return prisma.user.findUnique({
       where: { id },
       include: {
         org: { select: { id: true, name: true, slug: true } },
         clientMemberships: {
           include: {
-            client: { select: { id: true, name: true, slug: true, status: true } },
+            client: {
+              select: { id: true, name: true, slug: true, status: true },
+            },
           },
         },
         _count: {
@@ -36,7 +38,7 @@ export const UserService = {
     });
   },
 
-  async findByEmail(email: string) {
+  findByEmail(email: string) {
     return prisma.user.findUnique({
       where: { email },
       include: {
@@ -45,11 +47,11 @@ export const UserService = {
     });
   },
 
-  async findAll(query?: { orgId?: string; role?: string }) {
+  findAll(query?: { orgId?: string; role?: string }) {
     return prisma.user.findMany({
       where: {
         orgId: query?.orgId,
-        role: query?.role as 'OWNER' | 'ADMIN' | 'MEMBER' | undefined,
+        role: query?.role as "OWNER" | "ADMIN" | "MEMBER" | undefined,
       },
       include: {
         org: { select: { id: true, name: true, slug: true } },
@@ -57,11 +59,11 @@ export const UserService = {
           select: { assignedTasks: true, clientMemberships: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   },
 
-  async update(id: string, data: UpdateUserInput) {
+  update(id: string, data: UpdateUserInput) {
     return prisma.user.update({
       where: { id },
       data,
@@ -71,21 +73,27 @@ export const UserService = {
     });
   },
 
-  async delete(id: string) {
+  delete(id: string) {
     return prisma.user.delete({
       where: { id },
     });
   },
 
-  async getClientAssignments(id: string) {
+  getClientAssignments(id: string) {
     return prisma.clientMember.findMany({
       where: { userId: id },
       include: {
         client: {
-          select: { id: true, name: true, slug: true, status: true, industry: true },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            status: true,
+            industry: true,
+          },
         },
       },
-      orderBy: { assignedAt: 'desc' },
+      orderBy: { assignedAt: "desc" },
     });
   },
 };

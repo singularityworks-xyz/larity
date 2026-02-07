@@ -8,16 +8,16 @@
  * Silent fallbacks cause production bugs.
  */
 
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 // Load environment variables from project root .env file
-import { config } from 'dotenv';
+import { config } from "dotenv";
 
 // Get the directory of the current file and navigate to project root
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const projectRoot = join(__dirname, '../../../');
-const envPath = join(projectRoot, '.env');
+const projectRoot = join(__dirname, "../../../");
+const envPath = join(projectRoot, ".env");
 
 config({ path: envPath });
 
@@ -36,8 +36,8 @@ function optional(name: string, defaultValue: string): string {
 
 export const env = {
   /** WebSocket server port */
-  PORT: parseInt(optional('REALTIME_PORT', '9001'), 10),
+  PORT: Number.parseInt(optional("REALTIME_PORT", "9001"), 10),
 
   /** Redis connection URL - required, comes from infra */
-  REDIS_URL: required('REDIS_URL'),
+  REDIS_URL: required("REDIS_URL"),
 } as const;

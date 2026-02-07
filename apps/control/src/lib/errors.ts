@@ -13,10 +13,10 @@ export interface PrismaError {
  */
 export function isPrismaError(e: unknown): e is PrismaError {
   return (
-    typeof e === 'object' &&
+    typeof e === "object" &&
     e !== null &&
-    'code' in e &&
-    typeof (e as PrismaError).code === 'string'
+    "code" in e &&
+    typeof (e as PrismaError).code === "string"
   );
 }
 
@@ -27,9 +27,9 @@ export function isPrismaError(e: unknown): e is PrismaError {
  * - P2025: Record not found
  */
 export const PrismaErrorCode = {
-  UNIQUE_CONSTRAINT: 'P2002',
-  FOREIGN_KEY_CONSTRAINT: 'P2003',
-  RECORD_NOT_FOUND: 'P2025',
+  UNIQUE_CONSTRAINT: "P2002",
+  FOREIGN_KEY_CONSTRAINT: "P2003",
+  RECORD_NOT_FOUND: "P2025",
 } as const;
 
 /**
@@ -44,7 +44,10 @@ export interface ApiErrorResponse {
 /**
  * Create a standardized error response
  */
-export function createErrorResponse(error: string, message?: string): ApiErrorResponse {
+export function createErrorResponse(
+  error: string,
+  message?: string
+): ApiErrorResponse {
   return {
     success: false,
     error,
@@ -63,12 +66,14 @@ export function handlePrismaError(
     notFoundMessage?: string;
   } = {}
 ): { status: number; response: ApiErrorResponse } | null {
-  if (!isPrismaError(e)) return null;
+  if (!isPrismaError(e)) {
+    return null;
+  }
 
   const {
-    uniqueMessage = 'Resource already exists',
-    foreignKeyMessage = 'Invalid reference',
-    notFoundMessage = 'Resource not found',
+    uniqueMessage = "Resource already exists",
+    foreignKeyMessage = "Invalid reference",
+    notFoundMessage = "Resource not found",
   } = options;
 
   switch (e.code) {

@@ -1,11 +1,11 @@
-import { redis } from './client';
-import { redisKeys } from './keys';
-import { TTL } from './ttl';
+import { redis } from "./client";
+import { redisKeys } from "./keys";
+import { TTL } from "./ttl";
 
-export async function acquireLock(name: string) {
+export function acquireLock(name: string) {
   return redis
-    .set(redisKeys.lock(name), '1', 'EX', TTL.LOCK, 'NX')
-    .then((result) => result === 'OK');
+    .set(redisKeys.lock(name), "1", "EX", TTL.LOCK, "NX")
+    .then((result) => result === "OK");
 }
 
 export async function releaseLock(name: string) {

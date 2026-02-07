@@ -1,11 +1,14 @@
-import { prisma } from '../lib/prisma';
-import type { CreateMeetingParticipantInput, UpdateMeetingParticipantInput } from '../validators';
+import { prisma } from "../lib/prisma";
+import type {
+  CreateMeetingParticipantInput,
+  UpdateMeetingParticipantInput,
+} from "../validators";
 
 export const MeetingParticipantService = {
-  async addInternal(
+  addInternal(
     meetingId: string,
     userId: string,
-    role: 'HOST' | 'PARTICIPANT' | 'OBSERVER' = 'PARTICIPANT'
+    role: "HOST" | "PARTICIPANT" | "OBSERVER" = "PARTICIPANT"
   ) {
     return prisma.meetingParticipant.create({
       data: { meetingId, userId, role },
@@ -15,27 +18,29 @@ export const MeetingParticipantService = {
     });
   },
 
-  async addExternal(
+  addExternal(
     meetingId: string,
     externalName: string,
     externalEmail: string,
-    role: 'HOST' | 'PARTICIPANT' | 'OBSERVER' = 'PARTICIPANT'
+    role: "HOST" | "PARTICIPANT" | "OBSERVER" = "PARTICIPANT"
   ) {
     return prisma.meetingParticipant.create({
       data: { meetingId, externalName, externalEmail, role },
     });
   },
 
-  async create(data: CreateMeetingParticipantInput) {
+  create(data: CreateMeetingParticipantInput) {
     return prisma.meetingParticipant.create({
       data,
       include: {
-        user: data.userId ? { select: { id: true, name: true, email: true } } : false,
+        user: data.userId
+          ? { select: { id: true, name: true, email: true } }
+          : false,
       },
     });
   },
 
-  async findById(id: string) {
+  findById(id: string) {
     return prisma.meetingParticipant.findUnique({
       where: { id },
       include: {
@@ -45,17 +50,17 @@ export const MeetingParticipantService = {
     });
   },
 
-  async findByMeeting(meetingId: string) {
+  findByMeeting(meetingId: string) {
     return prisma.meetingParticipant.findMany({
       where: { meetingId },
       include: {
         user: { select: { id: true, name: true, email: true } },
       },
-      orderBy: { role: 'asc' },
+      orderBy: { role: "asc" },
     });
   },
 
-  async update(id: string, data: UpdateMeetingParticipantInput) {
+  update(id: string, data: UpdateMeetingParticipantInput) {
     return prisma.meetingParticipant.update({
       where: { id },
       data,
@@ -65,14 +70,14 @@ export const MeetingParticipantService = {
     });
   },
 
-  async markAttended(id: string) {
+  markAttended(id: string) {
     return prisma.meetingParticipant.update({
       where: { id },
       data: { attendedAt: new Date() },
     });
   },
 
-  async remove(id: string) {
+  remove(id: string) {
     return prisma.meetingParticipant.delete({
       where: { id },
     });

@@ -1,5 +1,5 @@
-import { getChannel } from './connection';
-import { Exchanges } from './exchanges';
+import { getChannel } from "./connection";
+import { Exchanges } from "./exchanges";
 
 export async function publish<T>(
   routingKey: string,
@@ -12,7 +12,7 @@ export async function publish<T>(
 
   const published = ch.publish(exchange, routingKey, buffer, {
     persistent: true,
-    contentType: 'application/json',
+    contentType: "application/json",
     timestamp: Date.now(),
   });
 

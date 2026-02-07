@@ -14,22 +14,28 @@
  * If Redis is slow, frames are dropped and logged. That's it.
  */
 
-import { redis } from '../../../../packages/infra/redis';
-import type { AudioFramePayload, SessionEndEvent, SessionStartEvent } from '../types';
-import { audioChannel, SESSION_END, SESSION_START } from './channels';
+import { redis } from "../../../../packages/infra/redis";
+import type {
+  AudioFramePayload,
+  SessionEndEvent,
+  SessionStartEvent,
+} from "../types";
+import { audioChannel, SESSION_END, SESSION_START } from "./channels";
 
 /**
  * Publish a raw audio frame to Redis
  * Binary-safe: encodes buffer as base64 for JSON transport
  */
-export async function publishAudioFrame(payload: AudioFramePayload): Promise<void> {
+export async function publishAudioFrame(
+  payload: AudioFramePayload
+): Promise<void> {
   const channel = audioChannel(payload.sessionId);
   try {
     // Encode buffer as base64 for JSON-safe transport
     const message = JSON.stringify({
       sessionId: payload.sessionId,
       ts: payload.ts,
-      frame: payload.frame.toString('base64'),
+      frame: payload.frame.toString("base64"),
     });
     await redis.publish(channel, message);
   } catch (error) {
@@ -44,11 +50,16 @@ export async function publishAudioFrame(payload: AudioFramePayload): Promise<voi
 /**
  * Publish session start event
  */
-export async function publishSessionStart(event: SessionStartEvent): Promise<void> {
+export async function publishSessionStart(
+  event: SessionStartEvent
+): Promise<void> {
   try {
     await redis.publish(SESSION_START, JSON.stringify(event));
   } catch (error) {
-    console.error(`[publisher] Failed to publish session start for ${event.sessionId}:`, error);
+    console.error(
+      `[publisher] Failed to publish session start for ${event.sessionId}:`,
+      error
+    );
   }
 }
 
@@ -59,6 +70,9 @@ export async function publishSessionEnd(event: SessionEndEvent): Promise<void> {
   try {
     await redis.publish(SESSION_END, JSON.stringify(event));
   } catch (error) {
-    console.error(`[publisher] Failed to publish session end for ${event.sessionId}:`, error);
+    console.error(
+      `[publisher] Failed to publish session end for ${event.sessionId}:`,
+      error
+    );
   }
 }

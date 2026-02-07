@@ -1,9 +1,12 @@
-import { prisma } from '../lib/prisma';
-import type { CreateClientMemberInput, UpdateClientMemberInput } from '../validators';
+import { prisma } from "../lib/prisma";
+import type {
+  CreateClientMemberInput,
+  UpdateClientMemberInput,
+} from "../validators";
 
 // ClientMembers are external contacts (not linked to User)
 export const ClientMemberService = {
-  async create(data: CreateClientMemberInput) {
+  create(data: CreateClientMemberInput) {
     const { clientId, ...rest } = data;
     return prisma.clientMember.create({
       data: {
@@ -16,13 +19,13 @@ export const ClientMemberService = {
     });
   },
 
-  async delete(id: string) {
+  delete(id: string) {
     return prisma.clientMember.delete({
       where: { id },
     });
   },
 
-  async update(id: string, data: UpdateClientMemberInput) {
+  update(id: string, data: UpdateClientMemberInput) {
     return prisma.clientMember.update({
       where: { id },
       data,
@@ -32,7 +35,7 @@ export const ClientMemberService = {
     });
   },
 
-  async findById(id: string) {
+  findById(id: string) {
     return prisma.clientMember.findUnique({
       where: { id },
       include: {
@@ -41,7 +44,7 @@ export const ClientMemberService = {
     });
   },
 
-  async findByClientAndEmail(clientId: string, email: string) {
+  findByClientAndEmail(clientId: string, email: string) {
     return prisma.clientMember.findFirst({
       where: { clientId, email },
       include: {
@@ -50,23 +53,23 @@ export const ClientMemberService = {
     });
   },
 
-  async findByClient(clientId: string) {
+  findByClient(clientId: string) {
     return prisma.clientMember.findMany({
       where: { clientId },
       orderBy: [
-        { role: 'asc' }, // PRIMARY_CONTACT first
-        { updatedAt: 'desc' },
+        { role: "asc" }, // PRIMARY_CONTACT first
+        { updatedAt: "desc" },
       ],
     });
   },
 
-  async findByEmail(email: string) {
+  findByEmail(email: string) {
     return prisma.clientMember.findMany({
       where: { email },
       include: {
         client: { select: { id: true, name: true, slug: true, status: true } },
       },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { updatedAt: "desc" },
     });
   },
 };

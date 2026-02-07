@@ -1,5 +1,5 @@
-import { redis } from './client';
-import { redisKeys } from './keys';
+import { redis } from "./client";
+import { redisKeys } from "./keys";
 
 export interface RedisHealthStatus {
   healthy: boolean;
@@ -20,7 +20,7 @@ export async function checkRedisHealth(): Promise<RedisHealthStatus> {
     const testKey = redisKeys.health();
     const testValue = `health_check_${Date.now()}`;
 
-    await redis.set(testKey, testValue, 'EX', 10); // Expire in 10 seconds
+    await redis.set(testKey, testValue, "EX", 10); // Expire in 10 seconds
     const retrievedValue = await redis.get(testKey);
 
     // Clean up
@@ -28,7 +28,7 @@ export async function checkRedisHealth(): Promise<RedisHealthStatus> {
 
     // Verify the test worked
     if (retrievedValue !== testValue) {
-      throw new Error('Redis set/get operation failed');
+      throw new Error("Redis set/get operation failed");
     }
 
     const latency = Date.now() - startTime;
@@ -44,7 +44,7 @@ export async function checkRedisHealth(): Promise<RedisHealthStatus> {
     return {
       healthy: false,
       latency,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : "Unknown error",
       timestamp,
     };
   }

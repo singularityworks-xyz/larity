@@ -1,18 +1,24 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // ID schemas
 export const orgIdSchema = z.object({
-  id: z.uuid('Invalid organization ID'),
+  id: z.uuid("Invalid organization ID"),
 });
 
 // Create schema
 export const createOrgSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255, 'Name must be less than 255 characters'),
+  name: z
+    .string()
+    .min(1, "Name is required")
+    .max(255, "Name must be less than 255 characters"),
   slug: z
     .string()
-    .min(1, 'Slug is required')
-    .max(100, 'Slug must be less than 100 characters')
-    .regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens'),
+    .min(1, "Slug is required")
+    .max(100, "Slug must be less than 100 characters")
+    .regex(
+      /^[a-z0-9-]+$/,
+      "Slug must contain only lowercase letters, numbers, and hyphens"
+    ),
   settings: z.record(z.string(), z.any()).optional(),
 });
 
@@ -23,7 +29,10 @@ export const updateOrgSchema = z.object({
     .string()
     .min(1)
     .max(100)
-    .regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens')
+    .regex(
+      /^[a-z0-9-]+$/,
+      "Slug must contain only lowercase letters, numbers, and hyphens"
+    )
     .optional(),
   settings: z.record(z.string(), z.any()).optional(),
 });

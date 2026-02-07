@@ -1,19 +1,27 @@
-import { z } from 'zod';
-import { paginationSchema } from '../lib/pagination';
+import { z } from "zod";
+import { paginationSchema } from "../lib/pagination";
 
 // Enums
-export const MeetingStatus = z.enum(['SCHEDULED', 'LIVE', 'ENDED', 'CANCELLED']);
+export const MeetingStatus = z.enum([
+  "SCHEDULED",
+  "LIVE",
+  "ENDED",
+  "CANCELLED",
+]);
 export type MeetingStatus = z.infer<typeof MeetingStatus>;
 
 // ID schemas
 export const meetingIdSchema = z.object({
-  id: z.uuid('Invalid meeting ID'),
+  id: z.uuid("Invalid meeting ID"),
 });
 
 // Create schema - now client-scoped instead of org-scoped
 export const createMeetingSchema = z.object({
-  clientId: z.uuid('Invalid client ID'),
-  title: z.string().min(1, 'Title is required').max(255, 'Title must be less than 255 characters'),
+  clientId: z.uuid("Invalid client ID"),
+  title: z
+    .string()
+    .min(1, "Title is required")
+    .max(255, "Title must be less than 255 characters"),
   description: z.string().max(2000).optional(),
   agenda: z.string().max(5000).optional(),
   scheduledAt: z.coerce.date().optional(),
@@ -30,7 +38,7 @@ export const updateMeetingSchema = z.object({
   startedAt: z.coerce.date().optional().nullable(),
   endedAt: z.coerce.date().optional().nullable(),
   calendarEventId: z.string().max(255).optional().nullable(),
-  summary: z.string().max(10000).optional().nullable(),
+  summary: z.string().max(10_000).optional().nullable(),
 });
 
 // Query schema - now client-scoped with pagination
@@ -65,7 +73,9 @@ export const meetingExtractionSchema = z.object({
         description: z.string().optional(),
         assigneeId: z.uuid().optional(),
         dueAt: z.coerce.date().optional(),
-        priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).default('MEDIUM'),
+        priority: z
+          .enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"])
+          .default("MEDIUM"),
       })
     )
     .default([]),
@@ -84,14 +94,21 @@ export const meetingExtractionSchema = z.object({
       z.object({
         content: z.string().min(1).max(5000),
         category: z
-          .enum(['COMMITMENT', 'CONSTRAINT', 'INSIGHT', 'WARNING', 'RISK', 'OPPORTUNITY'])
-          .default('INSIGHT'),
+          .enum([
+            "COMMITMENT",
+            "CONSTRAINT",
+            "INSIGHT",
+            "WARNING",
+            "RISK",
+            "OPPORTUNITY",
+          ])
+          .default("INSIGHT"),
         speakerId: z.uuid().optional(),
         transcriptEvidence: z.string().optional(),
       })
     )
     .default([]),
-  summary: z.string().max(10000).optional(),
+  summary: z.string().max(10_000).optional(),
 });
 
 // Type exports

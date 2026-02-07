@@ -1,26 +1,26 @@
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { execSync } from 'node:child_process';
-import { promisify } from 'node:util';
-import amqp from 'amqplib';
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { execSync } from "node:child_process";
+import { promisify } from "node:util";
+import amqp from "amqplib";
 
-import { closeConnection } from '../connection';
-import { consume } from '../consume';
-import { setupRabbitMQ } from '../index';
-import { publish } from '../publish';
-import { Queues } from '../queues';
+import { closeConnection } from "../connection";
+import { consume } from "../consume";
+import { setupRabbitMQ } from "../index";
+import { publish } from "../publish";
+import { Queues } from "../queues";
 
 const sleep = promisify(setTimeout);
 
 class RabbitMQTestContainer {
   private containerId: string | null = null;
-  private amqpUrl = 'amqp://larity:larity_dev@localhost:5672';
+  private readonly amqpUrl = "amqp://larity:larity_dev@localhost:5672";
 
-  async start(): Promise<void> {
-    console.log('Starting RabbitMQ test container via docker run...');
+  start(): void {
+    console.log("Starting RabbitMQ test container via docker run...");
 
     // Ensure any stale container is gone
     try {
-      execSync('docker rm -f rabbitmq-integration-test', { stdio: 'ignore' });
+      execSync("docker rm -f rabbitmq-integration-test", { stdio: "ignore" });
     } catch (_e) {
       // ignore
     }
@@ -28,39 +28,41 @@ class RabbitMQTestContainer {
     // Run docker container directly
     // Using --rm to auto-clean if the process dies, but we'll manage lifecycle manually
     const cmd = [
-      'docker',
-      'run',
-      '-d',
-      '--name',
-      'rabbitmq-integration-test',
-      '-p',
-      '5672:5672',
-      '-p',
-      '15672:15672',
-      '-e',
-      'RABBITMQ_DEFAULT_USER=larity',
-      '-e',
-      'RABBITMQ_DEFAULT_PASS=larity_dev',
-      'rabbitmq:3-management-alpine',
+      "docker",
+      "run",
+      "-d",
+      "--name",
+      "rabbitmq-integration-test",
+      "-p",
+      "5672:5672",
+      "-p",
+      "15672:15672",
+      "-e",
+      "RABBITMQ_DEFAULT_USER=larity",
+      "-e",
+      "RABBITMQ_DEFAULT_PASS=larity_dev",
+      "rabbitmq:3-management-alpine",
     ];
 
-    const result = execSync(cmd.join(' '));
+    const result = execSync(cmd.join(" "));
     this.containerId = result.toString().trim();
     console.log(`Container started with ID: ${this.containerId}`);
   }
 
   async waitForReady(maxRetries = 60): Promise<void> {
-    console.log('Waiting for RabbitMQ to be ready...');
+    console.log("Waiting for RabbitMQ to be ready...");
 
     for (let i = 0; i < maxRetries; i++) {
       try {
         const conn = await amqp.connect(this.amqpUrl);
         await conn.close();
-        console.log('RabbitMQ is ready!');
+        console.log("RabbitMQ is ready!");
         return;
       } catch (_error) {
         if (i % 5 === 0) {
-          console.log(`RabbitMQ not ready yet, retry ${i + 1}/${maxRetries}...`);
+          console.log(
+            `RabbitMQ not ready yet, retry ${i + 1}/${maxRetries}...`
+          );
         }
         await sleep(1000);
       }
@@ -70,26 +72,26 @@ class RabbitMQTestContainer {
     if (this.containerId) {
       try {
         const logs = execSync(`docker logs ${this.containerId}`).toString();
-        console.log('--- RabbitMQ Container Logs ---');
+        console.log("--- RabbitMQ Container Logs ---");
         console.log(logs);
-        console.log('-------------------------------');
+        console.log("-------------------------------");
       } catch (_e) {
-        console.error('Failed to fetch logs');
+        console.error("Failed to fetch logs");
       }
     }
 
-    throw new Error('RabbitMQ container failed to become ready');
+    throw new Error("RabbitMQ container failed to become ready");
   }
 
-  async stop(): Promise<void> {
-    console.log('Stopping RabbitMQ test container...');
+  stop(): void {
+    console.log("Stopping RabbitMQ test container...");
 
     if (this.containerId) {
       try {
         execSync(`docker rm -f ${this.containerId}`);
-        console.log('Container stopped and removed');
+        console.log("Container stopped and removed");
       } catch (error) {
-        console.error('Failed to stop container:', error);
+        console.error("Failed to stop container:", error);
       }
       this.containerId = null;
     }
@@ -102,7 +104,7 @@ class RabbitMQTestContainer {
 
 const testContainer = new RabbitMQTestContainer();
 
-describe('RabbitMQ Integration Tests', () => {
+describe("RabbitMQ Integration Tests", () => {
   beforeAll(async () => {
     process.env.RABBITMQ_URL = testContainer.getUrl();
 
@@ -113,27 +115,27 @@ describe('RabbitMQ Integration Tests', () => {
       // Initialize infrastructure (create queues/exchanges)
       await setupRabbitMQ();
     } catch (error) {
-      console.error('Setup failed:', error);
+      console.error("Setup failed:", error);
       throw error;
     }
-  }, 120000);
+  }, 120_000);
 
   afterAll(async () => {
     await closeConnection();
     await testContainer.stop();
-  }, 60000);
+  }, 60_000);
 
-  describe('Publish and Consume', () => {
-    it('should publish a message and consume it', async () => {
+  describe("Publish and Consume", () => {
+    it("should publish a message and consume it", async () => {
       const testQueue = Queues.MEETING_TRANSCRIBE;
       // We need to use the routing key bound to this queue.
       // In queues.ts: await ch.bindQueue(q, Exchanges.EVENTS, q.replace("q.", ""));
       // So for "q.meeting.transcribe", routing key is "meeting.transcribe"
-      const routingKey = testQueue.replace('q.', '');
+      const routingKey = testQueue.replace("q.", "");
 
       const payload = {
-        id: 'integration-test-id',
-        data: 'hello world',
+        id: "integration-test-id",
+        data: "hello world",
         timestamp: Date.now(),
       };
 
@@ -161,14 +163,14 @@ describe('RabbitMQ Integration Tests', () => {
       expect(receivedData).toEqual(payload);
     });
 
-    it('should handle multiple messages', async () => {
+    it("should handle multiple messages", async () => {
       const testQueue = Queues.MEETING_SUMMARY;
-      const routingKey = testQueue.replace('q.', '');
+      const routingKey = testQueue.replace("q.", "");
 
       const messages = [
-        { id: 1, text: 'msg1' },
-        { id: 2, text: 'msg2' },
-        { id: 3, text: 'msg3' },
+        { id: 1, text: "msg1" },
+        { id: 2, text: "msg2" },
+        { id: 3, text: "msg3" },
       ];
 
       const received: { id: number; text: string }[] = [];

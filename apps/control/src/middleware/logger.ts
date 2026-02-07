@@ -1,11 +1,11 @@
-import { randomUUID } from 'node:crypto';
-import { Elysia } from 'elysia';
+import { randomUUID } from "node:crypto";
+import { Elysia } from "elysia";
 
 /**
  * Request logging middleware
  * Adds request ID and logs request/response details
  */
-export const requestLogger = new Elysia({ name: 'request-logger' })
+export const requestLogger = new Elysia({ name: "request-logger" })
   .derive(() => {
     return {
       requestId: randomUUID(),
@@ -13,7 +13,9 @@ export const requestLogger = new Elysia({ name: 'request-logger' })
     };
   })
   .onBeforeHandle(({ request, requestId }) => {
-    console.log(`[${requestId}] --> ${request.method} ${new URL(request.url).pathname}`);
+    console.log(
+      `[${requestId}] --> ${request.method} ${new URL(request.url).pathname}`
+    );
   })
   .onAfterResponse(({ request, requestId, requestStart, set }) => {
     const duration = Date.now() - requestStart;

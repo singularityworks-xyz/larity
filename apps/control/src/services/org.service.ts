@@ -1,8 +1,8 @@
-import { prisma } from '../lib/prisma';
-import type { CreateOrgInput, UpdateOrgInput } from '../validators';
+import { prisma } from "../lib/prisma";
+import type { CreateOrgInput, UpdateOrgInput } from "../validators";
 
 export const OrgService = {
-  async create(data: CreateOrgInput, creatorUserId: string) {
+  create(data: CreateOrgInput, creatorUserId: string) {
     return prisma.$transaction(async (tx) => {
       // Create the org
       const org = await tx.org.create({
@@ -19,7 +19,7 @@ export const OrgService = {
         where: { id: creatorUserId },
         data: {
           orgId: org.id,
-          role: 'OWNER',
+          role: "OWNER",
         },
       });
 
@@ -27,7 +27,7 @@ export const OrgService = {
     });
   },
 
-  async findById(id: string) {
+  findById(id: string) {
     return prisma.org.findUnique({
       where: { id },
       include: {
@@ -38,7 +38,7 @@ export const OrgService = {
     });
   },
 
-  async findBySlug(slug: string) {
+  findBySlug(slug: string) {
     return prisma.org.findUnique({
       where: { slug },
       include: {
@@ -49,7 +49,7 @@ export const OrgService = {
     });
   },
 
-  async findAll(query?: { slug?: string }) {
+  findAll(query?: { slug?: string }) {
     return prisma.org.findMany({
       where: {
         slug: query?.slug,
@@ -59,18 +59,18 @@ export const OrgService = {
           select: { users: true, clients: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   },
 
-  async update(id: string, data: UpdateOrgInput) {
+  update(id: string, data: UpdateOrgInput) {
     return prisma.org.update({
       where: { id },
       data,
     });
   },
 
-  async delete(id: string) {
+  delete(id: string) {
     return prisma.org.delete({
       where: { id },
     });
@@ -81,6 +81,6 @@ export const OrgService = {
       where: { id: userId },
       select: { orgId: true, role: true },
     });
-    return user?.orgId === orgId && user?.role === 'OWNER';
+    return user?.orgId === orgId && user?.role === "OWNER";
   },
 };

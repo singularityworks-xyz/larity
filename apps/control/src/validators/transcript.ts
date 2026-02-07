@@ -1,23 +1,23 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // Enums
-export const TranscriptFormat = z.enum(['RAW', 'NORMALIZED', 'STRUCTURED']);
+export const TranscriptFormat = z.enum(["RAW", "NORMALIZED", "STRUCTURED"]);
 export type TranscriptFormat = z.infer<typeof TranscriptFormat>;
 
 // ID schemas
 export const transcriptIdSchema = z.object({
-  id: z.uuid('Invalid transcript ID'),
+  id: z.uuid("Invalid transcript ID"),
 });
 
 export const transcriptMeetingIdSchema = z.object({
-  meetingId: z.uuid('Invalid meeting ID'),
+  meetingId: z.uuid("Invalid meeting ID"),
 });
 
 // Create schema
 export const createTranscriptSchema = z.object({
-  meetingId: z.uuid('Invalid meeting ID'),
-  content: z.string().min(1, 'Content is required'),
-  format: TranscriptFormat.default('RAW'),
+  meetingId: z.uuid("Invalid meeting ID"),
+  content: z.string().min(1, "Content is required"),
+  format: TranscriptFormat.default("RAW"),
   duration: z.number().int().positive().optional(),
   wordCount: z.number().int().positive().optional(),
 });

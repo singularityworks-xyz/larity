@@ -1,34 +1,34 @@
-import { z } from 'zod';
-import { paginationSchema } from '../lib/pagination';
+import { z } from "zod";
+import { paginationSchema } from "../lib/pagination";
 
 // Enums
 export const DocumentType = z.enum([
-  'NOTE',
-  'CONTRACT',
-  'PROPOSAL',
-  'SOW',
-  'BRIEF',
-  'TEMPLATE',
-  'OTHER',
+  "NOTE",
+  "CONTRACT",
+  "PROPOSAL",
+  "SOW",
+  "BRIEF",
+  "TEMPLATE",
+  "OTHER",
 ]);
 export type DocumentType = z.infer<typeof DocumentType>;
 
-export const DocumentStatus = z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']);
+export const DocumentStatus = z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]);
 export type DocumentStatus = z.infer<typeof DocumentStatus>;
 
 // ID schemas
 export const documentIdSchema = z.object({
-  id: z.uuid('Invalid document ID'),
+  id: z.uuid("Invalid document ID"),
 });
 
 // Create schema
 export const createDocumentSchema = z.object({
-  clientId: z.uuid('Invalid client ID'),
-  createdById: z.uuid('Invalid user ID').optional(),
-  parentId: z.uuid('Invalid parent document ID').optional(),
-  type: DocumentType.default('NOTE'),
-  title: z.string().min(1, 'Title is required').max(255),
-  content: z.string().min(1, 'Content is required'),
+  clientId: z.uuid("Invalid client ID"),
+  createdById: z.uuid("Invalid user ID").optional(),
+  parentId: z.uuid("Invalid parent document ID").optional(),
+  type: DocumentType.default("NOTE"),
+  title: z.string().min(1, "Title is required").max(255),
+  content: z.string().min(1, "Content is required"),
   mimeType: z.string().max(100).optional(),
   fileUrl: z.url().optional(),
 });

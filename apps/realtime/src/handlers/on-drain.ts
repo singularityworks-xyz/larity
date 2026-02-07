@@ -15,7 +15,7 @@
  * Realtime systems prefer data loss over delay.
  */
 
-import type { RealtimeSocket } from '../types';
+import type { RealtimeSocket } from "../types";
 
 /**
  * Handle backpressure warning from uWebSockets

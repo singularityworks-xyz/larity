@@ -1,8 +1,8 @@
-import { prisma } from '../lib/prisma';
-import type { CreateImportantPointInput } from '../validators';
+import { prisma } from "../lib/prisma";
+import type { CreateImportantPointInput } from "../validators";
 
 export const ImportantPointService = {
-  async create(data: CreateImportantPointInput) {
+  create(data: CreateImportantPointInput) {
     return prisma.importantPoint.create({
       data,
       include: {
@@ -13,7 +13,7 @@ export const ImportantPointService = {
     });
   },
 
-  async findById(id: string) {
+  findById(id: string) {
     return prisma.importantPoint.findUnique({
       where: { id },
       include: {
@@ -24,7 +24,7 @@ export const ImportantPointService = {
     });
   },
 
-  async findAll(query?: {
+  findAll(query?: {
     clientId?: string;
     meetingId?: string;
     speakerId?: string;
@@ -36,12 +36,12 @@ export const ImportantPointService = {
         meetingId: query?.meetingId,
         speakerId: query?.speakerId,
         category: query?.category as
-          | 'COMMITMENT'
-          | 'CONSTRAINT'
-          | 'INSIGHT'
-          | 'WARNING'
-          | 'RISK'
-          | 'OPPORTUNITY'
+          | "COMMITMENT"
+          | "CONSTRAINT"
+          | "INSIGHT"
+          | "WARNING"
+          | "RISK"
+          | "OPPORTUNITY"
           | undefined,
       },
       include: {
@@ -49,13 +49,13 @@ export const ImportantPointService = {
         meeting: { select: { id: true, title: true } },
         speaker: { select: { id: true, name: true, email: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   },
 
   // Important points are immutable - no update method
 
-  async delete(id: string) {
+  delete(id: string) {
     return prisma.importantPoint.delete({
       where: { id },
     });

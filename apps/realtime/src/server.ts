@@ -12,13 +12,13 @@
  * This file wires lifecycle hooks but contains no business logic itself.
  */
 
-import uWS from 'uWebSockets.js';
-import { env } from './env';
-import { onClose } from './handlers/onClose';
-import { onDrain } from './handlers/onDrain';
-import { onMessage } from './handlers/onMessage';
-import { onOpen } from './handlers/onOpen';
-import type { SocketData } from './types';
+import uWS from "uWebSockets.js";
+import { env } from "./env";
+import { onClose } from "./handlers/on-close";
+import { onDrain } from "./handlers/on-drain";
+import { onMessage } from "./handlers/on-message";
+import { onOpen } from "./handlers/on-open";
+import type { SocketData } from "./types";
 
 /**
  * Start the WebSocket server
@@ -28,7 +28,7 @@ export function startServer(): Promise<uWS.us_listen_socket> {
   return new Promise((resolve, reject) => {
     const app = uWS.App();
 
-    app.ws<SocketData>('/*', {
+    app.ws<SocketData>("/*", {
       /**
        * Maximum payload size for a single message
        */
@@ -56,12 +56,12 @@ export function startServer(): Promise<uWS.us_listen_socket> {
         // Extract session ID from query string
         const query = req.getQuery();
         const params = new URLSearchParams(query);
-        const sessionId = params.get('sessionId');
+        const sessionId = params.get("sessionId");
 
         // Reject if no session ID
         if (!sessionId) {
-          res.writeStatus('400 Bad Request');
-          res.end('Missing sessionId query parameter');
+          res.writeStatus("400 Bad Request");
+          res.end("Missing sessionId query parameter");
           return;
         }
 
@@ -75,9 +75,9 @@ export function startServer(): Promise<uWS.us_listen_socket> {
         // Complete the upgrade
         res.upgrade(
           userData,
-          req.getHeader('sec-websocket-key'),
-          req.getHeader('sec-websocket-protocol'),
-          req.getHeader('sec-websocket-extensions'),
+          req.getHeader("sec-websocket-key"),
+          req.getHeader("sec-websocket-protocol"),
+          req.getHeader("sec-websocket-extensions"),
           context
         );
       },
@@ -122,5 +122,5 @@ export function startServer(): Promise<uWS.us_listen_socket> {
  */
 export function stopServer(listenSocket: uWS.us_listen_socket): void {
   uWS.us_listen_socket_close(listenSocket);
-  console.log('[server] WebSocket server stopped');
+  console.log("[server] WebSocket server stopped");
 }

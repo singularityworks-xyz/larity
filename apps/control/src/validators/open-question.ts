@@ -1,21 +1,21 @@
-import { z } from 'zod';
-import { paginationSchema } from '../lib/pagination';
+import { z } from "zod";
+import { paginationSchema } from "../lib/pagination";
 
 // Enums
-export const OpenQuestionStatus = z.enum(['OPEN', 'RESOLVED', 'DEFERRED']);
+export const OpenQuestionStatus = z.enum(["OPEN", "RESOLVED", "DEFERRED"]);
 export type OpenQuestionStatus = z.infer<typeof OpenQuestionStatus>;
 
 // ID schemas
 export const openQuestionIdSchema = z.object({
-  id: z.uuid('Invalid open question ID'),
+  id: z.uuid("Invalid open question ID"),
 });
 
 // Create schema
 export const createOpenQuestionSchema = z.object({
-  clientId: z.uuid('Invalid client ID'),
-  question: z.string().min(1, 'Question is required').max(2000),
-  meetingId: z.uuid('Invalid meeting ID').optional(),
-  assigneeId: z.uuid('Invalid user ID').optional(),
+  clientId: z.uuid("Invalid client ID"),
+  question: z.string().min(1, "Question is required").max(2000),
+  meetingId: z.uuid("Invalid meeting ID").optional(),
+  assigneeId: z.uuid("Invalid user ID").optional(),
   context: z.string().max(5000).optional(),
   dueAt: z.coerce.date().optional(),
 });

@@ -1,11 +1,16 @@
-import { Elysia } from 'elysia';
-import { UserService } from '../services';
-import { createUserSchema, updateUserSchema, userIdSchema, userQuerySchema } from '../validators';
+import { Elysia } from "elysia";
+import { UserService } from "../services";
+import {
+  createUserSchema,
+  updateUserSchema,
+  userIdSchema,
+  userQuerySchema,
+} from "../validators";
 
-export const usersRoutes = new Elysia({ prefix: '/users' })
+export const usersRoutes = new Elysia({ prefix: "/users" })
   // List all users (with optional filters)
   .get(
-    '/',
+    "/",
     async ({ query }) => {
       const users = await UserService.findAll(query);
       return { success: true, data: users };
@@ -14,12 +19,12 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
   )
   // Get user by id
   .get(
-    '/:id',
+    "/:id",
     async ({ params, set }) => {
       const user = await UserService.findById(params.id);
       if (!user) {
         set.status = 404;
-        return { success: false, error: 'User not found' };
+        return { success: false, error: "User not found" };
       }
       return { success: true, data: user };
     },
@@ -27,12 +32,12 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
   )
   // Get user's client assignments
   .get(
-    '/:id/clients',
+    "/:id/clients",
     async ({ params, set }) => {
       const user = await UserService.findById(params.id);
       if (!user) {
         set.status = 404;
-        return { success: false, error: 'User not found' };
+        return { success: false, error: "User not found" };
       }
       const clients = await UserService.getClientAssignments(params.id);
       return { success: true, data: clients };
@@ -41,20 +46,20 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
   )
   // Create user
   .post(
-    '/',
+    "/",
     async ({ body, set }) => {
       try {
         const user = await UserService.create(body);
         return { success: true, data: user };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2002') {
+        if (err.code === "P2002") {
           set.status = 409;
-          return { success: false, error: 'Email already exists' };
+          return { success: false, error: "Email already exists" };
         }
-        if (err.code === 'P2003') {
+        if (err.code === "P2003") {
           set.status = 400;
-          return { success: false, error: 'Invalid org reference' };
+          return { success: false, error: "Invalid org reference" };
         }
         throw e;
       }
@@ -63,20 +68,20 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
   )
   // Update user
   .patch(
-    '/:id',
+    "/:id",
     async ({ params, body, set }) => {
       try {
         const user = await UserService.update(params.id, body);
         return { success: true, data: user };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'User not found' };
+          return { success: false, error: "User not found" };
         }
-        if (err.code === 'P2002') {
+        if (err.code === "P2002") {
           set.status = 409;
-          return { success: false, error: 'Email already exists' };
+          return { success: false, error: "Email already exists" };
         }
         throw e;
       }
@@ -85,16 +90,16 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
   )
   // Delete user
   .delete(
-    '/:id',
+    "/:id",
     async ({ params, set }) => {
       try {
         await UserService.delete(params.id);
-        return { success: true, message: 'User deleted' };
+        return { success: true, message: "User deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'User not found' };
+          return { success: false, error: "User not found" };
         }
         throw e;
       }

@@ -1,5 +1,5 @@
-import { MERGE_GAP_MS } from '../env';
-import type { Utterance } from './types';
+import { MERGE_GAP_MS } from "../env";
+import type { Utterance } from "./types";
 
 export class UtteranceMerger {
   private readonly gapThreshold: number;
@@ -20,11 +20,10 @@ export class UtteranceMerger {
     if (shouldMerge) {
       this.pending = this.merge(this.pending, utterance);
       return null;
-    } else {
-      const output = this.pending;
-      this.pending = utterance;
-      return output;
     }
+    const output = this.pending;
+    this.pending = utterance;
+    return output;
   }
 
   flush(): Utterance | null {
@@ -58,11 +57,13 @@ export class UtteranceMerger {
     const totalWords = prev.wordCount + next.wordCount;
     const weightedConfidence =
       totalWords > 0
-        ? (prev.confidenceScore * prev.wordCount + next.confidenceScore * next.wordCount) /
+        ? (prev.confidenceScore * prev.wordCount +
+            next.confidenceScore * next.wordCount) /
           totalWords
         : (prev.confidenceScore + next.confidenceScore) / 2;
 
-    const gap = (next.timestamp - (prev.timestamp + prev.duration * 1000)) / 1000;
+    const gap =
+      (next.timestamp - (prev.timestamp + prev.duration * 1000)) / 1000;
 
     const combinedDuration = prev.duration + Math.max(0, gap) + next.duration;
 

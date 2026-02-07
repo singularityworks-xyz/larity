@@ -1,9 +1,9 @@
-import { env, validateEnv } from './env';
-import { app } from './server';
+import { env, validateEnv } from "./env";
+import { app } from "./server";
 
 validateEnv();
 
-const PORT = env.PORT ?? '3000';
+const PORT = env.PORT ?? "3000";
 
 app.listen(PORT);
 

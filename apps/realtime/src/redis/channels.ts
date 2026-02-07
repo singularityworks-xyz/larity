@@ -14,7 +14,7 @@
 /**
  * Channel prefix for all realtime plane events
  */
-const PREFIX = 'realtime';
+const PREFIX = "realtime";
 
 /**
  * Per-session audio stream channel

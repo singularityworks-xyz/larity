@@ -8,12 +8,12 @@
 /**
  * Audio source identifier for speaker tagging
  */
-export type AudioSource = 'mic' | 'system';
+export type AudioSource = "mic" | "system";
 
 /**
  * Speaker tag in output transcripts
  */
-export type Speaker = 'YOU' | 'THEM';
+export type Speaker = "YOU" | "THEM";
 
 /**
  * Audio frame payload as received from Redis

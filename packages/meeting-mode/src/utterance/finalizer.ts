@@ -1,18 +1,18 @@
-import type { SttResult } from '../../../stt/src/types';
-import { utteranceChannel } from '../channels';
-import { PartialBuffer } from './buffer';
-import { UtteranceMerger } from './merger';
-import type { Utterance } from './types';
+import type { SttResult } from "../../../stt/src/types";
+import { utteranceChannel } from "../channels";
+import { PartialBuffer } from "./buffer";
+import { UtteranceMerger } from "./merger";
+import type { Utterance } from "./types";
 
 export interface UtterancePublisher {
   publish(channel: string, message: string): Promise<number>;
 }
 
 export class UtteranceFinalizer {
-  private buffer = new Map<string, PartialBuffer>();
-  private mergers = new Map<string, UtteranceMerger>();
-  private sequences = new Map<string, number>();
-  private publisher: UtterancePublisher;
+  private readonly buffer = new Map<string, PartialBuffer>();
+  private readonly mergers = new Map<string, UtteranceMerger>();
+  private readonly sequences = new Map<string, number>();
+  private readonly publisher: UtterancePublisher;
 
   constructor(publisher: UtterancePublisher) {
     this.publisher = publisher;
@@ -83,7 +83,7 @@ export class UtteranceFinalizer {
   }
 
   async closeAll(): Promise<void> {
-    console.log(`[UtteranceFinalizer] Closing all sessions`);
+    console.log("[UtteranceFinalizer] Closing all sessions");
 
     const sessionIds = [...this.buffer.keys()];
 
@@ -129,7 +129,10 @@ export class UtteranceFinalizer {
           `"${utterance.text.substring(0, 50)}..."`
       );
     } catch (error) {
-      console.error(`[UtteranceFinalizer] Failed to publish ${utterance.utteranceId}:`, error);
+      console.error(
+        `[UtteranceFinalizer] Failed to publish ${utterance.utteranceId}:`,
+        error
+      );
     }
   }
 
@@ -145,21 +148,25 @@ export class UtteranceFinalizer {
   }
 }
 
+const REPEATED_PUNCTUATION = /([.!?]){2,}/g;
+const ENDS_WITH_PUNCTUATION = /[.!?]$/;
+const WHITESPACE = /\s+/;
+
 function normalizePunctuation(text: string): string {
   let cleaned = text.trim();
 
   if (cleaned.length === 0) {
-    return '';
+    return "";
   }
 
-  cleaned = cleaned.replace(/\s+/g, ' ');
+  cleaned = cleaned.replace(/\s+/g, " ");
 
   cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 
-  cleaned = cleaned.replace(/([.!?]){2,}/g, '$1');
+  cleaned = cleaned.replace(REPEATED_PUNCTUATION, "$1");
 
-  if (!/[.!?]$/.test(cleaned)) {
-    cleaned += '.';
+  if (!ENDS_WITH_PUNCTUATION.test(cleaned)) {
+    cleaned += ".";
   }
 
   return cleaned;
@@ -168,6 +175,6 @@ function normalizePunctuation(text: string): string {
 function countWords(text: string): number {
   return text
     .trim()
-    .split(/\s+/)
+    .split(WHITESPACE)
     .filter((word) => word.length > 0).length;
 }

@@ -1,8 +1,8 @@
-import { prisma } from '../lib/prisma';
-import type { CreateReminderInput, UpdateReminderInput } from '../validators';
+import { prisma } from "../lib/prisma";
+import type { CreateReminderInput, UpdateReminderInput } from "../validators";
 
 export const ReminderService = {
-  async create(data: CreateReminderInput) {
+  create(data: CreateReminderInput) {
     return prisma.reminder.create({
       data,
       include: {
@@ -12,7 +12,7 @@ export const ReminderService = {
     });
   },
 
-  async findById(id: string) {
+  findById(id: string) {
     return prisma.reminder.findUnique({
       where: { id },
       include: {
@@ -22,7 +22,7 @@ export const ReminderService = {
     });
   },
 
-  async findAll(query?: {
+  findAll(query?: {
     userId?: string;
     clientId?: string;
     status?: string;
@@ -34,12 +34,17 @@ export const ReminderService = {
       where: {
         userId: query?.userId,
         clientId: query?.clientId,
-        status: query?.status as 'PENDING' | 'TRIGGERED' | 'DISMISSED' | 'SNOOZED' | undefined,
+        status: query?.status as
+          | "PENDING"
+          | "TRIGGERED"
+          | "DISMISSED"
+          | "SNOOZED"
+          | undefined,
         linkedEntityType: query?.linkedEntityType as
-          | 'TASK'
-          | 'MEETING'
-          | 'DECISION'
-          | 'OPEN_QUESTION'
+          | "TASK"
+          | "MEETING"
+          | "DECISION"
+          | "OPEN_QUESTION"
           | undefined,
         dueAt: {
           ...(query?.dueBefore && { lte: query.dueBefore }),
@@ -50,25 +55,25 @@ export const ReminderService = {
         user: { select: { id: true, name: true, email: true } },
         client: { select: { id: true, name: true } },
       },
-      orderBy: { dueAt: 'asc' },
+      orderBy: { dueAt: "asc" },
     });
   },
 
-  async findDue(beforeDate: Date) {
+  findDue(beforeDate: Date) {
     return prisma.reminder.findMany({
       where: {
-        status: 'PENDING',
+        status: "PENDING",
         dueAt: { lte: beforeDate },
       },
       include: {
         user: { select: { id: true, name: true, email: true } },
         client: { select: { id: true, name: true } },
       },
-      orderBy: { dueAt: 'asc' },
+      orderBy: { dueAt: "asc" },
     });
   },
 
-  async update(id: string, data: UpdateReminderInput) {
+  update(id: string, data: UpdateReminderInput) {
     return prisma.reminder.update({
       where: { id },
       data,
@@ -79,28 +84,28 @@ export const ReminderService = {
     });
   },
 
-  async trigger(id: string) {
+  trigger(id: string) {
     return prisma.reminder.update({
       where: { id },
-      data: { status: 'TRIGGERED' },
+      data: { status: "TRIGGERED" },
     });
   },
 
-  async dismiss(id: string) {
+  dismiss(id: string) {
     return prisma.reminder.update({
       where: { id },
-      data: { status: 'DISMISSED' },
+      data: { status: "DISMISSED" },
     });
   },
 
-  async snooze(id: string, newDueAt: Date) {
+  snooze(id: string, newDueAt: Date) {
     return prisma.reminder.update({
       where: { id },
-      data: { status: 'SNOOZED', dueAt: newDueAt },
+      data: { status: "SNOOZED", dueAt: newDueAt },
     });
   },
 
-  async delete(id: string) {
+  delete(id: string) {
     return prisma.reminder.delete({
       where: { id },
     });

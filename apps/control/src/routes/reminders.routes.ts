@@ -1,17 +1,17 @@
-import { Elysia } from 'elysia';
-import { z } from 'zod';
-import { ReminderService } from '../services';
+import { Elysia } from "elysia";
+import { z } from "zod";
+import { ReminderService } from "../services";
 import {
   createReminderSchema,
   reminderIdSchema,
   reminderQuerySchema,
   updateReminderSchema,
-} from '../validators';
+} from "../validators";
 
-export const remindersRoutes = new Elysia({ prefix: '/reminders' })
+export const remindersRoutes = new Elysia({ prefix: "/reminders" })
   // List all reminders
   .get(
-    '/',
+    "/",
     async ({ query }) => {
       const reminders = await ReminderService.findAll(query);
       return { success: true, data: reminders };
@@ -20,7 +20,7 @@ export const remindersRoutes = new Elysia({ prefix: '/reminders' })
   )
   // Get due reminders
   .get(
-    '/due',
+    "/due",
     async ({ query }) => {
       const beforeDate = query?.before ? new Date(query.before) : new Date();
       const reminders = await ReminderService.findDue(beforeDate);
@@ -36,12 +36,12 @@ export const remindersRoutes = new Elysia({ prefix: '/reminders' })
   )
   // Get reminder by id
   .get(
-    '/:id',
+    "/:id",
     async ({ params, set }) => {
       const reminder = await ReminderService.findById(params.id);
       if (!reminder) {
         set.status = 404;
-        return { success: false, error: 'Reminder not found' };
+        return { success: false, error: "Reminder not found" };
       }
       return { success: true, data: reminder };
     },
@@ -49,16 +49,19 @@ export const remindersRoutes = new Elysia({ prefix: '/reminders' })
   )
   // Create reminder
   .post(
-    '/',
+    "/",
     async ({ body, set }) => {
       try {
         const reminder = await ReminderService.create(body);
         return { success: true, data: reminder };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2003') {
+        if (err.code === "P2003") {
           set.status = 400;
-          return { success: false, error: 'Invalid reference (user or client)' };
+          return {
+            success: false,
+            error: "Invalid reference (user or client)",
+          };
         }
         throw e;
       }
@@ -67,16 +70,16 @@ export const remindersRoutes = new Elysia({ prefix: '/reminders' })
   )
   // Update reminder
   .patch(
-    '/:id',
+    "/:id",
     async ({ params, body, set }) => {
       try {
         const reminder = await ReminderService.update(params.id, body);
         return { success: true, data: reminder };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Reminder not found' };
+          return { success: false, error: "Reminder not found" };
         }
         throw e;
       }
@@ -85,16 +88,16 @@ export const remindersRoutes = new Elysia({ prefix: '/reminders' })
   )
   // Delete reminder
   .delete(
-    '/:id',
+    "/:id",
     async ({ params, set }) => {
       try {
         await ReminderService.delete(params.id);
-        return { success: true, message: 'Reminder deleted' };
+        return { success: true, message: "Reminder deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Reminder not found' };
+          return { success: false, error: "Reminder not found" };
         }
         throw e;
       }
@@ -103,16 +106,16 @@ export const remindersRoutes = new Elysia({ prefix: '/reminders' })
   )
   // Trigger reminder
   .post(
-    '/:id/trigger',
+    "/:id/trigger",
     async ({ params, set }) => {
       try {
         const reminder = await ReminderService.trigger(params.id);
         return { success: true, data: reminder };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Reminder not found' };
+          return { success: false, error: "Reminder not found" };
         }
         throw e;
       }
@@ -121,16 +124,16 @@ export const remindersRoutes = new Elysia({ prefix: '/reminders' })
   )
   // Dismiss reminder
   .post(
-    '/:id/dismiss',
+    "/:id/dismiss",
     async ({ params, set }) => {
       try {
         const reminder = await ReminderService.dismiss(params.id);
         return { success: true, data: reminder };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Reminder not found' };
+          return { success: false, error: "Reminder not found" };
         }
         throw e;
       }
@@ -139,16 +142,19 @@ export const remindersRoutes = new Elysia({ prefix: '/reminders' })
   )
   // Snooze reminder
   .post(
-    '/:id/snooze',
+    "/:id/snooze",
     async ({ params, body, set }) => {
       try {
-        const reminder = await ReminderService.snooze(params.id, new Date(body.dueAt));
+        const reminder = await ReminderService.snooze(
+          params.id,
+          new Date(body.dueAt)
+        );
         return { success: true, data: reminder };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Reminder not found' };
+          return { success: false, error: "Reminder not found" };
         }
         throw e;
       }

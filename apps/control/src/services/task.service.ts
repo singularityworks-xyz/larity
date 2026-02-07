@@ -1,9 +1,13 @@
-import { applyPagination } from '../lib/pagination';
-import { prisma } from '../lib/prisma';
-import type { CreateTaskInput, TaskQueryInput, UpdateTaskInput } from '../validators';
+import { applyPagination } from "../lib/pagination";
+import { prisma } from "../lib/prisma";
+import type {
+  CreateTaskInput,
+  TaskQueryInput,
+  UpdateTaskInput,
+} from "../validators";
 
 export const TaskService = {
-  async create(data: CreateTaskInput) {
+  create(data: CreateTaskInput) {
     return prisma.task.create({
       data,
       include: {
@@ -16,7 +20,7 @@ export const TaskService = {
     });
   },
 
-  async findById(id: string) {
+  findById(id: string) {
     return prisma.task.findUnique({
       where: { id },
       include: {
@@ -29,18 +33,23 @@ export const TaskService = {
     });
   },
 
-  async findAll(query?: TaskQueryInput) {
+  findAll(query?: TaskQueryInput) {
     return prisma.task.findMany({
       where: {
         clientId: query?.clientId,
         status: query?.status as
-          | 'OPEN'
-          | 'IN_PROGRESS'
-          | 'BLOCKED'
-          | 'DONE'
-          | 'CANCELLED'
+          | "OPEN"
+          | "IN_PROGRESS"
+          | "BLOCKED"
+          | "DONE"
+          | "CANCELLED"
           | undefined,
-        priority: query?.priority as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | undefined,
+        priority: query?.priority as
+          | "LOW"
+          | "MEDIUM"
+          | "HIGH"
+          | "CRITICAL"
+          | undefined,
         assigneeId: query?.assigneeId,
         meetingId: query?.meetingId,
         decisionId: query?.decisionId,
@@ -56,12 +65,12 @@ export const TaskService = {
         assignee: { select: { id: true, name: true, email: true } },
         creator: { select: { id: true, name: true, email: true } },
       },
-      orderBy: [{ priority: 'desc' }, { dueAt: 'asc' }, { createdAt: 'desc' }],
+      orderBy: [{ priority: "desc" }, { dueAt: "asc" }, { createdAt: "desc" }],
       ...applyPagination(query),
     });
   },
 
-  async update(id: string, data: UpdateTaskInput) {
+  update(id: string, data: UpdateTaskInput) {
     return prisma.task.update({
       where: { id },
       data,
@@ -75,7 +84,7 @@ export const TaskService = {
     });
   },
 
-  async delete(id: string) {
+  delete(id: string) {
     return prisma.task.delete({
       where: { id },
     });
@@ -89,21 +98,21 @@ export const TaskService = {
     });
 
     if (!task) {
-      throw new Error('Task not found');
+      throw new Error("Task not found");
     }
 
-    if (task.status === 'CANCELLED') {
-      throw new Error('Cannot complete a cancelled task');
+    if (task.status === "CANCELLED") {
+      throw new Error("Cannot complete a cancelled task");
     }
 
-    if (task.status === 'DONE') {
-      throw new Error('Task is already completed');
+    if (task.status === "DONE") {
+      throw new Error("Task is already completed");
     }
 
     return prisma.task.update({
       where: { id },
       data: {
-        status: 'DONE',
+        status: "DONE",
         completedAt: new Date(),
       },
       include: {
@@ -120,17 +129,17 @@ export const TaskService = {
     });
 
     if (!task) {
-      throw new Error('Task not found');
+      throw new Error("Task not found");
     }
 
-    if (task.status === 'CANCELLED') {
-      throw new Error('Cannot reopen a cancelled task');
+    if (task.status === "CANCELLED") {
+      throw new Error("Cannot reopen a cancelled task");
     }
 
     return prisma.task.update({
       where: { id },
       data: {
-        status: 'OPEN',
+        status: "OPEN",
         completedAt: null,
       },
     });
@@ -143,16 +152,16 @@ export const TaskService = {
     });
 
     if (!task) {
-      throw new Error('Task not found');
+      throw new Error("Task not found");
     }
 
-    if (task.status === 'CANCELLED' || task.status === 'DONE') {
+    if (task.status === "CANCELLED" || task.status === "DONE") {
       throw new Error(`Cannot start a ${task.status.toLowerCase()} task`);
     }
 
     return prisma.task.update({
       where: { id },
-      data: { status: 'IN_PROGRESS' },
+      data: { status: "IN_PROGRESS" },
     });
   },
 
@@ -163,16 +172,16 @@ export const TaskService = {
     });
 
     if (!task) {
-      throw new Error('Task not found');
+      throw new Error("Task not found");
     }
 
-    if (task.status === 'CANCELLED' || task.status === 'DONE') {
+    if (task.status === "CANCELLED" || task.status === "DONE") {
       throw new Error(`Cannot block a ${task.status.toLowerCase()} task`);
     }
 
     return prisma.task.update({
       where: { id },
-      data: { status: 'BLOCKED' },
+      data: { status: "BLOCKED" },
     });
   },
 };

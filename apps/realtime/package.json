@@ -23,6 +23,6 @@
   "dependencies": {
     "dotenv": "^16.4.5",
     "ioredis": "^5.9.0",
-    "uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js/archive/v20.56.0.tar.gz"
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.56.0"
   }
 }

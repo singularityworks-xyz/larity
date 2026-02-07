@@ -16,16 +16,18 @@
     "lint:fix": "turbo run lint:fix --no-daemon && bun run lint:root --write",
     "format": "turbo run format --no-daemon && biome format --write .",
     "format:check": "turbo run format:check --no-daemon && biome format .",
-    "check": "bun run format:check && bun run lint",
-    "prepare": "husky"
+    "check": "ultracite check",
+    "prepare": "husky",
+    "fix": "ultracite fix"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.11",
+    "@biomejs/biome": "2.3.13",
     "@types/amqplib": "^0.10.8",
     "@types/bun": "latest",
     "husky": "^9.1.7",
     "prisma": "^7.2.0",
-    "turbo": "^2.6.3"
+    "turbo": "^2.6.3",
+    "ultracite": "7.1.4"
   },
   "peerDependencies": {
     "typescript": "^5"

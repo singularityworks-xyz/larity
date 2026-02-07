@@ -1,8 +1,8 @@
-import { cors } from '@elysiajs/cors';
-import { Elysia } from 'elysia';
-import { env } from './env';
-import { requireAuth } from './middleware/auth';
-import { requestLogger } from './middleware/logger';
+import { cors } from "@elysiajs/cors";
+import { Elysia } from "elysia";
+import { env } from "./env";
+import { requireAuth } from "./middleware/auth";
+import { requestLogger } from "./middleware/logger";
 import {
   authRoutes,
   clientsRoutes,
@@ -16,7 +16,7 @@ import {
   remindersRoutes,
   tasksRoutes,
   usersRoutes,
-} from './routes';
+} from "./routes";
 
 export const app = new Elysia()
   // Request logging/tracing
@@ -30,39 +30,43 @@ export const app = new Elysia()
   )
   // Global error handler
   .onError(({ code, error, set }) => {
-    console.error(`[${code}]`, (error as Error).message, (error as Error).stack);
+    console.error(
+      `[${code}]`,
+      (error as Error).message,
+      (error as Error).stack
+    );
 
-    if (code === 'VALIDATION') {
+    if (code === "VALIDATION") {
       set.status = 400;
       return {
         success: false,
-        error: 'Validation Error',
+        error: "Validation Error",
         message: error.message,
       };
     }
 
-    if (code === 'NOT_FOUND') {
+    if (code === "NOT_FOUND") {
       set.status = 404;
       return {
         success: false,
-        error: 'Not Found',
-        message: 'Resource not found',
+        error: "Not Found",
+        message: "Resource not found",
       };
     }
 
     set.status = 500;
     return {
       success: false,
-      error: 'Internal Server Error',
+      error: "Internal Server Error",
       message: (error as Error).message,
     };
   })
   // Health check
-  .get('/health', () => ({ status: 'ok', timestamp: new Date().toISOString() }))
+  .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
   // Auth routes
   .use(authRoutes)
   // Protected API routes
-  .group('/api', (app) =>
+  .group("/api", (app) =>
     app
       .use(requireAuth)
       // Core identity

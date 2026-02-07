@@ -5,14 +5,15 @@
  * Handles graceful shutdown on SIGINT/SIGTERM.
  */
 
-import { connectRedis } from '../../infra/redis';
-import { validateEnv } from './env';
-import { sessionManager } from './session-manager';
-import { startSubscriber, stopSubscriber } from './subscriber';
+import { connectRedis } from "../../infra/redis";
+import { validateEnv } from "./env";
+import { sessionManager } from "./session-manager";
+import { startSubscriber, stopSubscriber } from "./subscriber";
 
-export * from './channels';
+// biome-ignore lint/performance/noBarrelFile: structure convention
+export * from "./channels";
 // Re-export public types
-export * from './types';
+export * from "./types";
 
 /**
  * Graceful shutdown handler
@@ -26,7 +27,7 @@ async function shutdown(signal: string): Promise<void> {
   // Stop Redis subscriber
   await stopSubscriber();
 
-  console.log('[STT] Shutdown complete');
+  console.log("[STT] Shutdown complete");
   process.exit(0);
 }
 
@@ -34,42 +35,42 @@ async function shutdown(signal: string): Promise<void> {
  * Main entry point
  */
 async function main(): Promise<void> {
-  console.log('========================================');
-  console.log('  Larity STT Subscriber');
-  console.log('========================================');
+  console.log("========================================");
+  console.log("  Larity STT Subscriber");
+  console.log("========================================");
 
   // Validate environment
   try {
     validateEnv();
-    console.log('[STT] Environment validated');
+    console.log("[STT] Environment validated");
   } catch (error) {
-    console.error('[STT] Environment validation failed:', error);
+    console.error("[STT] Environment validation failed:", error);
     process.exit(1);
   }
 
   // Connect to Redis (for publishing)
   const redisConnected = await connectRedis();
   if (!redisConnected) {
-    console.error('[STT] Failed to connect to Redis');
+    console.error("[STT] Failed to connect to Redis");
     process.exit(1);
   }
-  console.log('[STT] Redis connected (publisher)');
+  console.log("[STT] Redis connected (publisher)");
 
   // Start subscriber
   await startSubscriber();
-  console.log('[STT] Subscriber started');
+  console.log("[STT] Subscriber started");
 
   // Register shutdown handlers
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-  console.log('----------------------------------------');
-  console.log('[STT] Ready to process audio streams');
-  console.log('----------------------------------------');
+  console.log("----------------------------------------");
+  console.log("[STT] Ready to process audio streams");
+  console.log("----------------------------------------");
 }
 
 // Run if executed directly
 main().catch((error) => {
-  console.error('[STT] Fatal error:', error);
+  console.error("[STT] Fatal error:", error);
   process.exit(1);
 });

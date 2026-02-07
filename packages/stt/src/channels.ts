@@ -3,7 +3,7 @@
 /**
  * Channel prefix for realtime plane events
  */
-const REALTIME_PREFIX = 'realtime';
+const REALTIME_PREFIX = "realtime";
 
 /**
  * Session start event channel
@@ -25,7 +25,7 @@ export const AUDIO_PATTERN = `${REALTIME_PREFIX}.audio.*`;
 /**
  * Channel prefix for STT output
  */
-const STT_PREFIX = 'meeting.stt';
+const STT_PREFIX = "meeting.stt";
 
 /**
  * Final transcript channel for a session

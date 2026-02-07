@@ -4,5 +4,5 @@ export const redisKeys = {
   meetingBuffer: (meetingId: string) => `buffers:meeting:${meetingId}`,
   lock: (name: string) => `locks:${name}`,
   cacheUser: (userId: string) => `cache:user:${userId}`,
-  health: () => 'health:check',
+  health: () => "health:check",
 };

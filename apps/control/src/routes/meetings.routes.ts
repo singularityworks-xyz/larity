@@ -1,5 +1,9 @@
-import { Elysia } from 'elysia';
-import { MeetingParticipantService, MeetingService, TranscriptService } from '../services';
+import { Elysia } from "elysia";
+import {
+  MeetingParticipantService,
+  MeetingService,
+  TranscriptService,
+} from "../services";
 import {
   createMeetingParticipantBaseSchema,
   createMeetingSchema,
@@ -11,12 +15,12 @@ import {
   updateMeetingParticipantSchema,
   updateMeetingSchema,
   updateTranscriptSchema,
-} from '../validators';
+} from "../validators";
 
-export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
+export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // List all meetings (with optional filters)
   .get(
-    '/',
+    "/",
     async ({ query }) => {
       const meetings = await MeetingService.findAll(query);
       return { success: true, data: meetings };
@@ -25,12 +29,12 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // Get meeting by id (includes tasks and decisions)
   .get(
-    '/:id',
+    "/:id",
     async ({ params, set }) => {
       const meeting = await MeetingService.findById(params.id);
       if (!meeting) {
         set.status = 404;
-        return { success: false, error: 'Meeting not found' };
+        return { success: false, error: "Meeting not found" };
       }
       return { success: true, data: meeting };
     },
@@ -38,16 +42,16 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // Create meeting
   .post(
-    '/',
+    "/",
     async ({ body, set }) => {
       try {
         const meeting = await MeetingService.create(body);
         return { success: true, data: meeting };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2003') {
+        if (err.code === "P2003") {
           set.status = 400;
-          return { success: false, error: 'Invalid client reference' };
+          return { success: false, error: "Invalid client reference" };
         }
         throw e;
       }
@@ -56,16 +60,16 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // Update meeting
   .patch(
-    '/:id',
+    "/:id",
     async ({ params, body, set }) => {
       try {
         const meeting = await MeetingService.update(params.id, body);
         return { success: true, data: meeting };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Meeting not found' };
+          return { success: false, error: "Meeting not found" };
         }
         throw e;
       }
@@ -74,16 +78,16 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // Delete meeting
   .delete(
-    '/:id',
+    "/:id",
     async ({ params, set }) => {
       try {
         await MeetingService.delete(params.id);
-        return { success: true, message: 'Meeting deleted' };
+        return { success: true, message: "Meeting deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Meeting not found' };
+          return { success: false, error: "Meeting not found" };
         }
         throw e;
       }
@@ -92,16 +96,16 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // Start meeting (transition to LIVE)
   .post(
-    '/:id/start',
+    "/:id/start",
     async ({ params, set }) => {
       try {
         const meeting = await MeetingService.startMeeting(params.id);
         return { success: true, data: meeting };
       } catch (e: unknown) {
         const err = e as { code?: string; message?: string };
-        if (err.code === 'P2025' || err.message === 'Meeting not found') {
+        if (err.code === "P2025" || err.message === "Meeting not found") {
           set.status = 404;
-          return { success: false, error: 'Meeting not found' };
+          return { success: false, error: "Meeting not found" };
         }
         throw e;
       }
@@ -110,16 +114,16 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // End meeting (transition to ENDED)
   .post(
-    '/:id/end',
+    "/:id/end",
     async ({ params, set }) => {
       try {
         const meeting = await MeetingService.endMeeting(params.id);
         return { success: true, data: meeting };
       } catch (e: unknown) {
         const err = e as { code?: string; message?: string };
-        if (err.code === 'P2025' || err.message === 'Meeting not found') {
+        if (err.code === "P2025" || err.message === "Meeting not found") {
           set.status = 404;
-          return { success: false, error: 'Meeting not found' };
+          return { success: false, error: "Meeting not found" };
         }
         throw e;
       }
@@ -128,16 +132,16 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // Cancel meeting
   .post(
-    '/:id/cancel',
+    "/:id/cancel",
     async ({ params, set }) => {
       try {
         const meeting = await MeetingService.cancelMeeting(params.id);
         return { success: true, data: meeting };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Meeting not found' };
+          return { success: false, error: "Meeting not found" };
         }
         throw e;
       }
@@ -146,16 +150,16 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // Bulk extraction (post-meeting AI processing)
   .post(
-    '/:id/extract',
+    "/:id/extract",
     async ({ params, body, set }) => {
       try {
         const result = await MeetingService.extractFromMeeting(params.id, body);
         return { success: true, data: result };
       } catch (e: unknown) {
         const err = e as Error;
-        if (err.message === 'Meeting not found') {
+        if (err.message === "Meeting not found") {
           set.status = 404;
-          return { success: false, error: 'Meeting not found' };
+          return { success: false, error: "Meeting not found" };
         }
         throw e;
       }
@@ -165,16 +169,18 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   // --- Participants ---
   // Get meeting participants
   .get(
-    '/:id/participants',
+    "/:id/participants",
     async ({ params }) => {
-      const participants = await MeetingParticipantService.findByMeeting(params.id);
+      const participants = await MeetingParticipantService.findByMeeting(
+        params.id
+      );
       return { success: true, data: participants };
     },
     { params: meetingIdSchema }
   )
   // Add participant to meeting
   .post(
-    '/:id/participants',
+    "/:id/participants",
     async ({ params, body, set }) => {
       try {
         const participant = await MeetingParticipantService.create({
@@ -184,13 +190,13 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
         return { success: true, data: participant };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2002') {
+        if (err.code === "P2002") {
           set.status = 409;
-          return { success: false, error: 'User is already a participant' };
+          return { success: false, error: "User is already a participant" };
         }
-        if (err.code === 'P2003') {
+        if (err.code === "P2003") {
           set.status = 400;
-          return { success: false, error: 'Invalid meeting or user reference' };
+          return { success: false, error: "Invalid meeting or user reference" };
         }
         throw e;
       }
@@ -202,16 +208,19 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // Update participant
   .patch(
-    '/participants/:id',
+    "/participants/:id",
     async ({ params, body, set }) => {
       try {
-        const participant = await MeetingParticipantService.update(params.id, body);
+        const participant = await MeetingParticipantService.update(
+          params.id,
+          body
+        );
         return { success: true, data: participant };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Participant not found' };
+          return { success: false, error: "Participant not found" };
         }
         throw e;
       }
@@ -220,16 +229,18 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // Mark participant as attended
   .post(
-    '/participants/:id/attended',
+    "/participants/:id/attended",
     async ({ params, set }) => {
       try {
-        const participant = await MeetingParticipantService.markAttended(params.id);
+        const participant = await MeetingParticipantService.markAttended(
+          params.id
+        );
         return { success: true, data: participant };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Participant not found' };
+          return { success: false, error: "Participant not found" };
         }
         throw e;
       }
@@ -238,16 +249,16 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // Remove participant
   .delete(
-    '/participants/:id',
+    "/participants/:id",
     async ({ params, set }) => {
       try {
         await MeetingParticipantService.remove(params.id);
-        return { success: true, message: 'Participant removed' };
+        return { success: true, message: "Participant removed" };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Participant not found' };
+          return { success: false, error: "Participant not found" };
         }
         throw e;
       }
@@ -257,12 +268,12 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   // --- Transcript ---
   // Get meeting transcript
   .get(
-    '/:id/transcript',
+    "/:id/transcript",
     async ({ params, set }) => {
       const transcript = await TranscriptService.findByMeeting(params.id);
       if (!transcript) {
         set.status = 404;
-        return { success: false, error: 'Transcript not found' };
+        return { success: false, error: "Transcript not found" };
       }
       return { success: true, data: transcript };
     },
@@ -270,7 +281,7 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // Create transcript for meeting
   .post(
-    '/:id/transcript',
+    "/:id/transcript",
     async ({ params, body, set }) => {
       try {
         const transcript = await TranscriptService.create({
@@ -280,14 +291,17 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
         return { success: true, data: transcript };
       } catch (e: unknown) {
         const err = e as Error;
-        if (err.message === 'Transcript already exists for this meeting') {
+        if (err.message === "Transcript already exists for this meeting") {
           set.status = 409;
-          return { success: false, error: 'Transcript already exists for this meeting' };
+          return {
+            success: false,
+            error: "Transcript already exists for this meeting",
+          };
         }
         const prismaErr = e as { code?: string };
-        if (prismaErr.code === 'P2003') {
+        if (prismaErr.code === "P2003") {
           set.status = 400;
-          return { success: false, error: 'Invalid meeting reference' };
+          return { success: false, error: "Invalid meeting reference" };
         }
         throw e;
       }
@@ -299,21 +313,21 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // Update transcript
   .patch(
-    '/:id/transcript',
+    "/:id/transcript",
     async ({ params, body, set }) => {
       try {
         const transcript = await TranscriptService.findByMeeting(params.id);
         if (!transcript) {
           set.status = 404;
-          return { success: false, error: 'Transcript not found' };
+          return { success: false, error: "Transcript not found" };
         }
         const updated = await TranscriptService.update(transcript.id, body);
         return { success: true, data: updated };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Transcript not found' };
+          return { success: false, error: "Transcript not found" };
         }
         throw e;
       }
@@ -322,21 +336,21 @@ export const meetingsRoutes = new Elysia({ prefix: '/meetings' })
   )
   // Delete transcript
   .delete(
-    '/:id/transcript',
+    "/:id/transcript",
     async ({ params, set }) => {
       try {
         const transcript = await TranscriptService.findByMeeting(params.id);
         if (!transcript) {
           set.status = 404;
-          return { success: false, error: 'Transcript not found' };
+          return { success: false, error: "Transcript not found" };
         }
         await TranscriptService.delete(transcript.id);
-        return { success: true, message: 'Transcript deleted' };
+        return { success: true, message: "Transcript deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === 'P2025') {
+        if (err.code === "P2025") {
           set.status = 404;
-          return { success: false, error: 'Transcript not found' };
+          return { success: false, error: "Transcript not found" };
         }
         throw e;
       }

@@ -1,9 +1,13 @@
-import { applyPagination } from '../lib/pagination';
-import { prisma } from '../lib/prisma';
-import type { ClientQueryInput, CreateClientInput, UpdateClientInput } from '../validators';
+import { applyPagination } from "../lib/pagination";
+import { prisma } from "../lib/prisma";
+import type {
+  ClientQueryInput,
+  CreateClientInput,
+  UpdateClientInput,
+} from "../validators";
 
 export const ClientService = {
-  async create(data: CreateClientInput) {
+  create(data: CreateClientInput) {
     return prisma.client.create({
       data,
       include: {
@@ -12,7 +16,7 @@ export const ClientService = {
     });
   },
 
-  async findById(id: string) {
+  findById(id: string) {
     return prisma.client.findUnique({
       where: { id },
       include: {
@@ -31,7 +35,7 @@ export const ClientService = {
     });
   },
 
-  async findByOrgAndSlug(orgId: string, slug: string) {
+  findByOrgAndSlug(orgId: string, slug: string) {
     return prisma.client.findUnique({
       where: { orgId_slug: { orgId, slug } },
       include: {
@@ -48,11 +52,11 @@ export const ClientService = {
     });
   },
 
-  async findAll(query?: ClientQueryInput) {
+  findAll(query?: ClientQueryInput) {
     return prisma.client.findMany({
       where: {
         orgId: query?.orgId,
-        status: query?.status as 'ACTIVE' | 'INACTIVE' | 'ARCHIVED' | undefined,
+        status: query?.status as "ACTIVE" | "INACTIVE" | "ARCHIVED" | undefined,
       },
       include: {
         org: { select: { id: true, name: true, slug: true } },
@@ -65,12 +69,12 @@ export const ClientService = {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       ...applyPagination(query),
     });
   },
 
-  async update(id: string, data: UpdateClientInput) {
+  update(id: string, data: UpdateClientInput) {
     return prisma.client.update({
       where: { id },
       data,
@@ -80,7 +84,7 @@ export const ClientService = {
     });
   },
 
-  async delete(id: string) {
+  delete(id: string) {
     return prisma.client.delete({
       where: { id },
     });
