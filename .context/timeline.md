@@ -59,14 +59,14 @@ Redis Channels:
 
 **packages/stt** (new package)
 
-- [ ] Create package structure
-- [ ] Implement Redis subscriber for `realtime.audio.{sessionId}` channels
-- [ ] Create Deepgram client wrapper with streaming API
-- [ ] Implement session-scoped Deepgram connections (one per meeting)
-- [ ] Handle Deepgram events: `open`, `close`, `transcript`, `error`
-- [ ] Parse partial vs final transcripts (`is_final` flag)
-- [ ] Implement reconnection logic with exponential backoff
-- [ ] Add connection pooling for multiple concurrent sessions
+- [x] Create package structure
+- [x] Implement Redis subscriber for `realtime.audio.{sessionId}` channels
+- [x] Create Deepgram client wrapper with streaming API
+- [x] Implement session-scoped Deepgram connections (one per meeting)
+- [x] Handle Deepgram events: `open`, `close`, `transcript`, `error`
+- [x] Parse partial vs final transcripts (`is_final` flag)
+- [x] Implement reconnection logic with exponential backoff
+- [x] Add connection pooling for multiple concurrent sessions
 
 **Integration:**
 - Subscribe to `realtime.session.start` → create Deepgram connection
@@ -79,14 +79,14 @@ Redis Channels:
 
 **packages/meeting-mode** (new package)
 
-- [ ] Create package structure
-- [ ] Implement `UtteranceFinalizer` class
-- [ ] Buffer partial hypotheses per session
-- [ ] Drop non-final segments
-- [ ] Merge short utterances (< 2 seconds gap)
-- [ ] Add light punctuation normalization
-- [ ] Implement speaker tagging logic (YOU vs THEM based on audio source)
-- [ ] Define `Utterance` type:
+- [x] Create package structure
+- [x] Implement `UtteranceFinalizer` class
+- [x] Buffer partial hypotheses per session
+- [x] Drop non-final segments
+- [x] Merge short utterances (< 2 seconds gap)
+- [x] Add light punctuation normalization
+- [x] Implement speaker tagging logic (YOU vs THEM based on audio source)
+- [x] Define `Utterance` type:
   ```ts
   interface Utterance {
     utteranceId: string
@@ -97,7 +97,7 @@ Redis Channels:
     confidence: number
   }
   ```
-- [ ] Publish finalized utterances to Redis channel `meeting.utterance.{sessionId}`
+- [x] Publish finalized utterances to Redis channel `meeting.utterance.{sessionId}`
 
 **Deliverable:** Only clean, finalized utterances emitted downstream.
 
@@ -105,13 +105,13 @@ Redis Channels:
 
 **apps/control + packages/meeting-mode**
 
-- [ ] Add `/meeting-session/start` endpoint (creates session, returns sessionId)
-- [ ] Add `/meeting-session/end` endpoint (finalizes session)
-- [ ] Add `/meeting-session/:id/status` endpoint (session state)
-- [ ] Implement session state in Redis (active sessions with metadata)
-- [ ] Add session validation for realtime connections
-- [ ] Wire control plane to listen for `realtime.session.start/end` events
-- [ ] Update Meeting model status on session lifecycle
+- [x] Add `/meeting-session/start` endpoint (creates session, returns sessionId)
+- [x] Add `/meeting-session/end` endpoint (finalizes session)
+- [x] Add `/meeting-session/:id/status` endpoint (session state)
+- [x] Implement session state in Redis (active sessions with metadata)
+- [x] Add session validation for realtime connections
+- [x] Wire control plane to listen for `realtime.session.start/end` events
+- [x] Update Meeting model status on session lifecycle
 
 **Deliverable:** Meeting sessions are tracked authoritatively in the control plane.
 
