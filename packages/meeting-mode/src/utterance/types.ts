@@ -11,6 +11,7 @@ export interface Utterance {
   duration: number;
   wordCount: number;
   mergedCount: number;
+  topicId?: string;
 }
 
 export interface FinalizeResult {
