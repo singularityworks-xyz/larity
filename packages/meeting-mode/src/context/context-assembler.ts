@@ -1,5 +1,5 @@
 import type { RingBuffer } from "../utterance/ring-buffer";
-import type { Utterance } from "../utterance/types";
+import type { SpeakerType, Utterance } from "../utterance/types";
 
 /**
  * Context assembly options
@@ -11,8 +11,14 @@ export interface ContextAssemblyOptions {
   /** Include only utterances from specific topic */
   topicId?: string;
 
-  /** Include only utterances from specific speaker */
-  speaker?: "YOU" | "THEM";
+  /** Filter by speaker type (TEAM or EXTERNAL) */
+  speakerType?: SpeakerType;
+
+  /** Filter by specific speaker ID */
+  speakerId?: string;
+
+  /** Filter by user ID (for identified team members) */
+  userId?: string;
 
   /** Time window in milliseconds */
   timeWindowMs?: number;
@@ -70,7 +76,9 @@ export class ContextAssembler {
     const {
       maxCharacters,
       topicId,
-      speaker,
+      speakerType,
+      speakerId,
+      userId,
       timeWindowMs,
       includeTimestamps = true,
       prefix = "",
@@ -85,8 +93,16 @@ export class ContextAssembler {
       utterances = utterances.filter((u) => u.topicId === topicId);
     }
 
-    if (speaker) {
-      utterances = utterances.filter((u) => u.speaker === speaker);
+    if (speakerType) {
+      utterances = utterances.filter((u) => u.speaker.type === speakerType);
+    }
+
+    if (speakerId) {
+      utterances = utterances.filter((u) => u.speaker.speakerId === speakerId);
+    }
+
+    if (userId) {
+      utterances = utterances.filter((u) => u.speaker.userId === userId);
     }
 
     if (timeWindowMs) {
@@ -185,22 +201,25 @@ export class ContextAssembler {
    */
   getSummary(): {
     recentUtterances: number;
-    yourUtterances: number;
-    theirUtterances: number;
+    teamUtterances: number;
+    externalUtterances: number;
+    uniqueSpeakers: number;
     timeSpanMs: number;
     averageUtteranceLength: number;
   } {
     const all = this.buffer.getAll();
-    const yours = all.filter((u) => u.speaker === "YOU");
-    const theirs = all.filter((u) => u.speaker === "THEM");
+    const team = all.filter((u) => u.speaker.type === "TEAM");
+    const external = all.filter((u) => u.speaker.type === "EXTERNAL");
+    const uniqueSpeakerIds = new Set(all.map((u) => u.speaker.speakerId));
 
     const stats = this.buffer.getStats();
     const avgLength = all.length > 0 ? stats.totalCharacters / all.length : 0;
 
     return {
       recentUtterances: all.length,
-      yourUtterances: yours.length,
-      theirUtterances: theirs.length,
+      teamUtterances: team.length,
+      externalUtterances: external.length,
+      uniqueSpeakers: uniqueSpeakerIds.size,
       timeSpanMs:
         stats.newestTimestamp && stats.oldestTimestamp
           ? stats.newestTimestamp - stats.oldestTimestamp
@@ -216,6 +235,7 @@ export class ContextAssembler {
     utterance: Utterance,
     includeTimestamp: boolean
   ): string {
+    const speakerLabel = utterance.speaker.name;
     if (includeTimestamp) {
       const time = new Date(utterance.timestamp).toLocaleTimeString("en-US", {
         hour12: false,
@@ -223,8 +243,8 @@ export class ContextAssembler {
         minute: "2-digit",
         second: "2-digit",
       });
-      return `[${time}] ${utterance.speaker}: ${utterance.text}`;
+      return `[${time}] ${speakerLabel}: ${utterance.text}`;
     }
-    return `${utterance.speaker}: ${utterance.text}`;
+    return `${speakerLabel}: ${utterance.text}`;
   }
 }
