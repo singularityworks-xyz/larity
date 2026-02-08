@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 import { ZodError } from "zod";
+import { createControlLogger } from "../logger";
 import { requireAuth } from "../middleware/auth";
 import {
   getHttpStatusForError,
@@ -11,6 +12,8 @@ import {
   sessionIdSchema,
   startSessionSchema,
 } from "../validators/meeting-session";
+
+const log = createControlLogger("meeting-session-routes");
 
 /**
  * Meeting Session Routes
@@ -61,6 +64,15 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
           user.id
         );
 
+        log.info(
+          {
+            sessionId: result.sessionId,
+            meetingId: validatedInput.meetingId,
+            userId: user.id,
+          },
+          "Session started"
+        );
+
         return {
           success: true,
           data: result,
@@ -87,7 +99,7 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
         }
 
         // Unknown error
-        console.error("[meeting-session/start] Error:", error);
+        log.error({ err: error, userId: user.id }, "Failed to start session");
         set.status = 500;
         return {
           success: false,
@@ -136,6 +148,15 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
 
         const result = await meetingSessionService.end(validatedInput, user.id);
 
+        log.info(
+          {
+            sessionId: validatedInput.sessionId,
+            reason: validatedInput.reason,
+            userId: user.id,
+          },
+          "Session ended"
+        );
+
         return {
           success: true,
           data: result,
@@ -150,7 +171,10 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
           };
         }
 
-        console.error("[meeting-session/end] Error:", error);
+        log.error(
+          { err: error, sessionId: body.sessionId },
+          "Failed to end session"
+        );
         set.status = 500;
         return {
           success: false,
@@ -194,7 +218,10 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
           data: status,
         };
       } catch (error) {
-        console.error("[meeting-session/:id/status] Error:", error);
+        log.error(
+          { err: error, sessionId: params.id },
+          "Failed to get session status"
+        );
         set.status = 500;
         return {
           success: false,
@@ -237,7 +264,10 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
           data: status,
         };
       } catch (error) {
-        console.error("[meeting-session/by-meeting] Error:", error);
+        log.error(
+          { err: error, meetingId: params.meetingId },
+          "Failed to get session by meeting ID"
+        );
         set.status = 500;
         return {
           success: false,

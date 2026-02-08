@@ -1,5 +1,8 @@
 import Redis from "ioredis";
+import { createControlLogger } from "../logger";
 import { meetingSessionService } from "../services/meeting-session.service";
+
+const log = createControlLogger("session-listener");
 
 // Redis channels to subscribe to
 const SESSION_START = "realtime.session.start";
@@ -27,13 +30,13 @@ interface SessionEndEvent {
 async function handleSessionStart(event: SessionStartEvent): Promise<void> {
   const { sessionId, ts } = event;
 
-  console.log(`[SessionListener] Session started: ${sessionId} at ${ts}`);
+  log.info({ sessionId, ts }, "Session started");
 
   // Verify session exists in our Redis state
   const isValid = await meetingSessionService.isValidSession(sessionId);
 
   if (!isValid) {
-    console.warn(`[SessionListener] Unknown session started: ${sessionId}`);
+    log.warn({ sessionId }, "Unknown session started");
     // In production, you might want to forcefully close this session
     return;
   }
@@ -51,10 +54,7 @@ async function handleSessionStart(event: SessionStartEvent): Promise<void> {
 async function handleSessionEnd(event: SessionEndEvent): Promise<void> {
   const { sessionId, ts, duration } = event;
 
-  console.log(
-    `[SessionListener] Session ended: ${sessionId} ` +
-      `(duration: ${duration}ms, at: ${ts})`
-  );
+  log.info({ sessionId, ts, duration }, "Session ended");
 
   // Get session status
   const status = await meetingSessionService.getStatus(sessionId);
@@ -71,9 +71,9 @@ async function handleSessionEnd(event: SessionEndEvent): Promise<void> {
         { sessionId, reason: "timeout" },
         "system" // System-initiated end
       );
-      console.log(`[SessionListener] Auto-ended session: ${sessionId}`);
+      log.info({ sessionId }, "Auto-ended session");
     } catch (error) {
-      console.error("[SessionListener] Failed to auto-end session:", error);
+      log.error({ sessionId, err: error }, "Failed to auto-end session");
     }
   }
 }
@@ -90,12 +90,13 @@ export async function startSessionEventListener(): Promise<void> {
   });
 
   await subscriber.connect();
-  console.log("[SessionListener] Connected to Redis");
+  log.info("Connected to Redis");
 
   // Subscribe to session channels
   await subscriber.subscribe(SESSION_START, SESSION_END);
-  console.log(
-    `[SessionListener] Subscribed to ${SESSION_START}, ${SESSION_END}`
+  log.info(
+    { channels: [SESSION_START, SESSION_END] },
+    "Subscribed to channels"
   );
 
   // Handle incoming messages
@@ -111,15 +112,15 @@ export async function startSessionEventListener(): Promise<void> {
           await handleSessionEnd(event as SessionEndEvent);
           break;
         default:
-          console.warn(`[SessionListener] Unknown channel: ${channel}`);
+          log.warn({ channel }, "Unknown channel");
       }
     } catch (error) {
-      console.error("[SessionListener] Error handling message:", error);
+      log.error({ err: error, channel }, "Error handling message");
     }
   });
 
   subscriber.on("error", (error) => {
-    console.error("[SessionListener] Redis error:", error);
+    log.error({ err: error }, "Redis error");
   });
 }
 
@@ -131,6 +132,6 @@ export async function stopSessionEventListener(): Promise<void> {
     await subscriber.unsubscribe();
     subscriber.disconnect();
     subscriber = null;
-    console.log("[SessionListener] Stopped");
+    log.info("Stopped");
   }
 }

@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { Elysia } from "elysia";
+import { createControlLogger } from "../logger";
+
+const log = createControlLogger("request-logger");
 
 /**
  * Request logging middleware
@@ -13,21 +16,40 @@ export const requestLogger = new Elysia({ name: "request-logger" })
     };
   })
   .onBeforeHandle(({ request, requestId }) => {
-    console.log(
-      `[${requestId}] --> ${request.method} ${new URL(request.url).pathname}`
+    log.info(
+      {
+        requestId,
+        method: request.method,
+        path: new URL(request.url).pathname,
+      },
+      "Request started"
     );
   })
   .onAfterResponse(({ request, requestId, requestStart, set }) => {
     const duration = Date.now() - requestStart;
-    console.log(
-      `[${requestId}] <-- ${request.method} ${new URL(request.url).pathname} ${set.status ?? 200} ${duration}ms`
+    log.info(
+      {
+        requestId,
+        method: request.method,
+        path: new URL(request.url).pathname,
+        status: set.status ?? 200,
+        duration,
+      },
+      "Request completed"
     );
   })
   .onError(({ request, requestId, requestStart, code, error, set }) => {
     const duration = requestStart ? Date.now() - requestStart : 0;
-    console.error(
-      `[${requestId}] <-- ${request.method} ${new URL(request.url).pathname} ${set.status ?? 500} ${duration}ms`,
-      `[${code}]`,
-      (error as Error).message
+    log.error(
+      {
+        requestId,
+        method: request.method,
+        path: new URL(request.url).pathname,
+        status: set.status ?? 500,
+        duration,
+        code,
+        err: error,
+      },
+      "Request failed"
     );
   });

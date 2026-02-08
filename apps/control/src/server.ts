@@ -1,6 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import { Elysia } from "elysia";
 import { env } from "./env";
+import { createControlLogger } from "./logger";
 import { requireAuth } from "./middleware/auth";
 import { requestLogger } from "./middleware/logger";
 import {
@@ -19,6 +20,8 @@ import {
   usersRoutes,
 } from "./routes";
 
+const log = createControlLogger("server");
+
 export const app = new Elysia()
   // Request logging/tracing
   .use(requestLogger)
@@ -31,11 +34,7 @@ export const app = new Elysia()
   )
   // Global error handler
   .onError(({ code, error, set }) => {
-    console.error(
-      `[${code}]`,
-      (error as Error).message,
-      (error as Error).stack
-    );
+    log.error({ code, err: error }, "Global error handler");
 
     if (code === "VALIDATION") {
       set.status = 400;
