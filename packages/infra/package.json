@@ -6,5 +6,8 @@
   "exports": {
     "./prisma": "./generated/prisma/index.js",
     "./generated/prisma": "./generated/prisma/index.js"
+  },
+  "dependencies": {
+    "@larity/logger": "workspace:*"
   }
 }

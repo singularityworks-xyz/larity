@@ -6,11 +6,14 @@ export * from "./publish";
 export * from "./queues";
 export * from "./types";
 
+import { createInfraLogger } from "../logger";
 import { setupExchanges } from "./exchanges";
 import { setupQueues } from "./queues";
+
+const log = createInfraLogger("rabbitmq-setup");
 
 export async function setupRabbitMQ() {
   await setupExchanges();
   await setupQueues();
-  console.log("[RabbitMQ] Infrastructure configured successfully");
+  log.info("Infrastructure configured successfully");
 }

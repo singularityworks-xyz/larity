@@ -1,5 +1,8 @@
+import { createInfraLogger } from "../logger";
 import { getChannel } from "./connection";
 import { Exchanges } from "./exchanges";
+
+const log = createInfraLogger("rabbitmq-publish");
 
 export async function publish<T>(
   routingKey: string,
@@ -17,7 +20,7 @@ export async function publish<T>(
   });
 
   if (!published) {
-    console.warn(`[RabbitMQ] Channel buffer full for ${routingKey}`);
+    log.warn({ routingKey, exchange }, "Channel buffer full");
   }
 
   await ch.waitForConfirms();

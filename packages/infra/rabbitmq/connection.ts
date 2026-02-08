@@ -1,5 +1,8 @@
 import type { ChannelModel, ConfirmChannel } from "amqplib";
 import amqp from "amqplib";
+import { createInfraLogger } from "../logger";
+
+const log = createInfraLogger("rabbitmq-connection");
 
 let connection: ChannelModel | null = null;
 let channel: ConfirmChannel | null = null;
@@ -14,19 +17,19 @@ export async function getChannel(): Promise<ConfirmChannel> {
 
   try {
     if (!connection) {
-      console.log(
-        "Connecting to RabbitMQ at",
-        RABBITMQ_URL.split("@")[1] || "localhost"
+      log.info(
+        { host: RABBITMQ_URL.split("@")[1] || "localhost" },
+        "Connecting to RabbitMQ"
       );
       connection = await amqp.connect(RABBITMQ_URL);
 
       connection.on("error", (err: unknown) => {
-        console.error("RabbitMQ connection error:", err);
+        log.error({ err }, "RabbitMQ connection error");
         resetConnection();
       });
 
       connection.on("close", () => {
-        console.warn("RabbitMQ connection closed");
+        log.warn("RabbitMQ connection closed");
         resetConnection();
       });
     }
@@ -42,12 +45,12 @@ export async function getChannel(): Promise<ConfirmChannel> {
     }
 
     channel.on("error", (err: unknown) => {
-      console.error("RabbitMQ channel error:", err);
+      log.error({ err }, "RabbitMQ channel error");
       channel = null;
     });
 
     channel.on("close", () => {
-      console.warn("RabbitMQ channel closed");
+      log.warn("RabbitMQ channel closed");
       channel = null;
     });
 
@@ -59,7 +62,7 @@ export async function getChannel(): Promise<ConfirmChannel> {
 
     return channel;
   } catch (error) {
-    console.error("Failed to connect to RabbitMQ:", error);
+    log.error({ err: error }, "Failed to connect to RabbitMQ");
     resetConnection();
     throw error;
   }

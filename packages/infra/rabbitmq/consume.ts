@@ -1,4 +1,7 @@
+import { createInfraLogger } from "../logger";
 import { getChannel } from "./connection";
+
+const log = createInfraLogger("rabbitmq-consume");
 
 export async function consume<T>(
   queue: string,
@@ -6,13 +9,11 @@ export async function consume<T>(
 ) {
   const ch = await getChannel();
 
-  console.log(`[RabbitMQ] Consumer starting for queue: ${queue}`);
+  log.info({ queue }, "Consumer starting");
 
   await ch.consume(queue, async (msg) => {
     if (!msg) {
-      console.warn(
-        `[RabbitMQ] Consumer cancelled by server for queue: ${queue}`
-      );
+      log.warn({ queue }, "Consumer cancelled by server");
       return;
     }
 
@@ -23,7 +24,7 @@ export async function consume<T>(
       try {
         data = JSON.parse(content) as T;
       } catch (parseError) {
-        console.error(`[RabbitMQ] JSON Parse Error in ${queue}:`, parseError);
+        log.error({ err: parseError, queue }, "JSON Parse Error");
         // Cannot parse -> DLQ immediately
         ch.nack(msg, false, false);
         return;
@@ -32,7 +33,7 @@ export async function consume<T>(
       await handler(data);
       ch.ack(msg);
     } catch (error) {
-      console.error(`[RabbitMQ] Processing Error in ${queue}:`, error);
+      log.error({ err: error, queue }, "Processing Error");
       // Handler failed -> DLQ
       ch.nack(msg, false, false);
     }
