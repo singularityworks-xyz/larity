@@ -37,7 +37,8 @@ export class UtteranceMerger {
   }
 
   private shouldMerge(prev: Utterance, next: Utterance): boolean {
-    if (prev.speaker !== next.speaker) {
+    // Only merge utterances from the same speaker
+    if (prev.speaker.speakerId !== next.speaker.speakerId) {
       return false;
     }
 
