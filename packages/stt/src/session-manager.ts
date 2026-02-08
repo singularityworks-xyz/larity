@@ -7,7 +7,6 @@
 
 import { DeepgramConnection } from "./deepgram/connection";
 import { MAX_CONNECTIONS } from "./env";
-import type { AudioSource } from "./types";
 
 /**
  * SessionManager maintains active Deepgram connections.
@@ -68,20 +67,20 @@ class SessionManager {
   }
 
   /**
-   * Send audio to a session's Deepgram connection
+   * Send audio to a session's Deepgram connection.
+   *
+   * In the host model, all audio comes from a single source
+   * (the host's system capture). Speaker differentiation is
+   * handled by Deepgram diarization, not by audio source.
    */
-  async sendAudio(
-    sessionId: string,
-    audioBuffer: Buffer,
-    source: AudioSource
-  ): Promise<void> {
+  async sendAudio(sessionId: string, audioBuffer: Buffer): Promise<void> {
     const connection = this.connections.get(sessionId);
     if (!connection) {
       // Silently drop - session may have ended
       return;
     }
 
-    await connection.sendAudio(audioBuffer, source);
+    await connection.sendAudio(audioBuffer);
   }
 
   /**

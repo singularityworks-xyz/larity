@@ -9,24 +9,22 @@ import Redis from "ioredis";
 import { AUDIO_PATTERN, SESSION_END, SESSION_START } from "./channels";
 import { REDIS_URL } from "./env";
 import { sessionManager } from "./session-manager";
-import type {
-  AudioPayload,
-  AudioSource,
-  SessionEndEvent,
-  SessionStartEvent,
-} from "./types";
+import type { AudioPayload, SessionEndEvent, SessionStartEvent } from "./types";
 
 let subscriber: Redis | null = null;
 
 /**
  * Handle incoming audio frame
+ *
+ * In the host model, audio source distinction is no longer needed.
+ * All audio comes from the host's system capture and speaker
+ * differentiation is handled by Deepgram diarization.
  */
 function handleAudioFrame(sessionId: string, payload: AudioPayload): void {
   // Decode base64 → Buffer
   const audioBuffer = Buffer.from(payload.frame, "base64");
-  const source: AudioSource = payload.source || "mic"; // Default to mic if not specified
 
-  sessionManager.sendAudio(sessionId, audioBuffer, source);
+  sessionManager.sendAudio(sessionId, audioBuffer);
 }
 
 /**

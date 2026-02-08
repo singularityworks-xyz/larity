@@ -10,7 +10,7 @@ import type { ListenLiveClient } from "@deepgram/sdk";
 import { LiveTranscriptionEvents } from "@deepgram/sdk";
 import { redis } from "../../../infra/redis";
 import { partialChannel, transcriptChannel } from "../channels";
-import type { AudioSource, SttResult } from "../types";
+import type { SttResult } from "../types";
 import { getDeepgramClient } from "./client";
 import { DEFAULT_DG_CONFIG, type TranscriptResult } from "./types";
 
@@ -34,7 +34,6 @@ function sleep(ms: number): Promise<void> {
 export class DeepgramConnection {
   private connection: ListenLiveClient | null = null;
   private readonly sessionId: string;
-  private currentSource: AudioSource = "mic";
   private isConnected = false;
   private isConnecting = false;
   private isClosed = false;
@@ -121,14 +120,16 @@ export class DeepgramConnection {
 
   /**
    * Send audio buffer to Deepgram
-   * Lazily connects if not already connected
+   * Lazily connects if not already connected.
+   *
+   * In the host model, all audio comes from the host's system capture
+   * (Google Meet tab audio). Speaker differentiation is handled by
+   * Deepgram's diarization, not by audio source.
    */
-  async sendAudio(buffer: Buffer, source: AudioSource): Promise<void> {
+  async sendAudio(buffer: Buffer): Promise<void> {
     if (this.isClosed) {
       return;
     }
-
-    this.currentSource = source;
 
     // Lazy connect on first audio
     if (!(this.isConnected || this.isConnecting)) {
@@ -155,6 +156,9 @@ export class DeepgramConnection {
 
   /**
    * Handle incoming transcript from Deepgram
+   *
+   * Extracts the diarization speaker index from Deepgram's response.
+   * Speaker identification (matching to team members) happens downstream.
    */
   private async handleTranscript(result: TranscriptResult): Promise<void> {
     const { is_final, channel, start, duration } = result;
@@ -169,12 +173,16 @@ export class DeepgramConnection {
       return; // Skip empty transcripts
     }
 
+    // Extract diarization index from words if available
+    // Deepgram includes speaker index per word when diarize=true
+    const diarizationIndex = alternative.words?.[0]?.speaker ?? 0;
+
     const sttResult: SttResult = {
       sessionId: this.sessionId,
       isFinal: is_final,
       transcript,
       confidence: alternative.confidence || 0,
-      speaker: this.currentSource === "mic" ? "YOU" : "THEM",
+      diarizationIndex,
       start,
       duration,
       ts: Date.now(),
