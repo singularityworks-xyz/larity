@@ -1,26 +1,13 @@
-/**
- * redis/publisher.ts — Output Boundary
- *
- * The last stop inside the realtime plane.
- * Accepts payloads from handlers and publishes to Redis.
- *
- * Rules:
- * - No subscriptions
- * - No retries
- * - No buffering
- * - No transformations
- *
- * This file is the handoff point to the rest of Larity.
- * If Redis is slow, frames are dropped and logged. That's it.
- */
-
 import { redis } from "../../../../packages/infra/redis";
+import { createRealtimeLogger } from "../logger";
 import type {
   AudioFramePayload,
   SessionEndEvent,
   SessionStartEvent,
 } from "../types";
 import { audioChannel, SESSION_END, SESSION_START } from "./channels";
+
+const log = createRealtimeLogger("publisher");
 
 /**
  * Publish a raw audio frame to Redis
@@ -40,9 +27,9 @@ export async function publishAudioFrame(
     await redis.publish(channel, message);
   } catch (error) {
     // Drop frame, log error, continue
-    console.error(
-      `[publisher] Failed to publish audio frame for session ${payload.sessionId}:`,
-      error
+    log.error(
+      { err: error, sessionId: payload.sessionId },
+      "Failed to publish audio frame"
     );
   }
 }
@@ -56,9 +43,9 @@ export async function publishSessionStart(
   try {
     await redis.publish(SESSION_START, JSON.stringify(event));
   } catch (error) {
-    console.error(
-      `[publisher] Failed to publish session start for ${event.sessionId}:`,
-      error
+    log.error(
+      { err: error, sessionId: event.sessionId },
+      "Failed to publish session start"
     );
   }
 }
@@ -70,9 +57,9 @@ export async function publishSessionEnd(event: SessionEndEvent): Promise<void> {
   try {
     await redis.publish(SESSION_END, JSON.stringify(event));
   } catch (error) {
-    console.error(
-      `[publisher] Failed to publish session end for ${event.sessionId}:`,
-      error
+    log.error(
+      { err: error, sessionId: event.sessionId },
+      "Failed to publish session end"
     );
   }
 }

@@ -1,6 +1,7 @@
 import type uWS from "uWebSockets.js";
 import { connectRedis } from "../../../packages/infra/redis";
 import { env } from "./env";
+import { rootLogger } from "./logger";
 import { startServer, stopServer } from "./server";
 
 // Track the listen socket for graceful shutdown
@@ -8,32 +9,32 @@ let listenSocket: uWS.us_listen_socket | null = null;
 
 //main entry point
 async function main(): Promise<void> {
-  console.log("[realtime] Starting realtime plane...");
-  console.log(`[realtime] Port: ${env.PORT}`);
+  rootLogger.info("Starting realtime plane...");
+  rootLogger.info({ port: env.PORT }, "Port configured");
 
   // Connect to Redis
-  console.log("[realtime] Connecting to Redis...");
+  rootLogger.info("Connecting to Redis...");
   const redisConnected = await connectRedis();
 
   if (!redisConnected) {
-    console.error("[realtime] FATAL: Could not connect to Redis");
+    rootLogger.fatal("FATAL: Could not connect to Redis");
     process.exit(1);
   }
-  console.log("[realtime] Redis connected");
+  rootLogger.info("Redis connected");
 
   // Start WebSocket server
   try {
     listenSocket = await startServer();
-    console.log("[realtime] Realtime plane is ready");
+    rootLogger.info("Realtime plane is ready");
   } catch (error) {
-    console.error("[realtime] FATAL: Failed to start WebSocket server:", error);
+    rootLogger.fatal({ err: error }, "FATAL: Failed to start WebSocket server");
     process.exit(1);
   }
 }
 
 //shutdown handler
 function shutdown(signal: string): void {
-  console.log(`[realtime] Received ${signal}, shutting down...`);
+  rootLogger.info({ signal }, "Received signal, shutting down...");
 
   if (listenSocket) {
     stopServer(listenSocket);
@@ -42,7 +43,7 @@ function shutdown(signal: string): void {
 
   // Give time for cleanup
   setTimeout(() => {
-    console.log("[realtime] Shutdown complete");
+    rootLogger.info("Shutdown complete");
     process.exit(0);
   }, 1000);
 }
@@ -53,17 +54,17 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 
 // Handle uncaught errors
 process.on("uncaughtException", (error) => {
-  console.error("[realtime] FATAL: Uncaught exception:", error);
+  rootLogger.fatal({ err: error }, "FATAL: Uncaught exception");
   process.exit(1);
 });
 
 process.on("unhandledRejection", (reason) => {
-  console.error("[realtime] FATAL: Unhandled rejection:", reason);
+  rootLogger.fatal({ err: reason }, "FATAL: Unhandled rejection");
   process.exit(1);
 });
 
 // Start the application
 main().catch((error) => {
-  console.error("[realtime] FATAL: Startup failed:", error);
+  rootLogger.fatal({ err: error }, "FATAL: Startup failed");
   process.exit(1);
 });

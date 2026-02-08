@@ -3,6 +3,9 @@ import type {
   HttpResponse,
   us_socket_context_t,
 } from "uWebSockets.js";
+import { createRealtimeLogger } from "../logger";
+
+const log = createRealtimeLogger("on-upgrade");
 
 // URL for validating sessions with control plane
 const CONTROL_API_URL = process.env.CONTROL_API_URL || "http://localhost:3000";
@@ -46,7 +49,7 @@ async function validateSession(sessionId: string): Promise<boolean> {
       return validationData.success && validationData.data?.valid === true;
     }
   } catch (error) {
-    console.error("[onUpgrade] Session validation failed:", error);
+    log.error({ err: error, sessionId }, "Session validation failed");
     // In production, you might want to reject unknown sessions
     // For development, we'll allow it
     return true;

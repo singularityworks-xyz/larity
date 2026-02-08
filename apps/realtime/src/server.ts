@@ -1,24 +1,13 @@
-/**
- * server.ts — WebSocket Runtime
- *
- * The heart of the realtime plane.
- * Creates the uWebSockets app and defines WebSocket behavior.
- *
- * Core responsibilities:
- * - Create a uWebSockets App
- * - Define WebSocket behavior
- * - Bind to a port
- *
- * This file wires lifecycle hooks but contains no business logic itself.
- */
-
 import uWS from "uWebSockets.js";
 import { env } from "./env";
 import { onClose } from "./handlers/on-close";
 import { onDrain } from "./handlers/on-drain";
 import { onMessage } from "./handlers/on-message";
 import { onOpen } from "./handlers/on-open";
+import { createRealtimeLogger } from "./logger";
 import type { SocketData } from "./types";
+
+const log = createRealtimeLogger("server");
 
 /**
  * Start the WebSocket server
@@ -108,7 +97,7 @@ export function startServer(): Promise<uWS.us_listen_socket> {
     // Bind to port
     app.listen(env.PORT, (listenSocket) => {
       if (listenSocket) {
-        console.log(`[server] WebSocket server listening on port ${env.PORT}`);
+        log.info({ port: env.PORT }, "WebSocket server listening");
         resolve(listenSocket);
       } else {
         reject(new Error(`Failed to bind to port ${env.PORT}`));
@@ -122,5 +111,5 @@ export function startServer(): Promise<uWS.us_listen_socket> {
  */
 export function stopServer(listenSocket: uWS.us_listen_socket): void {
   uWS.us_listen_socket_close(listenSocket);
-  console.log("[server] WebSocket server stopped");
+  log.info("WebSocket server stopped");
 }

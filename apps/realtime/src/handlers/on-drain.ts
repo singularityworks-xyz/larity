@@ -1,21 +1,7 @@
-/**
- * handlers/onDrain.ts — Backpressure Signal
- *
- * Triggered when uWebSockets internal buffers start filling.
- *
- * What we do here:
- * - Detect slow consumers
- * - Log or mark session degraded
- *
- * What we NEVER do:
- * - Buffer frames
- * - Pause ingestion
- * - Retry sends
- *
- * Realtime systems prefer data loss over delay.
- */
-
+import { createRealtimeLogger } from "../logger";
 import type { RealtimeSocket } from "../types";
+
+const log = createRealtimeLogger("on-drain");
 
 /**
  * Handle backpressure warning from uWebSockets
@@ -28,7 +14,7 @@ export function onDrain(ws: RealtimeSocket): void {
   const { sessionId } = data;
 
   // Log the backpressure event for monitoring
-  console.warn(`[onDrain] Backpressure relieved for session: ${sessionId}`);
+  log.warn({ sessionId }, "Backpressure relieved");
 
   // Note: uWebSockets calls drain when buffers are emptying
   // If you need to track "was under pressure", you'd track that in onMessage

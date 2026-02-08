@@ -1,21 +1,9 @@
-/**
- * handlers/onOpen.ts — Connection Start
- *
- * Triggered once per WebSocket connection.
- *
- * Step-by-step behavior:
- * 1. Client connects
- * 2. Server extracts sessionId from query
- * 3. If missing → connection is closed immediately
- * 4. Session is added to the session map
- * 5. A session.start event is published to Redis
- *
- * No auth. No validation beyond presence.
- */
-
+import { createRealtimeLogger } from "../logger";
 import { publishSessionStart } from "../redis/publisher";
 import { addSession } from "../session";
 import type { RealtimeSocket } from "../types";
+
+const log = createRealtimeLogger("on-open");
 
 /**
  * Handle new WebSocket connection
@@ -31,13 +19,13 @@ export function onOpen(ws: RealtimeSocket): void {
   // Register session in memory
   addSession(sessionId, ws);
 
-  console.log(`[onOpen] Session started: ${sessionId}`);
+  log.info({ sessionId }, "Session started");
 
   // Publish session start event to Redis (fire and forget)
   publishSessionStart({
     sessionId,
     ts: data.connectedAt,
   }).catch((err) => {
-    console.error(`[onOpen] Failed to publish session start: ${err}`);
+    log.error({ err, sessionId }, "Failed to publish session start");
   });
 }

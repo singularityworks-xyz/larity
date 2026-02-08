@@ -1,28 +1,9 @@
-/**
- * handlers/onMessage.ts — Audio Ingestion (Critical Path)
- *
- * This runs for every audio frame. THE HOT PATH.
- *
- * Exact responsibilities:
- * - Check message type (must be binary)
- * - Treat payload as opaque bytes (no decoding, no parsing)
- * - Capture a timestamp
- * - Update lastFrameTs in session
- * - Publish to Redis immediately
- *
- * Important constraints:
- * - No buffering
- * - No retries
- * - No async chains that block
- * - Minimal allocations
- *
- * If Redis is slow: frames are dropped, system continues.
- * This protects latency.
- */
-
+import { createRealtimeLogger } from "../logger";
 import { publishAudioFrame } from "../redis/publisher";
 import { updateLastFrameTs } from "../session";
 import type { RealtimeSocket } from "../types";
+
+const log = createRealtimeLogger("on-message");
 
 /**
  * Handle incoming WebSocket message
@@ -38,7 +19,7 @@ export function onMessage(
 ): void {
   // Reject non-binary frames immediately
   if (!isBinary) {
-    console.warn("[onMessage] Received non-binary frame, ignoring");
+    log.warn("Received non-binary frame, ignoring");
     return;
   }
 
@@ -58,8 +39,9 @@ export function onMessage(
     sessionId,
     ts,
     frame,
+    source: "system", // In host model, audio is always from system
   }).catch((err) => {
     // Frame is dropped, log and continue
-    console.error(`[onMessage] Failed to publish frame for ${sessionId}:`, err);
+    log.error({ err, sessionId }, "Failed to publish frame");
   });
 }

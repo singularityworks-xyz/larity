@@ -40,4 +40,7 @@ export const env = {
 
   /** Redis connection URL - required, comes from infra */
   REDIS_URL: required("REDIS_URL"),
+
+  /** Log level - optional, defaults to info/debug */
+  LOG_LEVEL: optional("LOG_LEVEL", "info"),
 } as const;
