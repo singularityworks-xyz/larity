@@ -1,4 +1,4 @@
-import type { Utterance } from "./types";
+import type { SpeakerType, Utterance } from "./types";
 
 /**
  * Configuration for the ring buffer
@@ -113,10 +113,24 @@ export class RingBuffer {
   }
 
   /**
-   * Get utterances filtered by speaker
+   * Get utterances filtered by speaker type (TEAM or EXTERNAL)
    */
-  getBySpeaker(speaker: "YOU" | "THEM"): Utterance[] {
-    return this.getAll().filter((u) => u.speaker === speaker);
+  getBySpeakerType(type: SpeakerType): Utterance[] {
+    return this.getAll().filter((u) => u.speaker.type === type);
+  }
+
+  /**
+   * Get utterances filtered by specific speaker ID
+   */
+  getBySpeakerId(speakerId: string): Utterance[] {
+    return this.getAll().filter((u) => u.speaker.speakerId === speakerId);
+  }
+
+  /**
+   * Get utterances filtered by user ID (for identified team members)
+   */
+  getByUserId(userId: string): Utterance[] {
+    return this.getAll().filter((u) => u.speaker.userId === userId);
   }
 
   /**
@@ -176,7 +190,7 @@ export class RingBuffer {
    */
   private defaultFormat(u: Utterance): string {
     const timestamp = new Date(u.timestamp).toLocaleTimeString();
-    return `[${timestamp}] ${u.speaker}: ${u.text}`;
+    return `[${timestamp}] ${u.speaker.name}: ${u.text}`;
   }
 
   /**
