@@ -14,7 +14,8 @@
     "dotenv": "^17.2.3",
     "elysia": "^1.4.21",
     "ioredis": "^5.9.2",
-    "zod": "^4.3.5"
+    "zod": "^4.3.5",
+    "@larity/logger": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5"

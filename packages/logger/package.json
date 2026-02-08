@@ -1,0 +1,23 @@
+{
+  "name": "@larity/logger",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "biome check --log-level=info --diagnostic-level=warn .",
+    "lint:fix": "biome check --write --unsafe .",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
+  },
+  "dependencies": {
+    "pino": "^9.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "pino-pretty": "^13.0.0",
+    "typescript": "^5.7.3"
+  }
+}
