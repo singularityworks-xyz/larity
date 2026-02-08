@@ -27,7 +27,8 @@
     "husky": "^9.1.7",
     "prisma": "^7.2.0",
     "turbo": "^2.6.3",
-    "ultracite": "7.1.4"
+    "ultracite": "7.1.4",
+    "vitest": "^4.0.18"
   },
   "peerDependencies": {
     "typescript": "^5"
