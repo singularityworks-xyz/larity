@@ -4,6 +4,7 @@ import { PartialBuffer } from "./buffer";
 import { UtteranceMerger } from "./merger";
 import { RingBuffer } from "./ring-buffer";
 import type { Utterance } from "./types";
+import { createUnidentifiedSpeaker } from "./types";
 
 export interface UtterancePublisher {
   publish(channel: string, message: string): Promise<number>;
@@ -49,7 +50,7 @@ export class UtteranceFinalizer {
     const utterance: Utterance = {
       utteranceId: this.generateUtteranceId(sessionId),
       sessionId,
-      speaker: result.speaker,
+      speaker: createUnidentifiedSpeaker(result.diarizationIndex),
       text: normalizedText,
       timestamp: finalized.timestamp,
       confidenceScore: finalized.confidence,
