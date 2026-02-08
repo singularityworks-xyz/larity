@@ -2,10 +2,12 @@ import Redis from "ioredis";
 import type { SessionEndEvent, SttResult } from "../../stt/src/types";
 import { SESSION_END, STT_FINAL_PATTERN } from "./channels";
 import { REDIS_URL } from "./env";
+import { createMeetingModeLogger } from "./logger";
 import type { UtteranceFinalizer } from "./utterance/finalizer";
 
-let subscriber: Redis | null = null;
+const log = createMeetingModeLogger("subscriber");
 
+let subscriber: Redis | null = null;
 let finalizerRef: UtteranceFinalizer | null = null;
 
 async function handleSttResult(
@@ -13,22 +15,16 @@ async function handleSttResult(
   message: string
 ): Promise<void> {
   try {
-    // Parse the JSON message
     const result = JSON.parse(message) as SttResult;
 
-    // Validate we have a finalizer
     if (!finalizerRef) {
-      console.error("[Subscriber] No finalizer registered!");
+      log.error("No finalizer registered!");
       return;
     }
 
-    // Route to finalizer for processing
     await finalizerRef.process(result);
   } catch (error) {
-    console.error(
-      `[Subscriber] Error handling STT result on ${channel}:`,
-      error
-    );
+    log.error({ err: error, channel }, "Error handling STT result");
   }
 }
 
@@ -37,13 +33,13 @@ async function handleSessionEnd(message: string): Promise<void> {
     const event = JSON.parse(message) as SessionEndEvent;
 
     if (!finalizerRef) {
-      console.error("[Subscriber] No finalizer registered!");
+      log.error("No finalizer registered!");
       return;
     }
 
     await finalizerRef.closeSession(event.sessionId);
   } catch (error) {
-    console.error("[Subscriber] Error handling session end:", error);
+    log.error({ err: error }, "Error handling session end");
   }
 }
 
@@ -60,51 +56,45 @@ export async function startSubscriber(
   });
 
   await subscriber.connect();
-  console.log("[Subscriber] Connected to Redis");
+  log.info("Connected to Redis");
 
   await subscriber.subscribe(SESSION_END);
-  console.log(`[Subscriber] Subscribed to ${SESSION_END}`);
+  log.info({ channel: SESSION_END }, "Subscribed to session end channel");
 
   await subscriber.psubscribe(STT_FINAL_PATTERN);
-  console.log(`[Subscriber] Pattern subscribed to ${STT_FINAL_PATTERN}`);
+  log.info({ pattern: STT_FINAL_PATTERN }, "Pattern subscribed to STT results");
 
-  subscriber.on("message", async (channel: string, message: string) => {
+  subscriber.on("message", async (channel, message) => {
     if (channel === SESSION_END) {
       await handleSessionEnd(message);
     }
   });
 
-  subscriber.on(
-    "pmessage",
-    async (_pattern: string, channel: string, message: string) => {
-      try {
-        if (_pattern === STT_FINAL_PATTERN) {
-          await handleSttResult(channel, message);
-        }
-      } catch (error) {
-        console.error(
-          `[Subscriber] Error handling message on pattern ${_pattern}:`,
-          error
-        );
+  subscriber.on("pmessage", async (_pattern, channel, message) => {
+    try {
+      if (_pattern === STT_FINAL_PATTERN) {
+        await handleSttResult(channel, message);
       }
+    } catch (error) {
+      log.error({ err: error, channel }, "Error handling message on pattern");
     }
-  );
+  });
 
   subscriber.on("error", (error) => {
-    console.error("[Subscriber] Redis error:", error);
+    log.error({ err: error }, "Redis error");
   });
 
   subscriber.on("reconnecting", () => {
-    console.log("[Subscriber] Reconnecting to Redis...");
+    log.warn("Reconnecting to Redis...");
   });
 }
 
 export function stopSubscriber(): void {
   if (subscriber) {
-    console.log("[Subscriber] Stopping...");
+    log.info("Stopping...");
     subscriber.disconnect();
     subscriber = null;
     finalizerRef = null;
-    console.log("[Subscriber] Disconnected");
+    log.info("Disconnected");
   }
 }

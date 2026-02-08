@@ -15,9 +15,11 @@ export const MAX_BUFFER_SIZE = Number.parseInt(
   10
 );
 
+export const LOG_LEVEL = process.env.LOG_LEVEL || "info";
+
 export function validateEnv(): void {
-  console.log("[MeetingMode] Environment Variables:");
-  console.log(`  REDIS_URL: ${REDIS_URL}`);
-  console.log(`  MERGE_GAP_MS: ${MERGE_GAP_MS}`);
-  console.log(`  MAX_BUFFER_SIZE: ${MAX_BUFFER_SIZE}`);
+  // Logic only validation if needed
+  if (!REDIS_URL) {
+    throw new Error("REDIS_URL is required");
+  }
 }

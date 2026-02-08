@@ -1,6 +1,9 @@
 import type { Redis } from "ioredis";
+import { createMeetingModeLogger } from "../../logger";
 import { RingBuffer, type RingBufferConfig } from "./ring-buffer";
 import type { Utterance } from "./types";
+
+const log = createMeetingModeLogger("persistent-ring-buffer");
 
 /**
  * Redis key for buffer persistence
@@ -83,14 +86,17 @@ export class PersistentRingBuffer extends RingBuffer {
         super.push(utterance);
       }
 
-      console.log(
-        `[PersistentRingBuffer] Loaded ${parsed.utterances.length} utterances ` +
-          `for session ${this.sessionId}`
+      log.info(
+        {
+          sessionId: this.sessionId,
+          count: parsed.utterances.length,
+        },
+        "Loaded utterances from Redis"
       );
 
       return true;
     } catch (error) {
-      console.error("[PersistentRingBuffer] Load error:", error);
+      log.error({ err: error, sessionId: this.sessionId }, "Load error");
       return false;
     }
   }
@@ -112,12 +118,15 @@ export class PersistentRingBuffer extends RingBuffer {
       this.lastSaveTime = Date.now();
       this.pendingSave = false;
 
-      console.log(
-        `[PersistentRingBuffer] Saved ${utterances.length} utterances ` +
-          `for session ${this.sessionId}`
+      log.debug(
+        {
+          sessionId: this.sessionId,
+          count: utterances.length,
+        },
+        "Saved utterances to Redis"
       );
     } catch (error) {
-      console.error("[PersistentRingBuffer] Save error:", error);
+      log.error({ err: error, sessionId: this.sessionId }, "Save error");
     }
   }
 

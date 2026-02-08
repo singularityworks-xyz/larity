@@ -1,10 +1,12 @@
 import type { SttResult } from "../../../stt/src/types";
 import { utteranceChannel } from "../channels";
+import { createMeetingModeLogger } from "../logger";
 import { PartialBuffer } from "./buffer";
 import { UtteranceMerger } from "./merger";
 import { RingBuffer } from "./ring-buffer";
-import type { Utterance } from "./types";
-import { createUnidentifiedSpeaker } from "./types";
+import { createUnidentifiedSpeaker, type Utterance } from "./types";
+
+const log = createMeetingModeLogger("utterance-finalizer");
 
 export interface UtterancePublisher {
   publish(channel: string, message: string): Promise<number>;
@@ -16,6 +18,7 @@ export class UtteranceFinalizer {
   private readonly sequences = new Map<string, number>();
   private readonly publisher: UtterancePublisher;
   private readonly ringBuffers = new Map<string, RingBuffer>();
+
   constructor(publisher: UtterancePublisher) {
     this.publisher = publisher;
   }
@@ -76,7 +79,7 @@ export class UtteranceFinalizer {
   }
 
   async closeSession(sessionId: string): Promise<void> {
-    console.log(`[UtteranceFinalizer] Closing session: ${sessionId}`);
+    log.info({ sessionId }, "Closing session");
 
     const merger = this.mergers.get(sessionId);
     if (merger) {
@@ -93,7 +96,7 @@ export class UtteranceFinalizer {
   }
 
   async closeAll(): Promise<void> {
-    console.log("[UtteranceFinalizer] Closing all sessions");
+    log.info({ count: this.buffer.size }, "Closing all sessions");
 
     const sessionIds = [...this.buffer.keys()];
 
@@ -101,7 +104,7 @@ export class UtteranceFinalizer {
       await this.closeSession(sessionId);
     }
 
-    console.log(`[UtteranceFinalizer] closed ${sessionIds.length} sessions`);
+    log.info({ closedCount: sessionIds.length }, "All sessions closed");
   }
 
   private getOrCreateBuffer(sessionId: string): PartialBuffer {
@@ -134,14 +137,18 @@ export class UtteranceFinalizer {
 
     try {
       await this.publisher.publish(channel, message);
-      console.log(
-        `[UtteranceFinalizer] Published: ${utterance.utteranceId} ` +
-          `"${utterance.text.substring(0, 50)}..."`
+      log.info(
+        {
+          sessionId: utterance.sessionId,
+          utteranceId: utterance.utteranceId,
+          textPrefix: utterance.text.substring(0, 50),
+        },
+        "Published utterance"
       );
     } catch (error) {
-      console.error(
-        `[UtteranceFinalizer] Failed to publish ${utterance.utteranceId}:`,
-        error
+      log.error(
+        { err: error, utteranceId: utterance.utteranceId },
+        "Failed to publish utterance"
       );
     }
   }

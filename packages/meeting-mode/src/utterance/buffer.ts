@@ -1,6 +1,9 @@
 import type { SttResult } from "../../../stt/src/types";
 import { MAX_BUFFER_SIZE } from "../env";
+import { createMeetingModeLogger } from "../logger";
 import type { FinalizeResult } from "./types";
+
+const log = createMeetingModeLogger("partial-buffer");
 
 export class PartialBuffer {
   private partials: SttResult[] = [];
@@ -15,8 +18,9 @@ export class PartialBuffer {
       const overflow = this.partials.length - MAX_BUFFER_SIZE;
       this.partials.splice(0, overflow);
 
-      console.warn(
-        `[PartialBuffer] overflow: removed ${overflow} oldest entries`
+      log.warn(
+        { overflow, maxSize: MAX_BUFFER_SIZE },
+        "Buffer overflow: removed oldest entries"
       );
     }
   }
