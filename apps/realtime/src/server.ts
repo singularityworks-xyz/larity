@@ -1,11 +1,12 @@
-import uWS from "uWebSockets.js";
+import { Elysia, t } from "elysia";
 import { env } from "./env";
 import { onClose } from "./handlers/on-close";
 import { onDrain } from "./handlers/on-drain";
 import { onMessage } from "./handlers/on-message";
 import { onOpen } from "./handlers/on-open";
+import { validateSession } from "./handlers/validate-session";
 import { createRealtimeLogger } from "./logger";
-import type { SocketData } from "./types";
+import type { RealtimeSocket } from "./types";
 
 const log = createRealtimeLogger("server");
 
@@ -13,103 +14,96 @@ const log = createRealtimeLogger("server");
  * Start the WebSocket server
  * Returns a promise that resolves when the server is listening
  */
-export function startServer(): Promise<uWS.us_listen_socket> {
+// biome-ignore lint/suspicious/noExplicitAny: complex Elysia type
+export function startServer(): Promise<any> {
   return new Promise((resolve, reject) => {
-    const app = uWS.App();
+    try {
+      const app = new Elysia().ws("/*", {
+        // Schema validation for the connection URL query parameters
+        query: t.Object({
+          sessionId: t.String({ error: "Missing sessionId query parameter" }),
+        }),
 
-    app.ws<SocketData>("/*", {
-      /**
-       * Maximum payload size for a single message
-       */
-      maxPayloadLength: 64 * 1024,
+        // Payload and timeout configurations
+        maxPayloadLength: 64 * 1024,
+        idleTimeout: 600,
 
-      /**
-       * How long a silent connection can stay open (seconds)
-       * If no data for this long, connection is closed
-       */
-      idleTimeout: 600,
+        /**
+         * Runs before the WebSocket connection is established.
+         * We validate the session with the control plane here.
+         */
+        async beforeHandle({ query: { sessionId }, set }) {
+          const isValid = await validateSession(sessionId);
+          if (!isValid) {
+            set.status = 401;
+            return "Invalid or expired session";
+          }
+        },
 
-      compression: uWS.DISABLED,
+        /**
+         * Called when WebSocket connection is established
+         */
+        open(socket) {
+          // Attach our custom SocketData to the Elysia WS context
+          const sessionId = socket.data.query.sessionId;
+          const now = Date.now();
 
-      /**
-       * Maximum backpressure before dropping messages
-       * 1MB buffer limit per connection
-       */
-      maxBackpressure: 1024 * 1024,
+          // We use Object.assign to attach our properties to socket.data
+          // so it implements our SocketData interface expected by handlers
+          Object.assign(socket.data, {
+            sessionId,
+            connectedAt: now,
+            lastFrameTs: now,
+          });
 
-      /**
-       * Upgrade handler - validates session before connection
-       * Runs BEFORE the WebSocket handshake completes
-       */
-      upgrade: (res, req, context) => {
-        // Extract session ID from query string
-        const query = req.getQuery();
-        const params = new URLSearchParams(query);
-        const sessionId = params.get("sessionId");
+          onOpen(socket as unknown as RealtimeSocket);
+        },
 
-        // Reject if no session ID
-        if (!sessionId) {
-          res.writeStatus("400 Bad Request");
-          res.end("Missing sessionId query parameter");
-          return;
+        /**
+         * Called for every incoming message
+         */
+        message(socket, message) {
+          onMessage(
+            socket as unknown as RealtimeSocket,
+            message as string | Buffer | Uint8Array
+          );
+        },
+
+        /**
+         * Called when send buffer is draining after being full
+         */
+        drain(socket) {
+          onDrain(socket as unknown as RealtimeSocket);
+        },
+
+        /**
+         * Called when connection closes
+         */
+        close(socket, code, message) {
+          onClose(socket as unknown as RealtimeSocket, code, message);
+        },
+      });
+
+      // Bind to port
+      app.listen(env.PORT, (server) => {
+        if (server) {
+          log.info({ port: env.PORT }, "WebSocket server listening");
+          resolve(app);
+        } else {
+          reject(new Error(`Failed to bind to port ${env.PORT}`));
         }
-
-        // Store session data to be attached to the WebSocket
-        const userData: SocketData = {
-          sessionId,
-          connectedAt: Date.now(),
-          lastFrameTs: Date.now(),
-        };
-
-        // Complete the upgrade
-        res.upgrade(
-          userData,
-          req.getHeader("sec-websocket-key"),
-          req.getHeader("sec-websocket-protocol"),
-          req.getHeader("sec-websocket-extensions"),
-          context
-        );
-      },
-
-      /**
-       * Called when WebSocket connection is established
-       */
-      open: onOpen,
-
-      /**
-       * Called for every incoming message
-       * THE HOT PATH - must be fast
-       */
-      message: onMessage,
-
-      /**
-       * Called when send buffer is draining after being full
-       * Backpressure signal
-       */
-      drain: onDrain,
-
-      /**
-       * Called when connection closes
-       */
-      close: onClose,
-    });
-
-    // Bind to port
-    app.listen(env.PORT, (listenSocket) => {
-      if (listenSocket) {
-        log.info({ port: env.PORT }, "WebSocket server listening");
-        resolve(listenSocket);
-      } else {
-        reject(new Error(`Failed to bind to port ${env.PORT}`));
-      }
-    });
+      });
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
 /**
  * Graceful shutdown helper
  */
-export function stopServer(listenSocket: uWS.us_listen_socket): void {
-  uWS.us_listen_socket_close(listenSocket);
+// biome-ignore lint/suspicious/noExplicitAny: complex Elysia type
+export function stopServer(app: any): void {
+  app.stop();
   log.info("WebSocket server stopped");
 }

@@ -1,13 +1,13 @@
-import type uWS from "uWebSockets.js";
-import { connectRedis } from "../../../packages/infra/redis";
+import { connectRedis } from "@larity/packages/infra/redis";
 import { env } from "./env";
 import { rootLogger } from "./logger";
 import { startServer, stopServer } from "./server";
 
-// Track the listen socket for graceful shutdown
-let listenSocket: uWS.us_listen_socket | null = null;
+// Track the Elysia instance for graceful shutdown
+// biome-ignore lint/suspicious/noExplicitAny: complex Elysia type
+let appInstance: any | null = null;
 
-//main entry point
+// main entry point
 async function main(): Promise<void> {
   rootLogger.info("Starting realtime plane...");
   rootLogger.info({ port: env.PORT }, "Port configured");
@@ -24,7 +24,7 @@ async function main(): Promise<void> {
 
   // Start WebSocket server
   try {
-    listenSocket = await startServer();
+    appInstance = await startServer();
     rootLogger.info("Realtime plane is ready");
   } catch (error) {
     rootLogger.fatal({ err: error }, "FATAL: Failed to start WebSocket server");
@@ -32,13 +32,13 @@ async function main(): Promise<void> {
   }
 }
 
-//shutdown handler
+// shutdown handler
 function shutdown(signal: string): void {
   rootLogger.info({ signal }, "Received signal, shutting down...");
 
-  if (listenSocket) {
-    stopServer(listenSocket);
-    listenSocket = null;
+  if (appInstance) {
+    stopServer(appInstance);
+    appInstance = null;
   }
 
   // Give time for cleanup
