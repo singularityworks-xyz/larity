@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "bun --env-file=../../.env --watch src/index.ts",
+    "test": "bun test",
     "test:client": "bun run scripts/test-client.ts",
     "test:subscriber": "bun run scripts/redis-subscriber.ts",
     "test:stress": "bun run scripts/stress-test.ts",
