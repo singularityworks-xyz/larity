@@ -8,19 +8,6 @@
  * Silent fallbacks cause production bugs.
  */
 
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-// Load environment variables from project root .env file
-import { config } from "dotenv";
-
-// Get the directory of the current file and navigate to project root
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const projectRoot = join(__dirname, "../../../");
-const envPath = join(projectRoot, ".env");
-
-config({ path: envPath });
-
 function required(name: string): string {
   const value = process.env[name];
   if (!value) {
