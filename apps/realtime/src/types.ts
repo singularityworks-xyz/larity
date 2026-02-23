@@ -4,12 +4,7 @@
  * Defines the shape of session data and WebSocket user data.
  */
 
-import type { WebSocket } from "uWebSockets.js";
-
-/**
- * Data attached to each WebSocket connection.
- * uWebSockets stores this in ws.getUserData()
- */
+// We define our custom data that will be attached to Elysia's Context
 export interface SocketData {
   sessionId: string;
   connectedAt: number;
@@ -17,9 +12,17 @@ export interface SocketData {
 }
 
 /**
- * Typed WebSocket with our user data
+ * Since we use Elysia, the socket exposes a `data` property.
+ * We'll define a generic interface that matches what Elysia gives us
+ * so our handlers don't need to import Elysia internals everywhere.
  */
-export type RealtimeSocket = WebSocket<SocketData>;
+export interface RealtimeSocket {
+  data: SocketData;
+  send: (
+    data: string | Buffer | ArrayBuffer | Uint8Array | Record<string, unknown>
+  ) => void;
+  close: () => void;
+}
 
 /**
  * Session entry stored in the in-memory registry
