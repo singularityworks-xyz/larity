@@ -10,7 +10,7 @@ const log = createRealtimeLogger("on-open");
  * Called when a client successfully upgrades to WebSocket
  */
 export function onOpen(ws: RealtimeSocket): void {
-  const data = ws.getUserData();
+  const data = ws.data;
   const { sessionId } = data;
 
   // Session ID is validated in upgrade handler

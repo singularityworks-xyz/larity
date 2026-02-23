@@ -9,29 +9,27 @@ const log = createRealtimeLogger("on-message");
  * Handle incoming WebSocket message
  *
  * @param ws - The WebSocket connection
- * @param message - Raw message data (ArrayBuffer)
- * @param isBinary - Whether the message is binary
+ * @param message - Raw message data
  */
 export function onMessage(
   ws: RealtimeSocket,
-  message: ArrayBuffer,
-  isBinary: boolean
+  message: string | Buffer | Uint8Array
 ): void {
-  // Reject non-binary frames immediately
-  if (!isBinary) {
+  // We expect binary data (Buffer or Uint8Array)
+  if (typeof message === "string") {
     log.warn("Received non-binary frame, ignoring");
     return;
   }
 
-  const data = ws.getUserData();
+  const data = ws.data;
   const { sessionId } = data;
   const ts = Date.now();
 
   // Update session timestamp
   updateLastFrameTs(sessionId, ts);
 
-  // Convert ArrayBuffer to Buffer for Redis
-  const frame = Buffer.from(message);
+  // Convert to Buffer for Redis if needed
+  const frame = Buffer.isBuffer(message) ? message : Buffer.from(message);
 
   // Publish to Redis (fire and forget)
   // No await - we don't block on Redis

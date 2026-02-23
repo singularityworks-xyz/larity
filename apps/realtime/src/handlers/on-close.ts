@@ -10,14 +10,14 @@ const log = createRealtimeLogger("on-close");
  *
  * @param ws - The WebSocket connection
  * @param code - Close code
- * @param message - Close message (ArrayBuffer)
+ * @param message - Close reason
  */
 export function onClose(
   ws: RealtimeSocket,
   code: number,
-  _message: ArrayBuffer
+  _message: string
 ): void {
-  const data = ws.getUserData();
+  const data = ws.data;
   const { sessionId, connectedAt } = data;
 
   // Remove session from memory
