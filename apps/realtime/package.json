@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "node --import tsx src/index.ts",
+    "dev": "bun --env-file=../../.env --watch src/index.ts",
     "test:client": "bun run scripts/test-client.ts",
     "test:subscriber": "bun run scripts/redis-subscriber.ts",
     "test:stress": "bun run scripts/stress-test.ts",
@@ -14,16 +14,14 @@
     "format:check": "biome format ."
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "tsx": "^4.21.0"
+    "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "ioredis": "^5.9.0",
-    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.56.0",
-    "@larity/logger": "workspace:*"
+    "@larity/logger": "workspace:*",
+    "elysia": "^1.4.25",
+    "ioredis": "^5.9.0"
   }
 }
