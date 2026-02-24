@@ -1,3 +1,4 @@
+import { opentelemetry } from "@elysiajs/opentelemetry";
 import { Elysia, t } from "elysia";
 import { env } from "./env";
 import { onClose } from "./handlers/on-close";
@@ -18,71 +19,73 @@ const log = createRealtimeLogger("server");
 export function startServer(): Promise<any> {
   return new Promise((resolve, reject) => {
     try {
-      const app = new Elysia().ws("/*", {
-        // Schema validation for the connection URL query parameters
-        query: t.Object({
-          sessionId: t.String({ error: "Missing sessionId query parameter" }),
-        }),
+      const app = new Elysia()
+        .use(opentelemetry({ serviceName: "realtime" }))
+        .ws("/*", {
+          // Schema validation for the connection URL query parameters
+          query: t.Object({
+            sessionId: t.String({ error: "Missing sessionId query parameter" }),
+          }),
 
-        // Payload and timeout configurations
-        maxPayloadLength: 64 * 1024,
-        idleTimeout: 600,
+          // Payload and timeout configurations
+          maxPayloadLength: 64 * 1024,
+          idleTimeout: 600,
 
-        /**
-         * Runs before the WebSocket connection is established.
-         * We validate the session with the control plane here.
-         */
-        async beforeHandle({ query: { sessionId }, set }) {
-          const isValid = await validateSession(sessionId);
-          if (!isValid) {
-            set.status = 401;
-            return "Invalid or expired session";
-          }
-        },
+          /**
+           * Runs before the WebSocket connection is established.
+           * We validate the session with the control plane here.
+           */
+          async beforeHandle({ query: { sessionId }, set }) {
+            const isValid = await validateSession(sessionId);
+            if (!isValid) {
+              set.status = 401;
+              return "Invalid or expired session";
+            }
+          },
 
-        /**
-         * Called when WebSocket connection is established
-         */
-        open(socket) {
-          // Attach our custom SocketData to the Elysia WS context
-          const sessionId = socket.data.query.sessionId;
-          const now = Date.now();
+          /**
+           * Called when WebSocket connection is established
+           */
+          open(socket) {
+            // Attach our custom SocketData to the Elysia WS context
+            const sessionId = socket.data.query.sessionId;
+            const now = Date.now();
 
-          // We use Object.assign to attach our properties to socket.data
-          // so it implements our SocketData interface expected by handlers
-          Object.assign(socket.data, {
-            sessionId,
-            connectedAt: now,
-            lastFrameTs: now,
-          });
+            // We use Object.assign to attach our properties to socket.data
+            // so it implements our SocketData interface expected by handlers
+            Object.assign(socket.data, {
+              sessionId,
+              connectedAt: now,
+              lastFrameTs: now,
+            });
 
-          onOpen(socket as unknown as RealtimeSocket);
-        },
+            onOpen(socket as unknown as RealtimeSocket);
+          },
 
-        /**
-         * Called for every incoming message
-         */
-        message(socket, message) {
-          onMessage(
-            socket as unknown as RealtimeSocket,
-            message as string | Buffer | Uint8Array
-          );
-        },
+          /**
+           * Called for every incoming message
+           */
+          message(socket, message) {
+            onMessage(
+              socket as unknown as RealtimeSocket,
+              message as string | Buffer | Uint8Array
+            );
+          },
 
-        /**
-         * Called when send buffer is draining after being full
-         */
-        drain(socket) {
-          onDrain(socket as unknown as RealtimeSocket);
-        },
+          /**
+           * Called when send buffer is draining after being full
+           */
+          drain(socket) {
+            onDrain(socket as unknown as RealtimeSocket);
+          },
 
-        /**
-         * Called when connection closes
-         */
-        close(socket, code, message) {
-          onClose(socket as unknown as RealtimeSocket, code, message);
-        },
-      });
+          /**
+           * Called when connection closes
+           */
+          close(socket, code, message) {
+            onClose(socket as unknown as RealtimeSocket, code, message);
+          },
+        });
 
       // Bind to port
       app.listen(env.PORT, (server) => {

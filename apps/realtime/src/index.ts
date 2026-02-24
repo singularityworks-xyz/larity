@@ -1,3 +1,8 @@
+import { setupTelemetry } from "@larity/telemetry";
+
+// Initialize telemetry before other imports
+setupTelemetry("realtime");
+
 import { connectRedis } from "@larity/packages/infra/redis";
 import { env } from "./env";
 import { rootLogger } from "./logger";

@@ -21,7 +21,9 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@elysiajs/opentelemetry": "^1.4.10",
     "@larity/logger": "workspace:*",
+    "@larity/telemetry": "workspace:*",
     "elysia": "^1.4.25",
     "ioredis": "^5.9.0"
   }
