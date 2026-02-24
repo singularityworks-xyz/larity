@@ -14,5 +14,8 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@larity/telemetry": "workspace:*"
   }
 }
