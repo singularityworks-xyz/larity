@@ -1,4 +1,5 @@
 import { cors } from "@elysiajs/cors";
+import { opentelemetry } from "@elysiajs/opentelemetry";
 import { Elysia } from "elysia";
 import { env } from "./env";
 import { createControlLogger } from "./logger";
@@ -24,6 +25,11 @@ const log = createControlLogger("server");
 
 export const app = new Elysia()
   // Request logging/tracing
+  .use(
+    opentelemetry({
+      serviceName: "control",
+    })
+  )
   .use(requestLogger)
   // CORS
   .use(
