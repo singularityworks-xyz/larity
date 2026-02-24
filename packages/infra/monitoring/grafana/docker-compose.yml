@@ -1,0 +1,16 @@
+services:
+  grafana:
+    image: grafana/grafana:10.4.1
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin # Change this in production
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./provisioning/datasources:/etc/grafana/provisioning/datasources
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - larity-network
+
+volumes:
+  grafana_data:
