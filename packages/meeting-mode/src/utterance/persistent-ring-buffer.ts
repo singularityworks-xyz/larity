@@ -1,5 +1,5 @@
 import type { Redis } from "ioredis";
-import { createMeetingModeLogger } from "../../logger";
+import { createMeetingModeLogger } from "../logger";
 import { RingBuffer, type RingBufferConfig } from "./ring-buffer";
 import type { Utterance } from "./types";
 

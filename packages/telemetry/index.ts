@@ -36,10 +36,7 @@ export function setupTelemetry(serviceName: string): NodeSDK {
     exportIntervalMillis: 10_000,
   });
 
-  const logRecordProcessor = new BatchLogRecordProcessor(
-    // @ts-expect-error Version mismatch between exporter-logs-otlp-grpc and sdk-logs
-    logExporter
-  );
+  const logRecordProcessor = new BatchLogRecordProcessor(logExporter);
 
   const sdk = new NodeSDK({
     resource,

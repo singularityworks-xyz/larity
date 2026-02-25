@@ -25,7 +25,7 @@ Org (Your agency)
 |-------|-------|---------|
 | `Org` | Root | Your agency |
 | `Client` | Org | Tenant boundary, all business data flows through here |
-| `User` | Org | Staff members |
+| `User` | Org | Staff members (stores Voiceprint embeddings for speaker ID) |
 | `ClientMember` | Client | User ↔ Client assignment with role (LEAD/MEMBER/OBSERVER) |
 
 ### Meeting Domain
@@ -33,17 +33,18 @@ Org (Your agency)
 | Model | Scope | Purpose |
 |-------|-------|---------|
 | `Meeting` | Client | Meetings with/about a client |
-| `MeetingParticipant` | Meeting | Who attended (internal users or external via name/email) |
-| `Transcript` | Meeting | Full STT output, stored post-meeting |
+| `MeetingParticipant` | Meeting | Who attended (tracks `type: TEAM \| EXTERNAL`, `speakerId`, and `confidence`) |
+| `Transcript` | Meeting | Full STT output with speaker identities, stored post-meeting |
 
 ### Decisions & Tasks
 
 | Model | Scope | Purpose | Storage |
 |-------|-------|---------|---------|
 | `Decision` | Client | Versioned decisions with evidence | Postgres + pgvector |
+| `Commitment` | Client | Tracked promises (timeline, scope, price) with relationships (contradicts, supersedes) | Postgres + pgvector |
 | `Task` | Client | Actionable items, linked to decisions | Postgres |
 | `OpenQuestion` | Client | Unresolved items from meetings | Postgres |
-| `ImportantPoint` | Client | Notable moments (commitments, constraints, insights) | Postgres + pgvector |
+| `ImportantPoint` | Client | Notable moments (constraints, insights, warnings) | Postgres + pgvector |
 
 ### Policy & Compliance
 
@@ -73,9 +74,10 @@ Org (Your agency)
 ### What AI Generates (Post-Meeting)
 
 ```
-Transcript (STT)
-    ↓ AI Extraction
+Transcript (STT) + Speaker Identities
+    ↓ AI Extraction / Handoff
     ├── Decisions      → Postgres + pgvector
+    ├── Commitments    → Postgres + pgvector (from live Commitment Ledger)
     ├── Tasks          → Postgres
     ├── OpenQuestions  → Postgres
     ├── ImportantPoints → Postgres + pgvector
@@ -85,14 +87,19 @@ Transcript (STT)
 ### What Gets Embedded (pgvector)
 
 - `Decision` (for semantic memory/retrieval)
+- `Commitment` (for intra-meeting and historical contradiction detection)
 - `ImportantPoint` (feeds policy guardrails context)
 - `PolicyGuardrail` (for pre-meeting context)
+- `User` (voiceprints for speaker identification)
 
 ### What Stays Ephemeral (Live Mode)
 
-- Utterances (processed in real-time, not persisted)
+- Utterances / Ring Buffer (processed in real-time, not persisted until end)
+- Commitment Ledger (live state, moves to Postgres at end)
+- Topic State & Constraint Ledger
 - Risks (detected live, not stored)
 - Policy violations (flagged live, not stored)
+- Speaker State Trackers (tone trajectory, engagement metrics)
 
 ### External APIs (No DB Storage)
 
@@ -107,11 +114,12 @@ Transcript (STT)
 ```
 Org
  ├─► User ◄──► ClientMember ◄──► Client
- │                                  │
+ │   (Voiceprint)                   │
  │                                  ├─► Meeting
  │                                  │     ├─► MeetingParticipant
  │                                  │     ├─► Transcript (1:1)
  │                                  │     ├─► Decision
+ │                                  │     ├─► Commitment
  │                                  │     ├─► Task
  │                                  │     ├─► OpenQuestion
  │                                  │     └─► ImportantPoint
@@ -135,11 +143,20 @@ Org
 ### ClientMemberRole
 `LEAD` | `MEMBER` | `OBSERVER`
 
+### SpeakerType
+`TEAM` | `EXTERNAL`
+
 ### MeetingStatus
 `SCHEDULED` | `LIVE` | `ENDED` | `CANCELLED`
 
 ### DecisionStatus
 `ACTIVE` | `SUPERSEDED` | `REVOKED`
+
+### CommitmentStatus
+`TENTATIVE` | `CONFIRMED` | `CONTRADICTED` | `SUPERSEDED`
+
+### CommitmentType
+`TIMELINE` | `SCOPE` | `RESOURCE` | `PRICE` | `CAPABILITY` | `LIMITATION` | `DEPENDENCY` | `GENERAL`
 
 ### TaskStatus
 `OPEN` | `IN_PROGRESS` | `BLOCKED` | `DONE` | `CANCELLED`
@@ -148,7 +165,7 @@ Org
 `LOW` | `MEDIUM` | `HIGH` | `CRITICAL`
 
 ### ImportantPointCategory
-`COMMITMENT` | `CONSTRAINT` | `INSIGHT` | `WARNING` | `RISK` | `OPPORTUNITY`
+`CONSTRAINT` | `INSIGHT` | `WARNING` | `RISK` | `OPPORTUNITY`
 
 ### GuardrailRuleType
 `NDA` | `LEGAL` | `TERMINOLOGY` | `INTERNAL` | `CUSTOM`
@@ -175,6 +192,7 @@ interface ExtractionPayload {
   tasks: CreateTask[];
   openQuestions: CreateOpenQuestion[];
   importantPoints: CreateImportantPoint[];
+  commitments: CreateCommitment[];
   summary: string;
 }
 ```

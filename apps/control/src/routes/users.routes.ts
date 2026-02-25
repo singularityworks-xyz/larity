@@ -39,7 +39,7 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         set.status = 404;
         return { success: false, error: "User not found" };
       }
-      const clients = await UserService.getClientAssignments(params.id);
+      const clients = await UserService.getClientAssignments(user.email);
       return { success: true, data: clients };
     },
     { params: userIdSchema }

@@ -34,7 +34,6 @@ export const app = new Elysia()
   .use(
     opentelemetry({
       serviceName: "control",
-      //@ts-expect-error Version mismatch between core and sdk-trace-node
       spanProcessors: [new BatchSpanProcessor(traceExporter)],
     })
   )

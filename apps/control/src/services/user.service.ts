@@ -19,19 +19,10 @@ export const UserService = {
       where: { id },
       include: {
         org: { select: { id: true, name: true, slug: true } },
-        clientMemberships: {
-          include: {
-            client: {
-              select: { id: true, name: true, slug: true, status: true },
-            },
-          },
-        },
         _count: {
           select: {
             assignedTasks: true,
             createdTasks: true,
-            authoredDecisions: true,
-            clientMemberships: true,
           },
         },
       },
@@ -56,7 +47,7 @@ export const UserService = {
       include: {
         org: { select: { id: true, name: true, slug: true } },
         _count: {
-          select: { assignedTasks: true, clientMemberships: true },
+          select: { assignedTasks: true },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -79,9 +70,9 @@ export const UserService = {
     });
   },
 
-  getClientAssignments(id: string) {
+  getClientAssignments(email: string) {
     return prisma.clientMember.findMany({
-      where: { userId: id },
+      where: { email },
       include: {
         client: {
           select: {
@@ -93,7 +84,7 @@ export const UserService = {
           },
         },
       },
-      orderBy: { assignedAt: "desc" },
+      orderBy: { createdAt: "desc" },
     });
   },
 };

@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { DocumentService } from "../services";
+import type { DocumentQueryInput } from "../validators";
 import {
   createDocumentSchema,
   documentIdSchema,
@@ -12,7 +13,9 @@ export const documentsRoutes = new Elysia({ prefix: "/documents" })
   .get(
     "/",
     async ({ query }) => {
-      const documents = await DocumentService.findAll(query);
+      const documents = await DocumentService.findAll(
+        query as unknown as DocumentQueryInput
+      );
       return { success: true, data: documents };
     },
     { query: documentQuerySchema }

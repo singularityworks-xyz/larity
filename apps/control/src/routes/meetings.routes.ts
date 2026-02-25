@@ -4,6 +4,7 @@ import {
   MeetingService,
   TranscriptService,
 } from "../services";
+import type { MeetingQueryInput } from "../validators";
 import {
   createMeetingParticipantBaseSchema,
   createMeetingSchema,
@@ -22,7 +23,9 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   .get(
     "/",
     async ({ query }) => {
-      const meetings = await MeetingService.findAll(query);
+      const meetings = await MeetingService.findAll(
+        query as unknown as MeetingQueryInput
+      );
       return { success: true, data: meetings };
     },
     { query: meetingQuerySchema }

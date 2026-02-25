@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { TaskService } from "../services";
+import type { TaskQueryInput } from "../validators";
 import {
   createTaskSchema,
   taskIdSchema,
@@ -12,7 +13,9 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
   .get(
     "/",
     async ({ query }) => {
-      const tasks = await TaskService.findAll(query);
+      const tasks = await TaskService.findAll(
+        query as unknown as TaskQueryInput
+      );
       return { success: true, data: tasks };
     },
     { query: taskQuerySchema }
