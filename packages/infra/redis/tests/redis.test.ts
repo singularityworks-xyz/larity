@@ -47,13 +47,14 @@ describe("Redis Infrastructure Tests", () => {
 
     describe("connectRedis", () => {
       it("should successfully connect to Redis", async () => {
+        redis.ping = mock(() => Promise.resolve("PONG" as const));
         redis.connect = mock(() => Promise.resolve());
         const result = await connectRedis();
         expect(result).toBe(true);
       });
 
       it("should handle connection errors gracefully", async () => {
-        // Mock connect to throw error
+        redis.ping = mock(() => Promise.resolve("PONG" as const));
         redis.connect = mock(() =>
           Promise.reject(new Error("Connection failed"))
         );

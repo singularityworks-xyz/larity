@@ -7,7 +7,7 @@ import { onClose } from "../src/handlers/on-close";
 import { onDrain } from "../src/handlers/on-drain";
 import { onMessage } from "../src/handlers/on-message";
 import { onOpen } from "../src/handlers/on-open";
-import { getSession, getSessionCount, removeSession } from "../src/session";
+import { getSession, getSessionCount, removeConnection } from "../src/session";
 
 describe("WebSocket Handlers Unit Tests", () => {
   // Create mock socket
@@ -15,6 +15,8 @@ describe("WebSocket Handlers Unit Tests", () => {
     return {
       data: {
         sessionId,
+        userId: "test-user",
+        role: "host",
         connectedAt: Date.now(),
         lastFrameTs: Date.now(),
       },
@@ -38,7 +40,7 @@ describe("WebSocket Handlers Unit Tests", () => {
       expect(getSession("test-session-1")).toBeDefined();
 
       // Cleanup
-      removeSession("test-session-1");
+      removeConnection("test-session-1", "test-user");
     });
 
     it("should attach correct data to session", () => {
@@ -48,17 +50,16 @@ describe("WebSocket Handlers Unit Tests", () => {
 
       const session = getSession("test-session-2");
       expect(session).toBeDefined();
-      expect(session?.socket).toBe(mockSocket);
-      expect(session?.connectedAt).toBeGreaterThan(0);
+      expect(session?.connections.get("test-user")?.socket).toBe(mockSocket);
       expect(session?.lastFrameTs).toBeGreaterThan(0);
 
       // Cleanup
-      removeSession("test-session-2");
+      removeConnection("test-session-2", "test-user");
     });
   });
 
   describe("onClose handler", () => {
-    it("should remove session on close", () => {
+    it("should remove connection on close", () => {
       const mockSocket = createMockSocket("test-session-3");
       onOpen(mockSocket);
 
@@ -97,7 +98,7 @@ describe("WebSocket Handlers Unit Tests", () => {
       expect(() => onMessage(mockSocket, binaryData)).not.toThrow();
 
       // Cleanup
-      removeSession("test-session-5");
+      removeConnection("test-session-5", "test-user");
     });
 
     it("should process Uint8Array messages", () => {
@@ -110,7 +111,7 @@ describe("WebSocket Handlers Unit Tests", () => {
       expect(() => onMessage(mockSocket, uint8Data)).not.toThrow();
 
       // Cleanup
-      removeSession("test-session-6");
+      removeConnection("test-session-6", "test-user");
     });
   });
 

@@ -9,8 +9,10 @@ import {
 } from "../services/meeting-session.service";
 import {
   endSessionSchema,
+  joinSessionSchema,
   sessionIdSchema,
   startSessionSchema,
+  validateSessionSchema,
 } from "../validators/meeting-session";
 
 const log = createControlLogger("meeting-session-routes");
@@ -31,17 +33,6 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
    *
    * Start a new meeting session.
    * Creates a session in Redis and returns WebSocket connection details.
-   *
-   * Request body:
-   * - meetingId: UUID of the meeting to start
-   * - metadata: Optional device/client info
-   *
-   * Response:
-   * - sessionId: UUID for the new session
-   * - meetingId: The meeting ID
-   * - status: Current session status
-   * - websocketUrl: URL to connect WebSocket
-   * - createdAt: Timestamp
    */
   .post(
     "/start",
@@ -78,7 +69,6 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
           data: result,
         };
       } catch (error) {
-        // Handle validation errors
         if (error instanceof ZodError) {
           set.status = 400;
           return {
@@ -88,7 +78,6 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
           };
         }
 
-        // Handle session-specific errors
         if (error instanceof MeetingSessionError) {
           set.status = getHttpStatusForError(error.code);
           return {
@@ -98,7 +87,6 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
           };
         }
 
-        // Unknown error
         log.error({ err: error, userId: user.id }, "Failed to start session");
         set.status = 500;
         return {
@@ -123,14 +111,82 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
   )
 
   /**
+   * POST /meeting-session/join
+   *
+   * Join an existing meeting session.
+   * Returns connection details for participants.
+   */
+  .post(
+    "/join",
+    async ({ body, user, set }) => {
+      if (!user) {
+        set.status = 401;
+        return {
+          success: false,
+          error: "User not authenticated",
+        };
+      }
+
+      try {
+        const validatedInput = joinSessionSchema.parse(body);
+
+        const result = await meetingSessionService.join(
+          validatedInput.sessionId,
+          user.id
+        );
+
+        log.info(
+          {
+            sessionId: result.sessionId,
+            userId: user.id,
+          },
+          "User joined session"
+        );
+
+        return {
+          success: true,
+          data: result,
+        };
+      } catch (error) {
+        if (error instanceof ZodError) {
+          set.status = 400;
+          return {
+            success: false,
+            error: "Validation failed",
+            details: error.issues,
+          };
+        }
+
+        if (error instanceof MeetingSessionError) {
+          set.status = getHttpStatusForError(error.code);
+          return {
+            success: false,
+            error: error.code,
+            message: error.message,
+          };
+        }
+
+        log.error({ err: error, userId: user.id }, "Failed to join session");
+        set.status = 500;
+        return {
+          success: false,
+          error: "INTERNAL_ERROR",
+          message: "Failed to join session",
+        };
+      }
+    },
+    {
+      body: t.Object({
+        sessionId: t.String(),
+      }),
+    }
+  )
+
+  /**
    * POST /meeting-session/end
    *
    * End an active meeting session.
    * Cleans up Redis state and updates meeting status.
-   *
-   * Request body:
-   * - sessionId: UUID of the session to end
-   * - reason: Optional reason for ending
    */
   .post(
     "/end",
@@ -290,10 +346,26 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
    */
   .post(
     "/:id/validate",
-    async ({ params }) => {
+    async ({ params, body }) => {
       const { id } = params;
 
-      const isValid = await meetingSessionService.isValidSession(id);
+      // Parse body if present (optional for backward compatibility)
+      let userId: string | undefined;
+      let role: "host" | "participant" | undefined;
+
+      try {
+        const validatedBody = validateSessionSchema.parse(body);
+        userId = validatedBody.userId;
+        role = validatedBody.role as "host" | "participant" | undefined;
+      } catch (e) {
+        // Body validation failed or missing, ignore
+      }
+
+      const isValid = await meetingSessionService.isValidSession(
+        id,
+        userId,
+        role
+      );
 
       return {
         success: true,
@@ -304,5 +376,13 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
       params: t.Object({
         id: t.String(),
       }),
+      body: t.Optional(
+        t.Object({
+          userId: t.Optional(t.String()),
+          role: t.Optional(
+            t.Union([t.Literal("host"), t.Literal("participant")])
+          ),
+        })
+      ),
     }
   );

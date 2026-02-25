@@ -25,6 +25,37 @@ export function audioChannel(sessionId: string): string {
 }
 
 /**
+ * Channel for processed utterances (to be broadcast to all participants)
+ */
+export function utteranceChannel(sessionId: string): string {
+  return `meeting.utterance.${sessionId}`;
+}
+
+/**
+ * Channel for shared alerts (to be broadcast to all participants)
+ */
+export function sharedAlertChannel(sessionId: string): string {
+  return `meeting.alert.${sessionId}.shared`;
+}
+
+/**
+ * Channel for personal alerts (to be sent to a specific user)
+ */
+export function personalAlertChannel(
+  sessionId: string,
+  userId: string
+): string {
+  return `meeting.alert.${sessionId}.user.${userId}`;
+}
+
+/**
+ * Channel for topic change events
+ */
+export function topicChannel(sessionId: string): string {
+  return `meeting.topic.${sessionId}`;
+}
+
+/**
  * Global session start event channel
  * Published when a new WebSocket connection is established
  */
@@ -37,10 +68,26 @@ export const SESSION_START = `${PREFIX}.session.start`;
 export const SESSION_END = `${PREFIX}.session.end`;
 
 /**
+ * Participant join event
+ */
+export const PARTICIPANT_JOIN = `${PREFIX}.participant.join`;
+
+/**
+ * Participant leave event
+ */
+export const PARTICIPANT_LEAVE = `${PREFIX}.participant.leave`;
+
+/**
  * All channel names for documentation/debugging
  */
 export const channels = {
   audioChannel,
+  utteranceChannel,
+  sharedAlertChannel,
+  personalAlertChannel,
+  topicChannel,
   SESSION_START,
   SESSION_END,
+  PARTICIPANT_JOIN,
+  PARTICIPANT_LEAVE,
 } as const;

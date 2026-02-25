@@ -70,7 +70,7 @@ describe("Validate Session Tests", () => {
     expect(result).toBe(false);
   });
 
-  it("should return true (dev mode) when fetch throws an error", async () => {
+  it("should return false (secure default) when fetch throws an error", async () => {
     global.fetch = (() => Promise.reject(new Error("Network error"))) as any;
 
     const { validateSession } = await import(
@@ -78,8 +78,8 @@ describe("Validate Session Tests", () => {
     );
     const result = await validateSession("error-session");
 
-    // In dev mode, errors allow the connection
-    expect(result).toBe(true);
+    // In prod, errors must reject the connection
+    expect(result).toBe(false);
   });
 
   it("should return false for malformed response", async () => {

@@ -2,10 +2,18 @@ import { redis } from "../../../../packages/infra/redis";
 import { createRealtimeLogger } from "../logger";
 import type {
   AudioFramePayload,
+  ParticipantJoinEvent,
+  ParticipantLeaveEvent,
   SessionEndEvent,
   SessionStartEvent,
 } from "../types";
-import { audioChannel, SESSION_END, SESSION_START } from "./channels";
+import {
+  audioChannel,
+  PARTICIPANT_JOIN,
+  PARTICIPANT_LEAVE,
+  SESSION_END,
+  SESSION_START,
+} from "./channels";
 
 const log = createRealtimeLogger("publisher");
 
@@ -23,6 +31,7 @@ export async function publishAudioFrame(
       sessionId: payload.sessionId,
       ts: payload.ts,
       frame: payload.frame.toString("base64"),
+      source: payload.source,
     });
     await redis.publish(channel, message);
   } catch (error) {
@@ -60,6 +69,38 @@ export async function publishSessionEnd(event: SessionEndEvent): Promise<void> {
     log.error(
       { err: error, sessionId: event.sessionId },
       "Failed to publish session end"
+    );
+  }
+}
+
+/**
+ * Publish participant join event
+ */
+export async function publishParticipantJoin(
+  event: ParticipantJoinEvent
+): Promise<void> {
+  try {
+    await redis.publish(PARTICIPANT_JOIN, JSON.stringify(event));
+  } catch (error) {
+    log.error(
+      { err: error, sessionId: event.sessionId },
+      "Failed to publish participant join"
+    );
+  }
+}
+
+/**
+ * Publish participant leave event
+ */
+export async function publishParticipantLeave(
+  event: ParticipantLeaveEvent
+): Promise<void> {
+  try {
+    await redis.publish(PARTICIPANT_LEAVE, JSON.stringify(event));
+  } catch (error) {
+    log.error(
+      { err: error, sessionId: event.sessionId },
+      "Failed to publish participant leave"
     );
   }
 }

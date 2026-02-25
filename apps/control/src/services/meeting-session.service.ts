@@ -145,8 +145,8 @@ export const meetingSessionService = {
         },
       });
 
-      // Build WebSocket URL with session ID
-      const websocketUrl = `${REALTIME_WS_URL}?sessionId=${sessionId}`;
+      // Build WebSocket URL with session ID, user ID, and role
+      const websocketUrl = `${REALTIME_WS_URL}?sessionId=${sessionId}&userId=${_userId}&role=host`;
 
       return {
         sessionId,
@@ -275,9 +275,110 @@ export const meetingSessionService = {
   /**
    * Check if a session is valid (for realtime server validation)
    */
-  async isValidSession(sessionId: string): Promise<boolean> {
-    const exists = await redis.exists(redisKeys.meetingSession(sessionId));
-    return exists === 1;
+  async isValidSession(
+    sessionId: string,
+    userId?: string,
+    role?: "host" | "participant"
+  ): Promise<boolean> {
+    const sessionKey = redisKeys.meetingSession(sessionId);
+    const sessionData = await redis.hgetall(sessionKey);
+
+    if (!sessionData || Object.keys(sessionData).length === 0) {
+      return false;
+    }
+
+    // If userId and role are provided, validate authorization
+    if (userId && role) {
+      if (role === "host") {
+        // Only the user who started the session can be host
+        return sessionData.userId === userId;
+      }
+
+      if (role === "participant") {
+        // Must have joined via the join endpoint (and be in participants set)
+        const participantsKey = redisKeys.sessionParticipants(sessionId);
+        const isParticipant = await redis.sismember(participantsKey, userId);
+        return isParticipant === 1;
+      }
+    }
+
+    // Default: fail closed if specific validation parameters are missing
+    // We require explicit role validation for security
+    return false;
+  },
+
+  /**
+   * Join an existing meeting session
+   */
+  async join(
+    sessionId: string,
+    userId: string
+  ): Promise<{
+    success: boolean;
+    sessionId: string;
+    meetingId: string;
+    role: "participant";
+    websocketUrl: string;
+    joinedAt: number;
+  }> {
+    // 1. Check session exists and is active
+    const sessionKey = redisKeys.meetingSession(sessionId);
+    const sessionData = await redis.hgetall(sessionKey);
+
+    if (!sessionData || Object.keys(sessionData).length === 0) {
+      throw new MeetingSessionError("Session not found", "SESSION_NOT_FOUND");
+    }
+
+    if (sessionData.status === "ending" || sessionData.status === "ended") {
+      throw new MeetingSessionError("Session has ended", "SESSION_ENDED");
+    }
+
+    const meetingId = sessionData.meetingId;
+    if (!meetingId) {
+      throw new MeetingSessionError(
+        "Session corrupted: missing meetingId",
+        "SESSION_CORRUPTED"
+      );
+    }
+
+    // 2. Verify user is allowed to join
+    const meeting = await prisma.meeting.findUnique({
+      where: { id: meetingId },
+      include: { client: { select: { orgId: true } } },
+    });
+
+    if (!meeting) {
+      throw new MeetingSessionError("Meeting not found", "MEETING_NOT_FOUND");
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { orgId: true },
+    });
+
+    if (!user?.orgId || user.orgId !== meeting.client?.orgId) {
+      throw new MeetingSessionError(
+        "Unauthorized to join this meeting",
+        "UNAUTHORIZED"
+      );
+    }
+
+    // 3. Add to participants set
+    const participantsKey = redisKeys.sessionParticipants(sessionId);
+    await redis.sadd(participantsKey, userId);
+    await redis.expire(participantsKey, SESSION_TTL);
+
+    // 4. Return connection details
+    const websocketUrl = `${REALTIME_WS_URL}?sessionId=${sessionId}&userId=${userId}&role=participant`;
+
+    return {
+      success: true,
+      sessionId,
+      meetingId,
+      role: "participant",
+      websocketUrl,
+      joinedAt: Date.now(),
+    };
   },
 
   /**

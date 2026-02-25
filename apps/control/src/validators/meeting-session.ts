@@ -60,6 +60,38 @@ export const sessionIdSchema = z.object({
 });
 
 /**
+ * Request to join an existing meeting session
+ */
+export const joinSessionSchema = z.object({
+  sessionId: z.string().uuid("Session ID must be a valid UUID"),
+});
+
+export type JoinSessionInput = z.infer<typeof joinSessionSchema>;
+
+/**
+ * Request to validate a session (internal use by realtime server)
+ */
+export const validateSessionSchema = z.object({
+  userId: z.string().optional(),
+  role: z.enum(["host", "participant"]).optional(),
+});
+
+export type ValidateSessionInput = z.infer<typeof validateSessionSchema>;
+
+/**
+ * Response type for joining a session
+ */
+export const joinSessionResponseSchema = z.object({
+  sessionId: z.string(),
+  meetingId: z.string(),
+  role: z.literal("participant"),
+  websocketUrl: z.string(),
+  joinedAt: z.number(),
+});
+
+export type JoinSessionResponse = z.infer<typeof joinSessionResponseSchema>;
+
+/**
  * Response type for session status
  */
 export const sessionStatusResponseSchema = z.object({

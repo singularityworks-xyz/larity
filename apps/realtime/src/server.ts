@@ -25,6 +25,10 @@ export function startServer(): Promise<any> {
           // Schema validation for the connection URL query parameters
           query: t.Object({
             sessionId: t.String({ error: "Missing sessionId query parameter" }),
+            userId: t.String({ error: "Missing userId query parameter" }),
+            role: t.Union([t.Literal("host"), t.Literal("participant")], {
+              error: "Role must be 'host' or 'participant'",
+            }),
           }),
 
           // Payload and timeout configurations
@@ -35,8 +39,8 @@ export function startServer(): Promise<any> {
            * Runs before the WebSocket connection is established.
            * We validate the session with the control plane here.
            */
-          async beforeHandle({ query: { sessionId }, set }) {
-            const isValid = await validateSession(sessionId);
+          async beforeHandle({ query: { sessionId, userId, role }, set }) {
+            const isValid = await validateSession(sessionId, userId, role);
             if (!isValid) {
               set.status = 401;
               return "Invalid or expired session";
@@ -48,13 +52,15 @@ export function startServer(): Promise<any> {
            */
           open(socket) {
             // Attach our custom SocketData to the Elysia WS context
-            const sessionId = socket.data.query.sessionId;
+            const { sessionId, userId, role } = socket.data.query;
             const now = Date.now();
 
             // We use Object.assign to attach our properties to socket.data
             // so it implements our SocketData interface expected by handlers
             Object.assign(socket.data, {
               sessionId,
+              userId,
+              role,
               connectedAt: now,
               lastFrameTs: now,
             });

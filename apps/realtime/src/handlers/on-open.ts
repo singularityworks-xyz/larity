@@ -1,6 +1,9 @@
 import { createRealtimeLogger } from "../logger";
-import { publishSessionStart } from "../redis/publisher";
-import { addSession } from "../session";
+import {
+  publishParticipantJoin,
+  publishSessionStart,
+} from "../redis/publisher";
+import { addConnection, getSession } from "../session";
 import type { RealtimeSocket } from "../types";
 
 const log = createRealtimeLogger("on-open");
@@ -11,21 +14,36 @@ const log = createRealtimeLogger("on-open");
  */
 export function onOpen(ws: RealtimeSocket): void {
   const data = ws.data;
-  const { sessionId } = data;
+  const { sessionId, userId, role } = data;
 
   // Session ID is validated in upgrade handler
   // If we get here, we have a valid session
 
-  // Register session in memory
-  addSession(sessionId, ws);
+  // Register connection in memory
+  addConnection(sessionId, ws);
 
-  log.info({ sessionId }, "Session started");
+  const session = getSession(sessionId);
+  const isFirstConnection = session && session.connections.size === 1;
 
-  // Publish session start event to Redis (fire and forget)
-  publishSessionStart({
+  log.info({ sessionId, userId, role }, "Connection established");
+
+  // Publish session start event if this is the first connection
+  if (isFirstConnection) {
+    publishSessionStart({
+      sessionId,
+      ts: data.connectedAt,
+    }).catch((err) => {
+      log.error({ err, sessionId }, "Failed to publish session start");
+    });
+  }
+
+  // Publish participant join event
+  publishParticipantJoin({
     sessionId,
+    userId,
+    role,
     ts: data.connectedAt,
   }).catch((err) => {
-    log.error({ err, sessionId }, "Failed to publish session start");
+    log.error({ err, sessionId, userId }, "Failed to publish participant join");
   });
 }

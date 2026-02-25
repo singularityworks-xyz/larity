@@ -15,9 +15,13 @@ interface ValidationResponse {
 /**
  * Validate session with control plane
  *
- * Makes an HTTP call to verify the session exists
+ * Makes an HTTP call to verify the session exists and the user is authorized
  */
-export async function validateSession(sessionId: string): Promise<boolean> {
+export async function validateSession(
+  sessionId: string,
+  userId?: string,
+  role?: string
+): Promise<boolean> {
   try {
     const response = await fetch(
       `${CONTROL_API_URL}/meeting-session/${sessionId}/validate`,
@@ -26,6 +30,7 @@ export async function validateSession(sessionId: string): Promise<boolean> {
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ userId, role }),
       }
     );
 
@@ -45,9 +50,8 @@ export async function validateSession(sessionId: string): Promise<boolean> {
     }
   } catch (error) {
     log.error({ err: error, sessionId }, "Session validation failed");
-    // In production, you might want to reject unknown sessions
-    // For development, we'll allow it
-    return true;
+    // CRITICAL: Fail closed. Do not allow access if validation fails.
+    return false;
   }
   return false;
 }

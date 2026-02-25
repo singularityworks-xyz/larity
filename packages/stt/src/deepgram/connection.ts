@@ -175,7 +175,8 @@ export class DeepgramConnection {
 
     // Extract diarization index from words if available
     // Deepgram includes speaker index per word when diarize=true
-    const diarizationIndex = alternative.words?.[0]?.speaker ?? 0;
+    // Default to -1 if not available (e.g. first few seconds or empty words)
+    const diarizationIndex = alternative.words?.[0]?.speaker ?? -1;
 
     const sttResult: SttResult = {
       sessionId: this.sessionId,

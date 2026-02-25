@@ -1,6 +1,6 @@
 import { createRealtimeLogger } from "../logger";
-import { publishSessionEnd } from "../redis/publisher";
-import { removeSession } from "../session";
+import { publishParticipantLeave, publishSessionEnd } from "../redis/publisher";
+import { getSession, removeConnection } from "../session";
 import type { RealtimeSocket } from "../types";
 
 const log = createRealtimeLogger("on-close");
@@ -18,22 +18,43 @@ export function onClose(
   _message: string
 ): void {
   const data = ws.data;
-  const { sessionId, connectedAt } = data;
+  const { sessionId, userId, role, connectedAt } = data;
 
-  // Remove session from memory
-  const session = removeSession(sessionId);
+  // Remove connection from memory
+  // returns session if it was the last connection and session is removed
+  const sessionRemoved = removeConnection(sessionId, userId);
 
   const now = Date.now();
-  const duration = session ? now - session.connectedAt : now - connectedAt;
+  const duration = now - connectedAt;
 
-  log.info({ sessionId, code, duration }, "Session ended");
+  log.info({ sessionId, userId, role, code, duration }, "Connection closed");
 
-  // Publish session end event to Redis (fire and forget)
-  publishSessionEnd({
+  // Publish participant leave event
+  publishParticipantLeave({
     sessionId,
+    userId,
     ts: now,
-    duration,
   }).catch((err) => {
-    log.error({ err, sessionId }, "Failed to publish session end");
+    log.error(
+      { err, sessionId, userId },
+      "Failed to publish participant leave"
+    );
   });
+
+  // If host left or session is empty, publish session end
+  const currentSession = getSession(sessionId);
+  const isSessionEmpty = !!sessionRemoved;
+
+  if (role === "host" || isSessionEmpty) {
+    const sessionData = sessionRemoved || currentSession;
+    const sessionDuration = sessionData ? now - sessionData.startedAt : 0;
+
+    publishSessionEnd({
+      sessionId,
+      ts: now,
+      duration: sessionDuration,
+    }).catch((err) => {
+      log.error({ err, sessionId }, "Failed to publish session end");
+    });
+  }
 }

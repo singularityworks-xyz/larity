@@ -12,4 +12,6 @@ export const redisKeys = {
     `meeting.session.mapping.${meetingId}` as const,
   sessionLock: (meetingId: string) =>
     `meeting.session.lock.${meetingId}` as const,
+  sessionParticipants: (sessionId: string) =>
+    `meeting.session.${sessionId}.participants` as const,
 };

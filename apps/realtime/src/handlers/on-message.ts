@@ -22,8 +22,14 @@ export function onMessage(
   }
 
   const data = ws.data;
-  const { sessionId } = data;
+  const { sessionId, role } = data;
   const ts = Date.now();
+
+  // Only host can send audio
+  if (role !== "host") {
+    // Ideally we'd log this, but let's avoid spam
+    return;
+  }
 
   // Update session timestamp
   updateLastFrameTs(sessionId, ts);
