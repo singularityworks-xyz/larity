@@ -5,42 +5,46 @@ receivers:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
-  prometheus:
-    config:
-      scrape_configs:
-        - job_name: 'otel-collector'
-          scrape_interval: 10s
-          static_configs:
-            - targets: ['0.0.0.0:8888']
 
 processors:
   batch:
     timeout: 1s
     send_batch_size: 1024
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+
+extensions:
+  health_check:
+  basicauth/grafana_cloud:
+    client_auth:
+      username: "${GRAFANA_CLOUD_USER}"
+      password: "${GRAFANA_CLOUD_PASSWORD}"
 
 exporters:
-  prometheus:
-    endpoint: "0.0.0.0:8889"
-    namespace: larity
-    send_timestamps: true
-    metric_expiration: 120m
-  otlp/tempo:
-    endpoint: "tempo:4317"
-    tls:
-      insecure: true
+  otlphttp:
+    endpoint: "${GRAFANA_CLOUD_OTLP_ENDPOINT}"
+    auth:
+      authenticator: basicauth/grafana_cloud
   debug:
     verbosity: detailed
 
 service:
+  extensions: [health_check, basicauth/grafana_cloud]
   telemetry:
     metrics:
       address: 0.0.0.0:8888
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [otlp/tempo, debug]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp, debug]
     metrics:
-      receivers: [otlp, prometheus]
-      processors: [batch]
-      exporters: [prometheus, debug]
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp, debug]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp, debug]

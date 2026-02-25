@@ -1,5 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import { opentelemetry } from "@elysiajs/opentelemetry";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
+import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { Elysia } from "elysia";
 import { env } from "./env";
 import { createControlLogger } from "./logger";
@@ -23,11 +25,17 @@ import {
 
 const log = createControlLogger("server");
 
+const traceExporter = new OTLPTraceExporter({
+  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4317",
+});
+
 export const app = new Elysia()
   // Request logging/tracing
   .use(
     opentelemetry({
       serviceName: "control",
+      //@ts-expect-error Version mismatch between core and sdk-trace-node
+      spanProcessors: [new BatchSpanProcessor(traceExporter)],
     })
   )
   .use(requestLogger)

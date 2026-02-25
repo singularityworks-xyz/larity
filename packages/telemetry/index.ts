@@ -1,25 +1,33 @@
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
+import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-grpc";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-grpc";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
-import { AmqplibInstrumentation } from "@opentelemetry/instrumentation-amqplib";
-import { IORedisInstrumentation } from "@opentelemetry/instrumentation-ioredis";
 import { Resource } from "@opentelemetry/resources";
+import { BatchLogRecordProcessor } from "@opentelemetry/sdk-logs";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { NodeSDK } from "@opentelemetry/sdk-node";
-import { ATTR_SERVICE_NAME } from "@opentelemetry/semantic-conventions";
+import {
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
+} from "@opentelemetry/semantic-conventions";
 import { PrismaInstrumentation } from "@prisma/instrumentation";
 
 export function setupTelemetry(serviceName: string): NodeSDK {
   const resource = new Resource({
     [ATTR_SERVICE_NAME]: serviceName,
+    [ATTR_SERVICE_VERSION]: process.env.npm_package_version || "unknown",
+    "deployment.environment": process.env.NODE_ENV || "development",
   });
 
   const traceExporter = new OTLPTraceExporter({
-    // If running in docker, point to otel-collector:4317
-    // If running locally, point to localhost:4317
     url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4317",
   });
 
   const metricExporter = new OTLPMetricExporter({
+    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4317",
+  });
+
+  const logExporter = new OTLPLogExporter({
     url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4317",
   });
 
@@ -28,13 +36,24 @@ export function setupTelemetry(serviceName: string): NodeSDK {
     exportIntervalMillis: 10_000,
   });
 
+  const logRecordProcessor = new BatchLogRecordProcessor(
+    // @ts-expect-error Version mismatch between exporter-logs-otlp-grpc and sdk-logs
+    logExporter
+  );
+
   const sdk = new NodeSDK({
     resource,
     traceExporter,
     metricReader,
+    // @ts-expect-error Version mismatch between sdk-node and sdk-logs types
+    logRecordProcessor,
     instrumentations: [
-      new IORedisInstrumentation(),
-      new AmqplibInstrumentation(),
+      getNodeAutoInstrumentations({
+        // Disable filesystem instrumentations if they create too much noise
+        "@opentelemetry/instrumentation-fs": {
+          enabled: false,
+        },
+      }),
       new PrismaInstrumentation(),
     ],
   });
@@ -45,8 +64,13 @@ export function setupTelemetry(serviceName: string): NodeSDK {
   process.on("SIGTERM", () => {
     sdk
       .shutdown()
-      .then(() => console.log(`${serviceName} Tracing terminated`))
-      .catch((error) => console.log("Error terminating tracing", error))
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error ? error.message : "Unknown shutdown error";
+        process.stderr.write(
+          `[telemetry] ${serviceName} shutdown failed: ${message}\n`
+        );
+      })
       .finally(() => process.exit(0));
   });
 

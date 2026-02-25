@@ -26,40 +26,11 @@ services:
       service: otel-collector
     networks:
       - larity-network
-    depends_on:
-      - tempo
-
-  prometheus:
-    extends:
-      file: ./packages/infra/monitoring/prometheus/docker-compose.yml
-      service: prometheus
-    networks:
-      - larity-network
-
-  tempo:
-    extends:
-      file: ./packages/infra/monitoring/tempo/docker-compose.yml
-      service: tempo
-    networks:
-      - larity-network
-
-  grafana:
-    extends:
-      file: ./packages/infra/monitoring/grafana/docker-compose.yml
-      service: grafana
-    networks:
-      - larity-network
-    depends_on:
-      - prometheus
-      - tempo
 
 volumes:
   postgres_data:
   rabbitmq_data:
   redis_data:
-  prometheus_data:
-  tempo_data:
-  grafana_data:
 
 networks:
   larity-network:
