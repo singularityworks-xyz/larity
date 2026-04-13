@@ -9,6 +9,11 @@ import { startSubscriber, stopSubscriber } from "./subscriber";
 import { UtteranceFinalizer } from "./utterance/finalizer";
 
 // biome-ignore lint/performance/noBarrelFile: structure convention
+export { AlertPublisher, createAlertChannelKeys } from "./alerts/publisher";
+export { AlertQueueManager } from "./alerts/queue";
+export * from "./alerts/router";
+export { AlertSubscriber } from "./alerts/subscriber";
+export * from "./alerts/types";
 export * from "./channels";
 export * from "./utterance/types";
 
