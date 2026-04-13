@@ -14,4 +14,16 @@ export const redisKeys = {
     `meeting.session.lock.${meetingId}` as const,
   sessionParticipants: (sessionId: string) =>
     `meeting.session.${sessionId}.participants` as const,
+
+  meetingAlertShared: (sessionId: string) =>
+    `meeting.alert.${sessionId}.shared` as const,
+  meetingAlertPersonal: (sessionId: string, userId: string) =>
+    `meeting.alert.${sessionId}.user.${userId}` as const,
+  meetingCommitment: (sessionId: string) =>
+    `meeting.commitment.${sessionId}` as const,
+  meetingSpeaker: (sessionId: string) =>
+    `meeting.speaker.${sessionId}` as const,
+  meetingUtterance: (sessionId: string) =>
+    `meeting.utterance.${sessionId}` as const,
+  meetingTopic: (sessionId: string) => `meeting.topic.${sessionId}` as const,
 };
