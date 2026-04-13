@@ -167,7 +167,7 @@ The `packages/stt` package has Deepgram integration but needs:
 
 ### Not Started
 
-- Voice embedding Python microservice
+- Voice embedding TypeScript package (`packages/voice-embedding` via sherpa-onnx)
 - Multi-user session join flow
 - Speaker identification (diarization → voiceprint → SpeakerIdentity)
 - New tier system (pre-filter, Tier 2 small LLM, Tier 3 embedding search)
@@ -204,7 +204,7 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **Deliverable:** All existing code compiles with new speaker model. No remaining `"YOU" | "THEM"` references. ✓
 
-### Day 3-4: Deepgram Diarization Updates ✓ COMPLETED
+### Day 3-4: Deepgram Diarization Updates ✓ COMPLETEDBL2025260500484
 
 **packages/stt**
 
@@ -246,44 +246,118 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **Deliverable:** Multiple team members can join a shared meeting session. Host sends audio, participants receive results. ✓
 
-### Day 7: Redis Channels & Alert Routing Infrastructure
+### Day 7: Redis Channels & Alert Routing Infrastructure ✓ COMPLETED
 
 **packages/infra/redis + packages/meeting-mode**
 
-- [ ] Add new Redis key patterns to `packages/infra/redis/keys.ts`:
-  - [ ] `meeting.alert.{sessionId}.shared`
-  - [ ] `meeting.alert.{sessionId}.user.{userId}`
-  - [ ] `meeting.commitment.{sessionId}`
-  - [ ] `meeting.speaker.{sessionId}`
-  - [ ] `meeting.session.{sessionId}.participants`
-- [ ] Implement alert publisher that routes to shared vs personal channels
-- [ ] Implement alert subscriber (per Larity instance — subscribes to shared + own personal channel)
-- [ ] Test pub/sub with multiple subscribers per session
+- [x] Add new Redis key patterns to `packages/infra/redis/keys.ts`:
+  - [x] `meeting.alert.{sessionId}.shared`
+  - [x] `meeting.alert.{sessionId}.user.{userId}`
+  - [x] `meeting.commitment.{sessionId}`
+  - [x] `meeting.speaker.{sessionId}`
+  - [x] `meeting.utterance.{sessionId}`
+  - [x] `meeting.topic.{sessionId}`
+- [x] Add new TTL constants to `packages/infra/redis/ttl.ts`:
+  - [x] `ALERT_SHARED: 1800`
+  - [x] `ALERT_PERSONAL: 1800`
+  - [x] `COMMITMENT_LEDGER: 7200`
+  - [x] `SPEAKER_STATE: 7200`
+- [x] Implement alert types (`packages/meeting-mode/src/alerts/types.ts`):
+  - [x] All 12 `AlertCategory` values
+  - [x] `Alert` interface with routing, severity, speaker identity
+  - [x] `ALERT_PRIORITY` ordering (policy_violation=1 → undiscussed_agenda=12)
+  - [x] `ALERT_UX_RULES` (max 2 visible, display durations, debounce window)
+  - [x] `createAlert()` factory helper
+  - [x] `getAlertExpiryMs()` severity-based expiry
+- [x] Implement alert router (`packages/meeting-mode/src/alerts/router.ts`):
+  - [x] `resolveAlertRouting()` — personal-when-own, shared-when-team, both for info_risk/policy_violation
+  - [x] `resolveTargetUserId()` — extracts target for personal/both routing
+  - [x] `resolveFullRouting()` — combined routing + targetUserId
+- [x] Implement alert publisher (`packages/meeting-mode/src/alerts/publisher.ts`):
+  - [x] Routes shared alerts to `meeting.alert.{sessionId}.shared`
+  - [x] Routes personal alerts to `meeting.alert.{sessionId}.user.{userId}`
+  - [x] Routes both alerts to both channels simultaneously
+  - [x] Error handling: fail-silent, logs errors
+- [x] Implement alert subscriber (`packages/meeting-mode/src/alerts/subscriber.ts`):
+  - [x] Subscribes to shared + own personal channel per session
+  - [x] Parses incoming alert JSON messages
+  - [x] Callbacks: `onSharedAlert`, `onPersonalAlert`
+  - [x] Cleanup: `stop()` with Redis quit
+- [x] Implement alert queue manager (`packages/meeting-mode/src/alerts/queue.ts`):
+  - [x] Max 2 visible alerts (configurable)
+  - [x] Priority-ordered pending queue (lower priority number = higher priority)
+  - [x] Priority eviction: higher priority alerts evict lowest-priority active
+  - [x] Deduplication: same category + topic within debounce window (5s)
+  - [x] Recently-shown tracking (60s window)
+  - [x] Auto-expiry by severity (10-30s)
+  - [x] Dismiss with promotion from pending
+- [x] Update `packages/meeting-mode/src/channels.ts`:
+  - [x] `sharedAlertChannel()`, `personalAlertChannel()`, `topicChannel()`, `commitmentChannel()`, `speakerChannel()`, `audioChannel()`
+  - [x] `extractSessionId()` handles all channel formats
+  - [x] `extractUserIdFromAlertChannel()` for personal channel parsing
+  - [x] Pattern constants: `ALERT_SHARED_PATTERN`, `ALERT_PERSONAL_PATTERN`
+- [x] Unit tests (128 test cases across 5 test files, using `bun:test`):
+  - [x] `tests/alerts/types.test.ts` — ALERT_PRIORITY, ALERT_UX_RULES, createAlert, getAlertExpiryMs
+  - [x] `tests/alerts/router.test.ts` — all 12 categories with own/team/external speaker, resolveFullRouting
+  - [x] `tests/alerts/publisher.test.ts` — shared/personal/both channel routing, missing targetUserId, error handling
+  - [x] `tests/alerts/subscriber.test.ts` — channel key generation, sessionId/userId extraction, message parsing
+  - [x] `tests/alerts/queue.test.ts` — enqueue/display, eviction, dedup, dismiss, auto-expiry, priority ordering
+- [x] Integration test (`tests/alerts/alert-routing.integration.test.ts`):
+  - [x] Full Router → Publisher → Queue pipeline
+  - [x] All 12 categories verified for valid routing
+  - [x] Redis key consistency between `redisKeys` and `channels`
+  - [x] TTL values verified for alert/commitment/speaker keys
 
-**Deliverable:** Redis infrastructure supports shared and personal alert channels for multi-user sessions.
+**Deliverable:** Redis infrastructure supports shared and personal alert channels for multi-user sessions. ✓
 
 ---
 
 ## Week 2: Voice Embedding Service & Speaker Identification
 
-**Goal:** Build the voice embedding Python microservice and integrate speaker identification into the pipeline.
+**Goal:** Build the voice embedding TypeScript package and integrate speaker identification into the pipeline.
 
-### Day 8-9: Voice Embedding Python Microservice
+### Day 8-9: Voice Embedding TypeScript Package (sherpa-onnx)
 
-**services/voice-embedding** (new Python service)
+**packages/voice-embedding** (new TypeScript package — replaces Python microservice)
 
-- [ ] Set up Python project structure (FastAPI or Flask)
-- [ ] Integrate voice embedding model (pyannote / wespeaker / resemblyzer — benchmark all three)
-- [ ] Implement endpoints:
-  - [ ] `POST /embedding/extract` — extract embedding vector from audio segment bytes
-  - [ ] `POST /embedding/compare` — compare embedding against stored voiceprints (cosine similarity)
-  - [ ] `POST /embedding/identify` — given audio segment + team voiceprints, return best match or "unknown"
-- [ ] Add batch identification endpoint (multiple segments at once for efficiency)
-- [ ] Load team voiceprints into memory at startup/per-session
-- [ ] Benchmark latency: target <100ms per embedding extraction, <5ms per similarity check
-- [ ] Docker container for the service
+> **Decision:** Using `sherpa-onnx` via Node.js bindings instead of a Python microservice. This keeps the entire stack in TypeScript/Bun, eliminates a separate service boundary, and runs in-process (no HTTP round-trip). See architecture notes for rationale.
 
-**Deliverable:** Python microservice can extract voice embeddings and identify speakers against known voiceprints.
+#### Day 8: Model Benchmarking (throwaway Python script, not a service)
+
+- [ ] Write a one-off Python benchmark script (NOT a service — just a comparison script)
+  - [ ] Test `pyannote`, `wespeaker`, and `resemblyzer` against real voice samples
+  - [ ] Measure embedding quality: EER, cosine similarity distribution, false-positive rate
+  - [ ] Measure extraction latency per model
+  - [ ] Pick winner (expected: wespeaker or pyannote)
+- [ ] Export winning model to ONNX format (`pyannote` or `wespeaker` both support ONNX export)
+- [ ] Commit the ONNX model weights to `packages/voice-embedding/models/`
+
+#### Day 9: TypeScript Package Implementation
+
+- [ ] Create `packages/voice-embedding` with `bun init`
+- [ ] Install `sherpa-onnx` (`npm install sherpa-onnx`)
+- [ ] Load exported ONNX model via sherpa-onnx `SpeakerEmbeddingExtractor`
+- [ ] Implement core functions:
+  ```ts
+  // Extract a 512-dim embedding vector from raw audio bytes
+  extractEmbedding(audioSegment: Buffer): Promise<Float32Array>
+
+  // Cosine similarity between two embedding vectors
+  compareEmbeddings(a: Float32Array, b: Float32Array): number
+
+  // Given audio segment + session voiceprints → best match or null
+  identifySpeaker(
+    audioSegment: Buffer,
+    voiceprints: Map<string, Float32Array>  // userId → embedding
+  ): Promise<{ userId: string; similarity: number } | null>
+  ```
+- [ ] Load team voiceprints into an in-memory `Map<userId, Float32Array>` at session start
+- [ ] Implement `loadSessionVoiceprints(sessionId, orgId)` — queries DB, caches per session
+- [ ] Add batch identification for multiple segments in one call (for retroactive reprocessing)
+- [ ] Benchmark latency: target <40ms per embedding extraction, <2ms per similarity check
+- [ ] Export from package: `extractEmbedding`, `identifySpeaker`, `loadSessionVoiceprints`
+
+**Deliverable:** `packages/voice-embedding` TypeScript package — in-process speaker embedding and identification, no separate service.
 
 ### Day 10-11: Voiceprint Onboarding Flow
 
