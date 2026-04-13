@@ -357,7 +357,7 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
         const validatedBody = validateSessionSchema.parse(body);
         userId = validatedBody.userId;
         role = validatedBody.role as "host" | "participant" | undefined;
-      } catch (e) {
+      } catch (_e) {
         // Body validation failed or missing, ignore
       }
 

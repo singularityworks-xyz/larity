@@ -41,7 +41,7 @@ describe("MeetingSessionService", () => {
   const orgId = "org-123";
   const meetingId = "meeting-123";
   const sessionId = "session-123";
-  const clientId = "client-123";
+  const _clientId = "client-123";
 
   beforeEach(() => {
     // Reset mocks
@@ -87,7 +87,7 @@ describe("MeetingSessionService", () => {
       );
     });
 
-    it("should prevent a user from a different org from joining", async () => {
+    it("should prevent a user from a different org from joining", () => {
       // Setup Redis mock
       mockRedis.hgetall.mockResolvedValue({
         sessionId,
@@ -112,7 +112,7 @@ describe("MeetingSessionService", () => {
       );
     });
 
-    it("should throw if session does not exist", async () => {
+    it("should throw if session does not exist", () => {
       mockRedis.hgetall.mockResolvedValue(null);
 
       expect(meetingSessionService.join(sessionId, userId)).rejects.toThrow(
@@ -120,7 +120,7 @@ describe("MeetingSessionService", () => {
       );
     });
 
-    it("should throw if session is ended", async () => {
+    it("should throw if session is ended", () => {
       mockRedis.hgetall.mockResolvedValue({
         sessionId,
         meetingId,
@@ -166,7 +166,7 @@ describe("MeetingSessionService", () => {
       });
 
       // Setup sismember for participants
-      mockRedis.sismember.mockImplementation(async (key, member) => {
+      mockRedis.sismember.mockImplementation((_key, member) => {
         return member === "valid-participant" ? 1 : 0;
       });
 

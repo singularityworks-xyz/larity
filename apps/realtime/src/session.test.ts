@@ -24,8 +24,12 @@ describe("Multi-User Session Management", () => {
         connectedAt: Date.now(),
         lastFrameTs: Date.now(),
       },
-      send: (data: any) => {}, // Mock send
-      close: () => {},
+      send: (_data: any) => {
+        /* mock */
+      },
+      close: () => {
+        /* mock */
+      },
     } as unknown as RealtimeSocket;
   };
 
