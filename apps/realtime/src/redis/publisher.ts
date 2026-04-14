@@ -6,6 +6,7 @@ import type {
   ParticipantLeaveEvent,
   SessionEndEvent,
   SessionStartEvent,
+  VadSignal,
 } from "../types";
 import {
   audioChannel,
@@ -13,6 +14,7 @@ import {
   PARTICIPANT_LEAVE,
   SESSION_END,
   SESSION_START,
+  vadChannel,
 } from "./channels";
 
 const log = createRealtimeLogger("publisher");
@@ -39,6 +41,22 @@ export async function publishAudioFrame(
     log.error(
       { err: error, sessionId: payload.sessionId },
       "Failed to publish audio frame"
+    );
+  }
+}
+
+/**
+ * Publish a VAD signal to Redis
+ */
+export async function publishVadSignal(payload: VadSignal): Promise<void> {
+  const channel = vadChannel(payload.sessionId);
+  try {
+    const message = JSON.stringify(payload);
+    await redis.publish(channel, message);
+  } catch (error) {
+    log.error(
+      { err: error, sessionId: payload.sessionId, userId: payload.userId },
+      "Failed to publish VAD signal"
     );
   }
 }

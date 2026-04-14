@@ -25,6 +25,14 @@ export function audioChannel(sessionId: string): string {
 }
 
 /**
+ * Per-session VAD state channel
+ * Used for publishing VAD signals for a specific session
+ */
+export function vadChannel(sessionId: string): string {
+  return `meeting.vad.${sessionId}`;
+}
+
+/**
  * Channel for processed utterances (to be broadcast to all participants)
  */
 export function utteranceChannel(sessionId: string): string {
@@ -86,6 +94,7 @@ export const channels = {
   sharedAlertChannel,
   personalAlertChannel,
   topicChannel,
+  vadChannel,
   SESSION_START,
   SESSION_END,
   PARTICIPANT_JOIN,

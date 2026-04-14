@@ -57,6 +57,16 @@ export interface AudioFramePayload {
 }
 
 /**
+ * Payload structure for VAD signals from clients
+ */
+export interface VadSignal {
+  type: "vad_speaking" | "vad_silence";
+  userId: string;
+  sessionId: string;
+  ts: number;
+}
+
+/**
  * Session lifecycle event payloads
  */
 export interface SessionStartEvent {

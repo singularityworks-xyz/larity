@@ -1,7 +1,7 @@
 import { createRealtimeLogger } from "../logger";
-import { publishAudioFrame } from "../redis/publisher";
+import { publishAudioFrame, publishVadSignal } from "../redis/publisher";
 import { updateLastFrameTs } from "../session";
-import type { RealtimeSocket } from "../types";
+import type { RealtimeSocket, VadSignal } from "../types";
 
 const log = createRealtimeLogger("on-message");
 
@@ -15,15 +15,29 @@ export function onMessage(
   ws: RealtimeSocket,
   message: string | Buffer | Uint8Array
 ): void {
-  // We expect binary data (Buffer or Uint8Array)
+  const data = ws.data;
+  const { sessionId, role, userId } = data;
+  const ts = Date.now();
+
+  // If text, attempt to parse as JSON (e.g., VAD signals)
   if (typeof message === "string") {
-    log.warn("Received non-binary frame, ignoring");
+    try {
+      const payload = JSON.parse(message) as Partial<VadSignal>;
+      if (payload.type === "vad_speaking" || payload.type === "vad_silence") {
+        publishVadSignal({
+          type: payload.type,
+          userId,
+          sessionId,
+          ts,
+        }).catch((err) => {
+          log.error({ err, sessionId }, "Failed to publish VAD signal");
+        });
+      }
+    } catch {
+      log.warn("Received invalid text frame, ignoring");
+    }
     return;
   }
-
-  const data = ws.data;
-  const { sessionId, role } = data;
-  const ts = Date.now();
 
   // Only host can send audio
   if (role !== "host") {
