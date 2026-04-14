@@ -319,20 +319,20 @@ The `packages/stt` package has Deepgram integration but needs:
 
 > **Decision:** Voice embedding (sherpa-onnx / voiceprints) is eliminated entirely. Since all team members run Larity on their own machines, local VAD on each member's mic provides a reliable, zero-enrollment, platform-agnostic way to identify which diarization index belongs to which team member. The server correlates timestamped VAD signals against Deepgram diarization timestamps to build the identity mapping. Works on Zoom, Meet, Teams, or any platform since the audio capture is OS-level.
 
-#### Day 8: VAD in Tauri Desktop App
+#### Day 8: VAD in Tauri Desktop App ✓ COMPLETED
 
 **apps/desktop**
 
-- [ ] Implement continuous local VAD on the team member's microphone (not system audio — their own mic only)
-  - [ ] Use `@ricky0123/vad-web` (ONNX-based Silero VAD, works in Node/Tauri) or WebRTC energy-based VAD
-  - [ ] VAD runs on the local mic stream only — detects when THIS user is speaking
-  - [ ] Emit `speakingStart` and `speakingEnd` events with precise ms timestamps
-- [ ] Wire VAD events to the existing WebSocket session connection:
-  - [ ] On `speakingStart`: send `{ type: "vad_speaking", userId, sessionId, ts: Date.now() }`
-  - [ ] On `speakingEnd`: send `{ type: "vad_silence", userId, sessionId, ts: Date.now() }`
-- [ ] Handle edge cases:
-  - [ ] Mic not available or permission denied → log warning, VAD disabled for this session
-  - [ ] User muted in the meeting platform → VAD still fires from mic (this is fine — muted means their audio isn't in the system stream, so no diarization index will be active at that timestamp)
+- [x] Implement continuous local VAD on the team member's microphone (not system audio — their own mic only)
+  - [x] Use `@ricky0123/vad-web` (ONNX-based Silero VAD, works in Node/Tauri) or WebRTC energy-based VAD
+  - [x] VAD runs on the local mic stream only — detects when THIS user is speaking
+  - [x] Emit `speakingStart` and `speakingEnd` events with precise ms timestamps
+- [x] Wire VAD events to the existing WebSocket session connection:
+  - [x] On `speakingStart`: send `{ type: "vad_speaking", userId, sessionId, ts: Date.now() }`
+  - [x] On `speakingEnd`: send `{ type: "vad_silence", userId, sessionId, ts: Date.now() }`
+- [x] Handle edge cases:
+  - [x] Mic not available or permission denied → log warning, VAD disabled for this session
+  - [x] User muted in the meeting platform → VAD still fires from mic (this is fine — muted means their audio isn't in the system stream, so no diarization index will be active at that timestamp)
 
 **Deliverable (Day 8):** Desktop app sends VAD speaking signals via WebSocket during sessions.
 
