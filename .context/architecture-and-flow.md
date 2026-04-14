@@ -50,24 +50,24 @@ Larity is a **Tauri + React desktop app** that connects to a **shared remote ser
               │  ┌──────▼──────────────────────────┐  │
               │  │  Processing Pipeline             │  │
               │  │  Pre-filter → Tier1 → Tier2 →   │  │
-              │  │  Tier3 → Tier4                    │  │
-              │  └──────┬──────────────────────────┘  │
+              │  │  Tier3 → Tier4                  │  │
+              │  └─────────────────────────────────┘  │
               │         │                              │
-              │  ┌──────▼──────┐  ┌────────────────┐  │
-              │  │  Redis       │  │  Python        │  │
-              │  │  (sessions,  │  │  Microservice  │  │
-              │  │   ledgers,   │  │  (voice        │  │
-              │  │   pub/sub)   │  │   embeddings)  │  │
-              │  └─────────────┘  └────────────────┘  │
-              └────────────────────────────────────────┘
+               │  ┌──────▼──────┐  ┌────────────────┐  │
+               │  │  Redis       │  │  VAD signals  │  │
+               │  │  (sessions,  │  │  (per client, │  │
+               │  │   ledgers,   │  │   WebSocket)  │  │
+               │  │   pub/sub)   │  └────────────────┘  │
+               │  └─────────────┘                      │
+               └────────────────────────────────────────┘
 ```
 
 **Why remote server, not local Tauri-spawned:**
 - Multi-user sessions require shared state accessible to all team members
 - Alert routing (shared + personal channels) needs centralized pub/sub
-- Voice embedding service (Python) is heavy for local machines
 - Consistent processing regardless of host machine specs
 - Single Deepgram connection managed server-side
+- Speaker identification (VAD correlation) runs server-side where diarization data lives
 
 ---
 
@@ -169,13 +169,13 @@ This is NOT a single-user experience. Multiple team members share a session.
 
 > **Full Details:** See [meeting-mode.md](./meeting-mode.md#3-speaker-identification-via-voice-embeddings)
 
-* **Python microservice** extracts voice embeddings from each diarized speaker's audio segments
-* Embeddings compared against **pre-loaded team voiceprints** via cosine similarity
+* Each team member's Larity instance runs **local VAD on their microphone** and sends timestamped speaking signals via WebSocket
+* The server **correlates VAD timestamps against Deepgram diarization indices** (±300ms window)
 * Matched → TEAM (with userId) | Unmatched → EXTERNAL (client)
 * External speaker names from calendar data (best-effort)
-* **No voiceprint storage for external speakers**
-* First 30-60 seconds: unidentified speakers default to EXTERNAL (conservative)
-* Once identified: buffered utterances **retroactively reprocessed** with correct speaker identity
+* No voiceprint enrollment, no voice embeddings, no ML models required
+* First utterances default to EXTERNAL until correlation is established; retroactively reprocessed once confirmed
+* Works on Zoom, Meet, Teams, or any platform — OS-level audio capture makes it platform-agnostic
 
 **Speaker Identity Model:**
 ```ts

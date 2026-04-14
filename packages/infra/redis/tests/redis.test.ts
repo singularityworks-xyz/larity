@@ -1,20 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
-// Mock ioredis before importing our modules
-mock.module("ioredis", () => {
-  return {
-    default: mock(() => ({
-      connect: mock(() => Promise.resolve()),
-      ping: mock(() => Promise.resolve("PONG")),
-      set: mock(() => Promise.resolve("OK")),
-      get: mock(() => Promise.resolve("test_value")),
-      del: mock(() => Promise.resolve(1)),
-      publish: mock(() => Promise.resolve(1)),
-    })),
-  };
-});
-
-// Import the modules to test (after mocking)
 import { connectRedis, redis } from "../client";
 import { checkRedisHealth } from "../health";
 import { redisKeys } from "../keys";
@@ -24,8 +9,12 @@ import { TTL } from "../ttl";
 
 describe("Redis Infrastructure Tests", () => {
   beforeEach(() => {
-    // Reset all mocks before each test
-    // Note: Since we're using mock.module, the mocks are automatically reset
+    redis.connect = mock(() => Promise.resolve());
+    redis.ping = mock(() => Promise.resolve("PONG" as const));
+    redis.set = mock(() => Promise.resolve("OK" as const));
+    redis.get = mock(() => Promise.resolve("test_value"));
+    redis.del = mock(() => Promise.resolve(1));
+    redis.publish = mock(() => Promise.resolve(1));
   });
 
   describe("Client Module", () => {
@@ -47,14 +36,12 @@ describe("Redis Infrastructure Tests", () => {
 
     describe("connectRedis", () => {
       it("should successfully connect to Redis", async () => {
-        redis.ping = mock(() => Promise.resolve("PONG" as const));
         redis.connect = mock(() => Promise.resolve());
         const result = await connectRedis();
         expect(result).toBe(true);
       });
 
       it("should handle connection errors gracefully", async () => {
-        redis.ping = mock(() => Promise.resolve("PONG" as const));
         redis.connect = mock(() =>
           Promise.reject(new Error("Connection failed"))
         );
@@ -68,7 +55,6 @@ describe("Redis Infrastructure Tests", () => {
   describe("Health Module", () => {
     describe("checkRedisHealth", () => {
       it("should return healthy status when Redis is working", async () => {
-        // Mock Date.now to return a consistent value
         const mockTimestamp = 1_234_567_890_123;
         const originalDateNow = Date.now;
         Date.now = mock(() => mockTimestamp);
@@ -82,7 +68,6 @@ describe("Redis Infrastructure Tests", () => {
 
         const result = await checkRedisHealth();
 
-        // Restore original Date.now
         Date.now = originalDateNow;
 
         expect(result.healthy).toBe(true);
@@ -177,7 +162,6 @@ describe("Redis Infrastructure Tests", () => {
       });
 
       it("should fail to acquire lock when already locked", async () => {
-        // Mock returning null to simulate NX failure (key already exists)
         redis.set = mock(() => Promise.resolve(null)) as any;
 
         const result = await acquireLock("test-lock");

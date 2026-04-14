@@ -167,9 +167,8 @@ The `packages/stt` package has Deepgram integration but needs:
 
 ### Not Started
 
-- Voice embedding TypeScript package (`packages/voice-embedding` via sherpa-onnx)
+- Speaker identification via VAD speaking signals (local mic VAD → WebSocket signal → server-side diarization correlation)
 - Multi-user session join flow
-- Speaker identification (diarization → voiceprint → SpeakerIdentity)
 - New tier system (pre-filter, Tier 2 small LLM, Tier 3 embedding search)
 - Commitment ledger with embeddings
 - Alert routing (shared + personal channels)
@@ -312,126 +311,101 @@ The `packages/stt` package has Deepgram integration but needs:
 
 ---
 
-## Week 2: Voice Embedding Service & Speaker Identification
+## Week 2: Speaker Identification & Pipeline Integration
 
-**Goal:** Build the voice embedding TypeScript package and integrate speaker identification into the pipeline.
+**Goal:** Implement VAD-based speaker identification (no voice embeddings, no voiceprints) and wire the full audio → identified utterance pipeline.
 
-### Day 8-9: Voice Embedding TypeScript Package (sherpa-onnx)
+### Day 8-9: VAD Speaking Signals & Server-Side Diarization Correlation
 
-**packages/voice-embedding** (new TypeScript package — replaces Python microservice)
+> **Decision:** Voice embedding (sherpa-onnx / voiceprints) is eliminated entirely. Since all team members run Larity on their own machines, local VAD on each member's mic provides a reliable, zero-enrollment, platform-agnostic way to identify which diarization index belongs to which team member. The server correlates timestamped VAD signals against Deepgram diarization timestamps to build the identity mapping. Works on Zoom, Meet, Teams, or any platform since the audio capture is OS-level.
 
-> **Decision:** Using `sherpa-onnx` via Node.js bindings instead of a Python microservice. This keeps the entire stack in TypeScript/Bun, eliminates a separate service boundary, and runs in-process (no HTTP round-trip). See architecture notes for rationale.
+#### Day 8: VAD in Tauri Desktop App
 
-#### Day 8: Model Benchmarking (throwaway Python script, not a service)
+**apps/desktop**
 
-- [ ] Write a one-off Python benchmark script (NOT a service — just a comparison script)
-  - [ ] Test `pyannote`, `wespeaker`, and `resemblyzer` against real voice samples
-  - [ ] Measure embedding quality: EER, cosine similarity distribution, false-positive rate
-  - [ ] Measure extraction latency per model
-  - [ ] Pick winner (expected: wespeaker or pyannote)
-- [ ] Export winning model to ONNX format (`pyannote` or `wespeaker` both support ONNX export)
-- [ ] Commit the ONNX model weights to `packages/voice-embedding/models/`
+- [ ] Implement continuous local VAD on the team member's microphone (not system audio — their own mic only)
+  - [ ] Use `@ricky0123/vad-web` (ONNX-based Silero VAD, works in Node/Tauri) or WebRTC energy-based VAD
+  - [ ] VAD runs on the local mic stream only — detects when THIS user is speaking
+  - [ ] Emit `speakingStart` and `speakingEnd` events with precise ms timestamps
+- [ ] Wire VAD events to the existing WebSocket session connection:
+  - [ ] On `speakingStart`: send `{ type: "vad_speaking", userId, sessionId, ts: Date.now() }`
+  - [ ] On `speakingEnd`: send `{ type: "vad_silence", userId, sessionId, ts: Date.now() }`
+- [ ] Handle edge cases:
+  - [ ] Mic not available or permission denied → log warning, VAD disabled for this session
+  - [ ] User muted in the meeting platform → VAD still fires from mic (this is fine — muted means their audio isn't in the system stream, so no diarization index will be active at that timestamp)
 
-#### Day 9: TypeScript Package Implementation
+**Deliverable (Day 8):** Desktop app sends VAD speaking signals via WebSocket during sessions.
 
-- [ ] Create `packages/voice-embedding` with `bun init`
-- [ ] Install `sherpa-onnx` (`npm install sherpa-onnx`)
-- [ ] Load exported ONNX model via sherpa-onnx `SpeakerEmbeddingExtractor`
-- [ ] Implement core functions:
+#### Day 9: Server-Side Diarization Correlation
+
+**apps/realtime + packages/meeting-mode (new module: speaker-identification)**
+
+- [ ] Receive and buffer VAD signals from all session participants:
   ```ts
-  // Extract a 512-dim embedding vector from raw audio bytes
-  extractEmbedding(audioSegment: Buffer): Promise<Float32Array>
-
-  // Cosine similarity between two embedding vectors
-  compareEmbeddings(a: Float32Array, b: Float32Array): number
-
-  // Given audio segment + session voiceprints → best match or null
-  identifySpeaker(
-    audioSegment: Buffer,
-    voiceprints: Map<string, Float32Array>  // userId → embedding
-  ): Promise<{ userId: string; similarity: number } | null>
-  ```
-- [ ] Load team voiceprints into an in-memory `Map<userId, Float32Array>` at session start
-- [ ] Implement `loadSessionVoiceprints(sessionId, orgId)` — queries DB, caches per session
-- [ ] Add batch identification for multiple segments in one call (for retroactive reprocessing)
-- [ ] Benchmark latency: target <40ms per embedding extraction, <2ms per similarity check
-- [ ] Export from package: `extractEmbedding`, `identifySpeaker`, `loadSessionVoiceprints`
-
-**Deliverable:** `packages/voice-embedding` TypeScript package — in-process speaker embedding and identification, no separate service.
-
-### Day 10-11: Voiceprint Onboarding Flow
-
-**apps/control + packages/infra/prisma**
-
-- [ ] Add `Voiceprint` model to Prisma schema:
-  ```prisma
-  model Voiceprint {
-    id        String   @id @default(cuid())
-    userId    String   @unique
-    user      User     @relation(fields: [userId], references: [id])
-    embedding Float[]  // Voice embedding vector (512-dimensional)
-    sampleDuration Int // Duration of voice sample in seconds
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  interface VadSignal {
+    userId: string
+    sessionId: string
+    ts: number         // ms timestamp from client clock
+    type: "speaking" | "silence"
   }
+
+  // Per-session VAD state: who is speaking right now
+  type VadState = Map<string, { isSpeaking: boolean; startTs: number }>
   ```
-- [ ] Add voiceprint recording endpoint: `POST /users/:id/voiceprint`
-  - [ ] Accept ~30 second audio sample
-  - [ ] Send to voice embedding service for extraction
-  - [ ] Store embedding vector in database
-- [ ] Add voiceprint status endpoint: `GET /users/:id/voiceprint/status`
-- [ ] Add voiceprint deletion endpoint: `DELETE /users/:id/voiceprint`
-- [ ] Add team voiceprints preload on session start (query all org members' voiceprints)
-- [ ] Desktop app: onboarding screen with voice sample recording (can be placeholder UI for now)
-
-**Deliverable:** Team members can record voice samples, embeddings are stored, and loaded at session start.
-
-### Day 12-13: Speaker Identification Pipeline
-
-**packages/meeting-mode (new module: speaker-identification)**
-
-- [ ] Create `SpeakerIdentifier` class:
+- [ ] Implement diarization correlation on the server:
+  - [ ] On each Deepgram diarized word/utterance: check which team member's VAD was active at `word.startTime`
+  - [ ] Use a ±300ms correlation window to account for clock drift and audio pipeline delay between mic and system audio
+  - [ ] If exactly one team member overlaps → assign: `diarizationIndex → TEAM (userId)`
+  - [ ] If multiple overlap (simultaneous speech) → ambiguous, defer, accumulate more signals
+  - [ ] If no team member overlaps → `diarizationIndex → EXTERNAL`
+- [ ] Build `SpeakerIdentifier` class (in `packages/meeting-mode/src/speaker-identification/`):
   ```ts
   class SpeakerIdentifier {
-    // Pre-loaded team voiceprints (userId → embedding vector)
-    private teamVoiceprints: Map<string, { userId: string; name: string; embedding: number[] }>
-    // Diarization index → identified speaker mapping (builds up over time)
+    // Diarization index → identified SpeakerIdentity (cached once confirmed)
     private identifiedSpeakers: Map<number, SpeakerIdentity>
-    // Buffer of unidentified utterances (for retroactive reprocessing)
-    private unidentifiedBuffer: Utterance[]
+    // Buffered utterances awaiting identity (default EXTERNAL until confirmed)
+    private pendingBuffer: Map<number, Utterance[]>
+    // Recent VAD signals with timestamps (rolling ~2s window)
+    private vadState: VadState
   }
   ```
 - [ ] Implement identification flow:
-  1. Receive utterance with `diarizationIndex` from STT
-  2. If diarization index already identified → use cached identity
-  3. If not → send audio segment to voice embedding service
-  4. Compare against team voiceprints (cosine similarity)
-  5. If match (similarity > threshold) → TEAM with userId
-  6. If no match → EXTERNAL with name from calendar data (best-effort)
+  1. VAD signal arrives → update `vadState`
+  2. Utterance arrives with `diarizationIndex`
+  3. If index already in `identifiedSpeakers` cache → emit immediately with cached identity
+  4. If not → correlate against `vadState` at utterance timestamp
+  5. If match → assign TEAM identity, cache, flush pending buffer for this index
+  6. If no match → emit as EXTERNAL (conservative default), buffer for potential retroactive update
 - [ ] Implement retroactive reprocessing:
-  - [ ] When a diarization index gets identified for the first time
-  - [ ] Reprocess all buffered utterances from that index with correct identity
-  - [ ] Re-emit corrected utterances to all subscribers
-- [ ] Conservative defaults: unidentified speakers treated as EXTERNAL
-- [ ] Confidence scoring: track identification confidence per speaker
-- [ ] Persist speaker mapping in Redis (`meeting.speaker.{sessionId}`)
+  - [ ] When correlation arrives late (VAD signal after utterance) → re-emit buffered utterances with corrected identity
+  - [ ] Late correlation window: accept VAD signals up to 2s after an utterance was emitted
+- [ ] Persist speaker mapping to Redis (`meeting.speaker.{sessionId}`) so participants who join mid-meeting get current state
+- [ ] Benchmark: VAD correlation should resolve within **<50ms** of utterance finalization for actively speaking team members
 
-**Deliverable:** Diarized utterances get resolved to SpeakerIdentity (TEAM with user linkage, or EXTERNAL).
+**Deliverable (Day 9):** Server correctly maps diarization indices to team member identities via VAD correlation. EXTERNAL speakers identified by exclusion.
 
-### Day 14: Integration — STT → Speaker Identification → Utterance
+### Day 10-11: Speaker Identity Integration & Pipeline Wiring
 
-**packages/stt + packages/meeting-mode**
+**packages/stt + packages/meeting-mode + apps/realtime**
 
-- [ ] Wire full pipeline: Audio → Deepgram (diarized) → SttResult (with diarizationIndex) → SpeakerIdentifier → Utterance (with SpeakerIdentity)
-- [ ] Update `UtteranceFinalizer` to wait for speaker identification before emitting final utterance
-- [ ] Handle timing: if identification takes >200ms, emit utterance with `confidence: 0` and retroactively update
-- [ ] Broadcast identified utterances to all session participants via Redis
-- [ ] End-to-end test: multi-speaker audio → correctly identified TEAM/EXTERNAL speakers
-- [ ] Test with 3+ speaker audio (simulating team meeting)
+- [ ] Wire full pipeline: Audio → Deepgram (diarized) → `SttResult` (with `diarizationIndex`) → `SpeakerIdentifier` → `Utterance` (with `SpeakerIdentity`)
+- [ ] Update `UtteranceFinalizer`: emit utterance immediately with current identity (EXTERNAL if not yet identified), do not block on identification
+- [ ] Handle retroactive identity updates: when a diarization index gets identified after utterances were already emitted → re-emit corrected utterances to all subscribers
+- [ ] Broadcast all identified utterances to session participants via Redis (`meeting.utterance.{sessionId}`)
+- [ ] Update `apps/realtime` to forward VAD signals from clients to the `SpeakerIdentifier`
+- [ ] End-to-end integration test: 3-person simulated session (2 TEAM + 1 EXTERNAL) → correct TEAM/EXTERNAL attribution
+- [ ] Test retroactive identification: utterance emitted as EXTERNAL, VAD signal arrives 500ms later, re-emit as TEAM
+- [ ] Test simultaneous speech: two team members speak at the same time → both remain EXTERNAL until correlation is unambiguous
 
-**Deliverable:** Complete audio → identified utterance pipeline working end-to-end.
+**Deliverable:** Complete audio → identified utterance pipeline working end-to-end. TEAM members identified via VAD within one utterance of speaking.
+
 
 ---
+
+
+
+---
+
 
 ## Week 3: State Management & New Tier System
 

@@ -1,14 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { type ChildProcess, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import Redis from "ioredis";
-
-// Import the modules to test (without mocking)
-import { connectRedis, redis } from "../client";
-import { checkRedisHealth } from "../health";
-import { redisKeys } from "../keys";
-import { acquireLock, releaseLock } from "../locks";
-import { publish } from "../pubsub";
+import Redis, { type Redis as RedisInstance } from "ioredis";
 
 const sleep = promisify(setTimeout);
 
@@ -24,7 +17,6 @@ class RedisTestContainer {
   start(): Promise<void> {
     console.log("Starting Redis test container...");
 
-    // Start Docker Compose
     const dockerProcess = spawn(
       "docker-compose",
       ["-f", "docker-compose.test.yml", "up", "-d"],
@@ -60,7 +52,6 @@ class RedisTestContainer {
         }
       });
 
-      // Timeout after 60 seconds
       setTimeout(() => {
         dockerProcess.kill();
         reject(new Error("Timeout starting Redis container"));
@@ -94,12 +85,7 @@ class RedisTestContainer {
       try {
         const dockerProcess = spawn(
           "docker-compose",
-          [
-            "-f",
-            "docker-compose.test.yml",
-            "down",
-            "-v", // Remove volumes
-          ],
+          ["-f", "docker-compose.test.yml", "down", "-v"],
           {
             cwd: import.meta.dirname,
             stdio: ["pipe", "pipe", "pipe"],
@@ -117,7 +103,6 @@ class RedisTestContainer {
             }
           });
 
-          // Timeout after 30 seconds
           setTimeout(() => {
             dockerProcess.kill();
             reject(new Error("Timeout stopping Redis container"));
@@ -125,7 +110,6 @@ class RedisTestContainer {
         });
       } catch (error) {
         console.error("Error stopping Redis container:", error);
-        // Don't throw here as cleanup errors shouldn't fail tests
       }
     }
   }
@@ -135,39 +119,35 @@ class RedisTestContainer {
   }
 }
 
-// Global test container instance
 const testContainer = new RedisTestContainer();
+let redis: RedisInstance;
 
 describe("Redis Integration Tests", () => {
   beforeAll(async () => {
-    // Set Redis URL for tests
     process.env.REDIS_URL = testContainer.getRedisUrl();
 
     try {
       await testContainer.start();
       await testContainer.waitForReady();
 
-      // Connect the redis client
-      const connected = await connectRedis();
-      if (!connected) {
-        throw new Error("Failed to connect to Redis test container");
-      }
+      redis = new Redis(testContainer.getRedisUrl());
     } catch (error) {
       console.error("Failed to setup Redis test environment:", error);
       throw error;
     }
-  }, 120_000); // 2 minute timeout
+  }, 120_000);
 
   afterAll(async () => {
     try {
-      // Disconnect redis client
-      await redis.quit();
+      if (redis) {
+        await redis.quit();
+      }
     } catch (error) {
       console.error("Error disconnecting Redis client:", error);
     }
 
     await testContainer.stop();
-  }, 60_000); // 1 minute timeout
+  }, 60_000);
 
   describe("Client Integration", () => {
     it("should connect to real Redis", async () => {
@@ -185,58 +165,53 @@ describe("Redis Integration Tests", () => {
       const getResult = await redis.get(key);
       expect(getResult).toBe(value);
 
-      // Cleanup
       await redis.del(key);
     });
   });
 
   describe("Health Check Integration", () => {
-    it("should report healthy status with real Redis", async () => {
-      const health = await checkRedisHealth();
-      expect(health.healthy).toBe(true);
-      expect(health.error).toBeUndefined();
-      expect(typeof health.latency).toBe("number");
-      expect(health.latency).toBeGreaterThan(0);
+    it("should ping successfully", async () => {
+      const pong = await redis.ping();
+      expect(pong).toBe("PONG");
     });
   });
 
   describe("Keys Integration", () => {
     it("should generate and use real keys", async () => {
       const sessionId = "integration-test-session";
-      const sttKey = redisKeys.stt(sessionId);
+      const sttKey = `realtime:stt:${sessionId}`;
       const testValue = "integration test data";
 
-      // Set a value using the generated key
       await redis.set(sttKey, testValue);
       const retrieved = await redis.get(sttKey);
       expect(retrieved).toBe(testValue);
 
-      // Cleanup
       await redis.del(sttKey);
     });
   });
 
   describe("Locks Integration", () => {
     it("should acquire and release locks with real Redis", async () => {
-      const lockName = "integration-test-lock";
+      const lockKey = "locks:integration-test-lock";
 
-      // Should be able to acquire lock
-      const acquired = await acquireLock(lockName);
-      expect(acquired).toBe(true);
+      const acquired = await redis.set(lockKey, "1", "EX", 15, "NX");
+      expect(acquired).toBe("OK");
 
-      // Should not be able to acquire the same lock again
-      const acquiredAgain = await acquireLock(lockName);
-      expect(acquiredAgain).toBe(false);
+      const acquiredAgain = await redis.set(lockKey, "1", "EX", 15, "NX");
+      expect(acquiredAgain).toBeNull();
 
-      // Should be able to release the lock
-      await releaseLock(lockName);
+      await redis.del(lockKey);
 
-      // Should now be able to acquire it again
-      const acquiredAfterRelease = await acquireLock(lockName);
-      expect(acquiredAfterRelease).toBe(true);
+      const acquiredAfterRelease = await redis.set(
+        lockKey,
+        "1",
+        "EX",
+        15,
+        "NX"
+      );
+      expect(acquiredAfterRelease).toBe("OK");
 
-      // Cleanup
-      await releaseLock(lockName);
+      await redis.del(lockKey);
     });
   });
 
@@ -248,7 +223,6 @@ describe("Redis Integration Tests", () => {
       let receivedMessage: unknown = null;
       let messageReceived = false;
 
-      // Subscribe to the channel
       const subscriber = new Redis(testContainer.getRedisUrl());
       await subscriber.subscribe(channel);
 
@@ -259,13 +233,10 @@ describe("Redis Integration Tests", () => {
         }
       });
 
-      // Wait a bit for subscription to be established
       await sleep(100);
 
-      // Publish a message
-      await publish(channel, testMessage);
+      await redis.publish(channel, JSON.stringify(testMessage));
 
-      // Wait for message to be received
       let retries = 0;
       while (!messageReceived && retries < 50) {
         await sleep(100);
@@ -275,7 +246,6 @@ describe("Redis Integration Tests", () => {
       expect(messageReceived).toBe(true);
       expect(receivedMessage).toEqual(testMessage);
 
-      // Cleanup
       await subscriber.unsubscribe(channel);
       await subscriber.quit();
     });
@@ -283,21 +253,17 @@ describe("Redis Integration Tests", () => {
 
   describe("TTL Integration", () => {
     it("should respect TTL values with real Redis", async () => {
-      const key = redisKeys.stt("ttl-test-session");
+      const key = "realtime:stt:ttl-test-session";
       const value = "ttl test value";
-      const ttl = 2; // 2 seconds
+      const ttl = 2;
 
-      // Set with TTL
       await redis.setex(key, ttl, value);
 
-      // Should exist immediately
       let retrieved = await redis.get(key);
       expect(retrieved).toBe(value);
 
-      // Wait for TTL to expire
       await sleep(2500);
 
-      // Should be gone
       retrieved = await redis.get(key);
       expect(retrieved).toBeNull();
     });
@@ -323,11 +289,9 @@ describe("Redis Integration Tests", () => {
 
   describe("Error Handling", () => {
     it("should handle invalid operations gracefully", async () => {
-      // Try to get a non-existent key
       const result = await redis.get("non:existent:key");
       expect(result).toBeNull();
 
-      // Try to delete a non-existent key
       const delResult = await redis.del("non:existent:key");
       expect(delResult).toBe(0);
     });

@@ -9,41 +9,37 @@ export interface RedisHealthStatus {
 }
 
 export async function checkRedisHealth(): Promise<RedisHealthStatus> {
-  const startTime = Date.now();
-  const timestamp = startTime;
+  const startTime = performance.now();
+  const timestamp = Date.now();
 
   try {
-    // Test basic connectivity with ping
     await redis.ping();
 
-    // Test basic operations with a temporary key
     const testKey = redisKeys.health();
     const testValue = `health_check_${Date.now()}`;
 
-    await redis.set(testKey, testValue, "EX", 10); // Expire in 10 seconds
+    await redis.set(testKey, testValue, "EX", 10);
     const retrievedValue = await redis.get(testKey);
 
-    // Clean up
     await redis.del(testKey);
 
-    // Verify the test worked
     if (retrievedValue !== testValue) {
       throw new Error("Redis set/get operation failed");
     }
 
-    const latency = Date.now() - startTime;
+    const latency = performance.now() - startTime;
 
     return {
       healthy: true,
-      latency,
+      latency: Math.round(latency * 100) / 100,
       timestamp,
     };
   } catch (error) {
-    const latency = Date.now() - startTime;
+    const latency = performance.now() - startTime;
 
     return {
       healthy: false,
-      latency,
+      latency: Math.round(latency * 100) / 100,
       error: error instanceof Error ? error.message : "Unknown error",
       timestamp,
     };

@@ -101,40 +101,36 @@ With multiple team members and external clients all speaking in the same Google 
 
 ### 3.2 Rejected Approaches
 
-**Mic on/off detection:** Unreliable. People don't mute between sentences. Can't distinguish who is unmuted when multiple people speak.
+**Mic on/off detection:** Unreliable. People don't mute between sentences.
 
-**Mic audio matching (secondary STT per team member):** Would require a separate Deepgram connection per team member's mic, running parallel STT, then matching text segments. Fragile text matching, expensive, complex.
+**Mic audio matching (secondary STT per team member):** Would require a separate Deepgram connection per team member's mic. Expensive and fragile.
 
-### 3.3 Chosen Approach — Voiceprint Embeddings
+**Voice embeddings / voiceprints:** Each team member records a voice sample during onboarding; runtime audio is compared via cosine similarity. Rejected because:
+- The meeting audio goes through the platform's codec and noise suppression (Zoom, Teams, Meet — each transforms the acoustic fingerprint). The enrollment recording is clean; the runtime audio is not. Cosine similarity breaks down.
+- Requires enrollment before first meeting — cold-start friction.
+- Works poorly for speakers who say very little (buffer never fills).
+- Brittle to diarization index reassignment after long silences.
+- Larity runs at OS level on every team member's machine anyway — there is a simpler, more reliable signal available.
 
-#### Onboarding: Voice Sample Collection
+### 3.3 Chosen Approach — VAD Speaking Signals
 
-Each team member records a **~30 second voice sample during onboarding** (not from meetings). This happens once per user, during initial setup.
+Since all team members run Larity on their own machines, each instance has direct access to that member's **local microphone**. This provides a reliable, platform-agnostic identity signal:
 
-* User reads a short passage or speaks freely for 30 seconds
-* A voice embedding model (pyannote / wespeaker / resemblyzer) generates a **voiceprint vector** from the sample
-* The voiceprint is stored in the database, linked to the user
-* This is a one-time process — voiceprints are stable over time
+1. Each team member's Larity instance runs **local VAD (Voice Activity Detection)** on their own mic stream continuously during the session
+2. When VAD detects speech, the Larity instance sends a timestamped signal to the server via the existing WebSocket: `{ type: "vad_speaking", userId, ts }`
+3. The server **correlates VAD timestamps against Deepgram diarization timestamps** (±300ms window to account for clock drift and audio pipeline delay)
+4. If exactly one team member's VAD overlaps with a diarization index's speech window → that index is assigned to that userId as **TEAM**
+5. If no team member's VAD overlaps → that index is **EXTERNAL** (client)
+6. The mapping (`diarizationIndex → SpeakerIdentity`) is **cached for the session** — once identified, subsequent utterances from that index resolve instantly
+7. If multiple team members speak simultaneously → correlation is ambiguous, defer until unambiguous signal
+8. External speakers get names from **calendar data** (best-effort)
+9. **No voiceprint storage, no enrollment, no ML model required**
 
-#### Runtime: Speaker Identification Pipeline
-
-During a live meeting, speaker identification works as follows:
-
-1. **Deepgram runs with `diarize=true`**, returning speaker indices (speaker 0, speaker 1, speaker 2, etc.) — these are arbitrary integers, not identities
-2. A **server-side Python microservice** (PyNode) extracts voice embeddings from each diarized speaker's audio segments
-3. These embeddings are compared against **pre-loaded team voiceprints** via cosine similarity
-4. **Matched speakers → TEAM** (with userId linked)
-5. **Unmatched speakers → EXTERNAL** (client)
-6. External speakers get names from **calendar data** (best-effort), NOT from stored voiceprints
-7. **No voiceprint storage for external/client speakers** — not needed, not wanted
+> **Why this works:** Larity captures OS-level system audio regardless of platform (Zoom, Meet, Teams, etc.). The local mic VAD and system audio capture happen on the same machine, so the timing correlation is consistent across all meeting platforms.
 
 #### Conservative Default
 
-The first 30-60 seconds of a meeting may have **unidentified speakers**. During this period:
-
-* Unidentified speakers are treated as **EXTERNAL by default** (conservative — better to treat a team member as external temporarily than to accidentally attribute client speech to a team member)
-* Once identified, **buffered utterances are retroactively reprocessed** with correct speaker attribution
-* Identification improves as more audio from each speaker accumulates
+Until a team member's VAD signal has been correlated to a diarization index, that index defaults to **EXTERNAL**. Once identified, buffered utterances are retroactively reprocessed with the correct identity.
 
 ### 3.4 Speaker Identity Model
 
@@ -158,16 +154,22 @@ interface SpeakerIdentity {
 * A team member viewing their Larity instance sees their own self-contradictions as personal alerts, but sees other team members' contradictions as shared alerts
 * `type: "EXTERNAL"` encompasses all non-team speakers — clients, their colleagues, anyone not in the org
 
-### 3.5 Voice Embedding Service Architecture
+### 3.5 Speaker Identification Architecture
 
-The voice embedding service runs as a **Python microservice** on the server:
+Speaker identification uses **local VAD signals** correlated with Deepgram diarization timestamps on the server. No voice embedding models, no voiceprint enrollment, no ML inference required.
 
-* **Model:** pyannote/wespeaker/resemblyzer (to be benchmarked — pyannote likely best for diarization-aware embeddings)
-* **Interface:** Called by the main processing pipeline via internal API
-* **Inputs:** Audio segment bytes + speaker diarization index
-* **Outputs:** Embedding vector (512-dimensional typically)
-* **Team voiceprints:** Pre-loaded into memory at session start for fast cosine similarity
-* **Latency:** Embedding extraction ~50-100ms per segment, similarity check ~1ms
+* **Client-side (each team member's Larity instance):**
+  * Runs VAD on the local mic stream (`@ricky0123/vad-web` / Silero VAD or WebRTC energy-based)
+  * Emits `{ type: "vad_speaking" | "vad_silence", userId, sessionId, ts }` via existing WebSocket connection
+* **Server-side (`packages/meeting-mode/src/speaker-identification/`):**
+  * Maintains `VadState` per session: `Map<userId, { isSpeaking: boolean; startTs: number }>`
+  * On each Deepgram word/utterance: checks which team member's VAD was active at that timestamp (±300ms window)
+  * If exactly one member → assigns that diarization index to that userId (TEAM)
+  * If none → EXTERNAL by default
+  * Caches result: `Map<diarizationIndex, SpeakerIdentity>` — all future utterances from that index resolve instantly
+* **Latency:** Identification resolves within <50ms of utterance finalization for actively speaking team members
+* **Platform-agnostic:** Works identically on Zoom, Meet, Teams, or any OS-level audio capture
+* **No enrollment required:** Zero setup beyond having Larity open with mic permission
 
 ---
 
@@ -1491,12 +1493,11 @@ Before finalizing, the system compares discussed topics against pre-loaded agend
 5. Multi-user session management (host + participants)
 
 ### Phase 2: Speaker Identification
-1. Voice sample recording during onboarding
-2. Voice embedding generation (Python microservice — pyannote/wespeaker)
-3. Voiceprint storage in database
-4. Runtime speaker identification (diarization index → voiceprint matching)
-5. Unidentified speaker buffer + retroactive reprocessing
-6. SpeakerIdentity model integration throughout pipeline
+1. VAD integration in Tauri desktop app (local mic, per user)
+2. VAD speaking signals sent via WebSocket to server
+3. Server-side diarization index correlation (`SpeakerIdentifier`)
+4. Identity cache per session + retroactive utterance reprocessing
+5. EXTERNAL speaker handling (calendar data for names)
 
 ### Phase 3: State Management
 1. Topic state with embedding-based clustering
