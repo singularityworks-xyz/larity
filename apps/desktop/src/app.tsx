@@ -56,10 +56,7 @@ function App() {
       >
         <input
           id="greet-input"
-          onChange={(e) =>
-            // @ts-expect-error - Bun type mismatch with DOM EventTarget
-            setName(e.currentTarget.value)
-          }
+          onChange={(e) => setName(e.currentTarget.value)}
           placeholder="Enter a name..."
         />
         <button type="submit">Greet</button>
