@@ -79,13 +79,25 @@ describe("WebSocket Handlers Unit Tests", () => {
   });
 
   describe("onMessage handler", () => {
-    it("should ignore string messages", () => {
+    it("should process valid VAD JSON string messages", () => {
       const mockSocket = createMockSocket("test-session-4");
 
-      onMessage(mockSocket, "string-message");
+      const vadPayload = JSON.stringify({
+        type: "vad_speaking",
+        userId: "user_123",
+        sessionId: "test-session-4",
+        ts: Date.now(),
+      });
 
-      // lastFrameTs should not be updated for string messages
-      // (Note: In actual implementation, updateLastFrameTs would only be called for binary)
+      // Should not throw and successfully bypass binary logic
+      expect(() => onMessage(mockSocket, vadPayload)).not.toThrow();
+    });
+
+    it("should ignore improperly formatted string messages gracefully", () => {
+      const mockSocket = createMockSocket("test-session-invalid");
+
+      expect(() => onMessage(mockSocket, "invalid-json-string")).not.toThrow();
+      expect(() => onMessage(mockSocket, '{"type":"unknown"}')).not.toThrow();
     });
 
     it("should process binary messages", () => {

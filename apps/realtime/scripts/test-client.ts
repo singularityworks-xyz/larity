@@ -47,6 +47,7 @@ ws.onopen = () => {
 
   const sendFrame = () => {
     if (framesSent >= frameCount) {
+      clearInterval(vadInterval);
       console.log(`\n[client] Finished sending ${frameCount} frames`);
       console.log("[client] Closing connection...");
       ws.close(1000, "Test complete");
@@ -67,6 +68,23 @@ ws.onopen = () => {
 
   // Start sending frames
   sendFrame();
+
+  // Sporadically send a VAD signal to simulate hybrid text/binary frame throughput
+  const vadInterval = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      const type = Math.random() > 0.5 ? "vad_speaking" : "vad_silence";
+      const payload = JSON.stringify({
+        type,
+        userId: "test-user-123",
+        sessionId,
+        ts: Date.now(),
+      });
+      ws.send(payload);
+      console.log(`[client] Sent VAD signal: ${type}`);
+    }
+  }, 5000);
+
+  // (We'll just clear the interval inside sendFrame's closure)
 };
 
 ws.onmessage = (event) => {
