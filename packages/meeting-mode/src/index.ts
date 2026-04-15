@@ -15,6 +15,8 @@ export * from "./alerts/router";
 export { AlertSubscriber } from "./alerts/subscriber";
 export * from "./alerts/types";
 export * from "./channels";
+export { SpeakerIdentifier } from "./speaker/identifier";
+export * from "./speaker/types";
 export * from "./utterance/types";
 
 let finalizer: UtteranceFinalizer | null = null;

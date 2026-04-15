@@ -33,6 +33,10 @@ export function audioChannel(sessionId: string): string {
   return `realtime.audio.${sessionId}`;
 }
 
+export function vadChannel(sessionId: string): string {
+  return `realtime.vad.${sessionId}`;
+}
+
 export function extractSessionId(channel: string): string | undefined {
   const parts = channel.split(".");
 
@@ -61,6 +65,9 @@ export function extractSessionId(channel: string): string | undefined {
     if (parts[1] === "stt") {
       return parts[2];
     }
+    if (parts[1] === "vad") {
+      return parts[2];
+    }
   }
 
   return parts.pop();
@@ -78,3 +85,4 @@ export function extractUserIdFromAlertChannel(
 
 export const ALERT_SHARED_PATTERN = "meeting.alert.*.shared";
 export const ALERT_PERSONAL_PATTERN = "meeting.alert.*.user.*";
+export const VAD_PATTERN = "realtime.vad.*";

@@ -1,14 +1,16 @@
 import Redis from "ioredis";
 import type { SessionEndEvent, SttResult } from "../../stt/src/types";
-import { SESSION_END, STT_FINAL_PATTERN } from "./channels";
+import { SESSION_END, STT_FINAL_PATTERN, VAD_PATTERN } from "./channels";
 import { REDIS_URL } from "./env";
 import { createMeetingModeLogger } from "./logger";
+import type { VadSignal } from "./speaker/types";
 import type { UtteranceFinalizer } from "./utterance/finalizer";
 
 const log = createMeetingModeLogger("subscriber");
 
 let subscriber: Redis | null = null;
 let finalizerRef: UtteranceFinalizer | null = null;
+let vadHandler: ((signal: VadSignal) => void) | null = null;
 
 async function handleSttResult(
   channel: string,
@@ -43,10 +45,25 @@ async function handleSessionEnd(message: string): Promise<void> {
   }
 }
 
+function handleVadSignal(message: string): void {
+  if (!vadHandler) {
+    return;
+  }
+
+  try {
+    const signal = JSON.parse(message) as VadSignal;
+    vadHandler(signal);
+  } catch (error) {
+    log.error({ err: error }, "Error handling VAD signal");
+  }
+}
+
 export async function startSubscriber(
-  finalizer: UtteranceFinalizer
+  finalizer: UtteranceFinalizer,
+  onVadSignal?: (signal: VadSignal) => void
 ): Promise<void> {
   finalizerRef = finalizer;
+  vadHandler = onVadSignal ?? null;
 
   subscriber = new Redis(REDIS_URL, {
     lazyConnect: true,
@@ -64,6 +81,11 @@ export async function startSubscriber(
   await subscriber.psubscribe(STT_FINAL_PATTERN);
   log.info({ pattern: STT_FINAL_PATTERN }, "Pattern subscribed to STT results");
 
+  if (vadHandler) {
+    await subscriber.psubscribe(VAD_PATTERN);
+    log.info({ pattern: VAD_PATTERN }, "Pattern subscribed to VAD signals");
+  }
+
   subscriber.on("message", async (channel, message) => {
     if (channel === SESSION_END) {
       await handleSessionEnd(message);
@@ -74,6 +96,9 @@ export async function startSubscriber(
     try {
       if (_pattern === STT_FINAL_PATTERN) {
         await handleSttResult(channel, message);
+      }
+      if (_pattern === VAD_PATTERN) {
+        handleVadSignal(message);
       }
     } catch (error) {
       log.error({ err: error, channel }, "Error handling message on pattern");
