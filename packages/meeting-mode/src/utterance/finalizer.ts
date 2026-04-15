@@ -1,6 +1,7 @@
 import type { SttResult } from "../../../stt/src/types";
 import { utteranceChannel } from "../channels";
 import { createMeetingModeLogger } from "../logger";
+import type { SpeakerIdentifier } from "../speaker/identifier";
 import { PartialBuffer } from "./buffer";
 import { UtteranceMerger } from "./merger";
 import { RingBuffer } from "./ring-buffer";
@@ -12,15 +13,75 @@ export interface UtterancePublisher {
   publish(channel: string, message: string): Promise<number>;
 }
 
+export type RetroactiveUpdateHandler = (
+  utterance: Utterance,
+  oldSpeakerType: string
+) => Promise<void>;
+
 export class UtteranceFinalizer {
   private readonly buffer = new Map<string, PartialBuffer>();
   private readonly mergers = new Map<string, UtteranceMerger>();
   private readonly sequences = new Map<string, number>();
   private readonly publisher: UtterancePublisher;
   private readonly ringBuffers = new Map<string, RingBuffer>();
+  private readonly speakerIdentifiers = new Map<string, SpeakerIdentifier>();
+  private readonly retroactiveHandlers: RetroactiveUpdateHandler[] = [];
 
   constructor(publisher: UtterancePublisher) {
     this.publisher = publisher;
+  }
+
+  registerSpeakerIdentifier(
+    sessionId: string,
+    identifier: SpeakerIdentifier
+  ): void {
+    this.speakerIdentifiers.set(sessionId, identifier);
+  }
+
+  onRetroactiveUpdate(handler: RetroactiveUpdateHandler): void {
+    this.retroactiveHandlers.push(handler);
+  }
+
+  async processRetroactiveIdentification(
+    sessionId: string,
+    diarizationIndex: number,
+    newSpeaker: Utterance["speaker"]
+  ): Promise<void> {
+    const ringBuffer = this.ringBuffers.get(sessionId);
+    if (!ringBuffer) {
+      return;
+    }
+
+    const utterances = ringBuffer.getBySpeakerId(`spk_${diarizationIndex}`);
+
+    for (const utterance of utterances) {
+      const oldType = utterance.speaker.type;
+      if (
+        utterance.speaker.type === newSpeaker.type &&
+        utterance.speaker.userId === newSpeaker.userId
+      ) {
+        continue;
+      }
+
+      utterance.speaker = newSpeaker;
+
+      await this.publishUtterance(utterance);
+
+      for (const handler of this.retroactiveHandlers) {
+        await handler(utterance, oldType);
+      }
+
+      log.info(
+        {
+          sessionId,
+          utteranceId: utterance.utteranceId,
+          diarizationIndex,
+          newType: newSpeaker.type,
+          oldType,
+        },
+        "Retroactive speaker identification applied"
+      );
+    }
   }
 
   async process(result: SttResult): Promise<void> {
@@ -53,7 +114,11 @@ export class UtteranceFinalizer {
     const utterance: Utterance = {
       utteranceId: this.generateUtteranceId(sessionId),
       sessionId,
-      speaker: createUnidentifiedSpeaker(result.diarizationIndex),
+      speaker: this.resolveSpeaker(
+        sessionId,
+        result.diarizationIndex,
+        finalized.timestamp
+      ),
       text: normalizedText,
       timestamp: finalized.timestamp,
       confidenceScore: finalized.confidence,
@@ -129,6 +194,18 @@ export class UtteranceFinalizer {
     const sequence = this.sequences.get(sessionId) || 0;
     this.sequences.set(sessionId, sequence + 1);
     return `${sessionId}:${sequence}`;
+  }
+
+  private resolveSpeaker(
+    sessionId: string,
+    diarizationIndex: number,
+    timestamp: number
+  ): Utterance["speaker"] {
+    const identifier = this.speakerIdentifiers.get(sessionId);
+    if (identifier) {
+      return identifier.identifySpeaker(diarizationIndex, timestamp);
+    }
+    return createUnidentifiedSpeaker(diarizationIndex);
   }
 
   private async publishUtterance(utterance: Utterance): Promise<void> {

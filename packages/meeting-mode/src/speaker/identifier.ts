@@ -37,6 +37,34 @@ export class SpeakerIdentifier {
     }
   }
 
+  hydrate(mappings: Map<number, SpeakerMapping>): void {
+    for (const [index, mapping] of mappings) {
+      this.identifiedSpeakers.set(index, mapping);
+      if (mapping.speaker.type === "TEAM" && mapping.speaker.userId) {
+        // Also register the late-hydrated user mapped backwards for internal linking
+        this.teamMembers.set(mapping.speaker.userId, {
+          userId: mapping.speaker.userId,
+          name: mapping.speaker.name,
+        });
+        this.userIdToSpeakerId.set(
+          mapping.speaker.userId,
+          mapping.speaker.speakerId
+        );
+
+        // Also fast-forward confirmations to avoid overriding it natively later
+        const counts = this.getConfirmationCounts(mapping.speaker.userId);
+        counts.set(
+          index,
+          Math.max(counts.get(index) ?? 0, this.config.minConfirmationSignals)
+        );
+      }
+    }
+    log.info(
+      { sessionId: this.sessionId, count: mappings.size },
+      "Hydrated existing speaker mappings from persistence"
+    );
+  }
+
   processVadSignal(signal: VadSignal): void {
     const { userId, type, ts } = signal;
 
