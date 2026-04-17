@@ -56,7 +56,7 @@ describe("Pipeline Integration: STT → Finalizer → Merger → RingBuffer → 
     expect(utterance.speaker.speakerId).toBe("spk_0");
     expect(utterance.speaker.type).toBe("EXTERNAL");
     expect(utterance.speaker.name).toBe("Speaker 1");
-    expect(utterance.speaker.diarizationIndex).toBe(0);
+    expect(utterance.speaker.diarizationIndices).toEqual([0]);
     expect(utterance.speaker.isCurrentUser).toBe(false);
     expect(utterance.speaker.confidence).toBe(0);
   });
@@ -208,7 +208,7 @@ describe("Pipeline Integration: STT → Finalizer → Merger → RingBuffer → 
       type: "TEAM" as const,
       userId: "user-alice",
       name: "Alice",
-      diarizationIndex: 0,
+      diarizationIndices: [0],
       isCurrentUser: true,
       confidence: 0.95,
     };
@@ -218,7 +218,7 @@ describe("Pipeline Integration: STT → Finalizer → Merger → RingBuffer → 
       type: "TEAM" as const,
       userId: "user-bob",
       name: "Bob",
-      diarizationIndex: 2,
+      diarizationIndices: [2],
       isCurrentUser: false,
       confidence: 0.9,
     };

@@ -60,7 +60,7 @@ describe("UtteranceFinalizer", () => {
       expect(published.speaker.speakerId).toBe("spk_2");
       expect(published.speaker.type).toBe("EXTERNAL");
       expect(published.speaker.name).toBe("Speaker 3");
-      expect(published.speaker.diarizationIndex).toBe(2);
+      expect(published.speaker.diarizationIndices).toEqual([2]);
       expect(published.speaker.isCurrentUser).toBe(false);
       expect(published.speaker.confidence).toBe(0);
     });

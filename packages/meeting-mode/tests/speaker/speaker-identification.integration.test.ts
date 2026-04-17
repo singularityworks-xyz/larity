@@ -17,7 +17,8 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       type: "vad_speaking",
       userId: aliceId,
       sessionId,
-      ts: baseTs,
+      clientSendTs: baseTs,
+      serverReceiveTs: baseTs,
     });
 
     const speaker0 = identifier.identifySpeaker(0, baseTs + 1500);
@@ -28,14 +29,16 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       type: "vad_silence",
       userId: aliceId,
       sessionId,
-      ts: baseTs + 3000,
+      clientSendTs: baseTs + 3000,
+      serverReceiveTs: baseTs + 3000,
     });
 
     identifier.processVadSignal({
       type: "vad_speaking",
       userId: bobId,
       sessionId,
-      ts: baseTs + 4000,
+      clientSendTs: baseTs + 4000,
+      serverReceiveTs: baseTs + 4000,
     });
 
     const speaker1 = identifier.identifySpeaker(1, baseTs + 5000);
@@ -46,7 +49,8 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       type: "vad_silence",
       userId: bobId,
       sessionId,
-      ts: baseTs + 7000,
+      clientSendTs: baseTs + 7000,
+      serverReceiveTs: baseTs + 7000,
     });
 
     const speaker2 = identifier.identifySpeaker(2, baseTs + 8000);
@@ -63,7 +67,13 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
     expect(speaker.type).toBe("EXTERNAL");
 
     const results = identifier.tryLateIdentification(
-      { type: "vad_speaking", userId: aliceId, sessionId, ts: now - 200 },
+      {
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: now - 200,
+        serverReceiveTs: now - 200,
+      },
       [{ diarizationIndex: 0, timestamp: now }]
     );
 
@@ -87,7 +97,8 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       type: "vad_speaking",
       userId: aliceId,
       sessionId,
-      ts: base,
+      clientSendTs: base,
+      serverReceiveTs: base,
     });
     const spk0 = identifier.identifySpeaker(0, base + 1000);
     expect(spk0.type).toBe("TEAM");
@@ -97,7 +108,8 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       type: "vad_silence",
       userId: aliceId,
       sessionId,
-      ts: base + 2000,
+      clientSendTs: base + 2000,
+      serverReceiveTs: base + 2000,
     });
 
     const spk1 = identifier.identifySpeaker(1, base + 3000);
@@ -107,7 +119,8 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       type: "vad_speaking",
       userId: bobId,
       sessionId,
-      ts: base + 5000,
+      clientSendTs: base + 5000,
+      serverReceiveTs: base + 5000,
     });
     const spk2 = identifier.identifySpeaker(2, base + 6000);
     expect(spk2.type).toBe("TEAM");
@@ -117,7 +130,8 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       type: "vad_silence",
       userId: bobId,
       sessionId,
-      ts: base + 7000,
+      clientSendTs: base + 7000,
+      serverReceiveTs: base + 7000,
     });
 
     const spk1Again = identifier.identifySpeaker(1, base + 3000);
@@ -139,13 +153,15 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       type: "vad_speaking",
       userId: aliceId,
       sessionId,
-      ts: now - 100,
+      clientSendTs: now - 100,
+      serverReceiveTs: now - 100,
     });
     identifier.processVadSignal({
       type: "vad_speaking",
       userId: bobId,
       sessionId,
-      ts: now - 50,
+      clientSendTs: now - 50,
+      serverReceiveTs: now - 50,
     });
 
     const speaker = identifier.identifySpeaker(0, now);
@@ -162,7 +178,8 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       type: "vad_speaking",
       userId: aliceId,
       sessionId,
-      ts: base,
+      clientSendTs: base,
+      serverReceiveTs: base,
     });
 
     const first = identifier.identifySpeaker(0, base + 1000);
@@ -172,18 +189,59 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       type: "vad_silence",
       userId: aliceId,
       sessionId,
-      ts: base + 2000,
+      clientSendTs: base + 2000,
+      serverReceiveTs: base + 2000,
     });
 
     identifier.processVadSignal({
       type: "vad_speaking",
       userId: aliceId,
       sessionId,
-      ts: base + 5000,
+      clientSendTs: base + 5000,
+      serverReceiveTs: base + 5000,
     });
 
     const second = identifier.identifySpeaker(0, base + 6000);
     expect(second.type).toBe("TEAM");
     expect(second.userId).toBe(aliceId);
+  });
+
+  it("Clock Skew Simulation: should correct for constant client skew", () => {
+    const identifier = new SpeakerIdentifier(sessionId);
+    identifier.registerTeamMember(aliceId, "Alice");
+
+    const base = Date.now();
+    // Simulate a client that is exactly 2000ms behind the server
+    const SKEW = -2000;
+
+    // Send 10 heartbeat VAD silence events to establish median offset
+    for (let i = 0; i < 10; i++) {
+      const srTs = base + i * 100;
+      identifier.processVadSignal({
+        type: "vad_silence",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: srTs + SKEW,
+        serverReceiveTs: srTs,
+      });
+    }
+
+    // Now send a real VAD speaking event
+    const srTs = base + 1500;
+    identifier.processVadSignal({
+      type: "vad_speaking",
+      userId: aliceId,
+      sessionId,
+      clientSendTs: srTs + SKEW,
+      serverReceiveTs: srTs,
+    });
+
+    // And an STT result arrived at the server 200ms later
+    const sttTimestamp = srTs + 200;
+    const speaker = identifier.identifySpeaker(0, sttTimestamp);
+
+    // It should successfully correlate because the VAD timestamp was offset-corrected internally!
+    expect(speaker.type).toBe("TEAM");
+    expect(speaker.userId).toBe(aliceId);
   });
 });

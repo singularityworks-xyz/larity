@@ -31,7 +31,8 @@ describe("SpeakerIdentifier", () => {
         type: "vad_speaking",
         userId: aliceId,
         sessionId,
-        ts: Date.now(),
+        clientSendTs: Date.now(),
+        serverReceiveTs: Date.now(),
       });
 
       expect(identifier.isSpeaking(aliceId)).toBe(true);
@@ -43,14 +44,16 @@ describe("SpeakerIdentifier", () => {
         type: "vad_speaking",
         userId: aliceId,
         sessionId,
-        ts: Date.now(),
+        clientSendTs: Date.now(),
+        serverReceiveTs: Date.now(),
       });
 
       identifier.processVadSignal({
         type: "vad_silence",
         userId: aliceId,
         sessionId,
-        ts: Date.now() + 2000,
+        clientSendTs: Date.now() + 2000,
+        serverReceiveTs: Date.now() + 2000,
       });
 
       expect(identifier.isSpeaking(aliceId)).toBe(false);
@@ -61,7 +64,8 @@ describe("SpeakerIdentifier", () => {
         type: "vad_speaking",
         userId: "unknown-user",
         sessionId,
-        ts: Date.now(),
+        clientSendTs: Date.now(),
+        serverReceiveTs: Date.now(),
       });
 
       expect(identifier.isSpeaking("unknown-user")).toBe(false);
@@ -76,7 +80,8 @@ describe("SpeakerIdentifier", () => {
         type: "vad_speaking",
         userId: aliceId,
         sessionId,
-        ts: now - 500,
+        clientSendTs: now - 500,
+        serverReceiveTs: now - 500,
       });
 
       const speaker = identifier.identifySpeaker(0, now);
@@ -84,7 +89,7 @@ describe("SpeakerIdentifier", () => {
       expect(speaker.type).toBe("TEAM");
       expect(speaker.userId).toBe(aliceId);
       expect(speaker.name).toBe("Alice");
-      expect(speaker.diarizationIndex).toBe(0);
+      expect(speaker.diarizationIndices).toContain(0);
     });
 
     it("should return EXTERNAL when no VAD is active", () => {
@@ -101,14 +106,16 @@ describe("SpeakerIdentifier", () => {
         type: "vad_speaking",
         userId: aliceId,
         sessionId,
-        ts: now - 500,
+        clientSendTs: now - 500,
+        serverReceiveTs: now - 500,
       });
 
       identifier.processVadSignal({
         type: "vad_speaking",
         userId: bobId,
         sessionId,
-        ts: now - 300,
+        clientSendTs: now - 300,
+        serverReceiveTs: now - 300,
       });
 
       const speaker = identifier.identifySpeaker(0, now);
@@ -123,7 +130,8 @@ describe("SpeakerIdentifier", () => {
         type: "vad_speaking",
         userId: aliceId,
         sessionId,
-        ts: now - 500,
+        clientSendTs: now - 500,
+        serverReceiveTs: now - 500,
       });
 
       const first = identifier.identifySpeaker(0, now);
@@ -133,7 +141,8 @@ describe("SpeakerIdentifier", () => {
         type: "vad_silence",
         userId: aliceId,
         sessionId,
-        ts: now + 1000,
+        clientSendTs: now + 1000,
+        serverReceiveTs: now + 1000,
       });
 
       const second = identifier.identifySpeaker(0, now + 5000);
@@ -148,7 +157,8 @@ describe("SpeakerIdentifier", () => {
         type: "vad_speaking",
         userId: aliceId,
         sessionId,
-        ts: now - 500,
+        clientSendTs: now - 500,
+        serverReceiveTs: now - 500,
       });
 
       const speaker0 = identifier.identifySpeaker(0, now);
@@ -159,19 +169,75 @@ describe("SpeakerIdentifier", () => {
         type: "vad_silence",
         userId: aliceId,
         sessionId,
-        ts: now + 1000,
+        clientSendTs: now + 1000,
+        serverReceiveTs: now + 1000,
       });
 
       identifier.processVadSignal({
         type: "vad_speaking",
         userId: bobId,
         sessionId,
-        ts: now + 2000,
+        clientSendTs: now + 2000,
+        serverReceiveTs: now + 2000,
       });
 
       const speaker1 = identifier.identifySpeaker(1, now + 2500);
       expect(speaker1.type).toBe("TEAM");
       expect(speaker1.userId).toBe(bobId);
+    });
+  });
+
+  describe("Diarization Reassignment (B.4)", () => {
+    it("should merge indices if a known user speaks after a >15s gap", () => {
+      // Setup speaker at T=0
+      identifier.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: 1000,
+        serverReceiveTs: 1000,
+      });
+      const firstIdentity = identifier.identifySpeaker(0, 1000); // Diarization Index 0
+
+      // 30 second gap
+      identifier.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: 31_000,
+        serverReceiveTs: 31_000,
+      });
+
+      // Deepgram gives them index 1 now
+      const mergedIdentity = identifier.identifySpeaker(1, 31_000);
+
+      expect(mergedIdentity.speakerId).toBe(firstIdentity.speakerId);
+      expect(mergedIdentity.diarizationIndices).toContain(0);
+      expect(mergedIdentity.diarizationIndices).toContain(1);
+    });
+
+    it("should create a conflict identity if a known user maps to two indices within <15s", () => {
+      // Alice speaks at index 0
+      identifier.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: 1000,
+        serverReceiveTs: 1000,
+      });
+      const firstIdentity = identifier.identifySpeaker(0, 1000);
+
+      // 2 seconds later, Deepgram hallucinates index 1 for Alice
+      identifier.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: 3000,
+        serverReceiveTs: 3000,
+      });
+      const conflictIdentity = identifier.identifySpeaker(1, 3000);
+
+      expect(conflictIdentity.speakerId).not.toBe(firstIdentity.speakerId);
     });
   });
 
@@ -187,7 +253,8 @@ describe("SpeakerIdentifier", () => {
           type: "vad_speaking",
           userId: aliceId,
           sessionId,
-          ts: now,
+          clientSendTs: now,
+          serverReceiveTs: now,
         },
         [{ diarizationIndex: 0, timestamp: now }]
       );
@@ -205,7 +272,8 @@ describe("SpeakerIdentifier", () => {
         type: "vad_speaking",
         userId: aliceId,
         sessionId,
-        ts: now - 500,
+        clientSendTs: now - 500,
+        serverReceiveTs: now - 500,
       });
 
       identifier.identifySpeaker(0, now);
@@ -215,7 +283,8 @@ describe("SpeakerIdentifier", () => {
           type: "vad_speaking",
           userId: aliceId,
           sessionId,
-          ts: now,
+          clientSendTs: now,
+          serverReceiveTs: now,
         },
         [{ diarizationIndex: 0, timestamp: now }]
       );
@@ -234,7 +303,8 @@ describe("SpeakerIdentifier", () => {
           type: "vad_speaking",
           userId: aliceId,
           sessionId,
-          ts: now,
+          clientSendTs: now,
+          serverReceiveTs: now,
         },
         [
           { diarizationIndex: 0, timestamp: now },
@@ -257,7 +327,8 @@ describe("SpeakerIdentifier", () => {
         type: "vad_speaking",
         userId: aliceId,
         sessionId,
-        ts: now - 500,
+        clientSendTs: now - 500,
+        serverReceiveTs: now - 500,
       });
 
       identifier.identifySpeaker(0, now);
@@ -283,7 +354,8 @@ describe("SpeakerIdentifier", () => {
         type: "vad_speaking",
         userId: aliceId,
         sessionId,
-        ts: now - 500,
+        clientSendTs: now - 500,
+        serverReceiveTs: now - 500,
       });
 
       identifier.identifySpeaker(0, now);
@@ -292,14 +364,16 @@ describe("SpeakerIdentifier", () => {
         type: "vad_silence",
         userId: aliceId,
         sessionId,
-        ts: now + 1000,
+        clientSendTs: now + 1000,
+        serverReceiveTs: now + 1000,
       });
 
       identifier.processVadSignal({
         type: "vad_speaking",
         userId: bobId,
         sessionId,
-        ts: now + 2000,
+        clientSendTs: now + 2000,
+        serverReceiveTs: now + 2000,
       });
 
       identifier.identifySpeaker(1, now + 2500);
@@ -319,7 +393,8 @@ describe("SpeakerIdentifier", () => {
         type: "vad_speaking",
         userId: aliceId,
         sessionId,
-        ts: now,
+        clientSendTs: now,
+        serverReceiveTs: now,
       });
 
       identifier.identifySpeaker(0, now);
@@ -339,7 +414,8 @@ describe("SpeakerIdentifier", () => {
         type: "vad_speaking",
         userId: aliceId,
         sessionId,
-        ts: now,
+        clientSendTs: now,
+        serverReceiveTs: now,
       });
 
       identifier.identifySpeaker(0, now);
@@ -365,7 +441,8 @@ describe("SpeakerIdentifier", () => {
         type: "vad_speaking",
         userId: aliceId,
         sessionId,
-        ts: now - 300,
+        clientSendTs: now - 300,
+        serverReceiveTs: now - 300,
       });
 
       const speaker = customIdentifier.identifySpeaker(0, now);
@@ -373,7 +450,7 @@ describe("SpeakerIdentifier", () => {
     });
 
     it("should use default config values", () => {
-      expect(DEFAULT_SPEAKER_CONFIG.correlationWindowMs).toBe(300);
+      expect(DEFAULT_SPEAKER_CONFIG.correlationWindowMs).toBe(250);
       expect(DEFAULT_SPEAKER_CONFIG.lateCorrelationWindowMs).toBe(2000);
       expect(DEFAULT_SPEAKER_CONFIG.minConfirmationSignals).toBe(1);
     });

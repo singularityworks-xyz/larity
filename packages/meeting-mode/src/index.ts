@@ -19,7 +19,10 @@ export { SpeakerIdentifier } from "./speaker/identifier";
 export * from "./speaker/types";
 export * from "./utterance/types";
 
+import { SpeakerManager } from "./speaker/manager";
+
 let finalizer: UtteranceFinalizer | null = null;
+let speakerManager: SpeakerManager | null = null;
 
 //graceful shutdown handler
 async function shutdown(signal: string): Promise<void> {
@@ -67,11 +70,12 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  speakerManager = new SpeakerManager();
   finalizer = new UtteranceFinalizer({
     publish: (channel, message) => redisClient.publish(channel, message),
   });
 
-  await startSubscriber(finalizer);
+  await startSubscriber(finalizer, speakerManager, redisClient);
   rootLogger.info("Utterance Finalizer is running");
 
   process.on("SIGINT", () => shutdown("SIGINT"));

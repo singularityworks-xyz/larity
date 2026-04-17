@@ -4,7 +4,8 @@ export interface VadSignal {
   type: "vad_speaking" | "vad_silence";
   userId: string;
   sessionId: string;
-  ts: number;
+  clientSendTs: number;
+  serverReceiveTs: number;
 }
 
 export interface VadSpeakerState {
@@ -19,6 +20,7 @@ export interface SpeakerMapping {
   speaker: SpeakerIdentity;
   confirmedAt: number;
   confidence: number;
+  lastUtteranceTs: number;
 }
 
 export interface CorrelationResult {
@@ -42,7 +44,7 @@ export interface SpeakerIdentifierConfig {
 }
 
 export const DEFAULT_SPEAKER_CONFIG: SpeakerIdentifierConfig = {
-  correlationWindowMs: 300,
+  correlationWindowMs: 250,
   lateCorrelationWindowMs: 2000,
   minConfirmationSignals: 1,
 };

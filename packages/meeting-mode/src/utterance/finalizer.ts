@@ -143,6 +143,10 @@ export class UtteranceFinalizer {
     ringBuffer.push(utterance);
   }
 
+  getRingBuffer(sessionId: string): RingBuffer | undefined {
+    return this.ringBuffers.get(sessionId);
+  }
+
   async closeSession(sessionId: string): Promise<void> {
     log.info({ sessionId }, "Closing session");
 

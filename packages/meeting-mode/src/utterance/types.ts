@@ -26,8 +26,8 @@ export interface SpeakerIdentity {
   /** Display name (team member name or "Speaker 1", "Client", etc.) */
   name: string;
 
-  /** Deepgram's diarization speaker integer (0, 1, 2...) */
-  diarizationIndex?: number;
+  /** Deepgram's diarization speaker integers (e.g. 0, 1, 2...) */
+  diarizationIndices: number[];
 
   /** Is this the person viewing this Larity instance? */
   isCurrentUser: boolean;
@@ -71,7 +71,7 @@ export function createUnidentifiedSpeaker(
     speakerId: `spk_${diarizationIndex}`,
     type: "EXTERNAL",
     name: `Speaker ${diarizationIndex + 1}`,
-    diarizationIndex,
+    diarizationIndices: [diarizationIndex],
     isCurrentUser: false,
     confidence: 0,
   };

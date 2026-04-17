@@ -1,6 +1,7 @@
 import { createMeetingModeLogger } from "../logger";
 import type { SpeakerIdentity } from "../utterance/types";
 import { createUnidentifiedSpeaker } from "../utterance/types";
+import { ClockOffsetTracker } from "./clock-offset";
 import {
   DEFAULT_SPEAKER_CONFIG,
   type SpeakerIdentifierConfig,
@@ -15,12 +16,17 @@ export class SpeakerIdentifier {
   private readonly sessionId: string;
   private readonly config: SpeakerIdentifierConfig;
   private readonly vadState: Map<string, VadSpeakerState> = new Map();
-  private readonly identifiedSpeakers: Map<number, SpeakerMapping> = new Map();
+
+  private readonly indexToSpeakerId: Map<number, string> = new Map();
+  private readonly speakerMappings: Map<string, SpeakerMapping> = new Map();
+
   private readonly confirmationCounts: Map<string, Map<number, number>> =
     new Map();
   private readonly userIdToSpeakerId: Map<string, string> = new Map();
   private readonly teamMembers: Map<string, { userId: string; name: string }> =
     new Map();
+
+  private readonly clockTracker = new ClockOffsetTracker();
 
   constructor(sessionId: string, config?: Partial<SpeakerIdentifierConfig>) {
     this.sessionId = sessionId;
@@ -39,19 +45,17 @@ export class SpeakerIdentifier {
 
   hydrate(mappings: Map<number, SpeakerMapping>): void {
     for (const [index, mapping] of mappings) {
-      this.identifiedSpeakers.set(index, mapping);
+      const speakerId = mapping.speaker.speakerId;
+      this.indexToSpeakerId.set(index, speakerId);
+      this.speakerMappings.set(speakerId, mapping);
+
       if (mapping.speaker.type === "TEAM" && mapping.speaker.userId) {
-        // Also register the late-hydrated user mapped backwards for internal linking
         this.teamMembers.set(mapping.speaker.userId, {
           userId: mapping.speaker.userId,
           name: mapping.speaker.name,
         });
-        this.userIdToSpeakerId.set(
-          mapping.speaker.userId,
-          mapping.speaker.speakerId
-        );
+        this.userIdToSpeakerId.set(mapping.speaker.userId, speakerId);
 
-        // Also fast-forward confirmations to avoid overriding it natively later
         const counts = this.getConfirmationCounts(mapping.speaker.userId);
         counts.set(
           index,
@@ -66,17 +70,21 @@ export class SpeakerIdentifier {
   }
 
   processVadSignal(signal: VadSignal): void {
-    const { userId, type, ts } = signal;
+    const { userId, type, clientSendTs, serverReceiveTs } = signal;
 
     const teamMember = this.teamMembers.get(userId);
     if (!teamMember) {
       return;
     }
 
+    this.clockTracker.addSample(userId, clientSendTs, serverReceiveTs);
+    const medianOffset = this.clockTracker.getMedianOffset(userId);
+    const adjustedTs = clientSendTs + medianOffset;
+
     if (type === "vad_speaking") {
-      this.vadState.set(userId, { isSpeaking: true, startTs: ts });
+      this.vadState.set(userId, { isSpeaking: true, startTs: adjustedTs });
     } else {
-      this.vadState.set(userId, { isSpeaking: false, startTs: ts });
+      this.vadState.set(userId, { isSpeaking: false, startTs: adjustedTs });
     }
   }
 
@@ -84,9 +92,17 @@ export class SpeakerIdentifier {
     diarizationIndex: number,
     utteranceTimestamp: number
   ): SpeakerIdentity {
-    const cached = this.identifiedSpeakers.get(diarizationIndex);
-    if (cached) {
-      return cached.speaker;
+    const existingSpeakerId = this.indexToSpeakerId.get(diarizationIndex);
+    if (existingSpeakerId) {
+      const mapping = this.speakerMappings.get(existingSpeakerId);
+      if (mapping) {
+        mapping.lastUtteranceTs = utteranceTimestamp;
+        return mapping.speaker;
+      }
+    }
+
+    if (this.clockTracker.isUntrusted()) {
+      return createUnidentifiedSpeaker(diarizationIndex);
     }
 
     const correlatedUserId = this.correlate(
@@ -97,17 +113,39 @@ export class SpeakerIdentifier {
     if (correlatedUserId) {
       const teamMember = this.teamMembers.get(correlatedUserId);
       if (teamMember) {
+        const targetSpeakerId = this.userIdToSpeakerId.get(correlatedUserId);
+
+        if (targetSpeakerId) {
+          const existingMapping = this.speakerMappings.get(targetSpeakerId);
+          if (existingMapping) {
+            const gap = utteranceTimestamp - existingMapping.lastUtteranceTs;
+
+            if (gap > 15_000) {
+              existingMapping.speaker.diarizationIndices.push(diarizationIndex);
+              existingMapping.lastUtteranceTs = utteranceTimestamp;
+              this.indexToSpeakerId.set(diarizationIndex, targetSpeakerId);
+              return existingMapping.speaker;
+            }
+            // if gap <= 15000, we treat it as a conflict and create a new identity
+          }
+        }
+
         const speaker = this.createTeamIdentity(
           correlatedUserId,
           teamMember.name,
           diarizationIndex
         );
-        this.identifiedSpeakers.set(diarizationIndex, {
+
+        const mapping: SpeakerMapping = {
           diarizationIndex,
           speaker,
           confirmedAt: Date.now(),
           confidence: 1,
-        });
+          lastUtteranceTs: utteranceTimestamp,
+        };
+
+        this.indexToSpeakerId.set(diarizationIndex, speaker.speakerId);
+        this.speakerMappings.set(speaker.speakerId, mapping);
 
         log.info(
           { diarizationIndex, userId: correlatedUserId, name: teamMember.name },
@@ -169,6 +207,50 @@ export class SpeakerIdentifier {
     return undefined;
   }
 
+  private resolveLateIdentity(
+    correlatedUserId: string,
+    diarizationIndex: number,
+    timestamp: number
+  ): SpeakerIdentity {
+    const teamMember = this.teamMembers.get(correlatedUserId);
+    if (!teamMember) {
+      return createUnidentifiedSpeaker(diarizationIndex);
+    }
+
+    const speakerId = this.userIdToSpeakerId.get(correlatedUserId);
+
+    if (speakerId) {
+      const existingMapping = this.speakerMappings.get(speakerId);
+      if (existingMapping) {
+        const gap = timestamp - existingMapping.lastUtteranceTs;
+        if (gap > 15_000) {
+          existingMapping.speaker.diarizationIndices.push(diarizationIndex);
+          existingMapping.lastUtteranceTs = timestamp;
+          this.indexToSpeakerId.set(diarizationIndex, speakerId);
+          return existingMapping.speaker;
+        }
+      }
+    }
+
+    const speaker = this.createTeamIdentity(
+      correlatedUserId,
+      teamMember.name,
+      diarizationIndex
+    );
+
+    const mapping: SpeakerMapping = {
+      diarizationIndex,
+      speaker,
+      confirmedAt: Date.now(),
+      confidence: 0.9,
+      lastUtteranceTs: timestamp,
+    };
+    this.indexToSpeakerId.set(diarizationIndex, speaker.speakerId);
+    this.speakerMappings.set(speaker.speakerId, mapping);
+
+    return speaker;
+  }
+
   tryLateIdentification(
     signal: VadSignal,
     pendingUtterances: Array<{ diarizationIndex: number; timestamp: number }>
@@ -180,8 +262,12 @@ export class SpeakerIdentifier {
 
     this.processVadSignal(signal);
 
+    if (this.clockTracker.isUntrusted()) {
+      return results;
+    }
+
     for (const pending of pendingUtterances) {
-      if (this.identifiedSpeakers.has(pending.diarizationIndex)) {
+      if (this.indexToSpeakerId.has(pending.diarizationIndex)) {
         continue;
       }
 
@@ -191,22 +277,14 @@ export class SpeakerIdentifier {
       );
 
       if (correlatedUserId) {
-        const teamMember = this.teamMembers.get(correlatedUserId);
-        if (teamMember) {
-          const speaker = this.createTeamIdentity(
-            correlatedUserId,
-            teamMember.name,
-            pending.diarizationIndex
-          );
-          this.identifiedSpeakers.set(pending.diarizationIndex, {
-            diarizationIndex: pending.diarizationIndex,
-            speaker,
-            confirmedAt: Date.now(),
-            confidence: 0.9,
-          });
+        const speaker = this.resolveLateIdentity(
+          correlatedUserId,
+          pending.diarizationIndex,
+          pending.timestamp
+        );
 
+        if (speaker.type !== "EXTERNAL") {
           results.push({ diarizationIndex: pending.diarizationIndex, speaker });
-
           log.info(
             {
               diarizationIndex: pending.diarizationIndex,
@@ -222,11 +300,22 @@ export class SpeakerIdentifier {
   }
 
   getSpeakerMapping(diarizationIndex: number): SpeakerMapping | undefined {
-    return this.identifiedSpeakers.get(diarizationIndex);
+    const speakerId = this.indexToSpeakerId.get(diarizationIndex);
+    if (!speakerId) {
+      return undefined;
+    }
+    return this.speakerMappings.get(speakerId);
   }
 
   getAllMappings(): Map<number, SpeakerMapping> {
-    return new Map(this.identifiedSpeakers);
+    const result = new Map<number, SpeakerMapping>();
+    for (const [index, speakerId] of this.indexToSpeakerId) {
+      const mapping = this.speakerMappings.get(speakerId);
+      if (mapping) {
+        result.set(index, mapping);
+      }
+    }
+    return result;
   }
 
   getVadState(): Map<string, VadSpeakerState> {
@@ -246,7 +335,7 @@ export class SpeakerIdentifier {
   }
 
   getIdentifiedCount(): number {
-    return this.identifiedSpeakers.size;
+    return this.indexToSpeakerId.size;
   }
 
   getStats(): {
@@ -263,14 +352,15 @@ export class SpeakerIdentifier {
 
     return {
       teamMembers: this.teamMembers.size,
-      identifiedSpeakers: this.identifiedSpeakers.size,
+      identifiedSpeakers: this.indexToSpeakerId.size,
       activeVadSignals: activeVad,
     };
   }
 
   reset(): void {
     this.vadState.clear();
-    this.identifiedSpeakers.clear();
+    this.indexToSpeakerId.clear();
+    this.speakerMappings.clear();
     this.confirmationCounts.clear();
     log.info({ sessionId: this.sessionId }, "Speaker identifier reset");
   }
@@ -280,8 +370,14 @@ export class SpeakerIdentifier {
     name: string,
     diarizationIndex: number
   ): SpeakerIdentity {
-    const speakerId =
-      this.userIdToSpeakerId.get(userId) ?? `spk_${diarizationIndex}`;
+    let speakerId = this.userIdToSpeakerId.get(userId);
+
+    // if there's a conflict or this user already has an identity but we're creating a new one (gap < 15s)
+    // we should make sure the ID is unique for this session
+    if (!speakerId || this.speakerMappings.has(speakerId)) {
+      speakerId = `spk_${diarizationIndex}_${Date.now()}`;
+    }
+
     const isCurrentUser = false;
 
     return {
@@ -289,7 +385,7 @@ export class SpeakerIdentifier {
       type: "TEAM",
       userId,
       name,
-      diarizationIndex,
+      diarizationIndices: [diarizationIndex],
       isCurrentUser,
       confidence: 1,
     };

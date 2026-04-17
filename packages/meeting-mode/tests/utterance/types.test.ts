@@ -24,7 +24,7 @@ describe("SpeakerIdentity", () => {
       type: "TEAM",
       userId: "user-abc",
       name: "Alice",
-      diarizationIndex: 0,
+      diarizationIndices: [0],
       isCurrentUser: true,
       confidence: 0.95,
     };
@@ -33,7 +33,7 @@ describe("SpeakerIdentity", () => {
     expect(speaker.type).toBe("TEAM");
     expect(speaker.userId).toBe("user-abc");
     expect(speaker.name).toBe("Alice");
-    expect(speaker.diarizationIndex).toBe(0);
+    expect(speaker.diarizationIndices).toEqual([0]);
     expect(speaker.isCurrentUser).toBe(true);
     expect(speaker.confidence).toBe(0.95);
   });
@@ -43,7 +43,7 @@ describe("SpeakerIdentity", () => {
       speakerId: "spk_1",
       type: "EXTERNAL",
       name: "Speaker 2",
-      diarizationIndex: 1,
+      diarizationIndices: [1],
       isCurrentUser: false,
       confidence: 0,
     };
@@ -51,7 +51,7 @@ describe("SpeakerIdentity", () => {
     expect(speaker.userId).toBeUndefined();
   });
 
-  it("should allow optional diarizationIndex to be undefined", () => {
+  it("should allow optional diarizationIndices to be empty", () => {
     const speaker: SpeakerIdentity = {
       speakerId: "spk_resolved",
       type: "TEAM",
@@ -59,9 +59,10 @@ describe("SpeakerIdentity", () => {
       name: "Bob",
       isCurrentUser: false,
       confidence: 0.9,
+      diarizationIndices: [],
     };
 
-    expect(speaker.diarizationIndex).toBeUndefined();
+    expect(speaker.diarizationIndices).toEqual([]);
   });
 });
 
@@ -97,9 +98,9 @@ describe("createUnidentifiedSpeaker", () => {
     expect(createUnidentifiedSpeaker(4).name).toBe("Speaker 5");
   });
 
-  it("should store the diarizationIndex", () => {
+  it("should store the diarizationIndices", () => {
     const speaker = createUnidentifiedSpeaker(2);
-    expect(speaker.diarizationIndex).toBe(2);
+    expect(speaker.diarizationIndices).toEqual([2]);
   });
 
   it("should not include userId", () => {
@@ -113,7 +114,7 @@ describe("createUnidentifiedSpeaker", () => {
       speakerId: "spk_1",
       type: "EXTERNAL",
       name: "Speaker 2",
-      diarizationIndex: 1,
+      diarizationIndices: [1],
       isCurrentUser: false,
       confidence: 0,
     });

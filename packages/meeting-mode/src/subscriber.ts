@@ -1,8 +1,14 @@
 import Redis from "ioredis";
 import type { SessionEndEvent, SttResult } from "../../stt/src/types";
-import { SESSION_END, STT_FINAL_PATTERN, VAD_PATTERN } from "./channels";
+import {
+  PARTICIPANT_JOIN,
+  SESSION_END,
+  STT_FINAL_PATTERN,
+  VAD_PATTERN,
+} from "./channels";
 import { REDIS_URL } from "./env";
 import { createMeetingModeLogger } from "./logger";
+import type { SpeakerManager } from "./speaker/manager";
 import type { VadSignal } from "./speaker/types";
 import type { UtteranceFinalizer } from "./utterance/finalizer";
 
@@ -10,7 +16,8 @@ const log = createMeetingModeLogger("subscriber");
 
 let subscriber: Redis | null = null;
 let finalizerRef: UtteranceFinalizer | null = null;
-let vadHandler: ((signal: VadSignal) => void) | null = null;
+let speakerManagerRef: SpeakerManager | null = null;
+let _redisClientRef: Redis | null = null;
 
 async function handleSttResult(
   channel: string,
@@ -19,10 +26,14 @@ async function handleSttResult(
   try {
     const result = JSON.parse(message) as SttResult;
 
-    if (!finalizerRef) {
-      log.error("No finalizer registered!");
+    if (!(finalizerRef && speakerManagerRef)) {
+      log.error("No finalizer or speaker manager registered!");
       return;
     }
+
+    // Register identifier so finalizer can resolve speakers
+    const identifier = speakerManagerRef.getIdentifier(result.sessionId);
+    finalizerRef.registerSpeakerIdentifier(result.sessionId, identifier);
 
     await finalizerRef.process(result);
   } catch (error) {
@@ -33,6 +44,10 @@ async function handleSttResult(
 async function handleSessionEnd(message: string): Promise<void> {
   try {
     const event = JSON.parse(message) as SessionEndEvent;
+
+    if (speakerManagerRef) {
+      speakerManagerRef.removeSession(event.sessionId);
+    }
 
     if (!finalizerRef) {
       log.error("No finalizer registered!");
@@ -45,14 +60,62 @@ async function handleSessionEnd(message: string): Promise<void> {
   }
 }
 
-function handleVadSignal(message: string): void {
-  if (!vadHandler) {
+function handleParticipantJoin(message: string): void {
+  try {
+    const event = JSON.parse(message) as {
+      sessionId: string;
+      userId: string;
+      name?: string;
+    };
+    if (speakerManagerRef) {
+      // In a real system, we'd fetch the user's name from DB or Redis.
+      // For now, we just pass the userId as the name if we don't have it.
+      const name = event.name || event.userId;
+      speakerManagerRef.registerTeamMember(event.sessionId, event.userId, name);
+    }
+  } catch (error) {
+    log.error({ err: error }, "Error handling participant join");
+  }
+}
+
+async function handleVadSignal(message: string): Promise<void> {
+  if (!(speakerManagerRef && finalizerRef)) {
     return;
   }
 
   try {
     const signal = JSON.parse(message) as VadSignal;
-    vadHandler(signal);
+    speakerManagerRef.handleVadSignal(signal);
+
+    const identifier = speakerManagerRef.getIdentifier(signal.sessionId);
+    const ringBuffer = finalizerRef.getRingBuffer(signal.sessionId);
+
+    if (ringBuffer) {
+      // Fetch unidentified utterances from the last 2 seconds
+      const recentTs = Date.now() - 2000;
+      const pendingUtterances = ringBuffer
+        .getAll()
+        .filter((u) => u.speaker.type === "EXTERNAL" && u.timestamp >= recentTs)
+        .map((u) => ({
+          diarizationIndex: u.speaker.diarizationIndices[0] ?? 0,
+          timestamp: u.timestamp,
+        }));
+
+      if (pendingUtterances.length > 0) {
+        const newlyIdentified = identifier.tryLateIdentification(
+          signal,
+          pendingUtterances
+        );
+
+        for (const { diarizationIndex, speaker } of newlyIdentified) {
+          await finalizerRef.processRetroactiveIdentification(
+            signal.sessionId,
+            diarizationIndex,
+            speaker
+          );
+        }
+      }
+    }
   } catch (error) {
     log.error({ err: error }, "Error handling VAD signal");
   }
@@ -60,10 +123,12 @@ function handleVadSignal(message: string): void {
 
 export async function startSubscriber(
   finalizer: UtteranceFinalizer,
-  onVadSignal?: (signal: VadSignal) => void
+  speakerManager: SpeakerManager,
+  redisClient: Redis
 ): Promise<void> {
   finalizerRef = finalizer;
-  vadHandler = onVadSignal ?? null;
+  speakerManagerRef = speakerManager;
+  _redisClientRef = redisClient;
 
   subscriber = new Redis(REDIS_URL, {
     lazyConnect: true,
@@ -78,17 +143,23 @@ export async function startSubscriber(
   await subscriber.subscribe(SESSION_END);
   log.info({ channel: SESSION_END }, "Subscribed to session end channel");
 
+  await subscriber.subscribe(PARTICIPANT_JOIN);
+  log.info(
+    { channel: PARTICIPANT_JOIN },
+    "Subscribed to participant join channel"
+  );
+
   await subscriber.psubscribe(STT_FINAL_PATTERN);
   log.info({ pattern: STT_FINAL_PATTERN }, "Pattern subscribed to STT results");
 
-  if (vadHandler) {
-    await subscriber.psubscribe(VAD_PATTERN);
-    log.info({ pattern: VAD_PATTERN }, "Pattern subscribed to VAD signals");
-  }
+  await subscriber.psubscribe(VAD_PATTERN);
+  log.info({ pattern: VAD_PATTERN }, "Pattern subscribed to VAD signals");
 
   subscriber.on("message", async (channel, message) => {
     if (channel === SESSION_END) {
       await handleSessionEnd(message);
+    } else if (channel === PARTICIPANT_JOIN) {
+      await handleParticipantJoin(message);
     }
   });
 
@@ -98,7 +169,7 @@ export async function startSubscriber(
         await handleSttResult(channel, message);
       }
       if (_pattern === VAD_PATTERN) {
-        handleVadSignal(message);
+        await handleVadSignal(message);
       }
     } catch (error) {
       log.error({ err: error, channel }, "Error handling message on pattern");
@@ -120,6 +191,8 @@ export function stopSubscriber(): void {
     subscriber.disconnect();
     subscriber = null;
     finalizerRef = null;
+    speakerManagerRef = null;
+    _redisClientRef = null;
     log.info("Disconnected");
   }
 }
