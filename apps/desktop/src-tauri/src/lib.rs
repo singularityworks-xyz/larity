@@ -1,14 +1,100 @@
+use tauri::{AppHandle, Manager, State};
+use audio::{AudioDevice, AudioCaptureStatus};
+
+pub mod audio;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+#[tauri::command]
+fn audio_capture_list_devices() -> Result<Vec<AudioDevice>, String> {
+    audio::engine::list_devices()
+}
+
+#[tauri::command]
+fn audio_capture_start(
+    app: AppHandle,
+    state: State<'_, audio::AudioState>,
+    session_id: String,
+) -> Result<(), String> {
+    let mut is_capturing = state.is_capturing.blocking_lock();
+    if *is_capturing {
+        return Err("Capture is already running".to_string());
+    }
+
+    // Start engine
+    let stream = audio::engine::start_capture(app.clone(), session_id.clone())?;
+
+    // Keep the stream alive by moving it to a background thread
+    let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+    
+    *state.stop_tx.blocking_lock() = Some(tx);
+    *state.current_session.blocking_lock() = Some(session_id);
+    *is_capturing = true;
+
+    // Stream must not drop before we stop
+    tauri::async_runtime::spawn(async move {
+        // Wait for a stop signal
+        let _ = rx.recv().await;
+        // Dropping stream will stop the cpal capture
+        drop(stream);
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+fn audio_capture_stop(state: State<'_, audio::AudioState>) -> Result<(), String> {
+    let mut is_capturing = state.is_capturing.blocking_lock();
+    if !*is_capturing {
+        return Err("Capture is not running".to_string());
+    }
+
+    if let Some(tx) = state.stop_tx.blocking_lock().take() {
+        let _ = tx.try_send(());
+    }
+
+    *state.current_session.blocking_lock() = None;
+    *is_capturing = false;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn audio_capture_status(state: State<'_, audio::AudioState>) -> Result<AudioCaptureStatus, String> {
+    let is_capturing = *state.is_capturing.blocking_lock();
+    
+    Ok(AudioCaptureStatus {
+        active: is_capturing,
+        backend: if cfg!(target_os = "windows") {
+            "wasapi".to_string()
+        } else if cfg!(target_os = "macos") {
+            "screencapturekit-fallback".to_string()
+        } else {
+            "alsa-monitor".to_string()
+        },
+        error: None,
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            app.manage(audio::AudioState::default());
+            Ok(())
+        })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            audio_capture_list_devices,
+            audio_capture_start,
+            audio_capture_stop,
+            audio_capture_status,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

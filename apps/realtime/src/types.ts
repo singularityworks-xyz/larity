@@ -63,7 +63,8 @@ export interface VadSignal {
   type: "vad_speaking" | "vad_silence";
   userId: string;
   sessionId: string;
-  ts: number;
+  clientSendTs: number;
+  serverReceiveTs: number;
 }
 
 /**

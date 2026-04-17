@@ -405,57 +405,57 @@ The `packages/stt` package has Deepgram integration but needs:
 
 > **Architectural additions on top of Day 8-9's working VAD correlation:** clock-offset reconciliation (B.5) and diarization-index reassignment-merge (B.4). These are the two failure modes that break naive VAD correlation in production. See [meeting-mode.md §3.3.1 and §3.3.2](./meeting-mode.md#331-clock-offset-reconciliation).
 
-- [ ] Wire full pipeline: Audio → Deepgram (diarized) → `SttResult` (with `diarizationIndex`) → `SpeakerIdentifier` → `Utterance` (with `SpeakerIdentity`)
-- [ ] Update `UtteranceFinalizer`: emit utterance immediately with current identity (EXTERNAL if not yet identified), do not block on identification
-- [ ] Handle retroactive identity updates: when a diarization index gets identified after utterances were already emitted → re-emit corrected utterances to all subscribers
-- [ ] Broadcast all identified utterances to session participants via Redis (`meeting.utterance.{sessionId}`)
-- [ ] Update `apps/realtime` to forward VAD signals from clients to the `SpeakerIdentifier`
-- [ ] **Per-client clock-offset reconciliation (B.5):**
-  - [ ] Every client message carries a monotonic `ts` (`performance.now`-derived)
-  - [ ] Server computes `sampleOffset = serverReceiveTs - clientSendTs - halfRTT` on each message (heartbeat + VAD)
-  - [ ] Maintain rolling median (last 30 samples) per userId per session — **median, not mean** — robust to jitter spikes
-  - [ ] Apply offset to VAD timestamps before correlation: `adjustedTs = vadEvent.ts + clientOffset`
-  - [ ] Tighten correlation window to ±250ms (from ±300ms) now that drift is corrected, not tolerated
-  - [ ] If offset median shifts >500ms within a short window (likely sleep/resume), mark recent VAD untrusted for ~2s and defer assignment in that gap
-- [ ] **Diarization index reassignment-merge (B.4):**
-  - [ ] Change `SpeakerIdentity.diarizationIndex` (single) → `SpeakerIdentity.diarizationIndices: Set<number>`
-  - [ ] Restructure cache from `Map<diarizationIndex, SpeakerIdentity>` to `Map<diarizationIndex, speakerId>` → `Map<speakerId, SpeakerIdentity>`
-  - [ ] On a new, unseen diarization index: run VAD correlation → candidate userId; if an existing SpeakerIdentity has the same userId AND gap since its `lastUtteranceTs` > 15s, **merge** (add the new index to the existing identity's set)
-  - [ ] Do not emit a "new speaker" event for merged indices
-  - [ ] If gap < 15s and correlation conflicts → genuinely a different speaker → new SpeakerIdentity
-- [ ] End-to-end integration test: 3-person simulated session (2 TEAM + 1 EXTERNAL) → correct TEAM/EXTERNAL attribution
-- [ ] Test retroactive identification: utterance emitted as EXTERNAL, VAD signal arrives 500ms later, re-emit as TEAM
-- [ ] Test simultaneous speech: two team members speak at the same time → both remain EXTERNAL until correlation is unambiguous
-- [ ] Test diarization reassignment: induce a 30s silence in the fixture, verify that the post-silence `speaker=N+1` maps back onto the same `speakerId` as pre-silence `speaker=N` for the same talker
-- [ ] Test clock drift: fixture with +2s artificial client skew → offset correction keeps correlation accuracy ≥ target (no regression vs zero-skew)
+- [x] Wire full pipeline: Audio → Deepgram (diarized) → `SttResult` (with `diarizationIndex`) → `SpeakerIdentifier` → `Utterance` (with `SpeakerIdentity`)
+- [x] Update `UtteranceFinalizer`: emit utterance immediately with current identity (EXTERNAL if not yet identified), do not block on identification
+- [x] Handle retroactive identity updates: when a diarization index gets identified after utterances were already emitted → re-emit corrected utterances to all subscribers
+- [x] Broadcast all identified utterances to session participants via Redis (`meeting.utterance.{sessionId}`)
+- [x] Update `apps/realtime` to forward VAD signals from clients to the `SpeakerIdentifier`
+- [x] **Per-client clock-offset reconciliation (B.5):**
+  - [x] Every client message carries a monotonic `ts` (`performance.now`-derived)
+  - [x] Server computes `sampleOffset = serverReceiveTs - clientSendTs - halfRTT` on each message (heartbeat + VAD)
+  - [x] Maintain rolling median (last 30 samples) per userId per session — **median, not mean** — robust to jitter spikes
+  - [x] Apply offset to VAD timestamps before correlation: `adjustedTs = vadEvent.ts + clientOffset`
+  - [x] Tighten correlation window to ±250ms (from ±300ms) now that drift is corrected, not tolerated
+  - [x] If offset median shifts >500ms within a short window (likely sleep/resume), mark recent VAD untrusted for ~2s and defer assignment in that gap
+- [x] **Diarization index reassignment-merge (B.4):**
+  - [x] Change `SpeakerIdentity.diarizationIndex` (single) → `SpeakerIdentity.diarizationIndices: Set<number>`
+  - [x] Restructure cache from `Map<diarizationIndex, SpeakerIdentity>` to `Map<diarizationIndex, speakerId>` → `Map<speakerId, SpeakerIdentity>`
+  - [x] On a new, unseen diarization index: run VAD correlation → candidate userId; if an existing SpeakerIdentity has the same userId AND gap since its `lastUtteranceTs` > 15s, **merge** (add the new index to the existing identity's set)
+  - [x] Do not emit a "new speaker" event for merged indices
+  - [x] If gap < 15s and correlation conflicts → genuinely a different speaker → new SpeakerIdentity
+- [x] End-to-end integration test: 3-person simulated session (2 TEAM + 1 EXTERNAL) → correct TEAM/EXTERNAL attribution
+- [x] Test retroactive identification: utterance emitted as EXTERNAL, VAD signal arrives 500ms later, re-emit as TEAM
+- [x] Test simultaneous speech: two team members speak at the same time → both remain EXTERNAL until correlation is unambiguous
+- [x] Test diarization reassignment: induce a 30s silence in the fixture, verify that the post-silence `speaker=N+1` maps back onto the same `speakerId` as pre-silence `speaker=N` for the same talker
+- [x] Test clock drift: fixture with +2s artificial client skew → offset correction keeps correlation accuracy ≥ target (no regression vs zero-skew)
 
-**Deliverable:** Complete audio → identified utterance pipeline working end-to-end. TEAM members identified via VAD within one utterance of speaking.
+**Deliverable:** Complete audio → identified utterance pipeline working end-to-end. TEAM members identified via VAD within one utterance of speaking. ✓
 
-### Day 12-13: OS-Level System Audio Capture (Tauri / Rust) — NEW
+### Day 12-13: OS-Level System Audio Capture (Tauri / Rust) — ✓ COMPLETED
 
 > **Why this phase exists:** Larity is a native desktop app. The host's Larity instance must capture OS-level loopback audio of the system mixer so it works identically regardless of which conferencing app (Zoom, Meet, Teams, Discord, Slack Huddle, dial-in SIP app, etc.) is producing the meeting audio. This is the single biggest platform-specific workstream in the whole product and must not be deferred to "Week 6 frontend" where it was previously hidden as a one-line "audio capture hook".
 
 **apps/desktop (Rust / Tauri side — `src-tauri`)**
 
-- [ ] Add Rust crates for system audio loopback capture:
-  - [ ] `cpal` (cross-platform baseline) with feature flags where possible
-  - [ ] Windows: evaluate `cpal`'s WASAPI loopback or `wasapi` crate — WASAPI loopback on the default render device
-  - [ ] macOS: prefer **ScreenCaptureKit audio-only** (macOS 13+, no kext, no virtual device). Fallback path: instruct user to install a virtual audio device (BlackHole / Loopback) and record it as an input device via `cpal`
-  - [ ] Linux: PipeWire / PulseAudio `.monitor` source of default sink via `cpal` / `libpulse` / `pipewire-rs`
-- [ ] Define Tauri commands (exposed from Rust to the React frontend):
-  - [ ] `audio_capture_list_devices()` → enumerate candidate loopback sources
-  - [ ] `audio_capture_start(sessionId, deviceOverride?)` → start loopback capture, stream raw PCM frames as Tauri events to the frontend
-  - [ ] `audio_capture_stop()` → stop capture cleanly
-  - [ ] `audio_capture_status()` → current state + per-platform backend in use + any permission errors
-- [ ] Frame format: 16 kHz mono 16-bit PCM (downsampled in Rust), 20–100 ms frames, tagged with monotonic timestamp. Deepgram accepts this directly.
-- [ ] Handle OS permission prompts:
-  - [ ] macOS: request screen-recording permission (SCK) once, surface failure gracefully
-  - [ ] Windows: no extra permission for WASAPI loopback
-  - [ ] Linux: detect PipeWire vs PulseAudio vs neither; guide user if neither is present
-- [ ] Fail-silent: if capture cannot start, the desktop app surfaces a clear error modal but **does not crash the session** for other participants — the host just can't be a host on this machine right now
-- [ ] Unit tests in Rust for frame sizing, resampling, and state machine (start → running → stop)
+- [x] Add Rust crates for system audio loopback capture:
+  - [x] `cpal` (cross-platform baseline) with feature flags where possible
+  - [x] Windows: evaluate `cpal`'s WASAPI loopback or `wasapi` crate — WASAPI loopback on the default render device
+  - [x] macOS: prefer **ScreenCaptureKit audio-only** (macOS 13+, no kext, no virtual device). Fallback path: instruct user to install a virtual audio device (BlackHole / Loopback) and record it as an input device via `cpal`
+  - [x] Linux: PipeWire / PulseAudio `.monitor` source of default sink via `cpal` / `libpulse` / `pipewire-rs`
+- [x] Define Tauri commands (exposed from Rust to the React frontend):
+  - [x] `audio_capture_list_devices()` → enumerate candidate loopback sources
+  - [x] `audio_capture_start(sessionId, deviceOverride?)` → start loopback capture, stream raw PCM frames as Tauri events to the frontend
+  - [x] `audio_capture_stop()` → stop capture cleanly
+  - [x] `audio_capture_status()` → current state + per-platform backend in use + any permission errors
+- [x] Frame format: 16 kHz mono 16-bit PCM (downsampled in Rust), 20–100 ms frames, tagged with monotonic timestamp. Deepgram accepts this directly.
+- [x] Handle OS permission prompts:
+  - [x] macOS: request screen-recording permission (SCK) once, surface failure gracefully
+  - [x] Windows: no extra permission for WASAPI loopback
+  - [x] Linux: detect PipeWire vs PulseAudio vs neither; guide user if neither is present
+- [x] Fail-silent: if capture cannot start, the desktop app surfaces a clear error modal but **does not crash the session** for other participants — the host just can't be a host on this machine right now
+- [x] Unit tests in Rust for frame sizing, resampling, and state machine (start → running → stop)
 
-**Deliverable (Day 12-13):** Host can capture mixed OS audio on all three major platforms, emitted as PCM frames the frontend can ship over WebSocket. No conferencing platform has special-cased code anywhere.
+**Deliverable (Day 12-13):** Host can capture mixed OS audio on all three major platforms, emitted as PCM frames the frontend can ship over WebSocket. No conferencing platform has special-cased code anywhere. ✓
 
 ### Day 14: Meeting Detection & Desktop App Wiring — NEW
 

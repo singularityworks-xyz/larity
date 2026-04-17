@@ -14,8 +14,10 @@
 const sessionId = process.argv[2] || `test-session-${Date.now()}`;
 const frameCount = Number.parseInt(process.argv[3] || "20", 10);
 const intervalMs = Number.parseInt(process.argv[4] || "100", 10);
+const userId = "test-user-123";
+const role = "host";
 
-const wsUrl = `ws://localhost:9001/?sessionId=${sessionId}`;
+const wsUrl = `ws://localhost:9001/?sessionId=${sessionId}&userId=${userId}&role=${role}`;
 
 console.log("========================================");
 console.log("  Realtime Plane Test Client");

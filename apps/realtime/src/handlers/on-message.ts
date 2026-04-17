@@ -1,7 +1,7 @@
 import { createRealtimeLogger } from "../logger";
 import { publishAudioFrame, publishVadSignal } from "../redis/publisher";
 import { updateLastFrameTs } from "../session";
-import type { RealtimeSocket, VadSignal } from "../types";
+import type { RealtimeSocket } from "../types";
 
 const log = createRealtimeLogger("on-message");
 
@@ -22,13 +22,19 @@ export function onMessage(
   // If text, attempt to parse as JSON (e.g., VAD signals)
   if (typeof message === "string") {
     try {
-      const payload = JSON.parse(message) as Partial<VadSignal>;
+      // The client might send 'ts' directly. Let's accept it as clientSendTs or map it.
+      const payload = JSON.parse(message) as {
+        type: string;
+        clientSendTs?: number;
+        ts?: number;
+      };
       if (payload.type === "vad_speaking" || payload.type === "vad_silence") {
         publishVadSignal({
           type: payload.type,
           userId,
           sessionId,
-          ts,
+          clientSendTs: payload.clientSendTs ?? payload.ts ?? ts,
+          serverReceiveTs: ts,
         }).catch((err) => {
           log.error({ err, sessionId }, "Failed to publish VAD signal");
         });
