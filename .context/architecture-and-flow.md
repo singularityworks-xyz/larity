@@ -18,7 +18,12 @@ Larity operates in three hard-separated modes. **No data, logic, or permissions 
 
 ### System Architecture Overview
 
-Larity is a **Tauri + React desktop app** that connects to a **shared remote server** for all meeting processing. This is a key architectural decision — processing does NOT run locally on any user's machine.
+Larity is a **primary-native desktop application** (Tauri + React) that connects to a **shared remote server** for all meeting processing. A separate web app (`apps/web`) exists for dashboards, logs, and admin — but it is not used during live meetings and never captures audio. There is **no browser extension** and there will never be one.
+
+Key architectural decisions:
+- All real-time processing runs on the remote server — never locally on any user's machine.
+- The host's desktop app captures **OS-level system audio (loopback)** from its machine, so the product is completely independent of which conferencing tool the team is using — Zoom, Google Meet, Microsoft Teams, Discord, Slack Huddle, Jitsi, a SIP phone bridged through the OS, or a future platform that doesn't exist yet.
+- Speaker identification is VAD-correlation based — zero voice models, zero enrollment.
 
 ```
 ┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
@@ -26,8 +31,9 @@ Larity is a **Tauri + React desktop app** that connects to a **shared remote ser
 │  (Host — Rahul)  │     │  (Team — Priya)  │     │  (Team — Raj)    │
 │                  │     │                  │     │                  │
 │  Tauri + React   │     │  Tauri + React   │     │  Tauri + React   │
-│  Captures audio  │     │  View-only       │     │  View-only       │
-│  from Meet tab   │     │  (no audio send) │     │  (no audio send) │
+│  Captures OS-    │     │  View-only       │     │  View-only       │
+│  level system    │     │  (no audio send, │     │  (no audio send, │
+│  audio (loopback)│     │   sends mic VAD) │     │   sends mic VAD) │
 └────────┬─────────┘     └────────┬─────────┘     └────────┬─────────┘
          │ WebSocket              │ WebSocket              │ WebSocket
          │ (audio + control)      │ (control only)         │ (control only)
@@ -127,15 +133,15 @@ Larity is a **Tauri + React desktop app** that connects to a **shared remote ser
 This is NOT a single-user experience. Multiple team members share a session.
 
 #### 5.1 Host Starts Session
-* **User Action:** Host opens Google Meet, Larity extension detects meeting context, host clicks "Start Meeting Mode"
+* **User Action:** Host has a meeting running in some conferencing tool (Zoom / Meet / Teams / Discord / SIP phone / anything). Larity's desktop app surfaces a tray/overlay prompt (from calendar trigger or audio-activity heuristic) — host clicks "Start Meeting Mode", or clicks it manually at any time.
 * **What Happens:**
     1. `POST /meeting-session/start` → creates `meetingSession` record on remote server
-    2. **Context Preload** (critical): Open decisions, known constraints, active policy guardrails, unresolved risks, org-level rules, **team voiceprints** loaded into memory, **org keyword blocklists**, **prior commitments** from previous meetings with this client, **calendar agenda items**
+    2. **Context Preload** (critical): Open decisions, known constraints, active policy guardrails, unresolved risks, org-level rules, **team roster for this session** (userId → name, for VAD correlation), **org keyword blocklists**, **prior commitments** from previous meetings with this client, **calendar agenda items**
     3. **Predictive Constraint Pre-embedding**: Parse agenda, identify likely topics, pre-embed constraint matches
-    4. **Buffers Initialized**: Ring buffer (~2 min), topic state map, constraint ledger, **commitment ledger (Redis, entire meeting)**, speaker state trackers, alert state manager
-    5. Audio pipeline armed — host's Google Meet tab audio captured and sent to server via WebSocket
+    4. **Buffers Initialized**: Ring buffer (~2 min), topic state map, constraint ledger, **commitment ledger (Redis, entire meeting)**, speaker state trackers, VAD state per participant, alert state manager
+    5. Audio pipeline armed — host's desktop app starts **OS-level system audio loopback** (WASAPI on Windows, ScreenCaptureKit on macOS 13+, PipeWire/PulseAudio monitor on Linux) and streams PCM frames over WebSocket to the remote server
     6. Deepgram connection opened with `diarize=true`
-    7. Voice embedding service ready with pre-loaded team voiceprints
+    7. Server-side `SpeakerIdentifier` armed with team roster; ready to correlate incoming VAD signals
     8. Ambient UI activated
 
 #### 5.2 Team Members Join Session
@@ -156,21 +162,24 @@ This is NOT a single-user experience. Multiple team members share a session.
 * Alert routing active — shared channel + personal channel per user
 
 ### 6. Audio Capture & Transport
-* **Host Side:** Google Meet tab audio captured → Chunked (20-100ms) → Binary frames sent to remote uWS server via WebSocket
-* **uWS Responsibilities:** Forward audio to Deepgram (with diarization). Maintain live session. **No logic, no AI.**
-* **Team members:** Do NOT send tab audio. They see processed results.
+* **Host Side:** OS-level system audio loopback captured by the Tauri desktop app's Rust layer (WASAPI / ScreenCaptureKit / PipeWire or PulseAudio monitor source depending on OS) → downsampled to 16 kHz mono 16-bit PCM → chunked (20–100 ms) → binary frames sent to remote uWS server via WebSocket. The host's conferencing app is opaque to the rest of the system.
+* **uWS Responsibilities:** Pipe audio **directly** to Deepgram. Maintain live session. **No logic, no AI, no Redis on the audio path.**
+* **Audio path is direct — not through Redis.** Earlier iterations considered pushing audio frames through a Redis stream. That design is rejected: Redis adds a serialization + network hop for every 20–100 ms frame, which burns ~2–5 ms per chunk and adds no value (audio is not fanned out — exactly one consumer, Deepgram, per session). The realtime worker holds the Deepgram WebSocket and the client WebSocket in the same process; audio is simply relayed frame-for-frame. Redis is only used for state, control plane, and pub/sub — never for audio bytes.
+* **Team members:** Do NOT send system audio. They only send local-mic VAD signals over the WebSocket control channel and receive processed results.
 
 ### 7. Streaming STT with Diarization
 * **Deepgram Output:** Partial hypotheses with speaker indices → Corrections → Final segments with speaker attribution
 * **Diarization:** Deepgram assigns speaker indices (0, 1, 2, ...) — these are arbitrary integers, not identities
 * *Note: Raw STT output is not LLM-safe.*
 
-### 7.1 Speaker Identification (Voice Embeddings)
+### 7.1 Speaker Identification (VAD Correlation)
 
-> **Full Details:** See [meeting-mode.md](./meeting-mode.md#3-speaker-identification-via-voice-embeddings)
+> **Full Details:** See [meeting-mode.md §3](./meeting-mode.md#3-speaker-identification-via-vad-correlation)
 
 * Each team member's Larity instance runs **local VAD on their microphone** and sends timestamped speaking signals via WebSocket
-* The server **correlates VAD timestamps against Deepgram diarization indices** (±300ms window)
+* The server maintains a **rolling-median clock offset per client** (last 30 samples) so VAD timestamps align with the server's audio ingestion clock
+* The server **correlates offset-corrected VAD timestamps against Deepgram diarization indices** (±250ms window after offset correction)
+* Deepgram reassigns diarization indices after silences; the server merges a new index onto an existing `SpeakerIdentity` when VAD correlation points at the same userId and the gap since that identity last spoke exceeds the merge threshold (default 15s). `SpeakerIdentity` therefore owns a **set** of diarization indices.
 * Matched → TEAM (with userId) | Unmatched → EXTERNAL (client)
 * External speaker names from calendar data (best-effort)
 * No voiceprint enrollment, no voice embeddings, no ML models required
@@ -184,9 +193,10 @@ interface SpeakerIdentity {
   type: "TEAM" | "EXTERNAL"
   userId?: string                 // If TEAM, linked to User
   name: string
-  diarizationIndex?: number       // Deepgram's speaker integer
+  diarizationIndices: number[]    // All Deepgram indices merged into this identity
   isCurrentUser: boolean          // Is this the viewer of this Larity instance?
   confidence: number              // Identification confidence (0-1)
+  lastUtteranceTs: number
 }
 ```
 
@@ -225,6 +235,10 @@ interface SpeakerIdentity {
 > **Full Details:** See [meeting-mode.md](./meeting-mode.md#56-trigger-evaluation--tiered-processing-pipeline)
 
 The pipeline replaces the old regex-heavy approach with LLM-based classification. **No English-only pattern libraries.** Works in any language.
+
+**Execution model:** After pre-filter, Tiers 1, 2, and 3 run **in parallel** (independent reads of the same utterance). Tier 4 runs after Tiers 2 and 3 resolve, gated by their combined output. See [meeting-mode.md §5.6.1](./meeting-mode.md#561-pipeline-orchestration--parallel-tier-execution).
+
+Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with Tier 4 when gated in: `≤ 720 ms`. Sequential execution would add Tier 1 + Tier 2 + Tier 3 (~350 ms) for no benefit.
 
 #### Pre-filter (Free, <10ms)
 * Kill noise: <3 words, pure acknowledgments, exact duplicates
@@ -279,13 +293,14 @@ The pipeline replaces the old regex-heavy approach with LLM-based classification
 | Layer | Scope | Duration | Purpose | Storage |
 |-------|-------|----------|---------|---------|
 | **Ring buffer** | Raw utterances | ~2 min | Context for Tier 4 LLM | In-memory |
-| **Commitment ledger** | Commitments & decisions | Entire meeting | Intra-meeting contradictions | Redis |
+| **Commitment ledger** | Commitments & decisions | Entire meeting | Intra-meeting contradictions | In-memory HNSW (realtime worker) + Redis snapshot |
 | **pgvector** | Historical memory | All past meetings | Org memory contradictions | PostgreSQL |
 
 * **Commitment ledger** is written LIVE by Tier 2 whenever it classifies a commitment/decision
-* Stores embedding vectors per commitment for Tier 3 similarity search
-* Status evolves: tentative → confirmed → contradicted → superseded
-* At meeting end: exported to PostgreSQL + pgvector (becomes organizational memory)
+* The primary index is an **in-memory HNSW** (one per session, in the realtime worker that owns the WebSocket). Plain Redis has no vector search, and a per-utterance RediSearch hop would add 1–2 ms on the hot path — in-memory HNSW resolves top-K in sub-ms with zero network cost.
+* The Redis snapshot exists for crash recovery and observer fan-out (post-meeting worker, dashboard), not for the hot-path search.
+* Status evolves: tentative → confirmed → contradicted → superseded (status changes fan out on `meeting.ledger.{sessionId}` Redis pub/sub)
+* At meeting end: exported to PostgreSQL + pgvector (becomes organizational memory); in-memory index dropped, Redis snapshot deleted
 
 ### 11. Topic & State Tracking
 * **Topic State:** Each utterance embedded, compared against topic centroids, assigned to existing or new topic
@@ -370,7 +385,7 @@ Each Larity instance subscribes to both its personal channel and the shared chan
 ## PART IV — POST-MEETING MODE (AUTHORITATIVE)
 
 ### 17. Meeting Ends
-* **Exit Triggers:** Host clicks "End Meeting", Meet tab closes, inactivity timeout, all participants disconnect
+* **Exit Triggers:** Host clicks "End Meeting", host's detected conferencing app closes or the captured audio sink goes silent for the configured grace period, inactivity timeout, all participants disconnect
 * **Pre-exit:** Undiscussed agenda items checked (compare discussed topics vs calendar agenda)
 * **State Transition:** Live mode off. **Memory writes enabled.** Async processing begins.
 
@@ -443,4 +458,4 @@ Each Larity instance subscribes to both its personal channel and the shared chan
 8.  **Language-agnostic classification.** LLM-based, not regex-based. Works in Hindi, Hinglish, Tamil, English, any language.
 9.  **Conservative defaults.** Unidentified speakers → EXTERNAL. Uncertain classifications → no alert. Missed edge cases → acceptable. False positives → unacceptable.
 
-> **Final Summary:** Larity is a real-time multi-user meeting intelligence system where a host captures shared audio, speakers are identified through voice embeddings, utterances flow through a four-tier processing pipeline (structural → small LLM → embedding search → large LLM), commitments are tracked in a live ledger across the entire meeting, alerts are routed to shared and personal channels across all connected team members, classification is language-agnostic by design, and organizational memory is only written after the meeting ends with full evidence chains.
+> **Final Summary:** Larity is a real-time multi-user meeting intelligence system delivered as a native desktop application (Tauri) with a web dashboard for review and admin. The host's desktop app captures OS-level system audio from whichever conferencing app is running — Zoom, Meet, Teams, Discord, anything — and streams it to a shared remote server. Speakers are identified by correlating each team member's local-mic VAD signals with Deepgram diarization timestamps (no voice models, no enrollment). Utterances flow through a four-tier processing pipeline (structural → small LLM → embedding search → large LLM), commitments are tracked in a live ledger across the entire meeting, alerts are routed to shared and personal channels across all connected team members, classification is language-agnostic by design, and organizational memory is only written after the meeting ends with full evidence chains.

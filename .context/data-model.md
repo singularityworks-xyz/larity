@@ -25,7 +25,7 @@ Org (Your agency)
 |-------|-------|---------|
 | `Org` | Root | Your agency |
 | `Client` | Org | Tenant boundary, all business data flows through here |
-| `User` | Org | Staff members (stores Voiceprint embeddings for speaker ID) |
+| `User` | Org | Staff members (no voiceprints — speaker ID is VAD-correlation based) |
 | `ClientMember` | Client | User ↔ Client assignment with role (LEAD/MEMBER/OBSERVER) |
 
 ### Meeting Domain
@@ -90,7 +90,8 @@ Transcript (STT) + Speaker Identities
 - `Commitment` (for intra-meeting and historical contradiction detection)
 - `ImportantPoint` (feeds policy guardrails context)
 - `PolicyGuardrail` (for pre-meeting context)
-- `User` (voiceprints for speaker identification)
+
+> No voice embeddings stored. Speaker identification at runtime uses VAD signals correlated with Deepgram diarization timestamps — see [meeting-mode.md §3](./meeting-mode.md#3-speaker-identification-via-vad-speaking-signals).
 
 ### What Stays Ephemeral (Live Mode)
 

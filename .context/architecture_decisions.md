@@ -14,3 +14,66 @@ This document tracks architectural decisions, technical tradeoffs, and implement
   1. We immediately emit the utterance flagged as `EXTERNAL` to ensure < 50ms latency to the user.
   2. We push it into a `pendingBuffer` up to a maximum duration (`~2s`).
   3. If VAD belatedly confirms it was a TEAM member, we emit an updated copy of the utterance with the corrected mapping. The client must be built to support overriding recent utterances by `utterance.id`.
+
+---
+
+## Architectural Overhaul — Latency & Cost Hardening (pre-Week 4 review)
+
+The decisions below (B.1–B.11) were adopted after a full audit of the pipeline for latency, cost, and failure modes. All of them are already reflected in `meeting-mode.md`, `architecture-and-flow.md`, and `timeline.md` — this section exists to make the reasoning easy to audit without diffing the long docs.
+
+### B.1 Parallel Tier 1 / Tier 2 / Tier 3 execution
+- **Context:** Tiers 1, 2, 3 each take a different latency (50ms / 200ms / 100ms) and none consumes another's output. Running them sequentially costs ~350ms for no reason.
+- **Decision:** Run them with `Promise.all`. A pure-in-process gate decides Tier 4 after they resolve. Latency envelope drops from ~350ms to ~200ms without Tier 4, and <720ms with Tier 4 — fitting the <800ms end-to-end budget.
+- **Subtlety:** Tier 2's ledger write is awaited inside the Tier 2 task, so Tier 3's ledger search sees prior commitments but not the current one. Tier 1 blocklist/technical hits still fire "instant" alerts without waiting on Tier 4.
+- **Where:** [meeting-mode.md §5.6.1](./meeting-mode.md#561-pipeline-orchestration--parallel-tier-execution), timeline Day 28.
+
+### B.2 Direct uWS → Deepgram audio path (no Redis hop)
+- **Context:** Audio is exactly one-producer (host WS) → one-consumer (Deepgram WS). Routing PCM frames through a Redis stream adds ~2–5ms per 20–100ms frame and no fan-out value.
+- **Decision:** The realtime worker holds both the client WS and the Deepgram WS in the same process and relays audio frame-for-frame. Redis stays reserved for state, control, and pub/sub — never audio.
+- **Where:** [architecture-and-flow.md §6](./architecture-and-flow.md#6-audio-capture--transport), timeline Day 14.
+
+### B.3 Commitment ledger = in-memory HNSW + Redis snapshot
+- **Context:** Plain Redis has no vector search. RediSearch adds a 1–2ms RTT per query and per-write serialization. The ledger is small (few hundred commitments/session) and session-scoped, so it can live in-process.
+- **Decision:** Primary = per-session in-memory HNSW (sub-ms top-K). Secondary = Redis JSON snapshot for durability, observer fan-out (`meeting.ledger.{sessionId}` pub/sub), and crash recovery. Tertiary = pgvector at meeting end for org memory.
+- **Where:** [meeting-mode.md §5.4.2](./meeting-mode.md#542-commitment-ledger-in-memory-hnsw--redis-snapshot-entire-meeting), timeline Day 17-18.
+
+### B.4 Diarization index reassignment-merge
+- **Context:** Deepgram reassigns speaker indices after long silences — the same talker may appear as `speaker=0` then later as `speaker=3`. Treating these as two speakers destroys contradiction detection.
+- **Decision:** `SpeakerIdentity` owns a **set** of diarization indices. On a new unseen index, if VAD points to the same userId and the gap since the candidate identity last spoke > 15s, merge (don't create a new speaker). Cache changes from `Map<index, SpeakerIdentity>` to `Map<index, speakerId>` + `Map<speakerId, SpeakerIdentity>`.
+- **Where:** [meeting-mode.md §3.3.2](./meeting-mode.md#332-diarization-index-reassignment--merge-logic), timeline Day 10-11.
+
+### B.5 Per-client rolling-median clock-offset reconciliation
+- **Context:** Client-side timestamps drift, jitter, and break on laptop sleep. A fixed ±300ms tolerance is a band-aid.
+- **Decision:** Server computes `sampleOffset = serverReceiveTs - clientSendTs - halfRTT` per message and keeps a rolling median of the last 30 samples per client. VAD timestamps are offset-corrected before correlation; the window tightens to ±250ms. Large offset shifts (>500ms) trigger a short untrusted window (~2s) instead of bad assignments.
+- **Where:** [meeting-mode.md §3.3.1](./meeting-mode.md#331-clock-offset-reconciliation), timeline Day 10-11.
+
+### B.6 Per-session Tier 2 semantic cache
+- **Context:** Meetings have enormous boilerplate: "yeah that works", "got it", "makes sense", repeated verbatim or near-verbatim. Each hit is ~$0.002 and ~200ms of Tier 2 LLM time.
+- **Decision:** Per-session LRU cache keyed by utterance embedding (cosine ≥ 0.97) or normalized text, max ~200 entries. Cache hit reuses Tier 2 classification and skips the LLM call; Tier 3 still runs because memory may have changed.
+- **Target:** ≥30% hit rate on filler/confirmations, shaving ~$0.05 and ~100ms per hit.
+- **Where:** timeline Day 28.
+
+### B.7 Per-meeting cost ceiling
+- **Context:** A pathological meeting (lots of contradictions, long recent-utterance windows) could blow the nominal $0.30 cost budget by 10×.
+- **Decision:** Redis counter `meeting:cost:{sessionId}` updated with real token usage after every Tier 2 and Tier 4 call. Default cap $2.00/meeting. At 80% of cap raise Tier 4 gate thresholds; at 100% disable Tier 4 entirely for the rest of the meeting (Tiers 1-3 and Tier 1 instant alerts keep running).
+- **Where:** timeline Day 28.
+
+### B.8 Atomic alerts, no progressive flicker
+- **Context:** Showing a preliminary alert at T+300ms that mutates or disappears at T+500ms creates a cognitive trap during live conversation. Users act on the first version and then it changes under them.
+- **Decision:** One atomic alert per Tier 4 invocation, or none. A content-free "Checking…" indicator signals that the system is thinking — nothing actionable renders until the full structured Tier 4 response is validated. Streaming is still used *inside* the LLM call to reduce TTFB; only the UI is non-progressive.
+- **Where:** [meeting-mode.md §5.9](./meeting-mode.md#59-live-llm-invocation-non-streaming-atomic-alerts), timeline Day 41-42.
+
+### B.9 Raw audio persistence to MinIO
+- **Context:** Whisper refinement and post-meeting diarization both want raw audio. The previous design implicitly assumed it was available but never specified where.
+- **Decision:** `apps/realtime` streams each PCM chunk in parallel to both Deepgram (live) and MinIO (cold), fire-and-forget on the MinIO side. Object layout `{orgId}/{sessionId}/{chunkIndex}.pcm16` (or Opus), manifest emitted on close, 30-day lifecycle with per-org SSE keys. Admin-only restore endpoint stitches chunks into a WAV for debugging.
+- **Where:** timeline Day 47-48.
+
+### B.10 Desktop distribution & auto-update
+- **Context:** A Tauri app is not a product until end users can install and update it safely. This was previously buried inside "frontend polish" and chronically under-scoped.
+- **Decision:** A dedicated phase ("Day 46+"): Windows code-signed MSI, macOS Developer ID + notarization + hardened runtime with microphone/screen-recording entitlements, Linux .deb/.rpm/.AppImage, Tauri signed auto-update manifest on S3/MinIO/R2 with staged rollout (10 → 50 → 100% over 48h), Sentry crash reporting with scrubbed breadcrumbs. Updates only apply on next launch — never mid-meeting.
+- **Where:** timeline Day 46+.
+
+### B.11 Structured pipeline observability
+- **Context:** Without metrics, the <800ms budget is aspirational. Smoke scripts aren't enough.
+- **Decision:** Per-utterance JSON line with all per-tier latencies, costs, cache hits, gate decisions, and total end-to-end latency. Per-session rollup (p50/p95/p99 latency, total cost, tier counts) on meeting end. Optional Prometheus histograms if infra is in place. Metrics key off `sessionId` / `utteranceId` so anything can be drilled down.
+- **Where:** timeline Day 28 (pipeline side) + Day 44-46 (E2E validation).

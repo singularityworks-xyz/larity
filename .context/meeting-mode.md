@@ -27,18 +27,20 @@ Think of it as a **flight control system** — silent when things are fine, imme
 
 ### 2.1 The Host Model
 
-Real agency/team work involves multiple team members meeting with a client together on Google Meet. Larity supports this through a **host model**:
+Real agency/team work involves multiple team members meeting with a client together over a conferencing tool (Zoom, Google Meet, Microsoft Teams, Slack Huddle, Discord, Jitsi, a dialed-in phone call bridged through the OS — whatever). Larity is a **native desktop application** that does not care which conferencing app is used. It supports multi-user sessions through a **host model**:
 
-* **One team member is the host** — they run Larity and capture the system audio (Google Meet tab audio) from their machine
-* **Other team members join the same shared meeting session** — they connect to the session but do NOT send system audio
-* **All participants are remote** — everyone is on separate machines in the Google Meet call
-* **The host's Larity instance is the single audio source** — it captures the combined meeting audio from the Google Meet tab
+* **Larity is a native desktop application** (Tauri) installed on every team member's machine. There is **no browser extension**. Meeting platform doesn't matter — Larity captures OS-level system audio (loopback) from whichever app is producing the meeting audio on the host's machine.
+* **One team member is the host** — they run Larity's desktop app and capture OS-level system audio (loopback / monitor / screen-capture-kit) from their machine
+* **Other team members join the same shared meeting session** — they connect to the session from their own desktop app but do NOT send system audio
+* **All participants are remote** — everyone is on separate machines in the underlying meeting call (or even physically co-located, the conferencing platform is irrelevant to Larity)
+* **The host's Larity instance is the single audio source** — it captures the combined meeting audio straight from the OS mixer, regardless of which app is playing it
 
 **Why host model:**
 * Only one Deepgram STT connection needed (cost + consistency)
 * No duplicate/conflicting transcriptions
 * Single source of truth for the audio stream
 * Simple to reason about — one audio pipeline, shared state
+* **Platform-agnostic:** because capture is OS-level loopback, it works identically whether the host is on Zoom, Meet, Teams, Discord, a dialed-in phone call, or a future platform that doesn't exist yet — no per-platform integration work ever required
 
 **Host failure:** If the host disconnects, meeting tracking stops. No failover in v1. This is acceptable — the host is typically the meeting organizer or team lead.
 
@@ -65,7 +67,7 @@ TEAM MEMBER:
 ```ts
 interface MeetingSession {
   sessionId: string
-  meetingId: string                  // External meeting ID (Google Meet)
+  meetingId: string                  // External meeting reference (calendar event ID, or synthetic if ad-hoc)
   orgId: string
   clientId: string                   // Which client this meeting is with
   hostUserId: string                 // The team member hosting
@@ -93,7 +95,7 @@ interface SessionParticipant {
 
 ### 3.1 The Problem
 
-With multiple team members and external clients all speaking in the same Google Meet audio stream, the system needs to:
+With multiple team members and external clients all speaking in the same system-audio stream captured from the host's machine, the system needs to:
 
 1. Identify which speaker is a **team member** vs **external client**
 2. Identify **which specific team member** is speaking
@@ -116,17 +118,49 @@ With multiple team members and external clients all speaking in the same Google 
 
 Since all team members run Larity on their own machines, each instance has direct access to that member's **local microphone**. This provides a reliable, platform-agnostic identity signal:
 
-1. Each team member's Larity instance runs **local VAD (Voice Activity Detection)** on their own mic stream continuously during the session
-2. When VAD detects speech, the Larity instance sends a timestamped signal to the server via the existing WebSocket: `{ type: "vad_speaking", userId, ts }`
-3. The server **correlates VAD timestamps against Deepgram diarization timestamps** (±300ms window to account for clock drift and audio pipeline delay)
-4. If exactly one team member's VAD overlaps with a diarization index's speech window → that index is assigned to that userId as **TEAM**
-5. If no team member's VAD overlaps → that index is **EXTERNAL** (client)
-6. The mapping (`diarizationIndex → SpeakerIdentity`) is **cached for the session** — once identified, subsequent utterances from that index resolve instantly
-7. If multiple team members speak simultaneously → correlation is ambiguous, defer until unambiguous signal
-8. External speakers get names from **calendar data** (best-effort)
-9. **No voiceprint storage, no enrollment, no ML model required**
+1. Each team member's Larity instance runs **local VAD (Voice Activity Detection)** on their own mic stream continuously during the session.
+2. When VAD detects speech, the Larity instance sends a timestamped signal to the server via the existing WebSocket: `{ type: "vad_speaking", userId, ts }` (both `vad_speaking` and `vad_silence` edge events are sent; ts is `performance.now()`-derived monotonic wall clock).
+3. The server **correlates VAD timestamps (after clock-offset reconciliation — see below) against Deepgram diarization timestamps**.
+4. If exactly one team member's VAD overlaps with a diarization index's speech window → that index is assigned to that userId as **TEAM**.
+5. If no team member's VAD overlaps → that index is **EXTERNAL** (client).
+6. The mapping (`diarizationIndex → SpeakerIdentity`) is **cached for the session** — once identified, subsequent utterances from that index resolve instantly, subject to the reassignment-merge logic below.
+7. If multiple team members speak simultaneously → correlation is ambiguous, defer until unambiguous signal.
+8. External speakers get names from **calendar data** (best-effort).
+9. **No voiceprint storage, no enrollment, no ML model required.**
 
 > **Why this works:** Larity captures OS-level system audio regardless of platform (Zoom, Meet, Teams, etc.). The local mic VAD and system audio capture happen on the same machine, so the timing correlation is consistent across all meeting platforms.
+
+#### 3.3.1 Clock-Offset Reconciliation
+
+Client-side timestamps cannot be trusted directly — they originate from different machines, drift against each other, and are subject to process suspension (e.g. laptop sleep). The server maintains a **per-client rolling clock offset** so VAD timestamps align with the server's audio ingestion clock:
+
+- On every inbound client message (heartbeat or VAD event), the server computes `sampleOffset = serverReceiveTs - clientSendTs - halfRTT`.
+- The server keeps a **rolling median of the last 30 samples** per client as the authoritative offset (median, not mean — robust to jitter spikes).
+- All VAD timestamps from that client are adjusted by `offset` before correlation: `adjustedTs = vadEvent.ts + clientOffset`.
+- Correlation window: ±250ms around the diarization word's start time (previously ±300ms; tighter because offset is corrected, not tolerated).
+- If offset median shifts by >500ms within a short window (e.g. laptop resumed from sleep), the server marks recent VAD signals as untrusted for ~2s and defers speaker assignment for utterances in that gap.
+
+#### 3.3.2 Diarization Index Reassignment — Merge Logic
+
+Deepgram (and diarization engines in general) will **reassign speaker indices after long silence gaps or voice changes** — the same physical speaker may appear as `speaker=0` for the first ten minutes and `speaker=3` after a silence. The server must not treat this as a new speaker.
+
+Every time a new diarization index appears, the server runs a **merge check** before creating a new SpeakerIdentity:
+
+```
+When utterance arrives with diarizationIndex=N that has no cached SpeakerIdentity:
+  1. Run VAD correlation for this utterance → candidate userId (or EXTERNAL)
+  2. Look up existing SpeakerIdentity with same candidate userId (or same EXTERNAL heuristic)
+  3. If found AND gap since that identity's last utterance > 15s:
+        → merge: map diarizationIndex=N onto existing SpeakerIdentity.speakerId
+        → append N to that identity's `diarizationIndices` set
+        → do NOT emit "new speaker" event
+  4. If found AND gap < 15s AND VAD correlation conflicts:
+        → genuinely a different speaker, create new SpeakerIdentity
+  5. If not found:
+        → create new SpeakerIdentity
+```
+
+The `SpeakerIdentity` therefore owns a **set** of diarization indices, not a single index, and the cache is `Map<diarizationIndex, speakerId>` pointing into a `Map<speakerId, SpeakerIdentity>`.
 
 #### Conservative Default
 
@@ -142,9 +176,12 @@ interface SpeakerIdentity {
   type: "TEAM" | "EXTERNAL"
   userId?: string                 // If TEAM, linked to User record
   name: string                    // Display name
-  diarizationIndex?: number       // Deepgram's speaker integer (0, 1, 2...)
+  diarizationIndices: number[]    // All Deepgram indices that map to this identity
+                                  //   (diarization reassigns indices after silences;
+                                  //    see §3.3.2 merge logic)
   isCurrentUser: boolean          // Is this the person viewing this Larity instance?
   confidence: number              // How confident the identification is (0-1)
+  lastUtteranceTs: number         // Used by the merge heuristic
 }
 ```
 
@@ -177,12 +214,13 @@ Speaker identification uses **local VAD signals** correlated with Deepgram diari
 
 ### Trigger
 
-* User opens Google Meet
-* Larity extension detects meeting context
-* **Host** explicitly clicks **"Start Meeting Mode"**
-* Other team members click **"Join Meeting Session"** (or are auto-joined if pre-configured)
+Larity is a native desktop app (Tauri). Meeting Mode is engaged by the host explicitly — there is no browser extension and no automatic start.
 
-No automatic start for the host. Consent is explicit.
+* **Optional pre-announcement (ambient):** When a calendar event is within T-5 min, or when the desktop app detects a known conferencing app is in a call state (e.g. Zoom/Meet/Teams window focused with active audio output), the app surfaces a subtle tray/overlay prompt: *"Start Meeting Mode?"*. This is a prompt, never an auto-start.
+* **Host** explicitly clicks **"Start Meeting Mode"** in the desktop app (tray icon, overlay, or main window).
+* Other team members' desktop apps detect the active session (via pushed presence or their own tray prompt from the control API) and click **"Join Meeting Session"** (or are auto-joined if pre-configured for this client).
+
+Consent is always explicit. System audio loopback never starts without the host's click.
 
 ---
 
@@ -190,10 +228,10 @@ No automatic start for the host. Consent is explicit.
 
 #### Step 1 — Session Creation (Host Only)
 
-* Extension calls `POST /meeting-session/start`
+* Desktop app calls `POST /meeting-session/start` on the remote control API
 * Backend creates a `meetingSession` record on the **remote server**
 * Session ID becomes authoritative
-* Host begins audio capture
+* Host's desktop app arms the OS audio-capture layer (see Step 6)
 
 #### Step 2 — Team Member Join
 
@@ -212,7 +250,7 @@ Before any audio is processed, the server preloads:
 * Unresolved risks
 * Org-level rules
 * **Client name list** (for information leak detection)
-* **Team voiceprints** (loaded into memory for speaker identification)
+* **Team roster for this session** (userIds, display names — needed so incoming VAD speaking signals can be correlated to known team members; no voice models are loaded)
 * **Prior commitments** (from previous meetings with same client)
 * **Org-configured keyword blocklists** (for Tier 1 structural detection)
 
@@ -240,10 +278,14 @@ When topic shifts occur, relevant constraints are already loaded.
 
 #### Step 6 — Audio Pipeline Armed (Host Only)
 
-* Tab audio stream (Google Meet combined audio — captures all participants)
-* Deepgram connection opened with `diarize=true`
+* **OS-level system audio capture** is armed on the host's machine via a Tauri/Rust audio-capture module. This is a **loopback capture** of the system mixer output — it captures whatever app is producing the meeting audio (Zoom, Meet, Teams, Discord, Slack, a SIP phone, browser tab, anything). Implementation per platform:
+    * **Windows:** WASAPI loopback (`cpal` loopback or `wasapi-rs`).
+    * **macOS:** Core Audio tap / ScreenCaptureKit audio (macOS 13+) or fallback to a user-installed virtual device (BlackHole / Loopback).
+    * **Linux:** PipeWire / PulseAudio monitor source of the default sink.
+* Captured PCM is chunked (20–100 ms frames) and streamed over the existing WebSocket to the remote `realtime` server. No audio is processed locally beyond chunking.
+* Deepgram streaming connection opened server-side with `diarize=true`.
 
-Team members do NOT arm audio pipelines — they receive processed utterances from the server.
+Team members do NOT arm the audio-capture layer — their desktop apps only send local-mic VAD signals (see Section 3.3) and receive processed utterances/alerts from the server.
 
 #### Step 7 — Ambient UI Activated (All Participants)
 
@@ -266,12 +308,12 @@ This loop runs continuously on the **remote server** until the meeting ends. All
 
 **For every audio chunk (host sends):**
 
-1. Audio arrives at server from host's Larity instance (Google Meet tab audio)
+1. Audio arrives at server from host's Larity desktop app (OS-level system audio loopback — conferencing platform is opaque to the server)
 2. Forwarded to streaming STT (Deepgram) with `diarize=true`
 3. STT emits partial hypotheses **with speaker indices**
 4. **Speculative processing begins on partials** (see 5.2)
 5. Normalizer waits for `isFinal = true`
-6. Voice embedding service identifies speaker from diarization index
+6. Speaker identification resolves via **VAD correlation + reassignment-merge** (see §3.3.1–3.3.2): the diarization index is mapped to a `SpeakerIdentity` using the clock-offset-corrected VAD state. If no VAD-team match → EXTERNAL.
 7. Final utterance created:
 
 ```json
@@ -282,7 +324,7 @@ This loop runs continuously on the **remote server** until the meeting ends. All
     "type": "TEAM",
     "userId": "user_rahul",
     "name": "Rahul",
-    "diarizationIndex": 2,
+    "diarizationIndices": [2],
     "isCurrentUser": false,
     "confidence": 0.92
   },
@@ -384,12 +426,30 @@ interface RingBuffer {
 }
 ```
 
-### 5.4.2 Commitment Ledger (Redis, Entire Meeting)
+### 5.4.2 Commitment Ledger (In-Memory HNSW + Redis Snapshot, Entire Meeting)
 
 The commitment ledger is the key mechanism for catching **intra-meeting contradictions**, including:
 - **Self-contradictions** (same person contradicts themselves)
 - **Team inconsistencies** (two team members contradict each other in front of the client)
 - **Client backtracking** (external speaker changes previously agreed terms)
+
+**Storage design (critical — not plain Redis):**
+
+Plain Redis has no native vector search, and calling pgvector for every Tier 3 intra-meeting lookup adds a network hop + transaction overhead on the hot path. Since the ledger is small (at most a few hundred commitments per meeting) and session-scoped, we keep it **in-process** inside the realtime worker that owns the session:
+
+| Layer | What | Why |
+|-------|------|-----|
+| **Primary: in-memory HNSW index** | `hnswlib-node` (or equivalent), one index per session, keyed by `sessionId`, holding `{ id, embedding, commitment }` | Sub-millisecond top-K search, zero network cost, no serialization on the hot path |
+| **Secondary: Redis snapshot** | `meeting:ledger:{sessionId}` — JSON snapshot of all commitments (no embeddings, or quantized), refreshed every N inserts and on status change | Survives worker restart, readable by other services (post-meeting worker, observability), feeds Redis pub/sub on ledger updates |
+| **Tertiary: PostgreSQL + pgvector** | Written at meeting end by the post-meeting worker | Becomes organizational memory for future meetings |
+
+**Why not keep it all in Redis:**
+- Redis vector search (`FT.SEARCH` via RediSearch) is an option, but requires the RediSearch module, adds per-query RTT (~1-2ms even on localhost), and forces embedding serialization on every write. An in-process HNSW is ~50-100× faster for this workload size.
+- Session affinity is already guaranteed by the realtime worker holding the WebSocket — the session's ledger naturally lives where it's needed.
+
+**Failure/restart semantics:**
+- If the owning realtime worker crashes, the session is terminated and the client reconnects to a new worker. The new worker hydrates the HNSW index from the Redis snapshot (commitments only) and re-embeds any commitments that lost their vectors. This takes <1s for a few hundred commitments.
+- Redis snapshot TTL matches meeting session TTL. On graceful meeting end, the snapshot is drained into the post-meeting pipeline, then deleted.
 
 ```ts
 interface Commitment {
@@ -432,15 +492,16 @@ type CommitmentType =
 
 **Commitment Ledger Lifecycle:**
 
-1. **Written live during the meeting** by Tier 2 whenever it classifies a commitment or decision
-2. **Stores embedding vectors** for each commitment (for similarity search in Tier 3)
+1. **Written live during the meeting** by Tier 2 whenever it classifies a commitment or decision — insert into the session's in-memory HNSW index + append to the Redis snapshot.
+2. **Stores embedding vectors** for each commitment in the HNSW index (for similarity search in Tier 3). The Redis snapshot can store vectors as base64-packed Float32 (optional — only needed if a replacement worker needs to avoid re-embedding on restart).
 3. **Status evolves during the meeting:**
    - `tentative` → initial state when commitment is made
    - `confirmed` → when the other party agrees or the speaker reaffirms
    - `contradicted` → when a conflicting commitment is detected
    - `superseded` → when the speaker explicitly revises (not a contradiction — an intentional update)
-4. **Searched by Tier 3** on every commitment/decision utterance
-5. **At meeting end:** Handed off to post-meeting pipeline → written to PostgreSQL + pgvector → becomes organizational memory for future meetings
+   - Status changes write-through to the Redis snapshot and fan out on the `meeting.ledger.{sessionId}` pub/sub channel for any observer (dashboard, post-meeting worker).
+4. **Searched by Tier 3** on every commitment/decision utterance via in-memory HNSW top-K (sub-ms).
+5. **At meeting end:** Handed off to post-meeting pipeline → written to PostgreSQL + pgvector → becomes organizational memory for future meetings. The in-memory index is dropped; Redis snapshot is deleted after successful persistence.
 
 ### 5.4.3 pgvector (PostgreSQL, Historical)
 
@@ -478,7 +539,14 @@ interface Constraint {
 
 ### 5.6 Trigger Evaluation — Tiered Processing Pipeline
 
-This is the core intelligence pipeline. For each finalized utterance, it runs through four tiers. **The key design change from the original architecture: Tier 1 is purely structural/language-agnostic, Tier 2 uses a small LLM for classification (replacing all regex pattern libraries), Tier 3 runs on everything as a safety net, and Tier 4 is deep reasoning.**
+This is the core intelligence pipeline. For each finalized utterance, it runs through four tiers.
+
+**Key design points:**
+- Tier 1 is purely structural/language-agnostic.
+- Tier 2 uses a small LLM for classification (replacing all regex pattern libraries).
+- Tier 3 runs on every post-filter utterance as a safety net.
+- Tier 4 is deep reasoning, gated by Tier 2/Tier 3 output.
+- **Tiers 1, 2, and 3 run in parallel, not sequentially** — they are fully independent (structural checks, LLM classification, embedding search). Sequential execution of independent work is pure latency waste. Tier 4 is the only stage that consumes upstream output, so it runs after Tiers 2 and 3 resolve. See §5.6.1 for the exact orchestration.
 
 #### Pre-filter (Local, Free, <10ms)
 
@@ -686,6 +754,61 @@ Tier 4 (large LLM):   ~8 utterances × $0.02 = ~$0.16
                                         TOTAL: ~$0.30 per meeting
 ```
 
+#### 5.6.1 Pipeline Orchestration — Parallel Tier Execution
+
+Tiers 1, 2, and 3 read the same utterance and do not depend on each other's output. The realtime worker fires them concurrently:
+
+```ts
+const [tier1, tier2, tier3] = await Promise.all([
+  runTier1Structural(utterance),        // <50ms,  free
+  runTier2Classification(utterance),    // <200ms, ~$0.002
+  runTier3EmbeddingSearch(utterance),   // <100ms, ~$0.00002
+])
+
+const gate = decideTier4Gate({ tier1, tier2, tier3 })
+
+if (gate.runTier4) {
+  const tier4 = await runTier4DeepReasoning({
+    utterance,
+    tier2Classification: tier2,
+    matchedHistoricalItems: tier3.memoryMatches,
+    matchedCommitments:    tier3.ledgerMatches,
+    relevantConstraints:   currentConstraints,
+  })
+  await dispatchAlert(tier4)
+}
+```
+
+**Gate logic (runs in process after Tiers 1-3 resolve):**
+
+```
+runTier4 = (
+  tier2.intent in ["commitment", "decision", "concern"] ||
+  tier2.riskSignals.length > 0 ||
+  tier3.memoryMatches.length > 0 ||
+  tier3.ledgerMatches.length > 0 ||
+  tier1.blocklistHit || tier1.technicalHit
+) && !(tier2.intent in ["filler", "general"] && tier2.confidence > 0.8 && tier3.empty)
+```
+
+**Latency envelope (after pre-filter):**
+
+```
+Pre-filter              <10ms
+Tier 1 ∥ Tier 2 ∥ Tier 3 max(50, 200, 100) = 200ms
+Gate decision           <5ms
+Tier 4 (when needed)    300-500ms
+-----------------------------------
+Without Tier 4:         <220ms
+With Tier 4:            <720ms
+```
+
+This fits the <800ms end-to-end budget from speech-final to alert delivery (Deepgram final ~150ms + pipeline 220-720ms).
+
+**Side-effects during parallel execution:**
+- Tier 2, on `intent ∈ {"commitment", "decision"}`, writes to the in-session commitment index (§5.4.2) **after** its own promise resolves but **before** `Promise.all` returns — the write is awaited inside the Tier 2 task. Tier 3's ledger search therefore sees prior commitments but not the current one (correct: you don't want to match an utterance against itself).
+- Tier 1 blocklist/technical hits are dispatched as "instant" alerts without waiting for Tier 4. These go out on the shared channel immediately.
+
 #### Three Model Tiers
 
 | Model | Purpose | Cost per call | Example |
@@ -770,21 +893,29 @@ interface SpeakerState {
 
 ---
 
-### 5.9 Live LLM Invocation (Streaming)
+### 5.9 Live LLM Invocation (Non-Streaming, Atomic Alerts)
 
 When Tier 4 LLM validation is needed:
 
-#### Streaming Response Pattern
+#### Pattern — "Checking…" indicator, then one atomic alert
 
 ```
-T+0ms:    Utterance finalized, Tier 4 LLM call initiated
-T+100ms:  Show subtle "Checking..." indicator (optional, only for current user's speech)
-T+200ms:  LLM starts streaming, extract early confidence signal
-T+300ms:  If high confidence risk, show preliminary alert
-T+400ms:  Final alert with complete message and suggestion
+T+0ms:    Utterance finalized, Tier 4 LLM call initiated in parallel with Tiers 1-3 gate resolution
+T+~80ms:  Tiers 1-3 resolved, gate decides Tier 4 is needed → subtle "Checking…" indicator
+          shown only in the viewer's own feed, never as a toast or shared alert
+T+~500ms: Tier 4 returns complete structured response
+T+~520ms: Validate + dedupe + route → emit a single final alert (shared or personal)
+          The "Checking…" indicator is replaced atomically with the alert, or cleared if
+          Tier 4 returned { alertType: "none" | shouldSurface: false }
 ```
 
-Feels faster because feedback is progressive.
+**Why not progressive/streaming alerts:**
+
+Earlier designs showed a "preliminary alert" at ~T+300ms and a "final alert" at ~T+400ms. In practice this creates two UX problems:
+1. Users see an alert appear, read it, adjust tone/words, and then the alert mutates or disappears when the final version arrives. The first version is therefore acted on but not reliable — a cognitive trap during a live conversation.
+2. Alerts that downgrade or disappear after a preliminary flash erode trust in the system faster than occasional misses.
+
+The rule is: **one atomic alert per Tier 4 invocation, or none.** Use the "Checking…" indicator to signal that the system is thinking; the indicator has no content so users cannot act on it prematurely. Streaming is still used *inside* the Tier 4 LLM call to reduce TTFB, but the UI only reacts once the full structured response is validated.
 
 ---
 
@@ -1343,8 +1474,8 @@ Non-intrusive signals that prove the system is alive, visible to **all connected
 ### Exit Triggers
 
 * Host clicks "End Meeting"
-* Meet tab closes (host)
-* Inactivity timeout (configurable, default 5 min)
+* Host's detected meeting app closes, or the captured audio sink goes silent for the configured grace period (the desktop app notifies the server)
+* Inactivity timeout (no utterances emitted for the configured window, default 5 min)
 * All participants disconnect
 
 ### Pre-Exit: Undiscussed Agenda Check
@@ -1384,11 +1515,12 @@ Before finalizing, the system compares discussed topics against pre-loaded agend
 │  ├── Connected participants (SessionParticipant[])                         │
 │  └── Session status (initializing → active → ending → ended)              │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Speaker Identification                                                     │
-│  ├── Team voiceprints (pre-loaded from DB)                                 │
-│  ├── Diarization index → SpeakerIdentity mapping                           │
+│  Speaker Identification (VAD-correlation based — no voice models)           │
+│  ├── Team roster for session (userId → name, from DB)                      │
+│  ├── VAD state per team member (isSpeaking, startTs — rolling ~2s window)  │
+│  ├── Diarization index → SpeakerIdentity mapping (cached, persisted Redis) │
 │  ├── Speaker state trackers (tone trajectory, engagement per speaker)      │
-│  └── Unidentified speaker buffer (retroactive reprocessing)                │
+│  └── Pending buffer for utterances awaiting late VAD correlation (~2s)     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Preloaded Context (read-only)                                              │
 │  ├── Org constraints                                                        │
@@ -1536,7 +1668,7 @@ Before finalizing, the system compares discussed topics against pre-loaded agend
 2. GPT-4o / Claude Sonnet integration via OpenRouter
 3. Zod schema for Tier 4 output
 4. Alert generation with routing (shared/personal/both)
-5. Streaming response pattern (progressive feedback)
+5. Streaming LLM call under atomic alert UX (no progressive/preliminary alerts)
 
 ### Phase 8: Alert System
 1. Alert queue manager (priority, deduplication, expiry)
@@ -1652,4 +1784,4 @@ If it feels dead, add ambient signals — not more alerts.
 
 ## One-Sentence Summary
 
-**Meeting Mode is a conservative, stateful, multi-user, topic-aware real-time system running on a shared remote server that captures audio via a host, identifies speakers through voice embeddings, classifies utterances through a four-tier pipeline (structural → small LLM → embedding search → large LLM), tracks commitments across the entire meeting in a live ledger, detects self-contradictions and team inconsistencies and risky statements, warns about scope creep and pressure tactics and client backtracking, surfaces missing clarity and client disengagement, prevents information leaks, monitors tone trajectories, routes alerts to shared and personal channels across all connected team members, and never mutates organizational memory.**
+**Meeting Mode is a conservative, stateful, multi-user, topic-aware real-time system running on a shared remote server that captures OS-level system audio from a single host's native desktop app (platform-agnostic — Zoom, Meet, Teams, or any conferencing tool), identifies speakers by correlating Deepgram diarization indices with per-user local-mic VAD signals (no voice models, no enrollment), classifies utterances through a four-tier pipeline (structural → small LLM → embedding search → large LLM), tracks commitments across the entire meeting in a live ledger, detects self-contradictions and team inconsistencies and risky statements, warns about scope creep and pressure tactics and client backtracking, surfaces missing clarity and client disengagement, prevents information leaks, monitors tone trajectories, routes alerts to shared and personal channels across all connected team members, and never mutates organizational memory.**
