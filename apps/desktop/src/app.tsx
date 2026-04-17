@@ -82,28 +82,16 @@ function App() {
 
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
           <button
-<<<<<<< Updated upstream
-            disabled={status?.active}
-            onClick={startCapture}
-            type="button"
-=======
             type="button"
             onClick={startCapture}
             disabled={status?.active}
->>>>>>> Stashed changes
           >
             Start Capture
           </button>
           <button
-<<<<<<< Updated upstream
-            disabled={!status?.active}
-            onClick={stopCapture}
-            type="button"
-=======
             type="button"
             onClick={stopCapture}
             disabled={!status?.active}
->>>>>>> Stashed changes
           >
             Stop Capture
           </button>
