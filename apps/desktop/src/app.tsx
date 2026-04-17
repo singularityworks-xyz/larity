@@ -1,67 +1,114 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
+import { listen } from "@tauri-apps/api/event";
+import { useEffect, useState } from "react";
 import "./App.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+interface AudioStatus {
+  active: boolean;
+  backend: string;
+  error?: string | null;
+}
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+interface AudioFrameEvent {
+  payload: {
+    ts: number;
+    sessionId: string;
+    data: string;
+  };
+}
+
+function App() {
+  const [status, setStatus] = useState<AudioStatus | null>(null);
+  const [framesReceived, setFramesReceived] = useState(0);
+  const [lastTs, setLastTs] = useState<number>(0);
+
+  useEffect(() => {
+    invoke<AudioStatus>("audio_capture_status")
+      .then(setStatus)
+      .catch(console.error);
+
+    const unlisten = listen("audio-frame", (event: AudioFrameEvent) => {
+      setFramesReceived((prev) => prev + 1);
+      setLastTs(event.payload.ts);
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  async function startCapture() {
+    try {
+      await invoke("audio_capture_start", { sessionId: "test-session-123" });
+      setStatus(await invoke<AudioStatus>("audio_capture_status"));
+    } catch (e) {
+      console.error("Failed to start:", e);
+    }
+  }
+
+  async function stopCapture() {
+    try {
+      await invoke("audio_capture_stop");
+      setStatus(await invoke<AudioStatus>("audio_capture_status"));
+    } catch (e) {
+      console.error("Failed to stop:", e);
+    }
   }
 
   return (
     <main className="container">
       <h1>Welcome to Tauri + React</h1>
 
-      <div className="row">
-        <a href="https://vite.dev" rel="noopener" target="_blank">
-          <img
-            alt="Vite logo"
-            className="logo vite"
-            height="32"
-            src="/vite.svg"
-            width="32"
-          />
-        </a>
-        <a href="https://tauri.app" rel="noopener" target="_blank">
-          <img
-            alt="Tauri logo"
-            className="logo tauri"
-            height="231"
-            src="/tauri.svg"
-            width="206"
-          />
-        </a>
-        <a href="https://react.dev" rel="noopener" target="_blank">
-          <img
-            alt="React logo"
-            className="logo react"
-            height="32"
-            src={reactLogo}
-            width="36"
-          />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
+      <div
+        style={{
+          marginTop: "2rem",
+          padding: "1rem",
+          border: "1px solid #333",
+          borderRadius: "8px",
         }}
       >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
+        <h2>Audio Capture Test</h2>
+
+        <div style={{ marginBottom: "1rem" }}>
+          <strong>Status: </strong>
+          <pre>{JSON.stringify(status, null, 2)}</pre>
+        </div>
+
+        <div style={{ marginBottom: "1rem" }}>
+          <strong>Frames Received: </strong> {framesReceived}
+          <br />
+          <strong>Last Timestamp: </strong> {lastTs || "None"}
+        </div>
+
+        <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+          <button
+<<<<<<< Updated upstream
+            disabled={status?.active}
+            onClick={startCapture}
+            type="button"
+=======
+            type="button"
+            onClick={startCapture}
+            disabled={status?.active}
+>>>>>>> Stashed changes
+          >
+            Start Capture
+          </button>
+          <button
+<<<<<<< Updated upstream
+            disabled={!status?.active}
+            onClick={stopCapture}
+            type="button"
+=======
+            type="button"
+            onClick={stopCapture}
+            disabled={!status?.active}
+>>>>>>> Stashed changes
+          >
+            Stop Capture
+          </button>
+        </div>
+      </div>
     </main>
   );
 }
