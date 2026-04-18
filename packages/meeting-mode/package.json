@@ -10,7 +10,8 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "ioredis": "^5.9.2",
-    "@larity/logger": "workspace:*"
+    "@google/genai": "^1.50.1",
+    "@larity/logger": "workspace:*",
+    "ioredis": "^5.9.2"
   }
 }

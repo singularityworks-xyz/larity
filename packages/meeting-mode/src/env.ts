@@ -17,9 +17,14 @@ export const MAX_BUFFER_SIZE = Number.parseInt(
 
 export const LOG_LEVEL = process.env.LOG_LEVEL || "info";
 
+export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+
 export function validateEnv(): void {
   // Logic only validation if needed
   if (!REDIS_URL) {
     throw new Error("REDIS_URL is required");
+  }
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is required for Topic Management");
   }
 }
