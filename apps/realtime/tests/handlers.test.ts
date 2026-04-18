@@ -24,6 +24,10 @@ import { onClose } from "../src/handlers/on-close";
 import { onDrain } from "../src/handlers/on-drain";
 import { onMessage } from "../src/handlers/on-message";
 import { onOpen } from "../src/handlers/on-open";
+import {
+  __test_only_handleAlertChannel,
+  __test_only_handleBroadcastSessionChannel,
+} from "../src/redis/subscriber";
 import { getSession, getSessionCount, removeConnection } from "../src/session";
 
 describe("WebSocket Handlers Unit Tests", () => {
@@ -150,6 +154,33 @@ describe("WebSocket Handlers Unit Tests", () => {
 
       // Should not throw
       expect(() => onDrain(mockSocket)).not.toThrow();
+    });
+  });
+
+  describe("redis subscriber channel helpers", () => {
+    it("identifies ledger channel as session broadcast channel", () => {
+      const handled = __test_only_handleBroadcastSessionChannel(
+        "meeting.ledger.session-1",
+        JSON.stringify({ type: "insert" })
+      );
+
+      expect(handled).toBe(true);
+    });
+
+    it("parses alert channels without throwing", () => {
+      expect(() => {
+        __test_only_handleAlertChannel(
+          "meeting.alert.session-1.shared",
+          JSON.stringify({ id: "a1" })
+        );
+      }).not.toThrow();
+
+      expect(() => {
+        __test_only_handleAlertChannel(
+          "meeting.alert.session-1.user.user-1",
+          JSON.stringify({ id: "a2" })
+        );
+      }).not.toThrow();
     });
   });
 });

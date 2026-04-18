@@ -148,6 +148,12 @@ describe("Redis Infrastructure Tests", () => {
         const expected = "health:check";
         expect(redisKeys.health()).toBe(expected);
       });
+
+      it("should generate meeting ledger snapshot key correctly", () => {
+        const sessionId = "session-ledger";
+        const expected = "meeting:ledger:session-ledger";
+        expect(redisKeys.meetingLedgerSnapshot(sessionId)).toBe(expected);
+      });
     });
   });
 

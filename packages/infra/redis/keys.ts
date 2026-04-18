@@ -21,6 +21,8 @@ export const redisKeys = {
     `meeting.alert.${sessionId}.user.${userId}` as const,
   meetingCommitment: (sessionId: string) =>
     `meeting.commitment.${sessionId}` as const,
+  meetingLedgerSnapshot: (sessionId: string) =>
+    `meeting:ledger:${sessionId}` as const,
   meetingSpeaker: (sessionId: string) =>
     `meeting.speaker.${sessionId}` as const,
   meetingUtterance: (sessionId: string) =>

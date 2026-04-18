@@ -26,6 +26,10 @@ export function commitmentChannel(sessionId: string): string {
   return `meeting.commitment.${sessionId}`;
 }
 
+export function ledgerChannel(sessionId: string): string {
+  return `meeting.ledger.${sessionId}`;
+}
+
 export function speakerChannel(sessionId: string): string {
   return `meeting.speaker.${sessionId}`;
 }
@@ -38,40 +42,40 @@ export function vadChannel(sessionId: string): string {
   return `realtime.vad.${sessionId}`;
 }
 
+const meetingSessionChannels = new Set([
+  "utterance",
+  "alert",
+  "topic",
+  "commitment",
+  "ledger",
+  "speaker",
+]);
+
+const realtimeSessionChannels = new Set(["audio", "stt", "vad"]);
+
 export function extractSessionId(channel: string): string | undefined {
   const parts = channel.split(".");
+  const [namespace, channelType, sessionId] = parts;
 
-  if (parts[0] === "meeting" && parts.length >= 3) {
-    if (parts[1] === "utterance") {
-      return parts[2];
-    }
-    if (parts[1] === "alert") {
-      return parts[2];
-    }
-    if (parts[1] === "topic") {
-      return parts[2];
-    }
-    if (parts[1] === "commitment") {
-      return parts[2];
-    }
-    if (parts[1] === "speaker") {
-      return parts[2];
-    }
+  if (
+    namespace === "meeting" &&
+    sessionId &&
+    channelType &&
+    meetingSessionChannels.has(channelType)
+  ) {
+    return sessionId;
   }
 
-  if (parts[0] === "realtime" && parts.length >= 3) {
-    if (parts[1] === "audio") {
-      return parts[2];
-    }
-    if (parts[1] === "stt") {
-      return parts[2];
-    }
-    if (parts[1] === "vad") {
-      return parts[2];
-    }
+  if (
+    namespace === "realtime" &&
+    sessionId &&
+    channelType &&
+    realtimeSessionChannels.has(channelType)
+  ) {
+    return sessionId;
   }
 
-  return parts.pop();
+  return parts.at(-1);
 }
 
 export function extractUserIdFromAlertChannel(

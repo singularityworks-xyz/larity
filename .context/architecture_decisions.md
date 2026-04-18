@@ -15,6 +15,18 @@ This document tracks architectural decisions, technical tradeoffs, and implement
   2. We push it into a `pendingBuffer` up to a maximum duration (`~2s`).
   3. If VAD belatedly confirms it was a TEAM member, we emit an updated copy of the utterance with the corrected mapping. The client must be built to support overriding recent utterances by `utterance.id`.
 
+### Day 15-16: Topic State Management
+**Decision:** Gemini (`@google/genai`) for Embeddings and Summarization
+- **Context:** `TopicManager` groups utterances into topics via embedding similarity and generates summaries.
+- **Tradeoff:** Originally planned `OpenAI text-embedding-3-small`.
+- **Decision:** Shifted to Gemini via `@google/genai` for both embeddings and LLM summaries. It provides excellent multi-modal consistency and cost-efficiency.
+- **Implementation Note:** Test failures arose due to `GoogleGenAIEmbedder` and `TopicSummarizer` attempting real network calls and yielding `403 PERMISSION_DENIED`. The fix involved strict mocking of these network-dependent services in `pipeline.integration.test.ts` and `finalizer.test.ts`.
+
+**Decision:** Topic State Publishing
+- **Context:** We need clients to stay updated with rolling topic summaries and assignments without spamming them on every utterance.
+- **Decision:** `TopicManager` publishes topic updates to Redis (`meeting.topic.*`) and stores state in a Redis hash. LLM summarization calls are debounced or only run on session close to manage costs.
+- **Testing Adjustment:** The `UtterancePublisher` mock was updated to only assert on expected channels (`meeting.utterance.*`), preventing the new topic publish events from breaking `expect(publisher.calls).toHaveLength(1)`.
+
 ---
 
 ## Architectural Overhaul — Latency & Cost Hardening (pre-Week 4 review)

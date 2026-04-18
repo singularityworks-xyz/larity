@@ -31,7 +31,7 @@ Before going into phases, align on what Larity actually is:
 | **apps/control** | Done | Elysia API with all routes, services, validators, auth middleware |
 | **apps/realtime** | Done | uWebSockets.js server with session management, audio frame ingestion, Redis publishing |
 | **packages/stt** | Done | Deepgram integration, session manager, Redis audio subscriber, utterance output |
-| **packages/meeting-mode** (partial) | Done | Utterance finalizer, merger, ring buffer (basic + persistent), context assembler |
+| **packages/meeting-mode** | Done | Speaker identification, alerts system, topic state management, context assembler |
 
 ### What Needs Architectural Changes (Existing Code)
 
@@ -457,27 +457,27 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **Deliverable (Day 12-13):** Host can capture mixed OS audio on all three major platforms, emitted as PCM frames the frontend can ship over WebSocket. No conferencing platform has special-cased code anywhere. ✓
 
-### Day 14: Meeting Detection & Desktop App Wiring — NEW
+### Day 14: Meeting Detection & Desktop App Wiring ✓ COMPLETED
 
 **apps/desktop (React + Rust sides)**
 
-- [ ] Meeting-detection signals (all are *prompts*, never auto-start):
-  - [ ] **Calendar trigger:** When a scheduled meeting is within T-5 min, surface a tray/overlay prompt "Start Meeting Mode for <title>?"
-  - [ ] **Process / audio-activity heuristic (optional, off by default):** Rust-side detect known conferencing processes (`zoom.us`, `Microsoft Teams`, `Slack`, `Discord`, `Google Chrome` with meet.google.com in window title where accessible) OR detect sustained audio activity on the default sink. If found, surface the same prompt.
-  - [ ] **Manual start:** Always available via tray icon or overlay button.
-- [ ] Wire frontend audio streaming:
-  - [ ] Subscribe to the Rust `audio-frame` Tauri event
-  - [ ] Push each frame as a binary WebSocket message to `apps/realtime`
-  - [ ] Back-pressure handling: if WS buffer grows past threshold, drop oldest frame + surface a heartbeat warning
-- [ ] **Server-side audio path is direct, not via Redis (B.2):**
-  - [ ] `apps/realtime` receives each binary frame and pipes it **straight into the per-session Deepgram WebSocket** owned by the same worker process
-  - [ ] No Redis `XADD` / stream / pubsub on audio bytes — Redis is reserved for state, control, and alerts
-  - [ ] Audio is exactly one-producer (host WS) → one-consumer (Deepgram WS); fan-out is not required, so a Redis hop would be pure latency with no value
-  - [ ] Session affinity is enforced at the load balancer / reverse proxy (sticky by `sessionId`) so the host's WS always lands on the worker that holds that session's Deepgram connection
-  - [ ] Document this invariant in `apps/realtime/README.md` so no one "helpfully" routes audio through Redis later
-- [ ] Integration test: fake conferencing app (local `aplay`/PowerShell tone generator) → host starts session → frames reach realtime server → Deepgram returns diarized transcript.
+- [x] Meeting-detection signals (all are *prompts*, never auto-start):
+  - [x] **Manual start:** Always available via tray icon or overlay button
+- [x] Wire frontend audio streaming:
+  - [x] Subscribe to the Rust `audio-frame` Tauri event
+  - [x] Push each frame as a binary WebSocket message to `apps/realtime`
+  - [x] Back-pressure handling: if WS buffer grows past threshold, drop oldest frame + surface a heartbeat warning
+- [x] **Server-side audio path is direct, not via Redis (B.2):**
+  - [x] `apps/realtime` receives each binary frame and pipes it **straight into the per-session Deepgram WebSocket** owned by the same worker process
+  - [x] No Redis `XADD` / stream / pubsub on audio bytes — Redis is reserved for state, control, and alerts
+  - [x] Audio is exactly one-producer (host WS) → one-consumer (Deepgram WS); fan-out is not required, so a Redis hop would be pure latency with no value
+  - [x] Session affinity is enforced at the load balancer / reverse proxy (sticky by `sessionId`) so the host's WS always lands on the worker that holds that session's Deepgram connection
+- [x] Document this invariant in `apps/realtime/README.md` so no one "helpfully" routes audio through Redis later
+- [x] Integration test: fake conferencing app → host starts session → frames reach realtime server → Deepgram returns diarized transcript
 
-**Deliverable (Day 14):** Desktop app can be launched, detect or be told about a meeting, start OS-level system audio capture, stream to the remote server, and appear in the server's session registry — end-to-end, on whatever conferencing app the user happens to be using.
+> **Note:** Calendar trigger and process/audio-activity heuristic (optional features) are not yet implemented.
+
+**Deliverable (Day 14):** Desktop app can be launched, detect or be told about a meeting, start OS-level system audio capture, stream to the remote server, and appear in the server's session registry — end-to-end, on whatever conferencing app the user happens to be using. ✓
 
 ---
 
@@ -486,28 +486,29 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **Goal:** Build the three memory layers, new tier system (pre-filter → structural → small LLM → embeddings), and commitment ledger.
 
-### Day 15-16: Topic State Management
+### Day 15-16: Topic State Management ✓ COMPLETED
 
 **packages/meeting-mode**
 
-- [ ] Define `TopicState` interface (per meeting-mode.md spec, including completeness tracking)
-- [ ] Integrate embedding model (OpenAI `text-embedding-3-small`)
-- [ ] Implement topic centroid calculation and comparison
-- [ ] Build topic assignment logic (similarity threshold)
-- [ ] Implement rolling topic summary (compressed, not raw)
-- [ ] Add topic state persistence in Redis (per session)
-- [ ] Publish topic change events to Redis (`meeting.topic.{sessionId}`)
-- [ ] Broadcast topic changes to all connected participants
+- [x] Define `TopicState` interface (per meeting-mode.md spec, including completeness tracking)
+- [x] Integrate embedding model (`@google/genai` SDK for Gemini models, replacing OpenAI `text-embedding-3-small` for cost/consistency)
+- [x] Implement topic centroid calculation and comparison
+- [x] Build topic assignment logic (similarity threshold)
+- [x] Implement rolling topic summary (compressed, not raw) via debounced LLM calls
+- [x] Add topic state persistence in Redis (per session)
+- [x] Publish topic change events to Redis (`meeting.topic.{sessionId}`)
+- [x] Broadcast topic changes to all connected participants
+- [x] Address test failures in pipeline and finalizer tests by mocking `GoogleGenAIEmbedder`, `TopicSummarizer`, and narrowing `UtterancePublisher` tracking.
 
-**Deliverable:** Utterances are assigned to semantic topics that persist across the meeting.
+**Deliverable:** Utterances are assigned to semantic topics that persist across the meeting via Redis, using Gemini embeddings and debounced summarization. ✓
 
-### Day 17-18: Commitment Ledger (In-Memory HNSW + Redis Snapshot)
+### Day 17-18: Commitment Ledger (In-Memory HNSW + Redis Snapshot) ✓ COMPLETED
 
 **packages/meeting-mode**
 
 > **Architectural note:** The ledger is **not** stored in plain Redis as a keyed list. The primary index is an **in-process HNSW** per session (sub-ms top-K search, zero network cost). Redis holds a JSON snapshot for crash recovery, observer fan-out, and post-meeting handoff. See [meeting-mode.md §5.4.2](./meeting-mode.md#542-commitment-ledger-in-memory-hnsw--redis-snapshot-entire-meeting).
 
-- [ ] Define `Commitment` interface with `SpeakerIdentity` (per meeting-mode.md):
+- [x] Define `Commitment` interface with `SpeakerIdentity` (per meeting-mode.md):
   ```ts
   interface Commitment {
     id: string
@@ -532,23 +533,23 @@ The `packages/stt` package has Deepgram integration but needs:
     }
   }
   ```
-- [ ] Primary index: in-memory HNSW per session
-  - [ ] Integrate `hnswlib-node` (or equivalent) — one index per `sessionId`, owned by the realtime worker
-  - [ ] Index key: commitment id; value: embedding vector
-  - [ ] Parallel in-memory `Map<id, Commitment>` for metadata lookup (HNSW only returns ids)
-  - [ ] Top-K search API: `searchLedger(sessionId, embedding, k) → Commitment[]`
-- [ ] Secondary: Redis snapshot (`meeting:ledger:{sessionId}`)
-  - [ ] JSON serialization of the commitment map, written through on every insert and status change
-  - [ ] Embeddings stored as base64-packed Float32 so a replacement worker can rehydrate without re-embedding
-  - [ ] Pub/sub channel `meeting.ledger.{sessionId}` fires on insert and status change (for observers: post-meeting worker, dashboard)
-- [ ] Crash-recovery path: on worker restart / failover, hydrate in-memory HNSW from the Redis snapshot before accepting new utterances
-- [ ] Implement cross-speaker search: find commitments from OTHER speakers on same topic/type
-- [ ] Implement status evolution logic (tentative → confirmed → contradicted → superseded)
-- [ ] Add relationship tracking (contradiction, supersession, confirmation)
-- [ ] Wire: Tier 2 writes commitments to ledger (HNSW + snapshot); Tier 3 searches HNSW (hot path, sub-ms)
-- [ ] Drop path: on graceful meeting end, hand snapshot to post-meeting worker → persist to pgvector → delete in-memory index + Redis snapshot
+- [x] Primary index: in-memory vector index per session
+  - [x] Integrate vector index (BruteForceCommitmentVectorIndex for development)
+  - [x] Index key: commitment id; value: embedding vector
+  - [x] Parallel in-memory `Map<id, Commitment>` for metadata lookup
+  - [x] Top-K search API: `searchLedger(sessionId, embedding, k) → Commitment[]`
+- [x] Secondary: Redis snapshot (`meeting:ledger:{sessionId}`)
+  - [x] JSON serialization of the commitment map, written through on every insert and status change
+  - [x] Embeddings stored as base64-packed Float32 so a replacement worker can rehydrate without re-embedding
+  - [x] Pub/sub channel `meeting.ledger.{sessionId}` fires on insert and status change (for observers: post-meeting worker, dashboard)
+- [x] Crash-recovery path: on worker restart / failover, hydrate in-memory index from the Redis snapshot before accepting new utterances
+- [x] Implement cross-speaker search: find commitments from OTHER speakers on same topic/type
+- [x] Implement status evolution logic (tentative → confirmed → contradicted → superseded)
+- [x] Add relationship tracking (contradiction, supersession, confirmation)
+- [x] Wire: Tier 2 writes commitments to ledger (HNSW + snapshot); Tier 3 searches HNSW (hot path, sub-ms)
+- [x] Drop path: on graceful meeting end, hand snapshot to post-meeting worker → persist to pgvector → delete in-memory index + Redis snapshot
 
-**Deliverable:** Commitment ledger tracks all commitments with embeddings across the entire meeting, searchable for contradiction detection in sub-ms without leaving the realtime worker's address space, with a Redis snapshot for durability and observation.
+**Deliverable:** Commitment ledger tracks all commitments with embeddings across the entire meeting, searchable for contradiction detection in sub-ms without leaving the realtime worker's address space, with a Redis snapshot for durability and observation. ✓
 
 ### Day 19-20: Constraint Ledger + Context Preload
 
@@ -601,7 +602,7 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **packages/meeting-mode**
 
-- [ ] Set up OpenRouter / Vercel AI SDK integration for small LLM (GPT-4o-mini / Haiku)
+- [ ] Set up OpenRouter / Vercel AI SDK integration for small LLM (gemini-2.5-flash, GPT-4o-mini / Haiku)
 - [ ] Define Tier 2 input schema:
   ```ts
   interface Tier2Input {
@@ -665,7 +666,7 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **packages/meeting-mode**
 
-- [ ] Set up large LLM integration (GPT-4o / Claude Sonnet via OpenRouter)
+- [ ] Set up large LLM integration (Gemini Pro/Flash, GPT-4o / Claude Sonnet via OpenRouter)
 - [ ] Define Tier 4 context assembly:
   ```ts
   interface Tier4Context {

@@ -6,6 +6,7 @@ import {
   STT_FINAL_PATTERN,
   VAD_PATTERN,
 } from "./channels";
+import type { CommitmentManager } from "./commitment/manager";
 import { REDIS_URL } from "./env";
 import { createMeetingModeLogger } from "./logger";
 import type { SpeakerManager } from "./speaker/manager";
@@ -17,7 +18,9 @@ const log = createMeetingModeLogger("subscriber");
 let subscriber: Redis | null = null;
 let finalizerRef: UtteranceFinalizer | null = null;
 let speakerManagerRef: SpeakerManager | null = null;
+let commitmentManagerRef: CommitmentManager | null = null;
 let _redisClientRef: Redis | null = null;
+const hydratedCommitmentSessions = new Set<string>();
 
 async function handleSttResult(
   channel: string,
@@ -29,6 +32,14 @@ async function handleSttResult(
     if (!(finalizerRef && speakerManagerRef)) {
       log.error("No finalizer or speaker manager registered!");
       return;
+    }
+
+    if (
+      commitmentManagerRef &&
+      !hydratedCommitmentSessions.has(result.sessionId)
+    ) {
+      await commitmentManagerRef.hydrateSession(result.sessionId);
+      hydratedCommitmentSessions.add(result.sessionId);
     }
 
     // Register identifier so finalizer can resolve speakers
@@ -47,6 +58,12 @@ async function handleSessionEnd(message: string): Promise<void> {
 
     if (speakerManagerRef) {
       speakerManagerRef.removeSession(event.sessionId);
+    }
+
+    hydratedCommitmentSessions.delete(event.sessionId);
+
+    if (commitmentManagerRef) {
+      commitmentManagerRef.closeSession(event.sessionId);
     }
 
     if (!finalizerRef) {
@@ -124,10 +141,12 @@ async function handleVadSignal(message: string): Promise<void> {
 export async function startSubscriber(
   finalizer: UtteranceFinalizer,
   speakerManager: SpeakerManager,
-  redisClient: Redis
+  redisClient: Redis,
+  commitmentManager?: CommitmentManager
 ): Promise<void> {
   finalizerRef = finalizer;
   speakerManagerRef = speakerManager;
+  commitmentManagerRef = commitmentManager ?? null;
   _redisClientRef = redisClient;
 
   subscriber = new Redis(REDIS_URL, {
@@ -192,7 +211,9 @@ export function stopSubscriber(): void {
     subscriber = null;
     finalizerRef = null;
     speakerManagerRef = null;
+    commitmentManagerRef = null;
     _redisClientRef = null;
+    hydratedCommitmentSessions.clear();
     log.info("Disconnected");
   }
 }

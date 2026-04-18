@@ -3,6 +3,7 @@ import {
   disconnectRedis,
   getRedisClient,
 } from "../../infra/redis";
+import { CommitmentManager } from "./commitment/manager";
 import { validateEnv } from "./env";
 import { rootLogger } from "./logger";
 import { startSubscriber, stopSubscriber } from "./subscriber";
@@ -15,6 +16,7 @@ export * from "./alerts/router";
 export { AlertSubscriber } from "./alerts/subscriber";
 export * from "./alerts/types";
 export * from "./channels";
+export * from "./commitment";
 export { SpeakerIdentifier } from "./speaker/identifier";
 export * from "./speaker/types";
 export * from "./utterance/types";
@@ -23,6 +25,7 @@ import { SpeakerManager } from "./speaker/manager";
 
 let finalizer: UtteranceFinalizer | null = null;
 let speakerManager: SpeakerManager | null = null;
+let commitmentManager: CommitmentManager | null = null;
 
 //graceful shutdown handler
 async function shutdown(signal: string): Promise<void> {
@@ -31,6 +34,10 @@ async function shutdown(signal: string): Promise<void> {
   try {
     if (finalizer) {
       await finalizer.closeAll();
+    }
+
+    if (commitmentManager) {
+      commitmentManager.closeAll();
     }
 
     await stopSubscriber();
@@ -71,6 +78,9 @@ async function main(): Promise<void> {
   }
 
   speakerManager = new SpeakerManager();
+  commitmentManager = new CommitmentManager(
+    redisClient as unknown as ConstructorParameters<typeof CommitmentManager>[0]
+  );
   finalizer = new UtteranceFinalizer({
     publish: (channel, message) => redisClient.publish(channel, message),
     hset: (key, field, value) => redisClient.hset(key, field, value),
@@ -79,7 +89,8 @@ async function main(): Promise<void> {
   await startSubscriber(
     finalizer,
     speakerManager,
-    redisClient as unknown as Parameters<typeof startSubscriber>[2]
+    redisClient as unknown as Parameters<typeof startSubscriber>[2],
+    commitmentManager
   );
   rootLogger.info("Utterance Finalizer is running");
 
