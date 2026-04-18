@@ -27,6 +27,16 @@ This document tracks architectural decisions, technical tradeoffs, and implement
 - **Decision:** `TopicManager` publishes topic updates to Redis (`meeting.topic.*`) and stores state in a Redis hash. LLM summarization calls are debounced or only run on session close to manage costs.
 - **Testing Adjustment:** The `UtterancePublisher` mock was updated to only assert on expected channels (`meeting.utterance.*`), preventing the new topic publish events from breaking `expect(publisher.calls).toHaveLength(1)`.
 
+**Decision (follow-up): Remove semantic redundancy between Topic Summarization and Tier 2**
+- **Context:** If both TopicManager and Tier 2 independently perform per-utterance semantic extraction, we pay duplicate latency/cost for equivalent inference.
+- **Decision:** Tier 2 is the single per-utterance semantic source of truth. It emits structured `topicDelta` fields used by a deterministic topic-state reducer. Topic summary LLM calls are retained only as asynchronous refinement (topic shift/close/significant delta), never as a hot-path dependency.
+- **Consequence:** Alerting latency and gating remain unchanged; topic summaries stay current even if refinement calls fail.
+
+**Decision (follow-up): Shared embedding per utterance across pipeline consumers**
+- **Context:** Topic assignment and Tier 3 both require utterance embeddings; computing them separately is wasteful.
+- **Decision:** Generate one utterance embedding and reuse it across Tier 3 checks, topic centroid assignment, Tier 2 semantic-cache similarity, and commitment-ledger writes.
+- **Consequence:** Fewer API calls and lower p95 without reducing detection quality.
+
 ---
 
 ## Architectural Overhaul — Latency & Cost Hardening (pre-Week 4 review)

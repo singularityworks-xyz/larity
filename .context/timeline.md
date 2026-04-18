@@ -494,13 +494,13 @@ The `packages/stt` package has Deepgram integration but needs:
 - [x] Integrate embedding model (`@google/genai` SDK for Gemini models, replacing OpenAI `text-embedding-3-small` for cost/consistency)
 - [x] Implement topic centroid calculation and comparison
 - [x] Build topic assignment logic (similarity threshold)
-- [x] Implement rolling topic summary (compressed, not raw) via debounced LLM calls
+- [x] Implement rolling topic summary state with debounced LLM refinement
 - [x] Add topic state persistence in Redis (per session)
 - [x] Publish topic change events to Redis (`meeting.topic.{sessionId}`)
 - [x] Broadcast topic changes to all connected participants
 - [x] Address test failures in pipeline and finalizer tests by mocking `GoogleGenAIEmbedder`, `TopicSummarizer`, and narrowing `UtterancePublisher` tracking.
 
-**Deliverable:** Utterances are assigned to semantic topics that persist across the meeting via Redis, using Gemini embeddings and debounced summarization. ✓
+**Deliverable:** Utterances are assigned to semantic topics that persist across the meeting via Redis, using Gemini embeddings and debounced summary refinement. ✓
 
 ### Day 17-18: Commitment Ledger (In-Memory HNSW + Redis Snapshot) ✓ COMPLETED
 
@@ -627,18 +627,29 @@ The `packages/stt` package has Deepgram integration but needs:
       currency?: string
     }
     confidence: number
+    topicDelta?: {
+      labelHint?: string
+      decision?: string
+      commitment?: string
+      openQuestion?: string
+      risk?: string
+      owner?: string
+      deadline?: string
+    }
   }
   ```
 - [ ] Build LLM prompt template for classification (multilingual, semantic)
 - [ ] Implement cross-utterance context (fetch last 2-3 from same speaker from ring buffer)
+- [ ] Make Tier 2 the single per-utterance semantic source for both alerting and topic-state updates (no duplicate semantic extraction in topic summarizer)
+- [ ] Update topic state reducer to consume `Tier2Classification.topicDelta` and maintain deterministic live summaries without an extra per-utterance LLM call
 - [ ] Implement gate logic:
   - [ ] `filler`/`general` + no risk signals + confidence > 0.8 → STOP (don't proceed to Tier 4)
-  - [ ] `commitment`/`decision` → write to commitment ledger immediately (with embedding)
+  - [ ] `commitment`/`decision` → write to commitment ledger immediately (with shared embedding)
   - [ ] Everything continues to Tier 3 regardless
 - [ ] Add response validation and timeout (200ms max, fail-silent)
 - [ ] Test with multilingual utterances (English, Hindi, Hinglish)
 
-**Deliverable:** Every utterance is classified by small LLM — replaces ALL old regex pattern libraries. Works in any language.
+**Deliverable:** Every utterance is classified by small LLM as the single semantic source of truth (alerts + topic deltas) — replaces ALL old regex pattern libraries. Works in any language.
 
 ### Day 24-25: Tier 3 — Embedding Search & Novelty Check
 
@@ -653,11 +664,16 @@ The `packages/stt` package has Deepgram integration but needs:
   - [ ] **Novelty check:** Embedding-based deduplication within current meeting
   - [ ] **Memory search:** Vector search against pgvector (top-K, similarity > threshold)
   - [ ] **Commitment ledger search:** Compare against ALL commitments from THIS meeting (Redis)
+- [ ] Generate one shared embedding per utterance and reuse it for:
+  - [ ] Tier 3 novelty/memory/ledger search
+  - [ ] Tier 2 semantic-cache keying (embedding similarity)
+  - [ ] Topic centroid assignment (via TopicManager)
+  - [ ] Commitment ledger inserts (avoid re-embedding on write)
 - [ ] Implement forcing logic:
   - [ ] Memory match found → force Tier 4
   - [ ] Commitment ledger match found (potential contradiction) → force Tier 4
   - [ ] No matches + Tier 2 said stop → STOP
-- [ ] Optimize: batch embedding generation, connection pooling for pgvector
+- [ ] Optimize: batch embedding generation, connection pooling for pgvector, and eliminate duplicate embedding calls between topic assignment and Tier 3
 - [ ] Target latency: <100ms total for all three checks
 
 **Deliverable:** Tier 3 catches conflicts with organizational memory and intra-meeting contradictions that Tier 2 might miss.
@@ -708,6 +724,7 @@ The `packages/stt` package has Deepgram integration but needs:
 > **Architectural anchor:** This is where the realtime pipeline hits its <800ms end-to-end budget. Key design points, all per [meeting-mode.md §5.6.1](./meeting-mode.md#561-pipeline-orchestration--parallel-tier-execution):
 > - Tiers 1, 2, 3 run in parallel (independent inputs)
 > - Tier 4 is gated by the combined output
+> - Topic summary generation is off the hot path and derived from Tier 2 outputs
 > - Tier 2 has a per-session semantic cache
 > - Tier 4 invocations respect a per-meeting cost ceiling
 > - Every stage emits structured latency/cost metrics
@@ -716,6 +733,7 @@ The `packages/stt` package has Deepgram integration but needs:
   - [ ] Replace any sequential `await tier1; await tier2; await tier3;` with `const [t1, t2, t3] = await Promise.all([runTier1, runTier2, runTier3])`
   - [ ] Tier 2 commitment writes awaited *inside* the Tier 2 task, so Tier 3's ledger search sees prior commitments but not the current one
   - [ ] Tier 1 instant alerts (blocklist/technical hit) dispatch without waiting for Tier 4
+  - [ ] Topic state updates run as deterministic reducer side-effects from Tier 2 output in the same tick
   - [ ] Gate decision runs after `Promise.all` — pure in-process logic, <5ms
   - [ ] Instrument each tier with a `performance.now`-based span; record `pipelineBudget` (target: <220ms without Tier 4, <720ms with)
 - [ ] **Tier 2 semantic cache (B.6):**
@@ -723,6 +741,11 @@ The `packages/stt` package has Deepgram integration but needs:
   - [ ] Max ~200 entries per session, evict on LRU
   - [ ] On cache hit: reuse Tier 2 classification, skip the LLM call, still run Tier 3 (memory may have changed)
   - [ ] Target hit rate for boilerplate filler/confirmations: ≥30% — shaves ~$0.05 and ~100ms per hit
+- [ ] **Async topic-summary refinement (new):**
+  - [ ] Generate live topic summary text from reducer state first (no LLM in hot path)
+  - [ ] Trigger LLM summary refinement only on topic shift, topic close, or significant semantic delta
+  - [ ] Skip refinement when topic-state hash is unchanged (dedupe)
+  - [ ] Keep refinement failures fail-silent; never block alerting pipeline
 - [ ] **Per-meeting cost ceiling (B.7):**
   - [ ] Redis counter `meeting:cost:{sessionId}` incremented after every Tier 2 and Tier 4 call with actual `usage.totalTokens × pricePerToken`
   - [ ] Default cap: $2.00 per meeting (configurable per org)
@@ -735,6 +758,7 @@ The `packages/stt` package has Deepgram integration but needs:
   - [ ] Per-session rollup on meeting end: p50/p95/p99 latency, total cost, tier invocation counts, gate decision distribution
   - [ ] Basic Prometheus histograms for p50/p95/p99 end-to-end latency (optional — only if infra is in place; otherwise stdout JSON is sufficient for MVP)
 - [ ] End-to-end test: utterance with commitment → Tier 2 writes to ledger → later contradicting utterance → Tier 3 catches → Tier 4 confirms → alert generated; validate total latency <800ms
+- [ ] End-to-end test: topic summary remains up to date with Tier 2 deltas even when summary refinement LLM is unavailable
 - [ ] Cost regression test: 1-hour scripted meeting fixture → total cost under budget (~$0.30 nominal, $2.00 hard cap)
 - [ ] Parallel-vs-sequential benchmark: same fixture run both ways, confirm parallel saves ~150-200ms p95
 
@@ -1322,7 +1346,7 @@ The `packages/stt` package has Deepgram integration but needs:
 | 1 | 1-7 | **Migration & Multi-User** | Speaker model migration (YOU/THEM → SpeakerIdentity), Deepgram diarization, multi-user session join, Redis alert channels |
 | 2 | 8-14 | **Speaker ID (VAD) + OS Audio Capture** | VAD signals from desktop mic, clock-offset-corrected diarization correlation, diarization-index merge logic, **OS-level system audio capture in Tauri/Rust (Win / macOS / Linux)**, meeting-detection prompts, **direct uWS → Deepgram audio path (no Redis hop)** |
 | 3 | 15-21 | **State & Structural Detection** | Topic state, commitment ledger (**in-memory HNSW + Redis snapshot**, with embeddings), constraint ledger, pre-filter, Tier 1 structural |
-| 4 | 22-28 | **LLM Classification & Search** | Tier 2 small LLM (replaces all regex), Tier 3 embedding search + commitment ledger search, Tier 4 deep reasoning, **parallel Tier 1/2/3 orchestration, Tier 2 semantic cache, per-meeting cost cap, structured observability** |
+| 4 | 22-28 | **LLM Classification & Search** | Tier 2 small LLM (single semantic source replacing all regex), Tier 3 embedding search + commitment ledger search (shared embedding reuse), Tier 4 deep reasoning, **parallel Tier 1/2/3 orchestration, async topic-summary refinement off hot path, Tier 2 semantic cache, per-meeting cost cap, structured observability** |
 | 5 | 29-36 | **Alert System & Speaker Tracking** | All 12 alert categories, alert routing (shared/personal), speaker state tracker, tone trajectory, client disengagement, speculative processing, **atomic alert UX (no progressive flicker)** |
 | 6 | 37-46+ | **Desktop Frontend, E2E & Distribution** | Desktop UI (tray + overlay + main), ambient components, alert UI (12 categories), meeting mode screen, multi-user end-to-end testing, **signed/notarized installers + auto-update across Win/macOS/Linux** |
 | 7 | 47-55 | **Post-Meeting** | Workers, **MinIO raw audio persistence (30-day lifecycle)**, Whisper refinement, speaker-attributed transcripts, commitment ledger → pgvector, extraction, memory writes |
@@ -1466,6 +1490,7 @@ apps/
 | VAD correlation latency | Cache identified speakers; only first occurrence per diarization index triggers correlation |
 | Tier 2 LLM (small) too slow | 200ms timeout, fail-silent; if consistently slow, batch utterances |
 | Tier 2 LLM classification quality | Test with multilingual samples; tune prompt; consider fine-tuning small model |
+| Redundant semantic extraction between topic and Tier 2 | Tier 2 becomes single semantic source; topic summaries derive from reducer state with async refinement only on significant deltas |
 | Tier 4 LLM response too slow | Streaming responses, 500ms timeout, fail-silent |
 | Team inconsistency false positives | Require high similarity threshold for commitment ledger match + LLM confirmation |
 | Client disengagement false positives | Require sustained pattern (5+ min), not just one short response |
@@ -1578,7 +1603,7 @@ apps/
 - **Deepgram** — Streaming STT with diarization (API key required)
 - **OpenAI Whisper API** — Batch STT refinement (post-meeting)
 - **OpenRouter** — LLM routing for Tier 2 (GPT-4o-mini/Haiku), Tier 4 (GPT-4o/Sonnet), extraction, assistant
-- **OpenAI** — Embeddings (text-embedding-3-small) for topic clustering, commitment embeddings, vector search
+- **Google Gemini (`@google/genai`)** — Embeddings (`text-embedding-004` / Gemini embedding models) for topic clustering, commitment embeddings, vector search
 
 ### Infrastructure
 - **Redis** — Already configured in packages/infra. Needs new key patterns for multi-user, commitment ledger snapshots, per-meeting cost counters, and pub/sub channels for ledger updates. **Not on the audio path.**
@@ -1619,7 +1644,7 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 | **Commitment ledger** | YOU + THEM, basic | Full SpeakerIdentity, embeddings, **in-memory HNSW (hot path) + Redis snapshot (durability)**, entire meeting |
 | **Audio path** | Redis stream → consumer → Deepgram | **Direct uWS → Deepgram inside the realtime worker. No Redis on audio bytes.** |
 | **Pipeline orchestration** | Tiers 1→2→3→4 sequential | **Tiers 1, 2, 3 run in parallel; Tier 4 gated after** |
-| **Tier 2 LLM calls** | One per post-filter utterance | **Per-session semantic cache on utterance embedding (~30% hit rate on filler)** |
+| **Tier 2 LLM calls** | One per post-filter utterance | **Per-session semantic cache on utterance embedding (~30% hit rate on filler), and Tier 2 output reused as topic-state semantic source** |
 | **Cost control** | Nominal budget only | **Per-meeting Redis cost counter; gate tightening at 80% of cap; Tier 4 disabled at 100% of cap** |
 | **Diarization index drift** | Ignored | **Reassignment-merge onto existing SpeakerIdentity after silence** |
 | **Client clock drift** | Fixed ±300ms tolerance | **Per-client rolling-median offset + ±250ms window** |

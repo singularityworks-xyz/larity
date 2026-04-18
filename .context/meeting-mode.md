@@ -544,8 +544,10 @@ This is the core intelligence pipeline. For each finalized utterance, it runs th
 **Key design points:**
 - Tier 1 is purely structural/language-agnostic.
 - Tier 2 uses a small LLM for classification (replacing all regex pattern libraries).
+- Tier 2 is the **single per-utterance semantic source of truth** (alerts + topic deltas).
 - Tier 3 runs on every post-filter utterance as a safety net.
 - Tier 4 is deep reasoning, gated by Tier 2/Tier 3 output.
+- Topic-summary LLM calls are **off the hot path** and only used for asynchronous refinement.
 - **Tiers 1, 2, and 3 run in parallel, not sequentially** — they are fully independent (structural checks, LLM classification, embedding search). Sequential execution of independent work is pure latency waste. Tier 4 is the only stage that consumes upstream output, so it runs after Tiers 2 and 3 resolve. See §5.6.1 for the exact orchestration.
 
 #### Pre-filter (Local, Free, <10ms)
@@ -620,6 +622,15 @@ interface Tier2Classification {
     amount?: number
     currency?: string
   }
+  topicDelta?: {
+    labelHint?: string                        // Optional topic label hint
+    decision?: string                         // Canonicalized decision candidate
+    commitment?: string                       // Canonicalized commitment candidate
+    openQuestion?: string                     // Unresolved question candidate
+    risk?: string                             // Risk statement candidate
+    owner?: string                            // Ownership extraction candidate
+    deadline?: string                         // Deadline extraction candidate
+  }
   confidence: number                          // 0-1
 }
 ```
@@ -636,8 +647,14 @@ interface Tier2Classification {
 
 **Gate logic after Tier 2:**
 - If `intent` is `"filler"` or `"general"` with no `riskSignals` AND `confidence > 0.8` → **STOP** (don't proceed to Tier 4)
-- If `intent` is `"commitment"` or `"decision"` → **ALSO write to Commitment Ledger in Redis immediately** (with embedding)
+- If `intent` is `"commitment"` or `"decision"` → **ALSO write to Commitment Ledger in Redis immediately** (with the shared utterance embedding)
 - Everything continues to Tier 3 regardless (Tier 3 is a safety net)
+
+**Tier 2 as topic-state source (non-redundant design):**
+- Topic state reducer consumes `topicDelta` from Tier 2 for deterministic live updates.
+- Topic summary text is generated from reducer state first (no per-utterance summarization call).
+- Optional LLM summary refinement runs asynchronously on topic shift/topic close/significant semantic delta only.
+- If refinement fails or times out, live topic state remains correct and alerting latency is unaffected.
 
 **Cost:** ~$0.002 per call × ~72 calls per hour-long meeting (after pre-filter) = **~$0.14 per meeting for Tier 2**
 
@@ -765,6 +782,8 @@ const [tier1, tier2, tier3] = await Promise.all([
   runTier3EmbeddingSearch(utterance),   // <100ms, ~$0.00002
 ])
 
+applyTopicDelta(tier2.topicDelta)       // deterministic reducer update, same tick
+
 const gate = decideTier4Gate({ tier1, tier2, tier3 })
 
 if (gate.runTier4) {
@@ -808,6 +827,7 @@ This fits the <800ms end-to-end budget from speech-final to alert delivery (Deep
 **Side-effects during parallel execution:**
 - Tier 2, on `intent ∈ {"commitment", "decision"}`, writes to the in-session commitment index (§5.4.2) **after** its own promise resolves but **before** `Promise.all` returns — the write is awaited inside the Tier 2 task. Tier 3's ledger search therefore sees prior commitments but not the current one (correct: you don't want to match an utterance against itself).
 - Tier 1 blocklist/technical hits are dispatched as "instant" alerts without waiting for Tier 4. These go out on the shared channel immediately.
+- Topic summary LLM refinement is explicitly off the hot path. It triggers only on topic shift/topic close/significant delta and never blocks the Tier 1/2/3 → gate → Tier 4 flow.
 
 #### Three Model Tiers
 
@@ -816,6 +836,10 @@ This fits the <800ms end-to-end budget from speech-final to alert delivery (Deep
 | **Embedding model** | Search, similarity, novelty | ~$0.00002 | text-embedding-004 (Gemini via @google/genai) |
 | **Small LLM** | Classification, extraction | ~$0.002 | gemini-2.5-flash, GPT-4o-mini |
 | **Large LLM** | Deep reasoning, contradiction analysis | ~$0.02 | gemini-2.5-pro, GPT-4o, Claude Sonnet |
+
+**Embedding reuse rule (no duplicate work):**
+- Generate one utterance embedding and reuse it for Tier 3 checks, Tier 2 semantic-cache similarity, topic centroid assignment, and commitment-ledger writes.
+- Do not issue a second embedding call for topic assignment if Tier 3 already computed the utterance embedding.
 
 ---
 

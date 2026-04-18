@@ -252,12 +252,14 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 * **Single call to GPT-4o-mini** per utterance
 * Input: utterance + speaker identity + last 2-3 utterances from same speaker (cross-utterance context)
 * **Replaces ALL old regex pattern libraries** (risky language, pressure tactics, tone, scope creep, backtracking, vague language)
-* Returns: intent, commitmentType, tone, riskSignals, extractedData, confidence
+* Returns: intent, commitmentType, tone, riskSignals, extractedData, confidence, and `topicDelta` fields
+* **Single semantic source of truth:** Tier 2 output drives both alert gating and topic-state updates (no duplicate semantic extraction in topic summarizer)
 * Gate: filler/general with high confidence → STOP. Commitment/decision → write to commitment ledger
 * **Works in ANY language natively**
 
 #### Tier 3: Embedding Search + Novelty Check (~$0.00002/call, <100ms)
 * Runs on **EVERY utterance** (safety net — catches what Tier 2 might miss)
+* Uses a **shared utterance embedding** reused by topic assignment, Tier 2 cache similarity, and commitment-ledger writes
 * Three parallel checks:
     * **Novelty check**: semantic deduplication within meeting
     * **Memory search**: pgvector search for past decisions, commitments, policies (client-scoped + org-wide)
@@ -275,7 +277,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 
 | Model | Purpose | Cost/call | Example |
 |-------|---------|-----------|---------|
-| **Embedding** | Search, similarity, novelty | ~$0.00002 | text-embedding-3-small |
+| **Embedding** | Search, similarity, novelty | ~$0.00002 | text-embedding-004 (Gemini via @google/genai) |
 | **Small LLM** | Classification, extraction | ~$0.002 | GPT-4o-mini, Haiku |
 | **Large LLM** | Deep reasoning | ~$0.02 | GPT-4o, Claude Sonnet |
 
@@ -303,20 +305,21 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 * At meeting end: exported to PostgreSQL + pgvector (becomes organizational memory); in-memory index dropped, Redis snapshot deleted
 
 ### 11. Topic & State Tracking
-* **Topic State:** Each utterance embedded, compared against topic centroids, assigned to existing or new topic
+* **Topic State:** Each utterance embedding is reused (shared with Tier 3), compared against topic centroids, assigned to existing or new topic
+* **Topic summary text:** Built from Tier 2-driven reducer state in the hot path; optional LLM refinement is debounced/off-path on topic shift or significant deltas
 * **Constraint Ledger:** Tracks explicit facts (dates, capacity, policy, dependencies) from preloaded data + meeting
 * **Speaker State Tracker:** Rolling tone scores per speaker, engagement metrics, response patterns
     * Detects gradual tone shifts (escalation over 15 min)
     * Detects client disengagement (brief responses, declining frequency)
 * **State Persistence:** All ledgers in Redis per session, accessible to all participants
 
-### 12. Live LLM Invocation (Read-Only, Streaming)
+### 12. Live LLM Invocation (Read-Only, Atomic Alerts)
 * **LLM Characteristics:**
     * Tier 2: Small, fast model (GPT-4o-mini) for classification — every utterance
     * Tier 4: Large model (GPT-4o/Sonnet via OpenRouter) for reasoning — ~8 calls/meeting
 * **Context for Tier 4:** Known constraints, recent commitments, topic summary, utterance, speaker identity, Tier 3 matches (historical + commitment ledger). **No full transcript.**
 * **Structure:** Zod-enforced output schemas (Vercel AI SDK)
-* **Streaming Pattern:** Progressive feedback (200ms checking indicator, 300ms preliminary alert, 400ms final)
+* **UI Pattern:** Content-free "Checking..." indicator only; final alerts render atomically after full validation (no preliminary/progressive alert text)
 * **Output:** Ephemeral alert with routing. **No persistence during meeting.**
 * *Note: If slow or wrong → silently skipped.*
 
