@@ -4,6 +4,31 @@ import type { UtterancePublisher } from "../../src/utterance/finalizer";
 import { UtteranceFinalizer } from "../../src/utterance/finalizer";
 import { createTestSttResult, resetUtteranceSeq } from "../helpers";
 
+mock.module("../../src/topic/embedder", () => {
+  return {
+    GoogleGenAIEmbedder: mock(() => {
+      return {
+        embed: mock(() => Promise.resolve(new Array(768).fill(0))),
+      };
+    }),
+  };
+});
+
+mock.module("../../src/topic/summarizer", () => {
+  return {
+    TopicSummarizer: mock(() => {
+      return {
+        summarize: mock(() =>
+          Promise.resolve({
+            summary: "Mock summary",
+            actionItems: [],
+          })
+        ),
+      };
+    }),
+  };
+});
+
 function createMockPublisher(): UtterancePublisher & {
   calls: Array<{ channel: string; message: string }>;
 } {
@@ -11,9 +36,12 @@ function createMockPublisher(): UtterancePublisher & {
   return {
     calls,
     publish: mock((channel: string, message: string) => {
-      calls.push({ channel, message });
+      if (channel.startsWith("meeting.utterance.")) {
+        calls.push({ channel, message });
+      }
       return Promise.resolve(1);
     }),
+    hset: mock(() => Promise.resolve(1)),
   };
 }
 
@@ -40,7 +68,8 @@ describe("UtteranceFinalizer with SpeakerIdentifier", () => {
       type: "vad_speaking",
       userId: aliceId,
       sessionId,
-      ts: now - 500,
+      clientSendTs: now - 500,
+      serverReceiveTs: now - 500,
     });
 
     const result = createTestSttResult({
@@ -114,7 +143,13 @@ describe("UtteranceFinalizer with SpeakerIdentifier", () => {
       expect(initialCallCount).toBeGreaterThanOrEqual(0);
 
       const retroactiveResults = identifier.tryLateIdentification(
-        { type: "vad_speaking", userId: aliceId, sessionId, ts: now },
+        {
+          type: "vad_speaking",
+          userId: aliceId,
+          sessionId,
+          clientSendTs: now,
+          serverReceiveTs: now,
+        },
         [{ diarizationIndex: 0, timestamp: now }]
       );
 
@@ -161,7 +196,13 @@ describe("UtteranceFinalizer with SpeakerIdentifier", () => {
       );
 
       const retroactiveResults = identifier.tryLateIdentification(
-        { type: "vad_speaking", userId: aliceId, sessionId, ts: now },
+        {
+          type: "vad_speaking",
+          userId: aliceId,
+          sessionId,
+          clientSendTs: now,
+          serverReceiveTs: now,
+        },
         [{ diarizationIndex: 0, timestamp: now }]
       );
 

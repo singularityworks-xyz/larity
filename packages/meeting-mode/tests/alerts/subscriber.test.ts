@@ -95,6 +95,7 @@ describe("AlertSubscriber channel resolution", () => {
           speakerId: "spk_0",
           type: "EXTERNAL",
           name: "Client",
+          diarizationIndices: [0],
           isCurrentUser: false,
           confidence: 0.8,
         },

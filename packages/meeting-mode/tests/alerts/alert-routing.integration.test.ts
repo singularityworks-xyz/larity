@@ -294,12 +294,12 @@ describe("Alert Routing Integration", () => {
 
   describe("Redis key infrastructure", () => {
     it("should generate consistent keys between redisKeys and channels", () => {
-      expect(redisKeys.meetingAlertShared(sessionId)).toBe(
+      expect(redisKeys.meetingAlertShared(sessionId) as any).toBe(
         sharedAlertChannel(sessionId)
       );
-      expect(redisKeys.meetingAlertPersonal(sessionId, viewerUserId)).toBe(
-        personalAlertChannel(sessionId, viewerUserId)
-      );
+      expect(
+        redisKeys.meetingAlertPersonal(sessionId, viewerUserId) as any
+      ).toBe(personalAlertChannel(sessionId, viewerUserId));
     });
 
     it("should have appropriate TTL values for alert keys", () => {

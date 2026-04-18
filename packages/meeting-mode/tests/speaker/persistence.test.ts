@@ -26,11 +26,12 @@ describe("SpeakerPersistence", () => {
       type: "TEAM",
       userId: `user_${index}`,
       name: `User ${index}`,
-      diarizationIndex: index,
+      diarizationIndices: [index],
       isCurrentUser: false,
       confidence: 1,
     },
     confirmedAt: Date.now(),
+    lastUtteranceTs: Date.now(),
     confidence: 1,
   });
 

@@ -7,6 +7,29 @@ import { RingBuffer } from "../src/utterance/ring-buffer";
 import { createUnidentifiedSpeaker } from "../src/utterance/types";
 import { resetUtteranceSeq } from "./helpers";
 
+vi.mock("../src/topic/embedder", () => {
+  return {
+    GoogleGenAIEmbedder: vi.fn().mockImplementation(() => {
+      return {
+        embed: vi.fn().mockResolvedValue(new Array(768).fill(0)),
+      };
+    }),
+  };
+});
+
+vi.mock("../src/topic/summarizer", () => {
+  return {
+    TopicSummarizer: vi.fn().mockImplementation(() => {
+      return {
+        summarize: vi.fn().mockResolvedValue({
+          summary: "Mock summary",
+          actionItems: [],
+        }),
+      };
+    }),
+  };
+});
+
 /**
  * Integration test: SttResult → UtteranceFinalizer → UtteranceMerger → RingBuffer → ContextAssembler
  *
@@ -24,7 +47,12 @@ describe("Pipeline Integration: STT → Finalizer → Merger → RingBuffer → 
     publisher = {
       calls,
       publish: vi.fn((channel: string, message: string) => {
-        calls.push({ channel, message });
+        if (channel.startsWith("meeting.utterance.")) {
+          calls.push({ channel, message });
+        }
+        return Promise.resolve(1);
+      }),
+      hset: vi.fn(() => {
         return Promise.resolve(1);
       }),
     };

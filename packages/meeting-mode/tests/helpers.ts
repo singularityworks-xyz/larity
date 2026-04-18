@@ -11,7 +11,7 @@ export function createTestSpeaker(
     speakerId: "spk_0",
     type: "EXTERNAL",
     name: "Speaker 1",
-    diarizationIndex: 0,
+    diarizationIndices: [0],
     isCurrentUser: false,
     confidence: 0,
     ...overrides,
