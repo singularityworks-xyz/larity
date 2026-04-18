@@ -72,6 +72,9 @@ export class AlertQueueManager {
     const idx = this.activeAlerts.findIndex((q) => q.alert.id === alertId);
     if (idx !== -1) {
       const removed = this.activeAlerts.splice(idx, 1)[0];
+      if (!removed) {
+        return undefined;
+      }
       this.clearExpiryTimer(alertId);
       removed.alert.status = "dismissed";
       this.markRecentlyShown(removed.alert);
@@ -84,6 +87,9 @@ export class AlertQueueManager {
     );
     if (pendingIdx !== -1) {
       const removed = this.pendingQueue.splice(pendingIdx, 1)[0];
+      if (!removed) {
+        return undefined;
+      }
       removed.alert.status = "dismissed";
       this.markRecentlyShown(removed.alert);
       return removed.alert;
@@ -167,6 +173,9 @@ export class AlertQueueManager {
     }
 
     const removed = this.activeAlerts.splice(idx, 1)[0];
+    if (!removed) {
+      return;
+    }
     removed.alert.status = "expired";
     this.markRecentlyShown(removed.alert);
     this.expiryTimers.delete(alertId);

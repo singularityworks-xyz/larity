@@ -2,6 +2,7 @@ import type { SttResult } from "../../../stt/src/types";
 import { utteranceChannel } from "../channels";
 import { createMeetingModeLogger } from "../logger";
 import type { SpeakerIdentifier } from "../speaker/identifier";
+import { TopicManager, type TopicPublisher } from "../topic/manager";
 import { PartialBuffer } from "./buffer";
 import { UtteranceMerger } from "./merger";
 import { RingBuffer } from "./ring-buffer";
@@ -9,8 +10,9 @@ import { createUnidentifiedSpeaker, type Utterance } from "./types";
 
 const log = createMeetingModeLogger("utterance-finalizer");
 
-export interface UtterancePublisher {
+export interface UtterancePublisher extends TopicPublisher {
   publish(channel: string, message: string): Promise<number>;
+  hset(key: string, field: string, value: string): Promise<number>;
 }
 
 export type RetroactiveUpdateHandler = (
@@ -26,9 +28,11 @@ export class UtteranceFinalizer {
   private readonly ringBuffers = new Map<string, RingBuffer>();
   private readonly speakerIdentifiers = new Map<string, SpeakerIdentifier>();
   private readonly retroactiveHandlers: RetroactiveUpdateHandler[] = [];
+  private readonly topicManager: TopicManager;
 
   constructor(publisher: UtterancePublisher) {
     this.publisher = publisher;
+    this.topicManager = new TopicManager(publisher);
   }
 
   registerSpeakerIdentifier(
@@ -128,6 +132,10 @@ export class UtteranceFinalizer {
       mergedCount: 1,
     };
 
+    // Assign topic
+    const topicId = await this.topicManager.assignTopic(utterance);
+    utterance.topicId = topicId;
+
     const merger = this.getOrCreateMerger(sessionId);
     const toPublish = merger.push(utterance);
 
@@ -162,6 +170,8 @@ export class UtteranceFinalizer {
     this.mergers.delete(sessionId);
     this.sequences.delete(sessionId);
     this.ringBuffers.delete(sessionId);
+
+    await this.topicManager.closeSession(sessionId);
   }
 
   async closeAll(): Promise<void> {
@@ -222,6 +232,7 @@ export class UtteranceFinalizer {
         {
           sessionId: utterance.sessionId,
           utteranceId: utterance.utteranceId,
+          topicId: utterance.topicId,
           textPrefix: utterance.text.substring(0, 50),
         },
         "Published utterance"

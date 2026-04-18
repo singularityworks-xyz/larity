@@ -73,9 +73,14 @@ async function main(): Promise<void> {
   speakerManager = new SpeakerManager();
   finalizer = new UtteranceFinalizer({
     publish: (channel, message) => redisClient.publish(channel, message),
+    hset: (key, field, value) => redisClient.hset(key, field, value),
   });
 
-  await startSubscriber(finalizer, speakerManager, redisClient);
+  await startSubscriber(
+    finalizer,
+    speakerManager,
+    redisClient as unknown as Parameters<typeof startSubscriber>[2]
+  );
   rootLogger.info("Utterance Finalizer is running");
 
   process.on("SIGINT", () => shutdown("SIGINT"));

@@ -1,0 +1,312 @@
+import { topicChannel } from "../channels";
+import { createMeetingModeLogger } from "../logger";
+import type { Utterance } from "../utterance/types";
+import { GoogleGenAIEmbedder } from "./embedder";
+import { cosineSimilarity, updateCentroid } from "./similarity";
+import { TopicSummarizer } from "./summarizer";
+import type { TopicState } from "./types";
+
+const log = createMeetingModeLogger("topic-manager");
+
+export interface TopicPublisher {
+  publish(channel: string, message: string): Promise<number>;
+  hset(key: string, field: string, value: string): Promise<number>;
+}
+
+export class TopicManager {
+  private readonly embedder: GoogleGenAIEmbedder;
+  private readonly summarizer: TopicSummarizer;
+  private readonly publisher: TopicPublisher;
+
+  // similarity threshold for assigning to an existing topic
+  private readonly SIMILARITY_THRESHOLD = 0.65;
+
+  // Debounce settings for slow path
+  private readonly BATCH_THRESHOLD = 4;
+  private readonly SILENCE_TIMEOUT_MS = 5000;
+
+  // In-memory state: sessionId -> TopicState[]
+  private readonly activeTopics = new Map<string, TopicState[]>();
+
+  // Pending utterances per topicId: topicId -> string[]
+  private readonly pendingUtterances = new Map<string, string[]>();
+
+  // Timers for silence debouncing per topic
+  private readonly debounceTimers = new Map<
+    string,
+    ReturnType<typeof setTimeout>
+  >();
+
+  // Processing locks per topic to prevent concurrent summarizer runs
+  private readonly processingLocks = new Set<string>();
+
+  constructor(publisher: TopicPublisher) {
+    this.embedder = new GoogleGenAIEmbedder();
+    this.summarizer = new TopicSummarizer();
+    this.publisher = publisher;
+  }
+
+  /**
+   * Fast Path: Embed the incoming utterance, find a matching topic (or spawn new),
+   * update the centroid in memory, and return the assigned topicId.
+   */
+  async assignTopic(utterance: Utterance): Promise<string> {
+    const { sessionId, text } = utterance;
+
+    // 1. Embed utterance
+    const newVector = await this.embedder.embed(text);
+
+    // 2. Find best match
+    const sessionTopics = this.activeTopics.get(sessionId) || [];
+    let bestTopic: TopicState | null = null;
+    let maxSimilarity = -1;
+
+    for (const topic of sessionTopics) {
+      if (!topic.centroid || topic.centroid.length === 0) {
+        continue;
+      }
+      const sim = cosineSimilarity(topic.centroid, newVector);
+      if (sim > maxSimilarity) {
+        maxSimilarity = sim;
+        bestTopic = topic;
+      }
+    }
+
+    let assignedTopicId: string;
+
+    // 3. Assign or Create
+    if (bestTopic && maxSimilarity >= this.SIMILARITY_THRESHOLD) {
+      assignedTopicId = bestTopic.topicId;
+      // Update centroid
+      bestTopic.centroid = updateCentroid(
+        bestTopic.centroid,
+        newVector,
+        bestTopic.utteranceCount
+      );
+      bestTopic.utteranceCount += 1;
+      log.info(
+        { sessionId, topicId: assignedTopicId, similarity: maxSimilarity },
+        "Assigned utterance to existing topic"
+      );
+    } else {
+      assignedTopicId = this.generateTopicId(sessionId);
+
+      const newTopic: TopicState = this.createNewTopicState(
+        assignedTopicId,
+        newVector
+      );
+      sessionTopics.push(newTopic);
+      this.activeTopics.set(sessionId, sessionTopics);
+
+      log.info({ sessionId, topicId: assignedTopicId }, "Spawned new topic");
+    }
+
+    // 4. Enqueue for slow path
+    this.enqueueForSummarization(assignedTopicId, text);
+
+    return assignedTopicId;
+  }
+
+  /**
+   * Slow Path orchestration: Add text to pending queue, check triggers.
+   */
+  private enqueueForSummarization(topicId: string, text: string): void {
+    const pending = this.pendingUtterances.get(topicId) || [];
+    pending.push(text);
+    this.pendingUtterances.set(topicId, pending);
+
+    // Clear existing timer
+    const existingTimer = this.debounceTimers.get(topicId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    // Trigger 1: Batch size reached
+    if (pending.length >= this.BATCH_THRESHOLD) {
+      // Intentionally not awaiting here to keep caller fast
+      this.triggerSummarization(topicId).catch((err) =>
+        log.error({ err }, "Background summarization failed")
+      );
+      return;
+    }
+
+    // Trigger 2: Silence Debounce
+    const timer = setTimeout(() => {
+      this.triggerSummarization(topicId).catch((err) =>
+        log.error({ err }, "Background summarization failed")
+      );
+    }, this.SILENCE_TIMEOUT_MS);
+    this.debounceTimers.set(topicId, timer);
+  }
+
+  /**
+   * Trigger the actual LLM summarization. Contains locking logic to avoid race conditions.
+   */
+  private async triggerSummarization(topicId: string): Promise<void> {
+    if (this.processingLocks.has(topicId)) {
+      // Currently summarizing. The next batch/debounce will pick up any remaining items later.
+      return;
+    }
+
+    const pending = this.pendingUtterances.get(topicId) || [];
+    if (pending.length === 0) {
+      return;
+    }
+
+    this.processingLocks.add(topicId);
+
+    // Snapshot the batch and clear the pending list
+    const utterancesToSummarize = [...pending];
+    this.pendingUtterances.set(topicId, []);
+
+    try {
+      // Find the topic state
+      let targetTopic: TopicState | null = null;
+      let targetSessionId = "";
+
+      for (const [sessionId, topics] of this.activeTopics.entries()) {
+        const t = topics.find((topic) => topic.topicId === topicId);
+        if (t) {
+          targetTopic = t;
+          targetSessionId = sessionId;
+          break;
+        }
+      }
+
+      if (!targetTopic) {
+        log.warn(
+          { topicId },
+          "Topic state not found during summarization trigger"
+        );
+        return;
+      }
+
+      log.debug(
+        { topicId, count: utterancesToSummarize.length },
+        "Triggering LLM summarizer"
+      );
+
+      const partialState = await this.summarizer.summarize(
+        targetTopic,
+        utterancesToSummarize
+      );
+
+      // Merge new data
+      this.applySummarizerUpdate(targetTopic, partialState);
+
+      // Persist to Redis and Publish
+      await this.persistAndPublish(targetSessionId, targetTopic);
+    } catch (error) {
+      log.error({ err: error, topicId }, "Summarization workflow failed");
+      // Put them back in queue (prepend) to try again next time
+      const currentPending = this.pendingUtterances.get(topicId) || [];
+      this.pendingUtterances.set(topicId, [
+        ...utterancesToSummarize,
+        ...currentPending,
+      ]);
+    } finally {
+      this.processingLocks.delete(topicId);
+    }
+  }
+
+  private applySummarizerUpdate(
+    target: TopicState,
+    partial: Partial<TopicState>
+  ): void {
+    target.lastUpdated = Date.now();
+    if (partial.label) {
+      target.label = partial.label;
+    }
+    if (partial.summary) {
+      target.summary = partial.summary;
+    }
+    if (partial.constraintsMentioned) {
+      target.constraintsMentioned = partial.constraintsMentioned;
+    }
+    if (partial.commitmentsMentioned) {
+      target.commitmentsMentioned = partial.commitmentsMentioned;
+    }
+    if (partial.riskFlags) {
+      target.riskFlags = partial.riskFlags;
+    }
+    if (partial.completeness) {
+      target.completeness = { ...target.completeness, ...partial.completeness };
+    }
+  }
+
+  private async persistAndPublish(
+    sessionId: string,
+    topic: TopicState
+  ): Promise<void> {
+    try {
+      const topicJson = JSON.stringify(topic);
+      const redisKey = `meeting.topics.${sessionId}`;
+
+      // Save full topic state to HASH
+      await this.publisher.hset(redisKey, topic.topicId, topicJson);
+
+      // Broadcast update to clients
+      await this.publisher.publish(topicChannel(sessionId), topicJson);
+
+      log.info(
+        { sessionId, topicId: topic.topicId },
+        "Topic state updated and published"
+      );
+    } catch (error) {
+      log.error(
+        { err: error, sessionId, topicId: topic.topicId },
+        "Failed to persist/publish topic state"
+      );
+    }
+  }
+
+  private generateTopicId(sessionId: string): string {
+    return `topic_${sessionId}_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 7)}`;
+  }
+
+  private createNewTopicState(
+    topicId: string,
+    initialCentroid: number[]
+  ): TopicState {
+    return {
+      topicId,
+      label: "New Topic", // Temporary until LLM updates it
+      summary: "",
+      constraintsMentioned: [],
+      commitmentsMentioned: [],
+      riskFlags: [],
+      centroid: initialCentroid,
+      utteranceCount: 1,
+      lastUpdated: Date.now(),
+      completeness: {
+        hasOwner: false,
+        hasDeadline: false,
+        hasActionItems: false,
+        actionItems: [],
+        hasExplicitConfirmation: false,
+      },
+    };
+  }
+
+  async closeSession(sessionId: string): Promise<void> {
+    const topics = this.activeTopics.get(sessionId) || [];
+    for (const topic of topics) {
+      const timer = this.debounceTimers.get(topic.topicId);
+      if (timer) {
+        clearTimeout(timer);
+      }
+      this.debounceTimers.delete(topic.topicId);
+
+      // Attempt a final synchronous summarization trigger if pending exists
+      // Wait for lock to clear theoretically, but since it's shutdown we do a best-effort trigger
+      if (!this.processingLocks.has(topic.topicId)) {
+        await this.triggerSummarization(topic.topicId);
+      }
+      this.pendingUtterances.delete(topic.topicId);
+    }
+    this.activeTopics.delete(sessionId);
+    log.info({ sessionId }, "Topic manager session closed");
+  }
+}
