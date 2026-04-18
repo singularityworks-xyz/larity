@@ -1,3 +1,4 @@
+import { sessionManager } from "@larity/stt";
 import { createRealtimeLogger } from "../logger";
 import { publishParticipantLeave, publishSessionEnd } from "../redis/publisher";
 import { getSession, removeConnection } from "../session";
@@ -46,6 +47,10 @@ export function onClose(
   const isSessionEmpty = !!sessionRemoved;
 
   if (role === "host" || isSessionEmpty) {
+    sessionManager.closeSession(sessionId).catch((err) => {
+      log.error({ err, sessionId }, "Failed to close Deepgram session");
+    });
+
     const sessionData = sessionRemoved || currentSession;
     const sessionDuration = sessionData ? now - sessionData.startedAt : 0;
 

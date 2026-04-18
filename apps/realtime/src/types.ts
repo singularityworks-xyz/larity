@@ -47,16 +47,6 @@ export interface SessionEntry {
 }
 
 /**
- * Payload structure for audio frames published to Redis
- */
-export interface AudioFramePayload {
-  sessionId: string;
-  ts: number;
-  frame: Buffer;
-  source: "mic" | "system";
-}
-
-/**
  * Payload structure for VAD signals from clients
  */
 export interface VadSignal {

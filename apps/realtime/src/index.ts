@@ -4,6 +4,20 @@ import { setupTelemetry } from "@larity/telemetry";
 setupTelemetry("realtime");
 
 import { connectRedis } from "@larity/packages/infra/redis";
+import {
+  sessionManager,
+  env as sttEnv,
+  validateEnv as validateSttEnv,
+} from "@larity/stt";
+
+if (!process.env.DEEPGRAM_API_KEY && sttEnv.DEEPGRAM_API_KEY) {
+  process.env.DEEPGRAM_API_KEY = sttEnv.DEEPGRAM_API_KEY;
+}
+
+if (!process.env.REDIS_URL && sttEnv.REDIS_URL) {
+  process.env.REDIS_URL = sttEnv.REDIS_URL;
+}
+
 import { env } from "./env";
 import { rootLogger } from "./logger";
 import { startServer, stopServer } from "./server";
@@ -16,6 +30,16 @@ let appInstance: any | null = null;
 async function main(): Promise<void> {
   rootLogger.info("Starting realtime plane...");
   rootLogger.info({ port: env.PORT }, "Port configured");
+
+  try {
+    validateSttEnv();
+  } catch (error) {
+    rootLogger.fatal(
+      { err: error },
+      "FATAL: STT environment validation failed"
+    );
+    process.exit(1);
+  }
 
   // Connect to Redis
   rootLogger.info("Connecting to Redis...");
@@ -38,7 +62,7 @@ async function main(): Promise<void> {
 }
 
 // shutdown handler
-function shutdown(signal: string): void {
+async function shutdown(signal: string): Promise<void> {
   rootLogger.info({ signal }, "Received signal, shutting down...");
 
   if (appInstance) {
@@ -46,16 +70,29 @@ function shutdown(signal: string): void {
     appInstance = null;
   }
 
-  // Give time for cleanup
-  setTimeout(() => {
-    rootLogger.info("Shutdown complete");
-    process.exit(0);
-  }, 1000);
+  try {
+    await sessionManager.closeAll();
+  } catch (error) {
+    rootLogger.error({ err: error }, "Error while closing Deepgram sessions");
+  }
+
+  rootLogger.info("Shutdown complete");
+  process.exit(0);
 }
 
 // Handle shutdown signals
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => {
+  shutdown("SIGTERM").catch((error) => {
+    rootLogger.error({ err: error }, "SIGTERM shutdown failed");
+    process.exit(1);
+  });
+});
+process.on("SIGINT", () => {
+  shutdown("SIGINT").catch((error) => {
+    rootLogger.error({ err: error }, "SIGINT shutdown failed");
+    process.exit(1);
+  });
+});
 
 // Handle uncaught errors
 process.on("uncaughtException", (error) => {

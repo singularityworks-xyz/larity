@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AudioPayload, SttResult } from "../src/types.ts";
+import type { SttResult } from "../src/types.ts";
 
 describe("SttResult", () => {
   it("should have diarizationIndex instead of speaker", () => {
@@ -53,40 +53,5 @@ describe("SttResult", () => {
     expect(result.start).toBe(10.5);
     expect(result.duration).toBe(0.5);
     expect(result.ts).toBe(ts);
-  });
-});
-
-describe("AudioPayload", () => {
-  it("should have required fields", () => {
-    const payload: AudioPayload = {
-      sessionId: "session-1",
-      ts: Date.now(),
-      frame: "base64encodedaudio==",
-    };
-
-    expect(payload.sessionId).toBe("session-1");
-    expect(payload.frame).toBe("base64encodedaudio==");
-    expect(typeof payload.ts).toBe("number");
-  });
-
-  it("should allow optional source field", () => {
-    const payload: AudioPayload = {
-      sessionId: "session-1",
-      ts: Date.now(),
-      frame: "base64data==",
-      source: "system",
-    };
-
-    expect(payload.source).toBe("system");
-  });
-
-  it("should accept source as undefined", () => {
-    const payload: AudioPayload = {
-      sessionId: "session-1",
-      ts: Date.now(),
-      frame: "base64data==",
-    };
-
-    expect(payload.source).toBeUndefined();
   });
 });

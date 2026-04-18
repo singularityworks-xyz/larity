@@ -8,7 +8,7 @@ import { resolve } from "node:path";
 import dotenv from "dotenv";
 
 // Load .env from project root (larity/)
-dotenv.config({ path: resolve(import.meta.dir, "../../../../.env") });
+dotenv.config({ path: resolve(import.meta.dir, "../../../.env") });
 
 /**
  * Deepgram API key (required)
@@ -33,6 +33,16 @@ export const MAX_CONNECTIONS = Number.parseInt(
  * Log level
  */
 export const LOG_LEVEL = process.env.LOG_LEVEL || "info";
+
+/**
+ * Environment configuration object
+ */
+export const env = {
+  DEEPGRAM_API_KEY,
+  REDIS_URL,
+  MAX_CONNECTIONS,
+  LOG_LEVEL,
+} as const;
 
 /**
  * Validate required environment variables

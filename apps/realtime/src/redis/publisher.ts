@@ -1,7 +1,6 @@
 import { redis } from "../../../../packages/infra/redis";
 import { createRealtimeLogger } from "../logger";
 import type {
-  AudioFramePayload,
   ParticipantJoinEvent,
   ParticipantLeaveEvent,
   SessionEndEvent,
@@ -9,7 +8,6 @@ import type {
   VadSignal,
 } from "../types";
 import {
-  audioChannel,
   PARTICIPANT_JOIN,
   PARTICIPANT_LEAVE,
   SESSION_END,
@@ -18,32 +16,6 @@ import {
 } from "./channels";
 
 const log = createRealtimeLogger("publisher");
-
-/**
- * Publish a raw audio frame to Redis
- * Binary-safe: encodes buffer as base64 for JSON transport
- */
-export async function publishAudioFrame(
-  payload: AudioFramePayload
-): Promise<void> {
-  const channel = audioChannel(payload.sessionId);
-  try {
-    // Encode buffer as base64 for JSON-safe transport
-    const message = JSON.stringify({
-      sessionId: payload.sessionId,
-      ts: payload.ts,
-      frame: payload.frame.toString("base64"),
-      source: payload.source,
-    });
-    await redis.publish(channel, message);
-  } catch (error) {
-    // Drop frame, log error, continue
-    log.error(
-      { err: error, sessionId: payload.sessionId },
-      "Failed to publish audio frame"
-    );
-  }
-}
 
 /**
  * Publish a VAD signal to Redis

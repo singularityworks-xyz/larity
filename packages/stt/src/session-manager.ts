@@ -8,6 +8,13 @@
 import { DeepgramConnection } from "./deepgram/connection";
 import { MAX_CONNECTIONS } from "./env";
 
+interface SessionConnection {
+  sendAudio(audioBuffer: Buffer): Promise<void>;
+  close(): void;
+}
+
+type ConnectionFactory = (sessionId: string) => SessionConnection;
+
 /**
  * SessionManager maintains active Deepgram connections.
  *
@@ -16,8 +23,15 @@ import { MAX_CONNECTIONS } from "./env";
  * - Route audio to the correct connection
  * - Enforce max concurrent connections limit
  */
-class SessionManager {
-  private readonly connections: Map<string, DeepgramConnection> = new Map();
+export class SessionManager {
+  private readonly connections: Map<string, SessionConnection> = new Map();
+  private readonly createConnection: ConnectionFactory;
+
+  constructor(createConnection?: ConnectionFactory) {
+    this.createConnection =
+      createConnection ??
+      ((sessionId: string) => new DeepgramConnection(sessionId));
+  }
 
   /**
    * Create a new Deepgram connection for a session
@@ -38,7 +52,7 @@ class SessionManager {
     }
 
     // Create connection (will connect lazily on first audio)
-    const connection = new DeepgramConnection(sessionId);
+    const connection = this.createConnection(sessionId);
     this.connections.set(sessionId, connection);
 
     console.log(

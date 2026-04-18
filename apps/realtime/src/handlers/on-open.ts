@@ -1,9 +1,10 @@
+import { sessionManager } from "@larity/stt";
 import { createRealtimeLogger } from "../logger";
 import {
   publishParticipantJoin,
   publishSessionStart,
 } from "../redis/publisher";
-import { addConnection, getSession } from "../session";
+import { addConnection, getSession, removeConnection } from "../session";
 import type { RealtimeSocket } from "../types";
 
 const log = createRealtimeLogger("on-open");
@@ -23,7 +24,22 @@ export function onOpen(ws: RealtimeSocket): void {
   addConnection(sessionId, ws);
 
   const session = getSession(sessionId);
-  const isFirstConnection = session && session.connections.size === 1;
+  const isFirstConnection = !!session && session.connections.size === 1;
+  const shouldEnsureDeepgramSession =
+    role === "host" && !sessionManager.hasSession(sessionId);
+
+  if (shouldEnsureDeepgramSession) {
+    const created = sessionManager.createSession(sessionId);
+    if (!created) {
+      removeConnection(sessionId, userId);
+      ws.close();
+      log.error(
+        { sessionId, userId },
+        "Rejected connection: Deepgram session capacity reached"
+      );
+      return;
+    }
+  }
 
   log.info({ sessionId, userId, role }, "Connection established");
 

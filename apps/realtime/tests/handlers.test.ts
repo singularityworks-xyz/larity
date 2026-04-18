@@ -2,7 +2,24 @@
 process.env.REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 process.env.LOG_LEVEL = "error";
 
-import { describe, expect, it, mock } from "bun:test";
+import { mock } from "bun:test";
+
+mock.module("@larity/stt", () => ({
+  env: {
+    DEEPGRAM_API_KEY: "test-key",
+    REDIS_URL: process.env.REDIS_URL || "redis://localhost:6379",
+  },
+  sessionManager: {
+    createSession: () => true,
+    closeSession: () => Promise.resolve(),
+    hasSession: () => false,
+    closeAll: () => Promise.resolve(),
+    sendAudio: () => Promise.resolve(),
+  },
+  validateEnv: () => undefined,
+}));
+
+import { describe, expect, it } from "bun:test";
 import { onClose } from "../src/handlers/on-close";
 import { onDrain } from "../src/handlers/on-drain";
 import { onMessage } from "../src/handlers/on-message";

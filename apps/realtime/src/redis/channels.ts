@@ -17,14 +17,6 @@
 const PREFIX = "realtime";
 
 /**
- * Per-session audio stream channel
- * Used for publishing raw audio frames for a specific session
- */
-export function audioChannel(sessionId: string): string {
-  return `${PREFIX}.audio.${sessionId}`;
-}
-
-/**
  * Per-session VAD state channel
  * Used for publishing VAD signals for a specific session
  */
@@ -89,7 +81,6 @@ export const PARTICIPANT_LEAVE = `${PREFIX}.participant.leave`;
  * All channel names for documentation/debugging
  */
 export const channels = {
-  audioChannel,
   utteranceChannel,
   sharedAlertChannel,
   personalAlertChannel,

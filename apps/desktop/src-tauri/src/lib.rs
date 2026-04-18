@@ -1,7 +1,9 @@
 use tauri::{AppHandle, Manager, State};
 use audio::{AudioDevice, AudioCaptureStatus};
+use meeting_detection::MeetingDetectionHint;
 
 pub mod audio;
+pub mod meeting_detection;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -80,6 +82,11 @@ fn audio_capture_status(state: State<'_, audio::AudioState>) -> Result<AudioCapt
     })
 }
 
+#[tauri::command]
+fn meeting_detection_check_heuristic() -> Result<Option<MeetingDetectionHint>, String> {
+    meeting_detection::check_process_or_audio_heuristic()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -94,6 +101,7 @@ pub fn run() {
             audio_capture_start,
             audio_capture_stop,
             audio_capture_status,
+            meeting_detection_check_heuristic,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

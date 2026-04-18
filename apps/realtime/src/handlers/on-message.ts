@@ -1,5 +1,6 @@
+import { sessionManager } from "@larity/stt";
 import { createRealtimeLogger } from "../logger";
-import { publishAudioFrame, publishVadSignal } from "../redis/publisher";
+import { publishVadSignal } from "../redis/publisher";
 import { updateLastFrameTs } from "../session";
 import type { RealtimeSocket } from "../types";
 
@@ -57,15 +58,10 @@ export function onMessage(
   // Convert to Buffer for Redis if needed
   const frame = Buffer.isBuffer(message) ? message : Buffer.from(message);
 
-  // Publish to Redis (fire and forget)
-  // No await - we don't block on Redis
-  publishAudioFrame({
-    sessionId,
-    ts,
-    frame,
-    source: "system", // In host model, audio is always from system
-  }).catch((err) => {
+  // Pipe frame directly to Deepgram session owned by this worker.
+  // Audio bytes must never be routed through Redis.
+  sessionManager.sendAudio(sessionId, frame).catch((err) => {
     // Frame is dropped, log and continue
-    log.error({ err, sessionId }, "Failed to publish frame");
+    log.error({ err, sessionId }, "Failed to relay frame to Deepgram");
   });
 }
