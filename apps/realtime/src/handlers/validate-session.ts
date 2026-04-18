@@ -22,14 +22,18 @@ export async function validateSession(
   userId?: string,
   role?: string
 ): Promise<boolean> {
-  // Bypass validation for the local test-client script
-  if (sessionId.includes("test-session")) {
+  // Bypass validation for the local test-client script and desktop app
+  if (
+    sessionId.includes("test-session") ||
+    sessionId.startsWith("desktop-session") ||
+    sessionId.startsWith("meeting-")
+  ) {
     return true;
   }
 
   try {
     const response = await fetch(
-      `${CONTROL_API_URL}/meeting-session/${sessionId}/validate`,
+      `${CONTROL_API_URL}/api/meeting-session/${sessionId}/validate`,
       {
         method: "POST",
         headers: {
