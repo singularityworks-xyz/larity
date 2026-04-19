@@ -20,6 +20,8 @@ export type RetroactiveUpdateHandler = (
   oldSpeakerType: string
 ) => Promise<void>;
 
+export type UtterancePublishedHandler = (utterance: Utterance) => Promise<void>;
+
 export class UtteranceFinalizer {
   private readonly buffer = new Map<string, PartialBuffer>();
   private readonly mergers = new Map<string, UtteranceMerger>();
@@ -28,6 +30,7 @@ export class UtteranceFinalizer {
   private readonly ringBuffers = new Map<string, RingBuffer>();
   private readonly speakerIdentifiers = new Map<string, SpeakerIdentifier>();
   private readonly retroactiveHandlers: RetroactiveUpdateHandler[] = [];
+  private readonly publishedHandlers: UtterancePublishedHandler[] = [];
   private readonly topicManager: TopicManager;
 
   constructor(publisher: UtterancePublisher) {
@@ -44,6 +47,10 @@ export class UtteranceFinalizer {
 
   onRetroactiveUpdate(handler: RetroactiveUpdateHandler): void {
     this.retroactiveHandlers.push(handler);
+  }
+
+  onUtterancePublished(handler: UtterancePublishedHandler): void {
+    this.publishedHandlers.push(handler);
   }
 
   async processRetroactiveIdentification(
@@ -228,6 +235,18 @@ export class UtteranceFinalizer {
 
     try {
       await this.publisher.publish(channel, message);
+
+      for (const handler of this.publishedHandlers) {
+        try {
+          await handler(utterance);
+        } catch (error) {
+          log.error(
+            { err: error, utteranceId: utterance.utteranceId },
+            "Utterance published handler failed"
+          );
+        }
+      }
+
       log.info(
         {
           sessionId: utterance.sessionId,

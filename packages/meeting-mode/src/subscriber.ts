@@ -7,6 +7,7 @@ import {
   VAD_PATTERN,
 } from "./channels";
 import type { CommitmentManager } from "./commitment/manager";
+import type { ConstraintManager } from "./constraint/manager";
 import { REDIS_URL } from "./env";
 import { createMeetingModeLogger } from "./logger";
 import type { SpeakerManager } from "./speaker/manager";
@@ -19,8 +20,10 @@ let subscriber: Redis | null = null;
 let finalizerRef: UtteranceFinalizer | null = null;
 let speakerManagerRef: SpeakerManager | null = null;
 let commitmentManagerRef: CommitmentManager | null = null;
+let constraintManagerRef: ConstraintManager | null = null;
 let _redisClientRef: Redis | null = null;
 const hydratedCommitmentSessions = new Set<string>();
+const hydratedConstraintSessions = new Set<string>();
 
 async function handleSttResult(
   channel: string,
@@ -42,6 +45,14 @@ async function handleSttResult(
       hydratedCommitmentSessions.add(result.sessionId);
     }
 
+    if (
+      constraintManagerRef &&
+      !hydratedConstraintSessions.has(result.sessionId)
+    ) {
+      await constraintManagerRef.hydrateSession(result.sessionId);
+      hydratedConstraintSessions.add(result.sessionId);
+    }
+
     // Register identifier so finalizer can resolve speakers
     const identifier = speakerManagerRef.getIdentifier(result.sessionId);
     finalizerRef.registerSpeakerIdentifier(result.sessionId, identifier);
@@ -61,9 +72,14 @@ async function handleSessionEnd(message: string): Promise<void> {
     }
 
     hydratedCommitmentSessions.delete(event.sessionId);
+    hydratedConstraintSessions.delete(event.sessionId);
 
     if (commitmentManagerRef) {
       commitmentManagerRef.closeSession(event.sessionId);
+    }
+
+    if (constraintManagerRef) {
+      constraintManagerRef.closeSession(event.sessionId);
     }
 
     if (!finalizerRef) {
@@ -142,11 +158,13 @@ export async function startSubscriber(
   finalizer: UtteranceFinalizer,
   speakerManager: SpeakerManager,
   redisClient: Redis,
-  commitmentManager?: CommitmentManager
+  commitmentManager?: CommitmentManager,
+  constraintManager?: ConstraintManager
 ): Promise<void> {
   finalizerRef = finalizer;
   speakerManagerRef = speakerManager;
   commitmentManagerRef = commitmentManager ?? null;
+  constraintManagerRef = constraintManager ?? null;
   _redisClientRef = redisClient;
 
   subscriber = new Redis(REDIS_URL, {
@@ -212,8 +230,10 @@ export function stopSubscriber(): void {
     finalizerRef = null;
     speakerManagerRef = null;
     commitmentManagerRef = null;
+    constraintManagerRef = null;
     _redisClientRef = null;
     hydratedCommitmentSessions.clear();
+    hydratedConstraintSessions.clear();
     log.info("Disconnected");
   }
 }
