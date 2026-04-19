@@ -26,6 +26,10 @@ export function commitmentChannel(sessionId: string): string {
   return `meeting.commitment.${sessionId}`;
 }
 
+export function constraintChannel(sessionId: string): string {
+  return `meeting.constraint.${sessionId}`;
+}
+
 export function ledgerChannel(sessionId: string): string {
   return `meeting.ledger.${sessionId}`;
 }
@@ -47,6 +51,7 @@ const meetingSessionChannels = new Set([
   "alert",
   "topic",
   "commitment",
+  "constraint",
   "ledger",
   "speaker",
 ]);
