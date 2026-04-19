@@ -118,7 +118,7 @@ Key architectural decisions:
     * Relevant data embedded (`pgvector`)
     * Graph traversal for relationships
     * Context assembled deterministically
-* **LLM Usage (Vercel AI SDK):**
+* **LLM Usage (`@google/genai`):**
     * **Narrow prompts:** Pre-meeting brief, Role-specific talking points, Known risks, Open questions
 * **Output:** Read-only artifacts shown in UI. **Not written as "memory" yet.**
 
@@ -249,7 +249,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 * **Accelerator, NOT a gate** — fires instant alerts but everything passes through to Tier 2
 
 #### Tier 2: Small LLM Classification (~$0.002/call, <200ms)
-* **Single call to GPT-4o-mini** per utterance
+* **Single call to Gemini flash-lite** per utterance
 * Input: utterance + speaker identity + last 2-3 utterances from same speaker (cross-utterance context)
 * **Replaces ALL old regex pattern libraries** (risky language, pressure tactics, tone, scope creep, backtracking, vague language)
 * Returns: intent, commitmentType, tone, riskSignals, extractedData, confidence, and `topicDelta` fields
@@ -267,7 +267,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 * If match found → **force Tier 4** regardless of Tier 2 label
 
 #### Tier 4: Deep LLM Reasoning (~$0.02/call, 300-500ms)
-* **Large model (GPT-4o, Claude Sonnet via OpenRouter)**
+* **Large model (Gemini Pro-class by default)**
 * Only for high-signal utterances (~5-10% of total, ~8 calls per meeting)
 * Rich context: utterance + speaker identity + topic summary + ring buffer + Tier 3 matches (historical + commitment ledger) + relevant constraints
 * Returns: alert type, severity, message, suggestion, routing (shared/personal/both)
@@ -278,8 +278,8 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 | Model | Purpose | Cost/call | Example |
 |-------|---------|-----------|---------|
 | **Embedding** | Search, similarity, novelty | ~$0.00002 | text-embedding-004 (Gemini via @google/genai) |
-| **Small LLM** | Classification, extraction | ~$0.002 | GPT-4o-mini, Haiku |
-| **Large LLM** | Deep reasoning | ~$0.02 | GPT-4o, Claude Sonnet |
+| **Small LLM** | Classification, extraction | ~$0.002 | gemini-3.1-flash-lite-preview |
+| **Large LLM** | Deep reasoning | ~$0.02 | gemini-2.5-pro |
 
 **Total cost per 1-hour meeting: ~$0.30**
 
@@ -315,10 +315,10 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 
 ### 12. Live LLM Invocation (Read-Only, Atomic Alerts)
 * **LLM Characteristics:**
-    * Tier 2: Small, fast model (GPT-4o-mini) for classification — every utterance
-    * Tier 4: Large model (GPT-4o/Sonnet via OpenRouter) for reasoning — ~8 calls/meeting
+    * Tier 2: Small, fast model (Gemini flash-lite) for classification — every utterance
+    * Tier 4: Large model (Gemini Pro-class) for reasoning — ~8 calls/meeting
 * **Context for Tier 4:** Known constraints, recent commitments, topic summary, utterance, speaker identity, Tier 3 matches (historical + commitment ledger). **No full transcript.**
-* **Structure:** Zod-enforced output schemas (Vercel AI SDK)
+* **Structure:** Zod-enforced output schemas
 * **UI Pattern:** Content-free "Checking..." indicator only; final alerts render atomically after full validation (no preliminary/progressive alert text)
 * **Output:** Ephemeral alert with routing. **No persistence during meeting.**
 * *Note: If slow or wrong → silently skipped.*
@@ -435,7 +435,7 @@ Each Larity instance subscribes to both its personal channel and the shared chan
 
 ### 23. Knowledge Queries
 * **Flow:** pgvector search (Decisions, ImportantPoints, Guardrails, **Commitments**) + Permission filtering + Client scope
-* **LLM:** Answers via Vercel AI SDK
+* **LLM:** Answers via Gemini (`@google/genai`)
 * **Constraint:** Read-only unless explicitly changed. Queries respect client boundaries.
 
 ### 24. Auto-Remembrance (Explicit Only)

@@ -590,7 +590,7 @@ All semantic understanding is now in Tier 2 (small LLM).
 
 #### Tier 2: Semantic Classification via Small LLM (~$0.002/call, <200ms)
 
-**Single call to GPT-4o-mini or equivalent** per utterance that passes the pre-filter. This is the primary classification layer that replaces ALL the old regex pattern libraries.
+**Single call to Gemini flash-lite (`gemini-3.1-flash-lite-preview`)** per utterance that passes the pre-filter. This is the primary classification layer that replaces ALL the old regex pattern libraries.
 
 **Input to the LLM:**
 
@@ -693,7 +693,7 @@ Three parallel checks:
 
 #### Tier 4: Deep LLM Reasoning (~$0.02/call, 300-500ms)
 
-**Large model (GPT-4o, Claude Sonnet via OpenRouter).** Only called for high-signal utterances — approximately **5-10% of total utterances** (~8-12 calls per hour-long meeting).
+**Large model (Gemini Pro class by default).** Only called for high-signal utterances — approximately **5-10% of total utterances** (~8-12 calls per hour-long meeting).
 
 **Rich context assembly for Tier 4:**
 
@@ -834,8 +834,8 @@ This fits the <800ms end-to-end budget from speech-final to alert delivery (Deep
 | Model | Purpose | Cost per call | Example |
 |-------|---------|---------------|---------|
 | **Embedding model** | Search, similarity, novelty | ~$0.00002 | text-embedding-004 (Gemini via @google/genai) |
-| **Small LLM** | Classification, extraction | ~$0.002 | gemini-3.1-flash-lite-preview, GPT-4o-mini |
-| **Large LLM** | Deep reasoning, contradiction analysis | ~$0.02 | gemini-2.5-pro, GPT-4o, Claude Sonnet |
+| **Small LLM** | Classification, extraction | ~$0.002 | gemini-3.1-flash-lite-preview |
+| **Large LLM** | Deep reasoning, contradiction analysis | ~$0.02 | gemini-2.5-pro |
 
 **Embedding reuse rule (no duplicate work):**
 - Generate one utterance embedding and reuse it for Tier 3 checks, Tier 2 semantic-cache similarity, topic centroid assignment, and commitment-ledger writes.
@@ -1671,7 +1671,7 @@ Before finalizing, the system compares discussed topics against pre-loaded agend
 5. Technical pattern detection (API keys, hashes, credentials)
 
 ### Phase 5: Tier 2 — Small LLM Classification
-1. GPT-4o-mini / Haiku integration via OpenRouter
+1. Gemini flash-lite integration via `@google/genai`
 2. Zod schema for Tier 2 output
 3. Intent classification (commitment, decision, question, concern, filler, general)
 4. Tone classification (neutral, defensive, aggressive, hesitant, confident)
@@ -1689,7 +1689,7 @@ Before finalizing, the system compares discussed topics against pre-loaded agend
 
 ### Phase 7: Tier 4 — Deep LLM Reasoning
 1. Context assembly (ring buffer + Tier 3 matches + constraints)
-2. GPT-4o / Claude Sonnet integration via OpenRouter
+2. Gemini Pro-class integration for deep reasoning
 3. Zod schema for Tier 4 output
 4. Alert generation with routing (shared/personal/both)
 5. Streaming LLM call under atomic alert UX (no progressive/preliminary alerts)

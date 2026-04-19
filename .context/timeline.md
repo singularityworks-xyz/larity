@@ -130,7 +130,7 @@ The old timeline (Week 2, Day 12-13) planned for extensive regex pattern librari
 - Backtrack patterns
 - Vague language patterns
 
-**All of these are removed.** They are replaced by Tier 2 small LLM classification (GPT-4o-mini), which works in any language and catches semantic meaning that regex cannot.
+**All of these are removed.** They are replaced by Tier 2 small LLM classification (Gemini flash-lite), which works in any language and catches semantic meaning that regex cannot.
 
 Tier 1 is now **structural detection only** — dates, numbers, blocklist keywords, technical patterns (API keys, hashes). No English-specific regex.
 
@@ -613,19 +613,19 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **packages/meeting-mode**
 
-- [ ] **Pre-filter implementation (Free, <10ms):**
-  - [ ] Less than 3 words → DROP
-  - [ ] Pure acknowledgment detection ("ok", "yeah", "mm-hmm", "right", "haan", "theek hai") → DROP
-  - [ ] Exact/near-duplicate of recent utterance → DROP
-  - [ ] Target: kill ~30-40% of utterances
+- [x] **Pre-filter implementation (Free, <10ms):**
+  - [x] Less than 3 words → DROP
+  - [x] Pure acknowledgment detection ("ok", "yeah", "mm-hmm", "right", "haan", "theek hai") → DROP
+  - [x] Exact/near-duplicate of recent utterance → DROP
+  - [x] Target: kill ~30-40% of utterances
 
-- [ ] **Tier 1: Structural Detection (Free, <50ms):**
-  - [ ] Date/time extraction (number/calendar format parsing — language-agnostic)
-  - [ ] Number extraction ($, %, quantities — structural patterns)
-  - [ ] Org-configured keyword blocklist matching (exact + fuzzy)
-  - [ ] Technical pattern detection (API keys, SSH keys, long hashes, credentials)
-  - [ ] Client name matching from preloaded list
-  - [ ] **Tier 1 is an accelerator, NOT a gate** — fires instant alerts but everything passes through to Tier 2
+- [x] **Tier 1: Structural Detection (Free, <50ms):**
+  - [x] Date/time extraction (number/calendar format parsing — language-agnostic)
+  - [x] Number extraction ($, %, quantities — structural patterns)
+  - [x] Org-configured keyword blocklist matching (exact + fuzzy)
+  - [x] Technical pattern detection (API keys, SSH keys, long hashes, credentials)
+  - [x] Client name matching from preloaded list
+  - [x] **Tier 1 is an accelerator, NOT a gate** — fires instant alerts but everything passes through to Tier 2
 
 **Deliverable:** Pre-filter kills noise, Tier 1 catches structural patterns instantly. No regex pattern libraries for semantic detection.
 
@@ -639,8 +639,8 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **packages/meeting-mode**
 
-- [ ] Set up OpenRouter / Vercel AI SDK integration for small LLM (gemini-3.1-flash-lite-preview, GPT-4o-mini / Haiku)
-- [ ] Define Tier 2 input schema:
+- [x] Set up direct Gemini integration (`@google/genai`) for small LLM (`gemini-3.1-flash-lite-preview`)
+- [x] Define Tier 2 input schema:
   ```ts
   interface Tier2Input {
     utterance: string
@@ -649,7 +649,7 @@ The `packages/stt` package has Deepgram integration but needs:
     topicLabel?: string
   }
   ```
-- [ ] Define Tier 2 output schema (Zod-enforced):
+- [x] Define Tier 2 output schema (Zod-enforced):
   ```ts
   interface Tier2Classification {
     intent: "commitment" | "decision" | "question" | "concern" | "filler" | "general"
@@ -675,16 +675,16 @@ The `packages/stt` package has Deepgram integration but needs:
     }
   }
   ```
-- [ ] Build LLM prompt template for classification (multilingual, semantic)
-- [ ] Implement cross-utterance context (fetch last 2-3 from same speaker from ring buffer)
-- [ ] Make Tier 2 the single per-utterance semantic source for both alerting and topic-state updates (no duplicate semantic extraction in topic summarizer)
-- [ ] Update topic state reducer to consume `Tier2Classification.topicDelta` and maintain deterministic live summaries without an extra per-utterance LLM call
-- [ ] Implement gate logic:
-  - [ ] `filler`/`general` + no risk signals + confidence > 0.8 → STOP (don't proceed to Tier 4)
-  - [ ] `commitment`/`decision` → write to commitment ledger immediately (with shared embedding)
-  - [ ] Everything continues to Tier 3 regardless
-- [ ] Add response validation and timeout (200ms max, fail-silent)
-- [ ] Test with multilingual utterances (English, Hindi, Hinglish)
+- [x] Build LLM prompt template for classification (multilingual, semantic)
+- [x] Implement cross-utterance context (fetch last 2-3 from same speaker from ring buffer)
+- [x] Make Tier 2 the single per-utterance semantic source for both alerting and topic-state updates (no duplicate semantic extraction in topic summarizer)
+- [x] Update topic state reducer to consume `Tier2Classification.topicDelta` and maintain deterministic live summaries without an extra per-utterance LLM call
+- [x] Implement gate logic:
+  - [x] `filler`/`general` + no risk signals + confidence > 0.8 → STOP (don't proceed to Tier 4)
+  - [x] `commitment`/`decision` → write to commitment ledger immediately (with shared embedding)
+  - [x] Everything continues to Tier 3 regardless
+- [x] Add response validation and timeout (200ms max, fail-silent)
+- [x] Test with multilingual utterances (English, Hindi, Hinglish)
 
 **Deliverable:** Every utterance is classified by small LLM as the single semantic source of truth (alerts + topic deltas) — replaces ALL old regex pattern libraries. Works in any language.
 
@@ -719,7 +719,7 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **packages/meeting-mode**
 
-- [ ] Set up large LLM integration (Gemini Pro/Flash, GPT-4o / Claude Sonnet via OpenRouter)
+- [ ] Set up large LLM integration (Gemini Pro/Flash)
 - [ ] Define Tier 4 context assembly:
   ```ts
   interface Tier4Context {
@@ -1364,7 +1364,7 @@ The `packages/stt` package has Deepgram integration but needs:
 - [ ] `/team` — invite users, assign to clients, roles (LEAD/MEMBER/OBSERVER)
 - [ ] `/clients` — CRUD clients, add policy guardrails per client
 - [ ] `/policy` — org-wide and client-scoped guardrails (NDA terms, blocklists, approved terminology)
-- [ ] `/settings` — API keys, OpenRouter model overrides, Deepgram key, org-wide alert thresholds
+- [ ] `/settings` — API keys, Gemini model overrides, Deepgram key, org-wide alert thresholds
 
 ### Day 76: Search & Observability
 
@@ -1442,7 +1442,7 @@ packages/
 │   │   ├── tier4-reasoning.ts      # Large LLM deep reasoning
 │   │   └── orchestrator.ts         # Pipeline flow control
 │   ├── llm/
-│   │   ├── client.ts               # OpenRouter / Vercel AI SDK
+│   │   ├── client.ts               # Gemini / provider adapter
 │   │   ├── prompts.ts              # Prompts for Tier 2 + Tier 4
 │   │   └── schemas.ts              # Zod schemas for all LLM responses
 │   ├── speculative/
@@ -1639,8 +1639,7 @@ apps/
 ### External Services
 - **Deepgram** — Streaming STT with diarization (API key required)
 - **OpenAI Whisper API** — Batch STT refinement (post-meeting)
-- **OpenRouter** — LLM routing for Tier 2 (GPT-4o-mini/Haiku), Tier 4 (GPT-4o/Sonnet), extraction, assistant
-- **Google Gemini (`@google/genai`)** — Embeddings (`text-embedding-004` / Gemini embedding models) for topic clustering, commitment embeddings, vector search
+- **Google Gemini (`@google/genai`)** — Tier 2 classification (`gemini-3.1-flash-lite-preview`) and embeddings (`text-embedding-004` / Gemini embedding models)
 
 ### Infrastructure
 - **Redis** — Already configured in packages/infra. Needs new key patterns for multi-user, commitment ledger snapshots, per-meeting cost counters, and pub/sub channels for ledger updates. **Not on the audio path.**
@@ -1675,7 +1674,7 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 | **Processing location** | Local (Tauri-spawned) | Remote shared server |
 | **Session model** | Single user | Multi-user (host + participants) |
 | **Tier 1** | Regex pattern libraries (risky, pressure, tone, scope, etc.) | Structural only (dates, numbers, blocklists, technical patterns) |
-| **Tier 2** | Small classifier (local) | Small LLM (GPT-4o-mini) — replaces ALL regex patterns |
+| **Tier 2** | Small classifier (local) | Small LLM (Gemini flash-lite) — replaces ALL regex patterns |
 | **Tier 3** | Topic novelty check only | Embedding search (pgvector + commitment ledger) — safety net |
 | **Pattern libraries** | ~8 regex pattern files | REMOVED — replaced by Tier 2 LLM |
 | **Commitment ledger** | YOU + THEM, basic | Full SpeakerIdentity, embeddings, **in-memory HNSW (hot path) + Redis snapshot (durability)**, entire meeting |
