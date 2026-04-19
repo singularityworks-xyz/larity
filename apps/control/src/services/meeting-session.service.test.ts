@@ -22,6 +22,18 @@ const mockPrisma = {
     findUnique: mock(),
     update: mock(),
   },
+  decision: {
+    findMany: mock(),
+  },
+  importantPoint: {
+    findMany: mock(),
+  },
+  policyGuardrail: {
+    findMany: mock(),
+  },
+  clientMember: {
+    findMany: mock(),
+  },
   user: {
     findUnique: mock(),
   },
@@ -41,7 +53,7 @@ describe("MeetingSessionService", () => {
   const orgId = "org-123";
   const meetingId = "meeting-123";
   const sessionId = "session-123";
-  const _clientId = "client-123";
+  const clientId = "client-123";
 
   beforeEach(() => {
     // Reset mocks
@@ -51,8 +63,118 @@ describe("MeetingSessionService", () => {
     mockRedis.hset.mockReset();
     mockRedis.sadd.mockReset();
     mockRedis.sismember.mockReset();
+    mockRedis.expire.mockReset();
+    mockRedis.del.mockReset();
     mockPrisma.meeting.findUnique.mockReset();
+    mockPrisma.meeting.update.mockReset();
+    mockPrisma.decision.findMany.mockReset();
+    mockPrisma.importantPoint.findMany.mockReset();
+    mockPrisma.policyGuardrail.findMany.mockReset();
+    mockPrisma.clientMember.findMany.mockReset();
     mockPrisma.user.findUnique.mockReset();
+  });
+
+  describe("start", () => {
+    it("preloads context and stores it in Redis on session start", async () => {
+      mockPrisma.meeting.findUnique.mockResolvedValue({
+        id: meetingId,
+        clientId,
+        status: "SCHEDULED",
+        title: "Weekly sync",
+        agenda: "- Timeline\n- Budget",
+        client: {
+          id: clientId,
+          name: "Acme Corp",
+          orgId,
+          org: {
+            settings: {
+              policyKeywords: ["internal roadmap", "future pricing"],
+            },
+          },
+        },
+      });
+
+      mockRedis.get.mockResolvedValue(null);
+      mockRedis.set.mockResolvedValue("OK");
+      mockRedis.hset.mockResolvedValue(1);
+      mockRedis.expire.mockResolvedValue(1);
+      mockRedis.sadd.mockResolvedValue(1);
+
+      mockPrisma.decision.findMany.mockResolvedValue([
+        {
+          id: "decision-1",
+          title: "Delivery window",
+          content: "Release before May 15",
+          tags: ["timeline"],
+          createdAt: new Date("2026-04-10T10:00:00.000Z"),
+        },
+      ]);
+      mockPrisma.importantPoint.findMany
+        .mockResolvedValueOnce([
+          {
+            id: "constraint-1",
+            content: "Capacity capped at 60%",
+            createdAt: new Date("2026-04-09T10:00:00.000Z"),
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: "commitment-1",
+            content: "We will share a draft by Tuesday",
+            createdAt: new Date("2026-04-08T10:00:00.000Z"),
+          },
+        ]);
+      mockPrisma.policyGuardrail.findMany.mockResolvedValue([
+        {
+          id: "guardrail-1",
+          name: "NDA terms",
+          description: "Do not disclose internal roadmap",
+          ruleType: "NDA",
+          severity: "WARNING",
+          keywords: ["nda", "roadmap"],
+          pattern: "confidential",
+          clientId: null,
+        },
+      ]);
+      mockPrisma.clientMember.findMany.mockResolvedValue([
+        { name: "John Client" },
+      ]);
+      mockPrisma.meeting.update.mockResolvedValue({
+        id: meetingId,
+        status: "LIVE",
+      });
+
+      const result = await meetingSessionService.start({ meetingId }, userId);
+
+      expect(result.meetingId).toBe(meetingId);
+      expect(mockRedis.set).toHaveBeenCalled();
+
+      const contextSetCall = mockRedis.set.mock.calls.find((call) => {
+        return (
+          typeof call[0] === "string" && call[0].startsWith("meeting:context:")
+        );
+      });
+
+      expect(contextSetCall).toBeDefined();
+
+      if (contextSetCall) {
+        const contextPayload = JSON.parse(contextSetCall[1] as string);
+        expect(contextPayload.meetingId).toBe(meetingId);
+        expect(contextPayload.clientId).toBe(clientId);
+        expect(contextPayload.openDecisions).toHaveLength(1);
+        expect(contextPayload.knownConstraints).toHaveLength(1);
+        expect(contextPayload.priorCommitments).toHaveLength(1);
+        expect(contextPayload.activePolicyGuardrails).toHaveLength(1);
+        expect(contextPayload.clientNameList).toContain("Acme Corp");
+        expect(contextPayload.clientNameList).toContain("John Client");
+        expect(contextPayload.keywordBlocklists).toContain("nda");
+        expect(contextPayload.keywordBlocklists).toContain("internal roadmap");
+        expect(contextPayload.calendarAgendaItems).toEqual([
+          "Timeline",
+          "Budget",
+        ]);
+      }
+    });
   });
 
   describe("join", () => {
@@ -195,6 +317,21 @@ describe("MeetingSessionService", () => {
 
       const result = await meetingSessionService.isValidSession(sessionId);
       expect(result).toBe(false);
+    });
+  });
+
+  describe("scheduleCleanup", () => {
+    it("also shortens cached context TTL during cleanup", async () => {
+      mockRedis.srem.mockResolvedValue(1);
+      mockRedis.del.mockResolvedValue(1);
+      mockRedis.expire.mockResolvedValue(1);
+
+      await meetingSessionService.scheduleCleanup(sessionId, meetingId);
+
+      expect(mockRedis.expire).toHaveBeenCalledWith(
+        redisKeys.meetingContext(sessionId),
+        5 * 60
+      );
     });
   });
 });
