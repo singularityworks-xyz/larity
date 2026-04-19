@@ -551,26 +551,63 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **Deliverable:** Commitment ledger tracks all commitments with embeddings across the entire meeting, searchable for contradiction detection in sub-ms without leaving the realtime worker's address space, with a Redis snapshot for durability and observation. ✓
 
-### Day 19-20: Constraint Ledger + Context Preload
+### Day 19-20: Constraint Ledger + Context Preload ✓ COMPLETED
 
 **packages/meeting-mode + apps/control**
 
-- [ ] Define `Constraint` interface with `SpeakerIdentity`
-- [ ] Implement constraint extraction from preloaded data (decisions, policies from PostgreSQL)
-- [ ] Build constraint detection from utterances (structural: dates, numbers, dependencies)
-- [ ] Add delta comparison logic (new vs existing constraints)
-- [ ] Persist constraint ledger in Redis per session
-- [ ] Implement context preload on session start:
-  - [ ] Open decisions (client-scoped)
-  - [ ] Known constraints
-  - [ ] Active policy guardrails (org-wide)
-  - [ ] Prior commitments (from previous meetings)
-  - [ ] Client name list (for Tier 1 blocklist)
-  - [ ] Org-configured keyword blocklists
-  - [ ] Calendar agenda items
-- [ ] Cache preloaded context in Redis for session duration
+- [x] Define `Constraint` interface with `SpeakerIdentity`:
+  ```ts
+  interface Constraint {
+    id: string
+    type: "date" | "capacity" | "policy" | "dependency" | "legal"
+    value: string
+    source: "preloaded" | "meeting"
+    utteranceId?: string
+    speaker?: SpeakerIdentity
+    confidence: number
+    topicIds: string[]
+  }
+  ```
+- [x] Implement constraint ledger (`packages/meeting-mode/src/constraint/ledger.ts`):
+  - [x] In-memory Map with normalized value index for fast lookup
+  - [x] Redis snapshot persistence (`meeting:constraint:{sessionId}`)
+  - [x] Pub/sub event emission on insert (`meeting.constraint.{sessionId}`)
+  - [x] Delta comparison: merge duplicate constraints by type + normalized value
+- [x] Implement constraint manager (`packages/meeting-mode/src/constraint/manager.ts`):
+  - [x] Hydrate from Redis snapshot on session reconnect
+  - [x] Hydrate from preloaded context payload
+  - [x] Structural detection from utterances (dates, %, capacity, policy, dependency)
+  - [x] Insert/skip result with duplicate detection
+- [x] Wire constraint manager into meeting-mode pipeline:
+  - [x] `UtteranceFinalizer.onUtterancePublished` hook triggers constraint detection
+  - [x] `startSubscriber` hydrates sessions on first STT result
+- [x] Implement context preload on session start (`apps/control/src/services/meeting-session.service.ts`):
+  - [x] Open decisions (client-scoped, last 84 days)
+  - [x] Known constraints (`ImportantPoint.category === "CONSTRAINT"`)
+  - [x] Active policy guardrails (org-wide, `isActive: true`)
+  - [x] Prior commitments (`ImportantPoint.category === "COMMITMENT"`)
+  - [x] Client name list (client + client members for Tier 1 blocklist)
+  - [x] Org-configured keyword blocklists (recursive extraction from `org.settings`)
+  - [x] Calendar agenda items (parsed from meeting agenda)
+  - [x] Context payload stored in Redis (`meeting:context:{sessionId}`) with appropriate TTL
+  - [x] Cleanup shortens context TTL on session end
+- [x] Add Redis keys (`packages/infra/redis/keys.ts`):
+  - [x] `meetingConstraintLedger: (sessionId) => "meeting:constraint:${sessionId}"`
+  - [x] `meetingContext: (sessionId) => "meeting:context:${sessionId}"`
+- [x] Add TTL constants (`packages/infra/redis/ttl.ts`):
+  - [x] `CONSTRAINT_LEDGER: 7200`
+  - [x] `MEETING_CONTEXT: 14400`
+- [x] Add constraint channel (`packages/meeting-mode/src/channels.ts`):
+  - [x] `constraintChannel(sessionId) => "meeting.constraint.${sessionId}"`
+  - [x] Add "constraint" to `meetingSessionChannels` for session ID extraction
+- [x] Unit and integration tests:
+  - [x] `tests/constraint/ledger.test.ts` — insert, snapshot, pubsub, delta merge
+  - [x] `tests/constraint/manager.test.ts` — hydration, structural detection, dedup
+  - [x] `tests/constraint/constraint-pipeline.integration.test.ts` — end-to-end flow
+  - [x] `apps/control/src/services/meeting-session.service.test.ts` — preload assertions
+  - [x] `tests/alerts/subscriber.test.ts` — constraint channel session extraction
 
-**Deliverable:** Constraint tracking and context preloading operational.
+**Deliverable:** Constraint tracking and context preloading operational with structural detection (dates, %, capacity, policy, dependency) and Redis-backed persistence. ✓
 
 ### Day 21: Pre-filter & Tier 1 — Structural Detection
 
