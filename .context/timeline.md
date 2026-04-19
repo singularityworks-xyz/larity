@@ -639,7 +639,7 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **packages/meeting-mode**
 
-- [ ] Set up OpenRouter / Vercel AI SDK integration for small LLM (gemini-2.5-flash, GPT-4o-mini / Haiku)
+- [ ] Set up OpenRouter / Vercel AI SDK integration for small LLM (gemini-3.1-flash-lite-preview, GPT-4o-mini / Haiku)
 - [ ] Define Tier 2 input schema:
   ```ts
   interface Tier2Input {

@@ -834,7 +834,7 @@ This fits the <800ms end-to-end budget from speech-final to alert delivery (Deep
 | Model | Purpose | Cost per call | Example |
 |-------|---------|---------------|---------|
 | **Embedding model** | Search, similarity, novelty | ~$0.00002 | text-embedding-004 (Gemini via @google/genai) |
-| **Small LLM** | Classification, extraction | ~$0.002 | gemini-2.5-flash, GPT-4o-mini |
+| **Small LLM** | Classification, extraction | ~$0.002 | gemini-3.1-flash-lite-preview, GPT-4o-mini |
 | **Large LLM** | Deep reasoning, contradiction analysis | ~$0.02 | gemini-2.5-pro, GPT-4o, Claude Sonnet |
 
 **Embedding reuse rule (no duplicate work):**
