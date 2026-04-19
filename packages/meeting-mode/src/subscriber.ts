@@ -10,6 +10,7 @@ import type { CommitmentManager } from "./commitment/manager";
 import type { ConstraintManager } from "./constraint/manager";
 import { REDIS_URL } from "./env";
 import { createMeetingModeLogger } from "./logger";
+import type { MeetingPipelineEngine } from "./pipeline/engine";
 import type { SpeakerManager } from "./speaker/manager";
 import type { VadSignal } from "./speaker/types";
 import type { UtteranceFinalizer } from "./utterance/finalizer";
@@ -21,9 +22,8 @@ let finalizerRef: UtteranceFinalizer | null = null;
 let speakerManagerRef: SpeakerManager | null = null;
 let commitmentManagerRef: CommitmentManager | null = null;
 let constraintManagerRef: ConstraintManager | null = null;
+let pipelineEngineRef: MeetingPipelineEngine | null = null;
 let _redisClientRef: Redis | null = null;
-const hydratedCommitmentSessions = new Set<string>();
-const hydratedConstraintSessions = new Set<string>();
 
 async function handleSttResult(
   channel: string,
@@ -35,22 +35,6 @@ async function handleSttResult(
     if (!(finalizerRef && speakerManagerRef)) {
       log.error("No finalizer or speaker manager registered!");
       return;
-    }
-
-    if (
-      commitmentManagerRef &&
-      !hydratedCommitmentSessions.has(result.sessionId)
-    ) {
-      await commitmentManagerRef.hydrateSession(result.sessionId);
-      hydratedCommitmentSessions.add(result.sessionId);
-    }
-
-    if (
-      constraintManagerRef &&
-      !hydratedConstraintSessions.has(result.sessionId)
-    ) {
-      await constraintManagerRef.hydrateSession(result.sessionId);
-      hydratedConstraintSessions.add(result.sessionId);
     }
 
     // Register identifier so finalizer can resolve speakers
@@ -71,16 +55,11 @@ async function handleSessionEnd(message: string): Promise<void> {
       speakerManagerRef.removeSession(event.sessionId);
     }
 
-    hydratedCommitmentSessions.delete(event.sessionId);
-    hydratedConstraintSessions.delete(event.sessionId);
+    pipelineEngineRef?.closeSession(event.sessionId);
 
-    if (commitmentManagerRef) {
-      commitmentManagerRef.closeSession(event.sessionId);
-    }
+    commitmentManagerRef?.closeSession(event.sessionId);
 
-    if (constraintManagerRef) {
-      constraintManagerRef.closeSession(event.sessionId);
-    }
+    constraintManagerRef?.closeSession(event.sessionId);
 
     if (!finalizerRef) {
       log.error("No finalizer registered!");
@@ -159,12 +138,14 @@ export async function startSubscriber(
   speakerManager: SpeakerManager,
   redisClient: Redis,
   commitmentManager?: CommitmentManager,
-  constraintManager?: ConstraintManager
+  constraintManager?: ConstraintManager,
+  pipelineEngine?: MeetingPipelineEngine
 ): Promise<void> {
   finalizerRef = finalizer;
   speakerManagerRef = speakerManager;
   commitmentManagerRef = commitmentManager ?? null;
   constraintManagerRef = constraintManager ?? null;
+  pipelineEngineRef = pipelineEngine ?? null;
   _redisClientRef = redisClient;
 
   subscriber = new Redis(REDIS_URL, {
@@ -231,9 +212,8 @@ export function stopSubscriber(): void {
     speakerManagerRef = null;
     commitmentManagerRef = null;
     constraintManagerRef = null;
+    pipelineEngineRef = null;
     _redisClientRef = null;
-    hydratedCommitmentSessions.clear();
-    hydratedConstraintSessions.clear();
     log.info("Disconnected");
   }
 }

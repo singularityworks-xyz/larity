@@ -1,5 +1,6 @@
 import { topicChannel } from "../channels";
 import { createMeetingModeLogger } from "../logger";
+import type { Tier2TopicDelta } from "../pipeline/types";
 import type { Utterance } from "../utterance/types";
 import { GoogleGenAIEmbedder } from "./embedder";
 import { cosineSimilarity, updateCentroid } from "./similarity";
@@ -13,10 +14,15 @@ export interface TopicPublisher {
   hset(key: string, field: string, value: string): Promise<number>;
 }
 
+export interface TopicManagerOptions {
+  enableAsyncSummarization?: boolean;
+}
+
 export class TopicManager {
   private readonly embedder: GoogleGenAIEmbedder;
   private readonly summarizer: TopicSummarizer;
   private readonly publisher: TopicPublisher;
+  private readonly enableAsyncSummarization: boolean;
 
   // similarity threshold for assigning to an existing topic
   private readonly SIMILARITY_THRESHOLD = 0.65;
@@ -40,10 +46,11 @@ export class TopicManager {
   // Processing locks per topic to prevent concurrent summarizer runs
   private readonly processingLocks = new Set<string>();
 
-  constructor(publisher: TopicPublisher) {
+  constructor(publisher: TopicPublisher, options: TopicManagerOptions = {}) {
     this.embedder = new GoogleGenAIEmbedder();
     this.summarizer = new TopicSummarizer();
     this.publisher = publisher;
+    this.enableAsyncSummarization = options.enableAsyncSummarization ?? true;
   }
 
   /**
@@ -101,10 +108,81 @@ export class TopicManager {
       log.info({ sessionId, topicId: assignedTopicId }, "Spawned new topic");
     }
 
-    // 4. Enqueue for slow path
-    this.enqueueForSummarization(assignedTopicId, text);
+    if (this.enableAsyncSummarization) {
+      this.enqueueForSummarization(assignedTopicId, text);
+    }
 
     return assignedTopicId;
+  }
+
+  async applyTier2TopicDelta(
+    sessionId: string,
+    topicId: string,
+    delta: Tier2TopicDelta
+  ): Promise<void> {
+    const topics = this.activeTopics.get(sessionId) || [];
+    const topic = topics.find((item) => item.topicId === topicId);
+
+    if (!topic) {
+      return;
+    }
+
+    const summarySegments: string[] = [];
+
+    if (delta.labelHint) {
+      topic.label = delta.labelHint;
+    }
+
+    if (delta.decision) {
+      summarySegments.push(`Decision: ${delta.decision}`);
+    }
+
+    if (delta.commitment) {
+      topic.commitmentsMentioned = appendUniqueByDescription(
+        topic.commitmentsMentioned,
+        {
+          id: `commitment_${Date.now()}`,
+          description: delta.commitment,
+          owner: delta.owner,
+          dueDate: delta.deadline,
+        }
+      );
+      summarySegments.push(`Commitment: ${delta.commitment}`);
+    }
+
+    if (delta.risk) {
+      topic.riskFlags = appendUniqueRisk(topic.riskFlags, {
+        id: `risk_${Date.now()}`,
+        description: delta.risk,
+        severity: "medium",
+      });
+      summarySegments.push(`Risk: ${delta.risk}`);
+    }
+
+    if (delta.openQuestion) {
+      topic.completeness.hasActionItems = true;
+      if (!topic.completeness.actionItems.includes(delta.openQuestion)) {
+        topic.completeness.actionItems.push(delta.openQuestion);
+      }
+      summarySegments.push(`Open question: ${delta.openQuestion}`);
+    }
+
+    if (delta.owner) {
+      topic.completeness.hasOwner = true;
+      topic.completeness.ownerName = delta.owner;
+    }
+
+    if (delta.deadline) {
+      topic.completeness.hasDeadline = true;
+      topic.completeness.deadline = delta.deadline;
+    }
+
+    if (summarySegments.length > 0) {
+      topic.summary = mergeSummarySegments(topic.summary, summarySegments);
+    }
+
+    topic.lastUpdated = Date.now();
+    await this.persistAndPublish(sessionId, topic);
   }
 
   /**
@@ -299,9 +377,10 @@ export class TopicManager {
       }
       this.debounceTimers.delete(topic.topicId);
 
-      // Attempt a final synchronous summarization trigger if pending exists
-      // Wait for lock to clear theoretically, but since it's shutdown we do a best-effort trigger
-      if (!this.processingLocks.has(topic.topicId)) {
+      if (
+        this.enableAsyncSummarization &&
+        !this.processingLocks.has(topic.topicId)
+      ) {
         await this.triggerSummarization(topic.topicId);
       }
       this.pendingUtterances.delete(topic.topicId);
@@ -309,4 +388,42 @@ export class TopicManager {
     this.activeTopics.delete(sessionId);
     log.info({ sessionId }, "Topic manager session closed");
   }
+
+  getTopics(sessionId: string): TopicState[] {
+    return [...(this.activeTopics.get(sessionId) ?? [])];
+  }
+}
+
+function appendUniqueByDescription<T extends { description: string }>(
+  items: T[],
+  next: T
+): T[] {
+  if (items.some((item) => item.description === next.description)) {
+    return items;
+  }
+
+  return [...items, next];
+}
+
+function appendUniqueRisk(
+  current: TopicState["riskFlags"],
+  risk: TopicState["riskFlags"][number]
+): TopicState["riskFlags"] {
+  if (current.some((item) => item.description === risk.description)) {
+    return current;
+  }
+
+  return [...current, risk];
+}
+
+function mergeSummarySegments(previous: string, segments: string[]): string {
+  const existing = previous.trim();
+  const addition = segments.join(" ").trim();
+  if (!existing) {
+    return addition;
+  }
+  if (!addition) {
+    return existing;
+  }
+  return `${existing} ${addition}`.trim();
 }

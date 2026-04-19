@@ -3,10 +3,17 @@ import {
   disconnectRedis,
   getRedisClient,
 } from "../../infra/redis";
+import { redisKeys } from "../../infra/redis/keys";
 import { CommitmentManager } from "./commitment/manager";
 import { ConstraintManager } from "./constraint/manager";
+import type { PreloadedContextPayload } from "./constraint/types";
 import { validateEnv } from "./env";
 import { rootLogger } from "./logger";
+import { MeetingPipelineEngine } from "./pipeline/engine";
+import { PreFilter } from "./pipeline/pre-filter";
+import { Tier1StructuralDetector } from "./pipeline/tier1";
+import { Tier2Classifier } from "./pipeline/tier2";
+import { SpeakerManager } from "./speaker/manager";
 import { startSubscriber, stopSubscriber } from "./subscriber";
 import { UtteranceFinalizer } from "./utterance/finalizer";
 
@@ -19,16 +26,20 @@ export * from "./alerts/types";
 export * from "./channels";
 export * from "./commitment";
 export * from "./constraint";
+export * from "./pipeline/engine";
+export * from "./pipeline/pre-filter";
+export * from "./pipeline/tier1";
+export * from "./pipeline/tier2";
+export * from "./pipeline/types";
 export { SpeakerIdentifier } from "./speaker/identifier";
 export * from "./speaker/types";
 export * from "./utterance/types";
-
-import { SpeakerManager } from "./speaker/manager";
 
 let finalizer: UtteranceFinalizer | null = null;
 let speakerManager: SpeakerManager | null = null;
 let commitmentManager: CommitmentManager | null = null;
 let constraintManager: ConstraintManager | null = null;
+let pipelineEngine: MeetingPipelineEngine | null = null;
 
 //graceful shutdown handler
 async function shutdown(signal: string): Promise<void> {
@@ -45,6 +56,10 @@ async function shutdown(signal: string): Promise<void> {
 
     if (constraintManager) {
       constraintManager.closeAll();
+    }
+
+    if (pipelineEngine) {
+      pipelineEngine.closeAll();
     }
 
     await stopSubscriber();
@@ -91,17 +106,50 @@ async function main(): Promise<void> {
   constraintManager = new ConstraintManager(
     redisClient as unknown as ConstructorParameters<typeof ConstraintManager>[0]
   );
-  finalizer = new UtteranceFinalizer({
-    publish: (channel, message) => redisClient.publish(channel, message),
-    hset: (key, field, value) => redisClient.hset(key, field, value),
+  finalizer = new UtteranceFinalizer(
+    {
+      publish: (channel, message) => redisClient.publish(channel, message),
+      hset: (key, field, value) => redisClient.hset(key, field, value),
+    },
+    {
+      topicManager: {
+        enableAsyncSummarization: false,
+      },
+    }
+  );
+
+  pipelineEngine = new MeetingPipelineEngine({
+    finalizer,
+    constraintManager,
+    commitmentManager,
+    preFilter: new PreFilter(),
+    tier1: new Tier1StructuralDetector(),
+    tier2: new Tier2Classifier(),
+    getContextPayload: async (sessionId) => {
+      const payload = await redisClient.get(
+        redisKeys.meetingContext(sessionId)
+      );
+      if (!payload) {
+        return null;
+      }
+
+      try {
+        return JSON.parse(payload) as PreloadedContextPayload;
+      } catch {
+        rootLogger.warn({ sessionId }, "Invalid meeting context payload");
+        return null;
+      }
+    },
+    getCurrentTopicLabel: async (sessionId, topicId) =>
+      finalizer?.getTopicLabel(sessionId, topicId),
   });
 
   finalizer.onUtterancePublished(async (utterance) => {
-    if (!constraintManager) {
+    if (!pipelineEngine) {
       return;
     }
 
-    await constraintManager.processUtterance(utterance);
+    await pipelineEngine.evaluateUtterance(utterance);
   });
 
   await startSubscriber(
@@ -109,7 +157,8 @@ async function main(): Promise<void> {
     speakerManager,
     redisClient as unknown as Parameters<typeof startSubscriber>[2],
     commitmentManager,
-    constraintManager
+    constraintManager,
+    pipelineEngine
   );
   rootLogger.info("Utterance Finalizer is running");
 

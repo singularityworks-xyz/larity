@@ -18,6 +18,8 @@ export const MAX_BUFFER_SIZE = Number.parseInt(
 export const LOG_LEVEL = process.env.LOG_LEVEL || "info";
 
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+export const GEMINI_TIER2_MODEL =
+  process.env.GEMINI_TIER2_MODEL || "gemini-3.1-flash-lite-preview";
 
 export function validateEnv(): void {
   // Logic only validation if needed

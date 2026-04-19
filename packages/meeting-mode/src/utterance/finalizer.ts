@@ -1,8 +1,13 @@
 import type { SttResult } from "../../../stt/src/types";
 import { utteranceChannel } from "../channels";
 import { createMeetingModeLogger } from "../logger";
+import type { Tier2TopicDelta } from "../pipeline/types";
 import type { SpeakerIdentifier } from "../speaker/identifier";
-import { TopicManager, type TopicPublisher } from "../topic/manager";
+import {
+  TopicManager,
+  type TopicManagerOptions,
+  type TopicPublisher,
+} from "../topic/manager";
 import { PartialBuffer } from "./buffer";
 import { UtteranceMerger } from "./merger";
 import { RingBuffer } from "./ring-buffer";
@@ -33,9 +38,12 @@ export class UtteranceFinalizer {
   private readonly publishedHandlers: UtterancePublishedHandler[] = [];
   private readonly topicManager: TopicManager;
 
-  constructor(publisher: UtterancePublisher) {
+  constructor(
+    publisher: UtterancePublisher,
+    options: { topicManager?: TopicManagerOptions } = {}
+  ) {
     this.publisher = publisher;
-    this.topicManager = new TopicManager(publisher);
+    this.topicManager = new TopicManager(publisher, options.topicManager);
   }
 
   registerSpeakerIdentifier(
@@ -160,6 +168,54 @@ export class UtteranceFinalizer {
 
   getRingBuffer(sessionId: string): RingBuffer | undefined {
     return this.ringBuffers.get(sessionId);
+  }
+
+  getRecentSameSpeakerText(
+    sessionId: string,
+    speakerId: string,
+    currentUtteranceId?: string,
+    limit = 3
+  ): string[] {
+    const ringBuffer = this.ringBuffers.get(sessionId);
+    if (!ringBuffer) {
+      return [];
+    }
+
+    const sameSpeakerUtterances = ringBuffer
+      .getBySpeakerId(speakerId)
+      .filter((utterance) => utterance.utteranceId !== currentUtteranceId)
+      .sort((left, right) => right.timestamp - left.timestamp)
+      .slice(0, limit)
+      .reverse();
+
+    return sameSpeakerUtterances.map((utterance) => utterance.text);
+  }
+
+  async applyTier2TopicDelta(
+    sessionId: string,
+    topicId: string | undefined,
+    delta: Tier2TopicDelta
+  ): Promise<void> {
+    if (!topicId) {
+      return;
+    }
+
+    await this.topicManager.applyTier2TopicDelta(sessionId, topicId, delta);
+  }
+
+  getTopicLabel(
+    sessionId: string,
+    topicId: string | undefined
+  ): string | undefined {
+    if (!topicId) {
+      return undefined;
+    }
+
+    const topic = this.topicManager
+      .getTopics(sessionId)
+      .find((candidate) => candidate.topicId === topicId);
+
+    return topic?.label;
   }
 
   async closeSession(sessionId: string): Promise<void> {
