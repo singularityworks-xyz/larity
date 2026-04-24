@@ -3,8 +3,16 @@ import { Elysia } from "elysia";
 import { requireAuth } from "../middleware/auth";
 import { OrgService } from "../services";
 import {
+  getHttpStatusForOrgInviteError,
+  OrgInviteError,
+  orgInviteService,
+} from "../services/org-invite.service";
+import {
+  createOrgInviteSchema,
   createOrgSchema,
+  joinOrgSchema,
   orgIdSchema,
+  orgInviteIdSchema,
   orgQuerySchema,
   updateOrgSchema,
 } from "../validators";
@@ -116,4 +124,97 @@ export const orgsRoutes = new Elysia({ prefix: "/orgs" })
       }
     },
     { params: orgIdSchema }
+  )
+  // Create invite for org (OWNER or ADMIN)
+  .post(
+    "/:id/invites",
+    async ({ params, body, user, set }) => {
+      try {
+        const invite = await orgInviteService.create(params.id, user!.id, body);
+        return {
+          success: true,
+          data: {
+            id: invite.id,
+            code: invite.code,
+            role: invite.role,
+            expiresAt: invite.expiresAt,
+            createdAt: invite.createdAt,
+          },
+        };
+      } catch (error) {
+        if (error instanceof OrgInviteError) {
+          set.status = getHttpStatusForOrgInviteError(error.code);
+          return { success: false, error: error.code, message: error.message };
+        }
+        throw error;
+      }
+    },
+    {
+      params: orgIdSchema,
+      body: createOrgInviteSchema,
+    }
+  )
+  // List active invites for org (OWNER or ADMIN)
+  .get(
+    "/:id/invites",
+    async ({ params, user, set }) => {
+      try {
+        const invites = await orgInviteService.listActive(params.id, user!.id);
+        return { success: true, data: invites };
+      } catch (error) {
+        if (error instanceof OrgInviteError) {
+          set.status = getHttpStatusForOrgInviteError(error.code);
+          return { success: false, error: error.code, message: error.message };
+        }
+        throw error;
+      }
+    },
+    {
+      params: orgIdSchema,
+    }
+  )
+  // Revoke invite (OWNER or ADMIN)
+  .delete(
+    "/invites/:inviteId",
+    async ({ params, user, set }) => {
+      try {
+        await orgInviteService.revoke(params.inviteId, user!.id);
+        return { success: true };
+      } catch (error) {
+        if (error instanceof OrgInviteError) {
+          set.status = getHttpStatusForOrgInviteError(error.code);
+          return { success: false, error: error.code, message: error.message };
+        }
+        throw error;
+      }
+    },
+    {
+      params: orgInviteIdSchema,
+    }
+  )
+  // Join org with invite code
+  .post(
+    "/join",
+    async ({ body, user, set }) => {
+      try {
+        const invite = await orgInviteService.redeem(body.code, user!.id);
+        return {
+          success: true,
+          data: {
+            orgId: invite.orgId,
+            role: invite.role,
+            usedAt: invite.usedAt,
+          },
+        };
+      } catch (error) {
+        if (error instanceof OrgInviteError) {
+          set.status = getHttpStatusForOrgInviteError(error.code);
+          return { success: false, error: error.code, message: error.message };
+        }
+        throw error;
+      }
+    },
+    {
+      body: joinOrgSchema,
+    }
   );

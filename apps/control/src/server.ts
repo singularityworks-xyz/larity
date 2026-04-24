@@ -41,7 +41,7 @@ export const app = new Elysia()
   // CORS
   .use(
     cors({
-      origin: env.FRONTEND_URL,
+      origin: env.FRONTEND_ORIGINS,
       credentials: true,
     })
   )

@@ -43,7 +43,7 @@ export const auth = betterAuth({
     },
   },
   plugins: [organization()],
-  trustedOrigins: [env.FRONTEND_URL],
+  trustedOrigins: env.FRONTEND_ORIGINS,
 });
 
 export type Session = typeof auth.$Infer.Session;

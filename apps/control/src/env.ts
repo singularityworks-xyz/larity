@@ -28,11 +28,30 @@ export function validateEnv() {
   }
 }
 
+const DEFAULT_TRUSTED_ORIGINS = [
+  "http://localhost:1420",
+  "http://localhost:5173",
+  "tauri://localhost",
+  "http://tauri.localhost",
+];
+
+const configuredOrigins = [
+  ...(process.env.FRONTEND_URLS?.split(",") ?? []),
+  process.env.FRONTEND_URL ?? "",
+]
+  .map((origin) => origin.trim())
+  .filter((origin) => origin.length > 0);
+
+const FRONTEND_ORIGINS = [
+  ...new Set([...configuredOrigins, ...DEFAULT_TRUSTED_ORIGINS]),
+];
+
 export const env = {
   PORT: process.env.PORT ?? "3000",
   NODE_ENV: process.env.NODE_ENV ?? "development",
   DATABASE_URL: process.env.DATABASE_URL as string,
   FRONTEND_URL: process.env.FRONTEND_URL ?? "http://localhost:5173",
+  FRONTEND_ORIGINS,
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,

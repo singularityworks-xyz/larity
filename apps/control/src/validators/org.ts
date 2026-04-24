@@ -44,6 +44,29 @@ export const orgQuerySchema = z
   })
   .optional();
 
+export const createOrgInviteSchema = z.object({
+  role: z.enum(["ADMIN", "MEMBER"]).default("MEMBER"),
+  ttlHours: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 30)
+    .optional(),
+});
+
+export const orgInviteIdSchema = z.object({
+  inviteId: z.uuid("Invalid org invite ID"),
+});
+
+export const joinOrgSchema = z.object({
+  code: z
+    .string()
+    .min(6, "Invite code is required")
+    .max(64, "Invite code is invalid"),
+});
+
 // Type exports
 export type CreateOrgInput = z.infer<typeof createOrgSchema>;
 export type UpdateOrgInput = z.infer<typeof updateOrgSchema>;
+export type CreateOrgInviteInput = z.infer<typeof createOrgInviteSchema>;
+export type JoinOrgInput = z.infer<typeof joinOrgSchema>;
