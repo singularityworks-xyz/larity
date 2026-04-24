@@ -22,12 +22,10 @@ export async function validateSession(
   userId?: string,
   role?: string
 ): Promise<boolean> {
-  // Bypass validation for the local test-client script and desktop app
-  if (
-    sessionId.includes("test-session") ||
-    sessionId.startsWith("desktop-session") ||
-    sessionId.startsWith("meeting-")
-  ) {
+  const isDev = process.env.NODE_ENV !== "production";
+
+  // Bypass only local test sessions in non-production environments
+  if (isDev && sessionId.includes("test-session")) {
     return true;
   }
 
