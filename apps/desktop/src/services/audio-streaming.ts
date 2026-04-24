@@ -34,8 +34,22 @@ interface SendResult {
 }
 
 const DEFAULT_WS_URL = "ws://127.0.0.1:9001";
+const DEFAULT_USER_ID = "desktop-host";
 const DEFAULT_BACKPRESSURE_THRESHOLD = 64 * 1024;
 const DEFAULT_MAX_PENDING_FRAMES = 8;
+
+export function buildRealtimeSocketUrl(
+  wsBaseUrl: string,
+  sessionId: string,
+  userId: string,
+  role: "host" | "participant"
+): string {
+  const url = new URL(wsBaseUrl);
+  url.searchParams.set("sessionId", sessionId);
+  url.searchParams.set("userId", userId);
+  url.searchParams.set("role", role);
+  return url.toString();
+}
 
 function decodeBase64ToBytes(base64: string): Uint8Array {
   const binary = atob(base64);
@@ -56,8 +70,8 @@ export function shouldDropFrame(
 export class AudioStreamingClient {
   private socket: WebSocket | null = null;
   private readonly wsBaseUrl: string;
-  private readonly userId: string;
-  private readonly role: "host" | "participant";
+  private userId: string;
+  private role: "host" | "participant";
   private readonly backpressureThresholdBytes: number;
   private readonly maxPendingFrames: number;
   private readonly pendingFrames: Uint8Array[] = [];
@@ -72,7 +86,7 @@ export class AudioStreamingClient {
 
   constructor(options: AudioStreamingOptions = {}) {
     this.wsBaseUrl = options.wsBaseUrl ?? DEFAULT_WS_URL;
-    this.userId = options.userId ?? "desktop-host";
+    this.userId = sanitizeUserId(options.userId);
     this.role = options.role ?? "host";
     this.backpressureThresholdBytes =
       options.backpressureThresholdBytes ?? DEFAULT_BACKPRESSURE_THRESHOLD;
@@ -81,19 +95,39 @@ export class AudioStreamingClient {
   }
 
   connect(sessionId: string): void {
-    if (this.socket?.readyState === WebSocket.OPEN) {
+    if (
+      this.socket?.readyState === WebSocket.OPEN ||
+      this.socket?.readyState === WebSocket.CONNECTING
+    ) {
       return;
     }
 
-    const url = new URL(this.wsBaseUrl);
-    url.searchParams.set("sessionId", sessionId);
-    url.searchParams.set("userId", this.userId);
-    url.searchParams.set("role", this.role);
+    let url: string;
+    try {
+      url = buildRealtimeSocketUrl(
+        this.wsBaseUrl,
+        sessionId,
+        this.userId,
+        this.role
+      );
+    } catch {
+      this.warning =
+        "Invalid websocket URL. Set a valid VITE_WS_URL like ws://127.0.0.1:9001.";
+      return;
+    }
 
-    this.socket = new WebSocket(url.toString());
+    this.socket = new WebSocket(url);
     this.socket.binaryType = "arraybuffer";
 
-    this.socket.onclose = () => {
+    this.socket.onopen = () => {
+      this.warning = "";
+    };
+
+    this.socket.onclose = (event) => {
+      if (event.code !== 1000) {
+        this.warning =
+          "Realtime socket closed unexpectedly. Check sessionId/userId authorization and realtime server logs.";
+      }
       this.socket = null;
     };
 
@@ -101,6 +135,11 @@ export class AudioStreamingClient {
       this.warning =
         "Realtime connection error. Audio may not be streaming to server.";
     };
+  }
+
+  setIdentity(userId: string, role: "host" | "participant" = "host"): void {
+    this.userId = sanitizeUserId(userId);
+    this.role = role;
   }
 
   disconnect(): void {
@@ -219,4 +258,9 @@ export class AudioStreamingClient {
       })
     );
   }
+}
+
+function sanitizeUserId(userId: string | undefined): string {
+  const value = userId?.trim();
+  return value ? value : DEFAULT_USER_ID;
 }
