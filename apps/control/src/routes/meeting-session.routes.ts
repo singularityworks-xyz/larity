@@ -11,6 +11,7 @@ import {
   endSessionSchema,
   joinSessionSchema,
   sessionIdSchema,
+  startAdhocSessionSchema,
   startSessionSchema,
   validateSessionSchema,
 } from "../validators/meeting-session";
@@ -99,6 +100,88 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
     {
       body: t.Object({
         meetingId: t.String(),
+        metadata: t.Optional(
+          t.Object({
+            deviceType: t.Optional(t.String()),
+            audioSource: t.Optional(t.String()),
+            clientVersion: t.Optional(t.String()),
+          })
+        ),
+      }),
+    }
+  )
+
+  /**
+   * POST /meeting-session/start-adhoc
+   *
+   * Create an ad-hoc meeting and start a live session.
+   */
+  .post(
+    "/start-adhoc",
+    async ({ body, user, set }) => {
+      if (!user) {
+        set.status = 401;
+        return {
+          success: false,
+          error: "User not authenticated",
+        };
+      }
+
+      try {
+        const validatedInput = startAdhocSessionSchema.parse(body);
+        const result = await meetingSessionService.startAdhoc(
+          validatedInput,
+          user.id
+        );
+
+        log.info(
+          {
+            sessionId: result.sessionId,
+            userId: user.id,
+            clientId: validatedInput.clientId,
+          },
+          "Ad-hoc session started"
+        );
+
+        return {
+          success: true,
+          data: result,
+        };
+      } catch (error) {
+        if (error instanceof ZodError) {
+          set.status = 400;
+          return {
+            success: false,
+            error: "Validation failed",
+            details: error.issues,
+          };
+        }
+
+        if (error instanceof MeetingSessionError) {
+          set.status = getHttpStatusForError(error.code);
+          return {
+            success: false,
+            error: error.code,
+            message: error.message,
+          };
+        }
+
+        log.error(
+          { err: error, userId: user.id },
+          "Failed to start ad-hoc session"
+        );
+        set.status = 500;
+        return {
+          success: false,
+          error: "INTERNAL_ERROR",
+          message: "Failed to start ad-hoc session",
+        };
+      }
+    },
+    {
+      body: t.Object({
+        clientId: t.String(),
+        title: t.Optional(t.String()),
         metadata: t.Optional(
           t.Object({
             deviceType: t.Optional(t.String()),
@@ -337,6 +420,39 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
       }),
     }
   )
+
+  /**
+   * GET /meeting-session/active
+   *
+   * List active sessions scoped to caller org.
+   */
+  .get("/active", async ({ user, set }) => {
+    if (!user) {
+      set.status = 401;
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
+
+    try {
+      const sessions = await meetingSessionService.getActiveForOrg(user.id);
+      return {
+        success: true,
+        data: sessions,
+      };
+    } catch (error) {
+      log.error(
+        { err: error, userId: user.id },
+        "Failed to list active sessions"
+      );
+      set.status = 500;
+      return {
+        success: false,
+        error: "INTERNAL_ERROR",
+      };
+    }
+  })
 
   /**
    * POST /meeting-session/:id/validate

@@ -38,6 +38,18 @@ export const startSessionSchema = z.object({
 
 export type StartSessionInput = z.infer<typeof startSessionSchema>;
 
+export const startAdhocSessionSchema = z.object({
+  clientId: z.uuid("Client ID must be a valid UUID"),
+  title: z
+    .string()
+    .min(1, "Title must not be empty")
+    .max(255, "Title must be less than 255 characters")
+    .optional(),
+  metadata: startSessionSchema.shape.metadata,
+});
+
+export type StartAdhocSessionInput = z.infer<typeof startAdhocSessionSchema>;
+
 /**
  * Request to end a meeting session
  */
@@ -118,3 +130,17 @@ export const startSessionResponseSchema = z.object({
 });
 
 export type StartSessionResponse = z.infer<typeof startSessionResponseSchema>;
+
+export const activeSessionSchema = z.object({
+  sessionId: z.string(),
+  meetingId: z.string(),
+  title: z.string(),
+  clientId: z.string(),
+  clientName: z.string(),
+  hostUserId: z.string().nullable(),
+  hostName: z.string().nullable(),
+  startedAt: z.number().nullable(),
+  participantCount: z.number(),
+});
+
+export type ActiveSession = z.infer<typeof activeSessionSchema>;

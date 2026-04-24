@@ -15,12 +15,21 @@ const mockRedis = {
   del: mock(),
   exists: mock(),
   sismember: mock(),
+  scard: mock(),
 };
 
 const mockPrisma = {
   meeting: {
     findUnique: mock(),
     update: mock(),
+    findMany: mock(),
+    create: mock(),
+  },
+  client: {
+    findUnique: mock(),
+  },
+  meetingParticipant: {
+    upsert: mock(),
   },
   decision: {
     findMany: mock(),
@@ -65,8 +74,13 @@ describe("MeetingSessionService", () => {
     mockRedis.sismember.mockReset();
     mockRedis.expire.mockReset();
     mockRedis.del.mockReset();
+    mockRedis.scard.mockReset();
     mockPrisma.meeting.findUnique.mockReset();
     mockPrisma.meeting.update.mockReset();
+    mockPrisma.meeting.findMany.mockReset();
+    mockPrisma.meeting.create.mockReset();
+    mockPrisma.client.findUnique.mockReset();
+    mockPrisma.meetingParticipant.upsert.mockReset();
     mockPrisma.decision.findMany.mockReset();
     mockPrisma.importantPoint.findMany.mockReset();
     mockPrisma.policyGuardrail.findMany.mockReset();
@@ -196,6 +210,9 @@ describe("MeetingSessionService", () => {
         id: userId,
         orgId,
       });
+      mockPrisma.meetingParticipant.upsert.mockResolvedValue({
+        id: "participant-1",
+      });
 
       // Execute
       const result = await meetingSessionService.join(sessionId, userId);
@@ -207,6 +224,24 @@ describe("MeetingSessionService", () => {
         redisKeys.sessionParticipants(sessionId),
         userId
       );
+      expect(mockPrisma.meetingParticipant.upsert).toHaveBeenCalledWith({
+        where: {
+          meetingId_userId: {
+            meetingId,
+            userId,
+          },
+        },
+        update: {
+          role: "PARTICIPANT",
+          attendedAt: expect.any(Date),
+        },
+        create: {
+          meetingId,
+          userId,
+          role: "PARTICIPANT",
+          attendedAt: expect.any(Date),
+        },
+      });
     });
 
     it("should prevent a user from a different org from joining", () => {
@@ -226,6 +261,9 @@ describe("MeetingSessionService", () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: userId,
         orgId: "different-org",
+      });
+      mockPrisma.meetingParticipant.upsert.mockResolvedValue({
+        id: "participant-1",
       });
 
       // Execute & Verify
@@ -252,6 +290,169 @@ describe("MeetingSessionService", () => {
       expect(meetingSessionService.join(sessionId, userId)).rejects.toThrow(
         "Session has ended"
       );
+    });
+  });
+
+  describe("startAdhoc", () => {
+    it("creates ad-hoc meeting and starts session", async () => {
+      mockPrisma.user.findUnique.mockResolvedValueOnce({
+        id: userId,
+        orgId,
+      });
+
+      mockPrisma.client.findUnique.mockResolvedValue({
+        id: clientId,
+        orgId,
+      });
+
+      mockPrisma.meeting.create.mockResolvedValue({
+        id: meetingId,
+      });
+
+      mockPrisma.meeting.findUnique.mockResolvedValue({
+        id: meetingId,
+        clientId,
+        status: "SCHEDULED",
+        title: "Ad-hoc",
+        agenda: null,
+        client: {
+          id: clientId,
+          name: "Acme Corp",
+          orgId,
+          org: {
+            settings: null,
+          },
+        },
+      });
+
+      mockRedis.get.mockResolvedValue(null);
+      mockRedis.set.mockResolvedValue("OK");
+      mockRedis.hset.mockResolvedValue(1);
+      mockRedis.expire.mockResolvedValue(1);
+      mockRedis.sadd.mockResolvedValue(1);
+
+      mockPrisma.decision.findMany.mockResolvedValue([]);
+      mockPrisma.importantPoint.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      mockPrisma.policyGuardrail.findMany.mockResolvedValue([]);
+      mockPrisma.clientMember.findMany.mockResolvedValue([]);
+      mockPrisma.meeting.update.mockResolvedValue({
+        id: meetingId,
+        status: "LIVE",
+      });
+      mockPrisma.meetingParticipant.upsert.mockResolvedValue({
+        id: "participant-host",
+      });
+
+      const result = await meetingSessionService.startAdhoc(
+        {
+          clientId,
+          title: "Discovery Call",
+        },
+        userId
+      );
+
+      expect(result.meetingId).toBe(meetingId);
+      expect(mockPrisma.meeting.create).toHaveBeenCalledWith({
+        data: {
+          clientId,
+          title: "Discovery Call",
+          status: "SCHEDULED",
+          scheduledAt: expect.any(Date),
+        },
+        select: { id: true },
+      });
+      expect(mockPrisma.meetingParticipant.upsert).toHaveBeenCalledWith({
+        where: {
+          meetingId_userId: {
+            meetingId,
+            userId,
+          },
+        },
+        update: {
+          role: "HOST",
+          attendedAt: expect.any(Date),
+        },
+        create: {
+          meetingId,
+          userId,
+          role: "HOST",
+          attendedAt: expect.any(Date),
+        },
+      });
+    });
+
+    it("rejects when user has no org", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: userId,
+        orgId: null,
+      });
+
+      await expect(
+        meetingSessionService.startAdhoc({ clientId }, userId)
+      ).rejects.toThrow("User must belong to an organization");
+    });
+  });
+
+  describe("getActiveForOrg", () => {
+    it("returns org-scoped active sessions enriched from Redis", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ id: userId, orgId });
+      mockPrisma.meeting.findMany.mockResolvedValue([
+        {
+          id: "meeting-1",
+          title: "Live Sync",
+          clientId,
+          startedAt: new Date("2026-04-20T10:00:00.000Z"),
+          client: { name: "Acme Corp" },
+          participants: [
+            {
+              userId: "host-1",
+              user: { name: "Host User" },
+            },
+          ],
+        },
+        {
+          id: "meeting-2",
+          title: "Stale Live",
+          clientId,
+          startedAt: new Date("2026-04-20T11:00:00.000Z"),
+          client: { name: "Acme Corp" },
+          participants: [],
+        },
+      ]);
+
+      mockRedis.get
+        .mockResolvedValueOnce("session-live-1")
+        .mockResolvedValueOnce(null);
+      mockRedis.scard.mockResolvedValue(2);
+
+      const result = await meetingSessionService.getActiveForOrg(userId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        sessionId: "session-live-1",
+        meetingId: "meeting-1",
+        title: "Live Sync",
+        clientId,
+        clientName: "Acme Corp",
+        hostUserId: "host-1",
+        hostName: "Host User",
+        startedAt: new Date("2026-04-20T10:00:00.000Z").getTime(),
+        participantCount: 3,
+      });
+      expect(mockRedis.scard).toHaveBeenCalledWith(
+        redisKeys.sessionParticipants("session-live-1")
+      );
+    });
+
+    it("returns empty list when user has no org", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ id: userId, orgId: null });
+
+      const result = await meetingSessionService.getActiveForOrg(userId);
+
+      expect(result).toEqual([]);
+      expect(mockPrisma.meeting.findMany).not.toHaveBeenCalled();
     });
   });
 

@@ -4,9 +4,11 @@ import { redisKeys } from "@larity/packages/infra/redis/keys";
 import { TTL } from "@larity/packages/infra/redis/ttl";
 import { prisma } from "../lib/prisma";
 import type {
+  ActiveSession,
   EndSessionInput,
   SessionStatus,
   SessionStatusResponse,
+  StartAdhocSessionInput,
   StartSessionInput,
   StartSessionResponse,
 } from "../validators/meeting-session";
@@ -253,6 +255,76 @@ export const meetingSessionService = {
     }
   },
 
+  async startAdhoc(
+    input: StartAdhocSessionInput,
+    userId: string
+  ): Promise<StartSessionResponse> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { orgId: true },
+    });
+
+    if (!user?.orgId) {
+      throw new MeetingSessionError(
+        "User must belong to an organization to start meetings",
+        "UNAUTHORIZED"
+      );
+    }
+
+    const client = await prisma.client.findUnique({
+      where: { id: input.clientId },
+      select: { id: true, orgId: true },
+    });
+
+    if (!client) {
+      throw new MeetingSessionError("Client not found", "CLIENT_NOT_FOUND");
+    }
+
+    if (client.orgId !== user.orgId) {
+      throw new MeetingSessionError(
+        "Unauthorized to start a meeting for this client",
+        "UNAUTHORIZED"
+      );
+    }
+
+    const meeting = await prisma.meeting.create({
+      data: {
+        clientId: input.clientId,
+        title: input.title?.trim() || "Untitled meeting",
+        status: "SCHEDULED",
+        scheduledAt: new Date(),
+      },
+      select: { id: true },
+    });
+
+    await prisma.meetingParticipant.upsert({
+      where: {
+        meetingId_userId: {
+          meetingId: meeting.id,
+          userId,
+        },
+      },
+      update: {
+        role: "HOST",
+        attendedAt: new Date(),
+      },
+      create: {
+        meetingId: meeting.id,
+        userId,
+        role: "HOST",
+        attendedAt: new Date(),
+      },
+    });
+
+    return this.start(
+      {
+        meetingId: meeting.id,
+        metadata: input.metadata,
+      },
+      userId
+    );
+  },
+
   /**
    * End a meeting session
    *
@@ -455,6 +527,25 @@ export const meetingSessionService = {
       );
     }
 
+    await prisma.meetingParticipant.upsert({
+      where: {
+        meetingId_userId: {
+          meetingId,
+          userId,
+        },
+      },
+      update: {
+        role: "PARTICIPANT",
+        attendedAt: new Date(),
+      },
+      create: {
+        meetingId,
+        userId,
+        role: "PARTICIPANT",
+        attendedAt: new Date(),
+      },
+    });
+
     // 3. Add to participants set
     const participantsKey = redisKeys.sessionParticipants(sessionId);
     await redis.sadd(participantsKey, userId);
@@ -471,6 +562,90 @@ export const meetingSessionService = {
       websocketUrl,
       joinedAt: Date.now(),
     };
+  },
+
+  async getActiveForOrg(userId: string): Promise<ActiveSession[]> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { orgId: true },
+    });
+
+    if (!user?.orgId) {
+      return [];
+    }
+
+    const meetings = await prisma.meeting.findMany({
+      where: {
+        status: "LIVE",
+        client: {
+          orgId: user.orgId,
+        },
+      },
+      select: {
+        id: true,
+        title: true,
+        clientId: true,
+        startedAt: true,
+        client: {
+          select: {
+            name: true,
+          },
+        },
+        participants: {
+          where: {
+            role: "HOST",
+          },
+          orderBy: {
+            attendedAt: "asc",
+          },
+          take: 1,
+          select: {
+            userId: true,
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        startedAt: "desc",
+      },
+    });
+
+    const activeSessions = await Promise.all(
+      meetings.map(async (meeting) => {
+        const sessionId = await redis.get(
+          redisKeys.meetingToSession(meeting.id)
+        );
+        if (!sessionId) {
+          return null;
+        }
+
+        const participantCount = await redis.scard(
+          redisKeys.sessionParticipants(sessionId)
+        );
+
+        const host = meeting.participants[0];
+
+        return {
+          sessionId,
+          meetingId: meeting.id,
+          title: meeting.title,
+          clientId: meeting.clientId,
+          clientName: meeting.client.name,
+          hostUserId: host?.userId ?? null,
+          hostName: host?.user?.name ?? null,
+          startedAt: meeting.startedAt ? meeting.startedAt.getTime() : null,
+          participantCount: participantCount + 1,
+        } satisfies ActiveSession;
+      })
+    );
+
+    return activeSessions.filter(
+      (session): session is ActiveSession => session !== null
+    );
   },
 
   /**
@@ -707,6 +882,7 @@ export class MeetingSessionError extends Error {
 export function getHttpStatusForError(code: string): number {
   const statusMap: Record<string, number> = {
     MEETING_NOT_FOUND: 404,
+    CLIENT_NOT_FOUND: 404,
     SESSION_NOT_FOUND: 404,
     INVALID_MEETING_STATUS: 400,
     SESSION_EXISTS: 409,
@@ -714,6 +890,7 @@ export function getHttpStatusForError(code: string): number {
     SESSION_ENDING: 400,
     SESSION_CORRUPTED: 500,
     CONTEXT_PRELOAD_FAILED: 500,
+    UNAUTHORIZED: 403,
   };
 
   return statusMap[code] || 500;
