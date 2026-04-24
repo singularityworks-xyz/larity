@@ -16,12 +16,18 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
   // List all clients - any authenticated user can view
   .get(
     "/",
-    async ({ query, user }) => {
-      // Filter by user's org if they have one
-      const orgId = query?.orgId ?? (user?.orgId as string | undefined);
-      const clients = await ClientService.findAll(
-        orgId ? { ...query, orgId } : query
-      );
+    async ({ query, user, set }) => {
+      const orgId = user?.orgId as string | undefined;
+      if (!orgId) {
+        set.status = 400;
+        return {
+          success: false,
+          error: "ORGANIZATION_REQUIRED",
+          message: "You must belong to an organization",
+        };
+      }
+
+      const clients = await ClientService.findAll({ ...query, orgId });
       return { success: true, data: clients };
     },
     { query: clientQuerySchema }
@@ -45,12 +51,16 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
     "/",
     async ({ body, user, set }) => {
       try {
-        // Use user's org if not explicitly provided
-        const orgId = body.orgId ?? (user?.orgId as string | undefined);
+        const orgId = user?.orgId as string | undefined;
         if (!orgId) {
           set.status = 400;
-          return { success: false, error: "Organization ID is required" };
+          return {
+            success: false,
+            error: "ORGANIZATION_REQUIRED",
+            message: "You must belong to an organization",
+          };
         }
+
         const client = await ClientService.create({ ...body, orgId });
         return { success: true, data: client };
       } catch (e: unknown) {
@@ -69,7 +79,7 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
         throw e;
       }
     },
-    { body: createClientSchema.partial({ orgId: true }) }
+    { body: createClientSchema.omit({ orgId: true }) }
   )
   // Update client - requires OWNER or ADMIN role
   .patch(
