@@ -13,6 +13,7 @@ import {
   decisionsRoutes,
   documentsRoutes,
   importantPointsRoutes,
+  internalSessionRoutes,
   meetingSessionRoutes,
   meetingsRoutes,
   openQuestionsRoutes,
@@ -78,6 +79,8 @@ export const app = new Elysia()
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
   // Auth routes
   .use(authRoutes)
+  // Internal server-to-server routes (no user auth required)
+  .use(internalSessionRoutes)
   // Protected API routes
   .group("/api", (app) =>
     app

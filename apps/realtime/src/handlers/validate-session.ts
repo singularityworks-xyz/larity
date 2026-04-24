@@ -31,7 +31,7 @@ export async function validateSession(
 
   try {
     const response = await fetch(
-      `${CONTROL_API_URL}/api/meeting-session/${sessionId}/validate`,
+      `${CONTROL_API_URL}/internal/meeting-session/${sessionId}/validate`,
       {
         method: "POST",
         headers: {

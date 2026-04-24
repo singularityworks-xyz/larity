@@ -13,7 +13,6 @@ import {
   sessionIdSchema,
   startAdhocSessionSchema,
   startSessionSchema,
-  validateSessionSchema,
 } from "../validators/meeting-session";
 
 const log = createControlLogger("meeting-session-routes");
@@ -452,53 +451,4 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
         error: "INTERNAL_ERROR",
       };
     }
-  })
-
-  /**
-   * POST /meeting-session/:id/validate
-   *
-   * Validate if a session ID is valid.
-   * Used by the realtime server before accepting connections.
-   */
-  .post(
-    "/:id/validate",
-    async ({ params, body }) => {
-      const { id } = params;
-
-      // Parse body if present (optional for backward compatibility)
-      let userId: string | undefined;
-      let role: "host" | "participant" | undefined;
-
-      try {
-        const validatedBody = validateSessionSchema.parse(body);
-        userId = validatedBody.userId;
-        role = validatedBody.role as "host" | "participant" | undefined;
-      } catch (_e) {
-        // Body validation failed or missing, ignore
-      }
-
-      const isValid = await meetingSessionService.isValidSession(
-        id,
-        userId,
-        role
-      );
-
-      return {
-        success: true,
-        data: { valid: isValid },
-      };
-    },
-    {
-      params: t.Object({
-        id: t.String(),
-      }),
-      body: t.Optional(
-        t.Object({
-          userId: t.Optional(t.String()),
-          role: t.Optional(
-            t.Union([t.Literal("host"), t.Literal("participant")])
-          ),
-        })
-      ),
-    }
-  );
+  });

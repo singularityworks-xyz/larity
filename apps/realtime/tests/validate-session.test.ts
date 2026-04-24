@@ -9,9 +9,41 @@ import { afterEach, describe, expect, it } from "bun:test";
 
 describe("Validate Session Tests", () => {
   const originalFetch = global.fetch;
+  const originalNodeEnv = process.env.NODE_ENV;
 
   afterEach(() => {
     global.fetch = originalFetch;
+    process.env.NODE_ENV = originalNodeEnv;
+  });
+
+  it("should allow test-session bypass in non-production", async () => {
+    process.env.NODE_ENV = "development";
+    global.fetch = (() => {
+      throw new Error("fetch should not be called for test-session bypass");
+    }) as typeof fetch;
+
+    const { validateSession } = await import(
+      "../src/handlers/validate-session"
+    );
+    const result = await validateSession("local-test-session-123");
+
+    expect(result).toBe(true);
+  });
+
+  it("should not bypass test-session in production", async () => {
+    process.env.NODE_ENV = "production";
+    global.fetch = (() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ success: true, data: { valid: false } }),
+      })) as typeof fetch;
+
+    const { validateSession } = await import(
+      "../src/handlers/validate-session"
+    );
+    const result = await validateSession("local-test-session-123");
+
+    expect(result).toBe(false);
   });
 
   it("should return true for valid session response", async () => {
