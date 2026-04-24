@@ -19,8 +19,9 @@ model Org {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users           User[]
-  clients         Client[]
+  users            User[]
+  clients          Client[]
+  invites          OrgInvite[]
   policyGuardrails PolicyGuardrail[]
 
   @@map("orgs")
@@ -99,9 +100,30 @@ model User {
   // Policy guardrails
   createdGuardrails PolicyGuardrail[] @relation("GuardrailCreator")
 
+  createdOrgInvites OrgInvite[] @relation("OrgInviteCreator")
+  redeemedOrgInvites OrgInvite[] @relation("OrgInviteRedeemer")
+
   @@index([orgId])
   @@index([email])
   @@map("users")
+}
+
+model OrgInvite {
+  id              String   @id @default(uuid())
+  orgId           String
+  org             Org      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  code            String   @unique
+  role            UserRole @default(MEMBER)
+  invitedByUserId String
+  invitedByUser   User     @relation("OrgInviteCreator", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  expiresAt       DateTime
+  usedAt          DateTime?
+  usedByUserId    String?
+  usedByUser      User?    @relation("OrgInviteRedeemer", fields: [usedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+
+  @@index([orgId])
+  @@map("org_invites")
 }
 
 enum UserRole {
