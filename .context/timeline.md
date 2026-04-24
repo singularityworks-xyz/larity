@@ -479,6 +479,18 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **Deliverable (Day 14):** Desktop app can be launched, detect or be told about a meeting, start OS-level system audio capture, stream to the remote server, and appear in the server's session registry — end-to-end, on whatever conferencing app the user happens to be using. ✓
 
+#### Post-Day 14 Patch: Desktop Realtime Identity Inputs ✓ COMPLETED
+
+**apps/desktop**
+
+- [x] Add host identity override in desktop UI (`Realtime User ID (host)`) so websocket auth can target real control-created sessions
+- [x] Add env-based identity/session bootstrap (`VITE_WS_USER_ID`, `VITE_SESSION_ID`)
+- [x] Harden websocket UX with better close/error warning messaging for authorization/validation failures
+- [x] Add helper tests for realtime socket URL construction and dynamic identity updates
+- [x] Document realtime env variables and UUID-session caveat in `apps/desktop/README.md`
+
+**Deliverable:** Desktop app can connect to strict-validated UUID meeting sessions by using the correct host user ID instead of relying on validation-bypass session IDs.
+
 ---
 
 
