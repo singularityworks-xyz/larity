@@ -99,6 +99,9 @@ export class AudioStreamingClient {
       this.socket?.readyState === WebSocket.OPEN ||
       this.socket?.readyState === WebSocket.CONNECTING
     ) {
+      console.log(
+        "[AudioStreamingClient] Socket already open/connecting. Skipping connect."
+      );
       return;
     }
 
@@ -116,14 +119,28 @@ export class AudioStreamingClient {
       return;
     }
 
-    this.socket = new WebSocket(url);
-    this.socket.binaryType = "arraybuffer";
+    console.log("[AudioStreamingClient] Connecting to", url.split("?")[0]);
+    const ws = new WebSocket(url);
+    ws.binaryType = "arraybuffer";
 
-    this.socket.onopen = () => {
-      this.warning = "";
+    ws.onopen = () => {
+      console.log("[AudioStreamingClient] WebSocket connected");
+      if (this.socket === ws) {
+        this.warning = "";
+      }
     };
 
-    this.socket.onclose = (event) => {
+    ws.onclose = (event) => {
+      console.log(
+        `[AudioStreamingClient] WebSocket closed (code: ${event.code})`
+      );
+      if (this.socket !== ws) {
+        console.log(
+          "[AudioStreamingClient] Ignoring close event from stale socket"
+        );
+        return;
+      }
+
       if (event.code !== 1000) {
         this.warning =
           "Realtime socket closed unexpectedly. Check sessionId/userId authorization and realtime server logs.";
@@ -131,10 +148,17 @@ export class AudioStreamingClient {
       this.socket = null;
     };
 
-    this.socket.onerror = () => {
+    ws.onerror = () => {
+      console.error("[AudioStreamingClient] WebSocket error");
+      if (this.socket !== ws) {
+        return;
+      }
+
       this.warning =
         "Realtime connection error. Audio may not be streaming to server.";
     };
+
+    this.socket = ws;
   }
 
   setIdentity(userId: string, role: "host" | "participant" = "host"): void {
@@ -144,6 +168,7 @@ export class AudioStreamingClient {
 
   disconnect(): void {
     if (this.socket) {
+      console.log("[AudioStreamingClient] Disconnecting socket manually");
       this.socket.close();
       this.socket = null;
     }

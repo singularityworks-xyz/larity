@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { AudioStreamingClient, shouldDropFrame } from "./audio-streaming";
+import {
+  AudioStreamingClient,
+  buildRealtimeSocketUrl,
+  shouldDropFrame,
+} from "./audio-streaming";
 
 describe("audio streaming backpressure", () => {
   it("drops oldest frame when websocket buffer is over threshold", () => {
@@ -83,5 +87,30 @@ describe("audio streaming backpressure", () => {
     expect(shouldDropFrame(65_536, 65_535)).toBe(true);
     expect(shouldDropFrame(65_535, 65_535)).toBe(false);
     expect(shouldDropFrame(0, 65_535)).toBe(false);
+  });
+
+  it("builds realtime websocket URL with required query params", () => {
+    const url = buildRealtimeSocketUrl(
+      "ws://127.0.0.1:9001",
+      "session-1",
+      "user-1",
+      "host"
+    );
+    expect(url).toContain("sessionId=session-1");
+    expect(url).toContain("userId=user-1");
+    expect(url).toContain("role=host");
+  });
+
+  it("updates identity dynamically", () => {
+    const client = new AudioStreamingClient({
+      wsBaseUrl: "ws://127.0.0.1:9001",
+      userId: "first-user",
+      role: "host",
+    });
+
+    client.setIdentity("next-user", "participant");
+
+    expect(Reflect.get(client, "userId")).toBe("next-user");
+    expect(Reflect.get(client, "role")).toBe("participant");
   });
 });
