@@ -15,6 +15,8 @@ export { openQuestionsRoutes } from "./open-questions.routes";
 export { orgsRoutes } from "./orgs.routes";
 // Policy & compliance
 export { policyGuardrailsRoutes } from "./policy-guardrails.routes";
-export { remindersRoutes } from "./reminders.routes";
-export { tasksRoutes } from "./tasks.routes";
-export { usersRoutes } from "./users.routes";
+export { privacyComplianceRoutes } from "./privacy-compliance.routes";
+// Context & search
+export { semanticSearchRoutes } from "./semantic-search.routes";
+export { userContextRoutes } from "./user-context.routes";
+export { workspacesRoutes } from "./workspaces.routes";
