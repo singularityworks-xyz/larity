@@ -16,6 +16,12 @@ interface MeetingLocationState {
   websocketUrl?: string;
 }
 
+interface AudioDevice {
+  id: string;
+  name: string;
+  is_default: boolean;
+}
+
 const DEFAULT_WS_URL = import.meta.env.VITE_WS_URL ?? "ws://127.0.0.1:9001";
 const FALLBACK_USER_ID = import.meta.env.VITE_WS_USER_ID ?? "desktop-host";
 
@@ -31,6 +37,10 @@ function getWsBaseUrl(websocketUrl: string | undefined): string {
     return DEFAULT_WS_URL;
   }
 }
+
+// Queue for strictly serializing start/stop commands to avoid race conditions
+// during rapid React Strict Mode mount/unmount cycles.
+let captureTransitionQueue: Promise<void> = Promise.resolve();
 
 export function MeetingPage() {
   const navigate = useNavigate();
@@ -59,6 +69,9 @@ export function MeetingPage() {
   const [lastTs, setLastTs] = useState<number>(0);
   const [warning, setWarning] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  const [devices, setDevices] = useState<AudioDevice[]>([]);
+  const [micDeviceId, setMicDeviceId] = useState<string | null>(null);
+  const [sysDeviceId, setSysDeviceId] = useState<string | null>(null);
 
   const pageSubtitle = useMemo(() => {
     if (isHost) {
@@ -78,42 +91,65 @@ export function MeetingPage() {
     }
   }, []);
 
-  const startCapture = useCallback(async (): Promise<void> => {
-    if (!isHost) {
+  const startCapture = useCallback((): Promise<void> | void => {
+    if (!(isHost && sessionId)) {
       return;
     }
 
-    if (!sessionId) {
-      return;
-    }
-
-    try {
-      streamingClient.connect(sessionId);
-      await invoke("audio_capture_start", { sessionId });
-      await refreshStatus();
-    } catch (error) {
-      const message = String(error);
-      if (!message.includes("already running")) {
-        setWarning(`Failed to start capture: ${message}`);
+    captureTransitionQueue = captureTransitionQueue.then(async () => {
+      try {
+        streamingClient.connect(sessionId);
+        await invoke("audio_capture_start", {
+          sessionId,
+          micDeviceId: micDeviceId || null,
+          sysDeviceId: sysDeviceId || null,
+        });
+        await refreshStatus();
+      } catch (error) {
+        const message = String(error);
+        if (!message.includes("already running")) {
+          setWarning(`Failed to start capture: ${message}`);
+        }
       }
-    }
-  }, [isHost, refreshStatus, sessionId, streamingClient]);
+    });
 
-  const stopCapture = useCallback(async (): Promise<void> => {
-    try {
-      await invoke("audio_capture_stop");
-      await refreshStatus();
-    } catch (error) {
-      const message = String(error);
-      if (!message.includes("not running")) {
-        setWarning(`Failed to stop capture: ${message}`);
+    return captureTransitionQueue;
+  }, [
+    isHost,
+    refreshStatus,
+    sessionId,
+    streamingClient,
+    micDeviceId,
+    sysDeviceId,
+  ]);
+
+  const stopCapture = useCallback((): Promise<void> => {
+    captureTransitionQueue = captureTransitionQueue.then(async () => {
+      try {
+        await invoke("audio_capture_stop");
+        await refreshStatus();
+      } catch (error) {
+        const message = String(error);
+        if (!message.includes("not running")) {
+          setWarning(`Failed to stop capture: ${message}`);
+        }
       }
-    }
+    });
+
+    return captureTransitionQueue;
   }, [refreshStatus]);
 
   useEffect(() => {
     streamingClient.setIdentity(userId, role);
   }, [role, streamingClient, userId]);
+
+  useEffect(() => {
+    if (isHost) {
+      invoke<AudioDevice[]>("audio_capture_list_devices")
+        .then((list) => setDevices(list))
+        .catch((e) => setWarning(`Failed to list devices: ${String(e)}`));
+    }
+  }, [isHost]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -250,6 +286,42 @@ export function MeetingPage() {
             </button>
           )}
         </div>
+        {isHost && devices.length > 0 && (
+          <div className="control-row" style={{ marginTop: "1rem" }}>
+            <label>
+              Microphone:
+              <select
+                disabled={status?.active || isBusy}
+                onChange={(e) => setMicDeviceId(e.target.value)}
+                style={{ marginLeft: "0.5rem" }}
+                value={micDeviceId || ""}
+              >
+                <option value="">(OS Default)</option>
+                {devices.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label style={{ marginLeft: "1rem" }}>
+              System Audio:
+              <select
+                disabled={status?.active || isBusy}
+                onChange={(e) => setSysDeviceId(e.target.value)}
+                style={{ marginLeft: "0.5rem" }}
+                value={sysDeviceId || ""}
+              >
+                <option value="">(OS Default Loopback)</option>
+                {devices.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
       </section>
 
       <section className="panel stats-grid">
