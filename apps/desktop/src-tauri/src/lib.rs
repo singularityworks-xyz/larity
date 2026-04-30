@@ -21,6 +21,9 @@ fn audio_capture_start(
     app: AppHandle,
     state: State<'_, audio::AudioState>,
     session_id: String,
+    mic_device_id: Option<String>,
+    sys_device_id: Option<String>,
+    role: String,
 ) -> Result<(), String> {
     let mut is_capturing = state.is_capturing.blocking_lock();
     if *is_capturing {
@@ -28,7 +31,7 @@ fn audio_capture_start(
     }
 
     // Start engine
-    let stream = audio::engine::start_capture(app.clone(), session_id.clone())?;
+    let handles = audio::engine::start_capture(app.clone(), session_id.clone(), mic_device_id, sys_device_id, role)?;
 
     // Keep the stream alive by moving it to a background thread
     let (tx, mut rx) = tokio::sync::mpsc::channel(1);
@@ -41,8 +44,8 @@ fn audio_capture_start(
     tauri::async_runtime::spawn(async move {
         // Wait for a stop signal
         let _ = rx.recv().await;
-        // Dropping stream will stop the cpal capture
-        drop(stream);
+        // Dropping handles will stop the cpal capture and abort tasks
+        drop(handles);
     });
 
     Ok(())
