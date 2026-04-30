@@ -9,6 +9,7 @@ import {
   type AudioStatusSnapshot,
   AudioStreamingClient,
 } from "../../services/audio-streaming";
+import { VadManager } from "../../services/vad";
 import { AppShell } from "../shared";
 
 interface MeetingLocationState {
@@ -38,10 +39,6 @@ function getWsBaseUrl(websocketUrl: string | undefined): string {
   }
 }
 
-// Queue for strictly serializing start/stop commands to avoid race conditions
-// during rapid React Strict Mode mount/unmount cycles.
-let captureTransitionQueue: Promise<void> = Promise.resolve();
-
 export function MeetingPage() {
   const navigate = useNavigate();
   const { sessionId = "" } = useParams();
@@ -60,6 +57,8 @@ export function MeetingPage() {
       role,
     });
   }, [role, userId, wsBaseUrl]);
+
+  const vadManager = useMemo(() => new VadManager(), []);
   const isHost = role === "host";
 
   const [status, setStatus] = useState<AudioStatusSnapshot | null>(null);
@@ -91,57 +90,71 @@ export function MeetingPage() {
     }
   }, []);
 
-  const startCapture = useCallback((): Promise<void> | void => {
-    if (!(isHost && sessionId)) {
+  const startCapture = useCallback(async (): Promise<void> => {
+    if (!sessionId) {
       return;
     }
 
-    captureTransitionQueue = captureTransitionQueue.then(async () => {
-      try {
-        streamingClient.connect(sessionId);
-        await invoke("audio_capture_start", {
-          sessionId,
-          micDeviceId: micDeviceId || null,
-          sysDeviceId: sysDeviceId || null,
-        });
-        await refreshStatus();
-      } catch (error) {
-        const message = String(error);
-        if (!message.includes("already running")) {
-          setWarning(`Failed to start capture: ${message}`);
-        }
+    try {
+      streamingClient.connect(sessionId);
+      await invoke("audio_capture_start", {
+        sessionId,
+        micDeviceId: micDeviceId || null,
+        sysDeviceId: sysDeviceId || null,
+        role,
+      });
+      await refreshStatus();
+    } catch (error) {
+      const message = String(error);
+      if (!message.includes("already running")) {
+        setWarning(`Failed to start capture: ${message}`);
       }
-    });
-
-    return captureTransitionQueue;
+    }
   }, [
-    isHost,
     refreshStatus,
     sessionId,
     streamingClient,
     micDeviceId,
     sysDeviceId,
+    role,
   ]);
 
-  const stopCapture = useCallback((): Promise<void> => {
-    captureTransitionQueue = captureTransitionQueue.then(async () => {
-      try {
-        await invoke("audio_capture_stop");
-        await refreshStatus();
-      } catch (error) {
-        const message = String(error);
-        if (!message.includes("not running")) {
-          setWarning(`Failed to stop capture: ${message}`);
-        }
+  const stopCapture = useCallback(async (): Promise<void> => {
+    try {
+      await invoke("audio_capture_stop");
+      await refreshStatus();
+    } catch (error) {
+      const message = String(error);
+      if (!message.includes("not running")) {
+        setWarning(`Failed to stop capture: ${message}`);
       }
-    });
-
-    return captureTransitionQueue;
+    }
   }, [refreshStatus]);
 
   useEffect(() => {
     streamingClient.setIdentity(userId, role);
   }, [role, streamingClient, userId]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      return;
+    }
+
+    vadManager
+      .start({
+        onSpeechStart: () => {
+          streamingClient.sendVadSignal("vad_speaking", sessionId);
+        },
+        onSpeechEnd: () => {
+          streamingClient.sendVadSignal("vad_silence", sessionId);
+        },
+      })
+      .catch((e) => console.error("Failed to start VAD", e));
+
+    return () => {
+      vadManager.destroy();
+    };
+  }, [vadManager, streamingClient, sessionId]);
 
   useEffect(() => {
     if (isHost) {
@@ -161,11 +174,9 @@ export function MeetingPage() {
       // noop, warning handled in refreshStatus
     });
 
-    if (isHost) {
-      startCapture().catch(() => {
-        // noop, warning handled in startCapture
-      });
-    }
+    startCapture().catch(() => {
+      // noop, warning handled in startCapture
+    });
 
     const unlistenPromise = listen<AudioFramePayload>(
       "audio-frame",
@@ -195,21 +206,19 @@ export function MeetingPage() {
         unlisten();
       });
 
-      if (isHost) {
-        stopCapture().catch(() => {
-          // noop
-        });
-      }
+      stopCapture().catch(() => {
+        // noop
+      });
 
       streamingClient.disconnect();
     };
   }, [
-    isHost,
     refreshStatus,
     sessionId,
     startCapture,
     stopCapture,
     streamingClient,
+    isHost,
   ]);
 
   async function leaveMeeting() {
@@ -225,8 +234,8 @@ export function MeetingPage() {
           sessionId,
           reason: "user_ended",
         });
-        await stopCapture();
       }
+      await stopCapture();
     } catch (error) {
       setWarning(
         error instanceof Error
