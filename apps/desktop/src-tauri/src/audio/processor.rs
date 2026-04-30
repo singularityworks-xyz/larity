@@ -1,4 +1,3 @@
-use byteorder::{LittleEndian, WriteBytesExt};
 use rubato::{FastFixedIn, PolynomialDegree, Resampler};
 
 const TARGET_SAMPLE_RATE: usize = 16000;
@@ -41,7 +40,7 @@ impl AudioProcessor {
         }
     }
 
-    pub fn process(&mut self, interleaved_samples: &[f32]) -> Vec<Vec<u8>> {
+    pub fn process(&mut self, interleaved_samples: &[f32]) -> Vec<Vec<i16>> {
         // 1. Downmix to Mono
         for chunk in interleaved_samples.chunks(self.channels) {
             let sum: f32 = chunk.iter().sum();
@@ -60,17 +59,17 @@ impl AudioProcessor {
             self.post_buffer.append(&mut self.pre_buffer);
         }
 
-        // 3. Chunk into 50ms (800 samples) frames of i16 bytes
+        // 3. Chunk into 50ms (800 samples) frames of i16
         let mut chunks = Vec::new();
         while self.post_buffer.len() >= SAMPLES_PER_FRAME {
             let chunk_f32: Vec<f32> = self.post_buffer.drain(0..SAMPLES_PER_FRAME).collect();
 
-            let mut pcm_bytes = Vec::with_capacity(SAMPLES_PER_FRAME * 2);
+            let mut pcm_samples = Vec::with_capacity(SAMPLES_PER_FRAME);
             for &sample in &chunk_f32 {
                 let s = (sample.max(-1.0).min(1.0) * i16::MAX as f32) as i16;
-                pcm_bytes.write_i16::<LittleEndian>(s).unwrap();
+                pcm_samples.push(s);
             }
-            chunks.push(pcm_bytes);
+            chunks.push(pcm_samples);
         }
 
         chunks
@@ -87,7 +86,7 @@ mod tests {
         let samples = vec![0.5; 1600]; // 100ms
         let chunks = processor.process(&samples);
         assert_eq!(chunks.len(), 2);
-        assert_eq!(chunks[0].len(), SAMPLES_PER_FRAME * 2); // 800 samples * 2 bytes = 1600 bytes
+        assert_eq!(chunks[0].len(), SAMPLES_PER_FRAME); // 800 samples
     }
 
     #[test]
