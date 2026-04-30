@@ -5,6 +5,9 @@ use tauri::{AppHandle, Emitter};
 
 pub mod engine;
 pub mod processor;
+pub mod mixer;
+#[cfg(target_os = "linux")]
+pub mod linux_capture;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AudioDevice {
