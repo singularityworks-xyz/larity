@@ -29,11 +29,11 @@ Think of it as a **flight control system** — silent when things are fine, imme
 
 Real agency/team work involves multiple team members meeting with a client together over a conferencing tool (Zoom, Google Meet, Microsoft Teams, Slack Huddle, Discord, Jitsi, a dialed-in phone call bridged through the OS — whatever). Larity is a **native desktop application** that does not care which conferencing app is used. It supports multi-user sessions through a **host model**:
 
-* **Larity is a native desktop application** (Tauri) installed on every team member's machine. There is **no browser extension**. Meeting platform doesn't matter — Larity captures OS-level system audio (loopback) from whichever app is producing the meeting audio on the host's machine.
-* **One team member is the host** — they run Larity's desktop app and capture OS-level system audio (loopback / monitor / screen-capture-kit) from their machine
+* **Larity is a native desktop application** (Tauri) installed on every team member's machine. There is **no browser extension**. Meeting platform doesn't matter — Larity captures host mic + OS-level system audio (loopback) from whichever app is producing the meeting audio on the host's machine.
+* **One team member is the host** — they run Larity's desktop app and capture two local streams from their machine: host microphone on channel 0 and OS-level system audio loopback on channel 1
 * **Other team members join the same shared meeting session** — they connect to the session from their own desktop app but do NOT send system audio
 * **All participants are remote** — everyone is on separate machines in the underlying meeting call (or even physically co-located, the conferencing platform is irrelevant to Larity)
-* **The host's Larity instance is the single audio source** — it captures the combined meeting audio straight from the OS mixer, regardless of which app is playing it
+* **The host's Larity instance is the single audio source** — it streams one interleaved 2-channel PCM feed to the server: clean host mic pre-codec on ch0, and combined meeting audio from the OS mixer on ch1
 
 **Why host model:**
 * Only one Deepgram STT connection needed (cost + consistency)
@@ -118,17 +118,18 @@ With multiple team members and external clients all speaking in the same system-
 
 Since all team members run Larity on their own machines, each instance has direct access to that member's **local microphone**. This provides a reliable, platform-agnostic identity signal:
 
-1. Each team member's Larity instance runs **local VAD (Voice Activity Detection)** on their own mic stream continuously during the session.
+1. Each team member's Larity instance runs **local VAD (Voice Activity Detection)** on their own mic stream continuously during the session. The host's mic audio is also captured as channel 0 of the audio stream; VAD remains the identity signal for non-host TEAM members and the fallback signal if the dual-channel host path degrades to single-channel.
 2. When VAD detects speech, the Larity instance sends a timestamped signal to the server via the existing WebSocket: `{ type: "vad_speaking", userId, ts }` (both `vad_speaking` and `vad_silence` edge events are sent; ts is `performance.now()`-derived monotonic wall clock).
 3. The server **correlates VAD timestamps (after clock-offset reconciliation — see below) against Deepgram diarization timestamps**.
 4. If exactly one team member's VAD overlaps with a diarization index's speech window → that index is assigned to that userId as **TEAM**.
 5. If no team member's VAD overlaps → that index is **EXTERNAL** (client).
-6. The mapping (`diarizationIndex → SpeakerIdentity`) is **cached for the session** — once identified, subsequent utterances from that index resolve instantly, subject to the reassignment-merge logic below.
+6. The mapping (`channel + diarizationIndex → SpeakerIdentity`) is **cached for the session** — once identified, subsequent utterances from that channel/index resolve instantly, subject to the reassignment-merge logic below.
+6a. **Host channel short-circuit:** When dual-channel capture is active, any utterance emitted from channel 0 is assigned to the host's `SpeakerIdentity` directly. No VAD correlation is needed for the host channel. VAD correlation continues on channel 1 for non-host TEAM members and EXTERNAL speakers.
 7. If multiple team members speak simultaneously → correlation is ambiguous, defer until unambiguous signal.
 8. External speakers get names from **calendar data** (best-effort).
 9. **No voiceprint storage, no enrollment, no ML model required.**
 
-> **Why this works:** Larity captures OS-level system audio regardless of platform (Zoom, Meet, Teams, etc.). The local mic VAD and system audio capture happen on the same machine, so the timing correlation is consistent across all meeting platforms.
+> **Why this works:** Larity captures OS-level system audio regardless of platform (Zoom, Meet, Teams, etc.). The host mic channel is captured on the same machine as loopback and is identified directly. Other team members' local mic VAD signals are aligned to the server audio-ingestion clock through rolling clock-offset reconciliation, so timing correlation remains consistent across meeting platforms.
 
 #### 3.3.1 Clock-Offset Reconciliation
 
@@ -160,7 +161,7 @@ When utterance arrives with diarizationIndex=N that has no cached SpeakerIdentit
         → create new SpeakerIdentity
 ```
 
-The `SpeakerIdentity` therefore owns a **set** of diarization indices, not a single index, and the cache is `Map<diarizationIndex, speakerId>` pointing into a `Map<speakerId, SpeakerIdentity>`.
+The `SpeakerIdentity` therefore owns a **set** of per-channel diarization indices, not a single index, and the cache is `Map<channel:diarizationIndex, speakerId>` pointing into a `Map<speakerId, SpeakerIdentity>`. Single-channel fallback uses `channel=0` for all indices.
 
 #### Conservative Default
 
@@ -176,7 +177,10 @@ interface SpeakerIdentity {
   type: "TEAM" | "EXTERNAL"
   userId?: string                 // If TEAM, linked to User record
   name: string                    // Display name
-  diarizationIndices: number[]    // All Deepgram indices that map to this identity
+  diarizationIndices: {
+    channel: 0 | 1
+    index: number
+  }[]                             // All Deepgram channel/index pairs that map to this identity
                                   //   (diarization reassigns indices after silences;
                                   //    see §3.3.2 merge logic)
   isCurrentUser: boolean          // Is this the person viewing this Larity instance?
@@ -196,14 +200,15 @@ interface SpeakerIdentity {
 Speaker identification uses **local VAD signals** correlated with Deepgram diarization timestamps on the server. No voice embedding models, no voiceprint enrollment, no ML inference required.
 
 * **Client-side (each team member's Larity instance):**
-  * Runs VAD on the local mic stream (`@ricky0123/vad-web` / Silero VAD or WebRTC energy-based)
+  * Runs VAD on the local mic stream (`@ricky0123/vad-web` / Silero VAD, Rust-side WebRTC VAD, or equivalent). Rust-side VAD is preferred once the host mic is already captured for ch0, because it avoids opening the microphone twice.
   * Emits `{ type: "vad_speaking" | "vad_silence", userId, sessionId, ts }` via existing WebSocket connection
 * **Server-side (`packages/meeting-mode/src/speaker-identification/`):**
   * Maintains `VadState` per session: `Map<userId, { isSpeaking: boolean; startTs: number }>`
-  * On each Deepgram word/utterance: checks which team member's VAD was active at that timestamp (±300ms window)
-  * If exactly one member → assigns that diarization index to that userId (TEAM)
+  * On each Deepgram word/utterance from channel 0: assigns the host identity directly
+  * On each Deepgram word/utterance from channel 1: checks which team member's VAD was active at that timestamp (±250ms offset-corrected window)
+  * If exactly one member → assigns that channel/index pair to that userId (TEAM)
   * If none → EXTERNAL by default
-  * Caches result: `Map<diarizationIndex, SpeakerIdentity>` — all future utterances from that index resolve instantly
+  * Caches result: `Map<channel:diarizationIndex, SpeakerIdentity>` — all future utterances from that channel/index pair resolve instantly
 * **Latency:** Identification resolves within <50ms of utterance finalization for actively speaking team members
 * **Platform-agnostic:** Works identically on Zoom, Meet, Teams, or any OS-level audio capture
 * **No enrollment required:** Zero setup beyond having Larity open with mic permission
@@ -278,12 +283,16 @@ When topic shifts occur, relevant constraints are already loaded.
 
 #### Step 6 — Audio Pipeline Armed (Host Only)
 
-* **OS-level system audio capture** is armed on the host's machine via a Tauri/Rust audio-capture module. This is a **loopback capture** of the system mixer output — it captures whatever app is producing the meeting audio (Zoom, Meet, Teams, Discord, Slack, a SIP phone, browser tab, anything). Implementation per platform:
-    * **Windows:** WASAPI loopback (`cpal` loopback or `wasapi-rs`).
-    * **macOS:** Core Audio tap / ScreenCaptureKit audio (macOS 13+) or fallback to a user-installed virtual device (BlackHole / Loopback).
-    * **Linux:** PipeWire / PulseAudio monitor source of the default sink.
-* Captured PCM is chunked (20–100 ms frames) and streamed over the existing WebSocket to the remote `realtime` server. No audio is processed locally beyond chunking.
-* Deepgram streaming connection opened server-side with `diarize=true`.
+* The host's machine arms **two simultaneous capture streams** via the Tauri/Rust audio-capture module:
+    * **Channel 0 — host microphone:** local mic captured pre-conferencing-codec. This makes the host's own utterances clean and gives the server a deterministic host identity channel.
+    * **Channel 1 — OS-level system loopback:** loopback capture of the system mixer output — whatever app is producing the meeting audio (Zoom, Meet, Teams, Discord, Slack, a SIP phone, browser tab, anything). Implementation per platform:
+        * **Windows:** WASAPI loopback (`wasapi-rs`, or `cpal`'s loopback-capable WASAPI path).
+        * **macOS:** ScreenCaptureKit audio (macOS 13+) / Core Audio process tap, or fallback to a user-installed virtual device (BlackHole / Loopback).
+        * **Linux:** PipeWire / PulseAudio monitor source of the default sink.
+* Both streams are downmixed to mono, resampled to 16 kHz, aligned by sample counter (not wall-clock callback time), and interleaved into one **2-channel linear16 PCM** stream chunked at 50 ms frames. The channels are not mixed together.
+* PCM is streamed directly from Rust over the realtime WebSocket to the remote `realtime` server. It does not cross the Tauri Rust→JS event bridge, is not base64 encoded, and never goes through Redis.
+* Deepgram streaming connection opened server-side with `diarize=true`, `multichannel=true`, `channels=2`, `encoding=linear16`, `sample_rate=16000`.
+* **Single-channel fallback:** if one of the two capture streams cannot start, the host falls back to single-channel mode using the surviving stream (`multichannel=false`). VAD correlation behaves as described in §3.3, and the host sees a non-fatal ambient warning.
 
 Team members do NOT arm the audio-capture layer — their desktop apps only send local-mic VAD signals (see Section 3.3) and receive processed utterances/alerts from the server.
 
@@ -308,23 +317,26 @@ This loop runs continuously on the **remote server** until the meeting ends. All
 
 **For every audio chunk (host sends):**
 
-1. Audio arrives at server from host's Larity desktop app (OS-level system audio loopback — conferencing platform is opaque to the server)
-2. Forwarded to streaming STT (Deepgram) with `diarize=true`
-3. STT emits partial hypotheses **with speaker indices**
+1. Audio arrives at server from host's Larity desktop app as a **2-channel interleaved stream**: ch0 = host mic, ch1 = OS-level system loopback. Conferencing platform is opaque to the server.
+2. Forwarded to streaming STT (Deepgram) with `diarize=true`, `multichannel=true`, `channels=2`
+3. STT emits partial hypotheses **with channel index + speaker indices**
 4. **Speculative processing begins on partials** (see 5.2)
 5. Normalizer waits for `isFinal = true`
-6. Speaker identification resolves via **VAD correlation + reassignment-merge** (see §3.3.1–3.3.2): the diarization index is mapped to a `SpeakerIdentity` using the clock-offset-corrected VAD state. If no VAD-team match → EXTERNAL.
+6. Speaker identification resolves:
+   * Channel 0 → host `SpeakerIdentity` directly
+   * Channel 1 → **VAD correlation + reassignment-merge** (see §3.3.1–3.3.2): the channel/index pair is mapped to a `SpeakerIdentity` using the clock-offset-corrected VAD state. If no VAD-team match → EXTERNAL.
 7. Final utterance created:
 
 ```json
 {
   "utteranceId": "u_193",
+  "channel": 1,
   "speaker": {
     "speakerId": "spk_3",
     "type": "TEAM",
     "userId": "user_rahul",
     "name": "Rahul",
-    "diarizationIndices": [2],
+    "diarizationIndices": [{ "channel": 1, "index": 2 }],
     "isCurrentUser": false,
     "confidence": 0.92
   },
@@ -763,12 +775,16 @@ If `shouldSurface = false` or `alertType = "none"`, nothing happens.
 #### Total Cost Per 1-Hour Meeting
 
 ```
-Pre-filter kills:     ~48 of 120 utterances (40%)
-Tier 1 (structural):  ~72 utterances × $0 = FREE
-Tier 2 (small LLM):   ~72 utterances × $0.002 = ~$0.14
-Tier 3 (embeddings):  ~72 utterances × $0.00002 = ~$0.002
-Tier 4 (large LLM):   ~8 utterances × $0.02 = ~$0.16
-                                        TOTAL: ~$0.30 per meeting
+Deepgram STT (1 channel):    60 min × ~$0.0077/min        = ~$0.46
+Dual-channel STT delta:      +60 channel-min × ~$0.0077   = +~$0.46
+Pre-filter kills:            ~48 of 120 utterances (40%)
+Tier 1 (structural):         ~72 utterances × $0          = FREE
+Tier 2 (small LLM):          ~72 utterances × $0.002      = ~$0.14
+Tier 3 (embeddings):         ~72 utterances × $0.00002    = ~$0.002
+Tier 4 (large LLM):          ~8 utterances × $0.02        = ~$0.16
+
+TOTAL (single-channel fallback): ~$0.76 per meeting
+TOTAL (dual-channel default):    ~$1.22 per meeting
 ```
 
 #### 5.6.1 Pipeline Orchestration — Parallel Tier Execution
@@ -1631,7 +1647,7 @@ Before finalizing, the system compares discussed topics against pre-loaded agend
 | Silent collaborator | Yes | Default behavior | — |
 | Topic tracking | Yes | Ambient indicator | Real-time |
 | Constraint tracking | Yes | Ambient counter | Real-time |
-| Speaker identification | Yes | Voice embeddings + diarization | 50-100ms |
+| Speaker identification | Yes | Host channel short-circuit + VAD-correlation diarization | 50-100ms |
 | Decision logging | No | Post-meeting only | — |
 | Versioned decisions | No | Post-meeting only | — |
 | Knowledge graph | No | Post-meeting only | — |
@@ -1642,14 +1658,14 @@ Before finalizing, the system compares discussed topics against pre-loaded agend
 ## 12. Development Approach
 
 ### Phase 1: Core Pipeline
-1. Audio capture (host) → WebSocket transport to remote server → Deepgram STT integration with `diarize=true`
-2. Utterance finalizer with speaker diarization indices
+1. Dual-channel audio capture (host mic ch0 + system loopback ch1) → direct Rust WebSocket transport to remote server → Deepgram STT integration with `diarize=true`, `multichannel=true`
+2. Utterance finalizer with channel index + speaker diarization indices
 3. Basic ring buffer implementation
 4. Session lifecycle (start/join/end)
 5. Multi-user session management (host + participants)
 
 ### Phase 2: Speaker Identification
-1. VAD integration in Tauri desktop app (local mic, per user)
+1. VAD integration in Tauri desktop app (local mic, per user; Rust-side VAD preferred once mic capture is already active)
 2. VAD speaking signals sent via WebSocket to server
 3. Server-side diarization index correlation (`SpeakerIdentifier`)
 4. Identity cache per session + retroactive utterance reprocessing
@@ -1740,8 +1756,8 @@ Before finalizing, the system compares discussed topics against pre-loaded agend
 | Tier 3 commitment ledger search | 30ms | 50ms |
 | Tier 4 LLM call (streaming start) | 200ms | 400ms |
 | Tier 4 LLM call (complete) | 400ms | 800ms |
-| Voice embedding extraction | 50ms | 100ms |
-| Voice similarity check | 1ms | 5ms |
+| VAD edge detection | 10ms | 50ms |
+| Speaker identity cache lookup | 1ms | 5ms |
 | Topic assignment | 30ms | 50ms |
 | Alert render | 16ms | 32ms |
 | Topic completeness check | 20ms | 50ms |
@@ -1758,7 +1774,8 @@ If any operation exceeds max acceptable, it is **skipped**, not queued.
 | STT drops connection | Listening heartbeat disappears, auto-reconnect |
 | Host disconnects | Meeting tracking stops. No failover in v1 |
 | Team member disconnects | They stop receiving alerts. Others unaffected |
-| Voice identification fails | Speaker treated as EXTERNAL (conservative default) |
+| Voice identification fails | Speaker treated as EXTERNAL (conservative default), except channel 0 host utterances in dual-channel mode |
+| One host capture stream fails | Fall back to single-channel mode with `multichannel=false`; show host-only ambient warning; meeting continues |
 | Tier 2 LLM times out | Skip classification, treat as general (no alert) |
 | Tier 4 LLM times out | Skip this evaluation, log for debugging |
 | LLM returns invalid schema | Discard, don't surface |
@@ -1808,4 +1825,4 @@ If it feels dead, add ambient signals — not more alerts.
 
 ## One-Sentence Summary
 
-**Meeting Mode is a conservative, stateful, multi-user, topic-aware real-time system running on a shared remote server that captures OS-level system audio from a single host's native desktop app (platform-agnostic — Zoom, Meet, Teams, or any conferencing tool), identifies speakers by correlating Deepgram diarization indices with per-user local-mic VAD signals (no voice models, no enrollment), classifies utterances through a four-tier pipeline (structural → small LLM → embedding search → large LLM), tracks commitments across the entire meeting in a live ledger, detects self-contradictions and team inconsistencies and risky statements, warns about scope creep and pressure tactics and client backtracking, surfaces missing clarity and client disengagement, prevents information leaks, monitors tone trajectories, routes alerts to shared and personal channels across all connected team members, and never mutates organizational memory.**
+**Meeting Mode is a conservative, stateful, multi-user, topic-aware real-time system running on a shared remote server that streams a dual-channel feed from a single host's native desktop app (host mic on ch0, OS-level system loopback on ch1; platform-agnostic — Zoom, Meet, Teams, or any conferencing tool), identifies the host by channel and other speakers by correlating Deepgram diarization indices with per-user local-mic VAD signals (no voice models, no enrollment), classifies utterances through a four-tier pipeline (structural → small LLM → embedding search → large LLM), tracks commitments across the entire meeting in a live ledger, detects self-contradictions and team inconsistencies and risky statements, warns about scope creep and pressure tactics and client backtracking, surfaces missing clarity and client disengagement, prevents information leaks, monitors tone trajectories, routes alerts to shared and personal channels across all connected team members, and never mutates organizational memory.**

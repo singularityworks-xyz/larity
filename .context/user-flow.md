@@ -8,7 +8,7 @@ scope, and a design system, but their jobs are different.
 
 | Surface | Tech | Job |
 |---|---|---|
-| **Desktop App** (`apps/desktop`) | Tauri + React | Host audio capture, live overlay, ambient awareness, in-meeting alerts, voice-first assistant. Used *during* and *around* meetings. |
+| **Desktop App** (`apps/desktop`) | Tauri + React | Host dual-channel audio capture, live overlay, ambient awareness, in-meeting alerts, voice-first assistant. Used *during* and *around* meetings. |
 | **Control Web App** (`apps/control` web shell) | React + Vite | Review, search, admin, integrations, knowledge surfaces, audit. Never captures audio. Used *outside* meetings. |
 
 Both surfaces speak to the same shared remote server (Elysia REST + uWS WebSocket).
@@ -49,7 +49,7 @@ The desktop app has **five window types**:
 #### `/welcome`
 - Product mark + one-line tagline ("Work, with memory.").
 - Two primary actions: **Sign in**, **Create account**.
-- Below the fold: "What Larity needs" — list of OS permissions it will request (system audio loopback, microphone, calendar OAuth, notifications). Plain English. No marketing.
+- Below the fold: "What Larity needs" — list of OS permissions it will request (microphone, system audio loopback / screen capture on supported OSes, calendar OAuth, notifications). Plain English. No marketing.
 
 #### `/auth/sign-in`, `/auth/sign-up`
 - Email + password, Google SSO, Microsoft SSO.
@@ -57,7 +57,7 @@ The desktop app has **five window types**:
 - Post sign-up → `/onboarding`.
 
 #### `/onboarding` (3 steps, single window, progress dots)
-1. **Permissions check:** request OS audio + mic + notifications. Show real status per permission. Block "Continue" until audio loopback is granted.
+1. **Permissions check:** request mic + system audio loopback / screen capture + notifications. Show real status per permission. Block "Continue" until the machine can either host dual-channel capture or explicitly run as participant-only.
 2. **Calendar connect:** Google / Microsoft / "Skip for now". On connect, list next 7 days of meetings as a preview.
 3. **Voice baseline:** 10-second mic check (used only for local VAD calibration — *not* a voice profile, no audio leaves device). Plain copy: *"This calibrates your microphone. We do not store voice samples."*
 
@@ -150,8 +150,8 @@ Used when the user wants more context without leaving the meeting. Adds to the o
 Single window, left sub-nav.
 
 - **Profile:** name, avatar, email, default working hours.
-- **Audio:** input/output devices, loopback source (auto / pick monitor), VAD sensitivity.
-- **Privacy:** what is sent to the server (audio frames, VAD timestamps, classification metadata). Toggle: *opt out of telemetry*.
+- **Audio:** input/output devices, host mic source, loopback source (auto / pick monitor), single-channel fallback status, VAD sensitivity.
+- **Privacy:** what is sent to the server (dual-channel PCM frames for hosts, VAD timestamps for participants, classification metadata). Toggle: *opt out of telemetry*.
 - **Integrations:** Google Calendar, Microsoft Calendar, Gmail, Outlook, GitHub. Per integration: connect, disconnect, scopes, last sync.
 - **Notifications:** which alert categories are surfaced as OS toasts when the overlay is hidden.
 - **Hotkeys:** assistant, start meeting mode, mute alerts, "remember this".

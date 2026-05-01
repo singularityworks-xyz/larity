@@ -12,7 +12,7 @@
 Before going into phases, align on what Larity actually is:
 
 1. **Larity is a native desktop application (Tauri).** It is NOT a browser extension. There is no Chrome/Edge/Firefox extension and there will not be one. The desktop app is installed on every team member's machine and runs as a tray/overlay app.
-2. **The desktop app captures OS-level system audio (loopback) from the host's machine**, regardless of which conferencing tool is producing that audio (Zoom, Google Meet, Microsoft Teams, Discord, Slack Huddle, Jitsi, a dial-in phone bridged through the OS, etc.). No per-platform integrations are required, ever.
+2. **The desktop app captures a dual-channel audio feed from the host's machine**: host microphone on channel 0 and OS-level system audio loopback on channel 1, regardless of which conferencing tool is producing that audio (Zoom, Google Meet, Microsoft Teams, Discord, Slack Huddle, Jitsi, a dial-in phone bridged through the OS, etc.). No per-platform integrations are required, ever.
 3. **A web app (`apps/web`) exists, but only as a dashboard / logs / settings surface** — history of past meetings, decisions, commitments, team / client / policy management, post-meeting review. The web app never captures audio and is not required during meetings.
 4. **All real-time processing happens on a shared remote server** — see [architecture-and-flow.md](./architecture-and-flow.md). The desktop app is a thin client that streams audio up and renders ambient UI + alerts.
 5. **Speaker identification is VAD-correlation based, not voice-embedding based.** No ML voice models, no Python microservice, no enrollment.
@@ -29,7 +29,7 @@ Before going into phases, align on what Larity actually is:
 | **packages/infra/rabbitmq** | Done | Connection, exchanges (ex.events, ex.jobs), queues (q.meeting.transcribe, q.meeting.summary), publish/consume with DLQ |
 | **packages/infra/prisma** | Done | Full schema with all models (User, Meeting, MeetingParticipant, Transcript, etc.) |
 | **apps/control** | Done | Elysia API with all routes, services, validators, auth middleware |
-| **apps/realtime** | Done | uWebSockets.js server with session management, audio frame ingestion, Redis publishing |
+| **apps/realtime** | Done | uWebSockets.js server with session management, host audio frame ingestion, direct Deepgram relay, Redis state/control publishing |
 | **packages/stt** | Done | Deepgram integration, session manager, Redis audio subscriber, utterance output |
 | **packages/meeting-mode** | Done | Speaker identification, alerts system, topic state management, context assembler |
 
@@ -51,7 +51,7 @@ interface SpeakerIdentity {
   type: "TEAM" | "EXTERNAL"
   userId?: string
   name: string
-  diarizationIndex?: number
+  diarizationIndices: { channel: 0 | 1; index: number }[]
   isCurrentUser: boolean
   confidence: number
 }
@@ -61,9 +61,9 @@ interface SpeakerIdentity {
 
 | File | What needs to change |
 |------|---------------------|
-| `packages/stt/src/types.ts:16` | `Speaker = "YOU" \| "THEM"` → remove type, `SttResult.speaker` → `SttResult.diarizationIndex: number` |
-| `packages/stt/src/deepgram/connection.ts:177` | `speaker: this.currentSource === "mic" ? "YOU" : "THEM"` → use Deepgram diarization index instead |
-| `packages/stt/src/deepgram/types.ts` | `DEFAULT_DG_CONFIG` needs `diarize: true` added |
+| `packages/stt/src/types.ts:16` | `Speaker = "YOU" \| "THEM"` → remove type, `SttResult.speaker` → `SttResult.channel: number` + `SttResult.diarizationIndex: number` |
+| `packages/stt/src/deepgram/connection.ts:177` | `speaker: this.currentSource === "mic" ? "YOU" : "THEM"` → use Deepgram channel index + diarization index instead |
+| `packages/stt/src/deepgram/types.ts` | `DEFAULT_DG_CONFIG` needs `diarize: true`, `multichannel: true`, `channels: 2` added for the default host path |
 | `packages/stt/src/types.ts:11` | `AudioSource = "mic" \| "system"` — keep but no longer determines identity |
 | `packages/meeting-mode/src/utterance/types.ts:1` | `Speaker = "YOU" \| "THEM"` → replace with `SpeakerIdentity` import |
 | `packages/meeting-mode/src/utterance/types.ts:6` | `Utterance.speaker: Speaker` → `Utterance.speaker: SpeakerIdentity` |
@@ -80,9 +80,9 @@ Current Deepgram config does NOT enable diarization. Changes needed:
 
 | File | What needs to change |
 |------|---------------------|
-| `packages/stt/src/deepgram/types.ts` | Add `diarize: true` to `DEFAULT_DG_CONFIG` |
+| `packages/stt/src/deepgram/types.ts` | Add `diarize: true`, `multichannel: true`, `channels: 2` to `DEFAULT_DG_CONFIG` for dual-channel mode |
 | `packages/stt/src/deepgram/types.ts` | `TranscriptResult` type needs to include speaker/diarization fields from Deepgram response |
-| `packages/stt/src/deepgram/connection.ts` | Parse `channel.alternatives[0].words[].speaker` from diarized results |
+| `packages/stt/src/deepgram/connection.ts` | Parse `channel_index` and `channel.alternatives[0].words[].speaker` from diarized results |
 | `packages/stt/src/deepgram/connection.ts` | Remove `currentSource → speaker` mapping logic |
 
 #### 3. Multi-User Session Model
@@ -96,7 +96,7 @@ Current session model assumes one user per session. Changes needed:
 | `apps/realtime/src/handlers/on-upgrade.ts` | Need to validate user identity and role (host vs participant), not just session existence |
 | `apps/control/src/services/meeting-session.service.ts` | `SessionData` needs `hostUserId`, `participants[]`, `orgId`, `clientId` |
 | `apps/control/src/services/meeting-session.service.ts` | Add `join()` method (currently only `start` and `end` exist) |
-| `apps/control/src/validators/meeting-session.ts` | `startSessionSchema.metadata.audioSource` — simplify, host always sends OS-level system audio loopback |
+| `apps/control/src/validators/meeting-session.ts` | `startSessionSchema.metadata.audioSource` — simplify, host always sends dual-channel audio when capable; otherwise single-channel fallback |
 
 #### 4. Prisma Schema Additions
 
@@ -118,7 +118,7 @@ New keys needed for multi-user:
 | `meeting.alert.{sessionId}.shared` | Shared alert channel (all team members) |
 | `meeting.alert.{sessionId}.user.{userId}` | Personal alert channel (specific user) |
 | `meeting.commitment.{sessionId}` | Commitment ledger (entire meeting) |
-| `meeting.speaker.{sessionId}` | Speaker identification state (diarization index → identity) |
+| `meeting.speaker.{sessionId}` | Speaker identification state (`channel:index` → identity) |
 
 #### 6. Removed: Regex Pattern Libraries
 
@@ -142,10 +142,10 @@ The `apps/realtime` server is functional but needs multi-user updates:
 
 ```
 Current Audio Flow:
-Client → WebSocket (binary frames) → onMessage handler → Redis publish
+Host desktop → WebSocket (binary frames) → onMessage handler → Deepgram session in same worker
 
 Needs to become:
-Host Client → WebSocket (binary frames) → onMessage handler → Redis publish
+Host desktop Rust audio engine → WebSocket (dual-channel binary frames) → onMessage handler → Deepgram session in same worker
 Team Clients → WebSocket (control only) → receive processed results
 
 Current Session Flow:
@@ -159,7 +159,6 @@ Team Connect → onOpen → addParticipant → publish participant.join
 Team Disconnect → onClose → removeParticipant → publish participant.leave
 
 Redis Channels (existing):
-- realtime.audio.{sessionId} — per-session audio frames (base64 encoded)
 - realtime.session.start — session start events
 - realtime.session.end — session end events
 
@@ -173,10 +172,10 @@ Redis Channels (new):
 ### STT Package Details (Already Built, Needs Changes)
 
 The `packages/stt` package has Deepgram integration but needs:
-- Diarization enabled (`diarize: true`)
-- Diarization index parsing from Deepgram responses
+- Diarization + multichannel enabled (`diarize: true`, `multichannel: true`, `channels: 2`) for the default host path
+- Channel index + diarization index parsing from Deepgram responses
 - Removal of `source → speaker` identity mapping
-- `SttResult` to carry `diarizationIndex` instead of `Speaker`
+- `SttResult` to carry `channel` + `diarizationIndex` instead of `Speaker`
 
 ### Not Started
 
@@ -206,12 +205,12 @@ The `packages/stt` package has Deepgram integration but needs:
 - [x] Create shared `SpeakerIdentity` type in `packages/meeting-mode/src/utterance/types.ts`
 - [x] Remove `Speaker = "YOU" | "THEM"` from `packages/stt/src/types.ts`
 - [x] Remove `Speaker = "YOU" | "THEM"` from `packages/meeting-mode/src/utterance/types.ts`
-- [x] Update `SttResult` in `packages/stt/src/types.ts` — replace `speaker: Speaker` with `diarizationIndex: number`
+- [x] Update `SttResult` in `packages/stt/src/types.ts` — replace `speaker: Speaker` with `channel: number` + `diarizationIndex: number`
 - [x] Update `Utterance` in `packages/meeting-mode/src/utterance/types.ts` — replace `speaker: Speaker` with `speaker: SpeakerIdentity`
 - [x] Update `RingBuffer.getBySpeaker()` → replaced with `getBySpeakerType()`, `getBySpeakerId()`, `getByUserId()`
 - [x] Update `RingBuffer` format method — uses `speaker.name`
 - [x] Update `UtteranceMerger.shouldMerge()` — compares `speakerId`
-- [x] Update `UtteranceFinalizer` — uses `createUnidentifiedSpeaker(diarizationIndex)`, defers identity to VAD correlation
+- [x] Update `UtteranceFinalizer` — uses `createUnidentifiedSpeaker(channel, diarizationIndex)`, defers identity to host-channel short-circuit or VAD correlation
 - [x] Update `ContextAssembler` — filters by `speakerType`/`speakerId`/`userId`, renamed to `teamUtterances`/`externalUtterances`/`uniqueSpeakers`
 
 **Deliverable:** All existing code compiles with new speaker model. No remaining `"YOU" | "THEM"` references. ✓
@@ -221,10 +220,13 @@ The `packages/stt` package has Deepgram integration but needs:
 **packages/stt**
 
 - [x] Add `diarize: true` to `DEFAULT_DG_CONFIG` in `packages/stt/src/deepgram/types.ts`
+- [ ] Add dual-channel Deepgram config for host default path: `multichannel: true`, `channels: 2`
 - [x] Update `TranscriptResult` type to include diarization fields (`DeepgramWord` with `speaker?: number`)
 - [x] Update `DeepgramConnection` — parse speaker index from `words[0].speaker`
+- [ ] Update `DeepgramConnection` — parse and propagate `channel_index`
 - [x] Remove `currentSource === "mic" ? "YOU" : "THEM"` logic in `connection.ts`
 - [x] Emit `SttResult` with `diarizationIndex` instead of `speaker`
+- [ ] Emit `SttResult` with `channel` for dual-channel mode
 - [x] Test diarization output with multi-speaker audio (requires live Deepgram connection) — *Mock test implemented in `packages/stt/src/deepgram/connection.test.ts`*
 - [x] Handle edge case: diarization not ready yet (first few seconds) — emit with `diarizationIndex: -1`
 
@@ -254,7 +256,7 @@ The `packages/stt` package has Deepgram integration but needs:
   - [x] Add participant tracking in Redis
 - [x] Add `POST /meeting-session/join` endpoint to control API
 - [x] Add `GET /meeting-session/:id/participants` endpoint (implicit via session status or join response)
-- [x] Update `startSessionSchema` validator — host always sends OS-level system audio loopback (platform is metadata only)
+- [x] Update `startSessionSchema` validator — host always sends audio from the desktop app; platform and capture mode are metadata only
 
 **Deliverable:** Multiple team members can join a shared meeting session. Host sends audio, participants receive results. ✓
 
@@ -328,11 +330,11 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **Goal (two tracks):**
 1. Implement VAD-based speaker identification (no voice embeddings, no voiceprints) and wire the full audio → identified utterance pipeline (Day 8-11).
-2. Land OS-level system audio loopback in the Tauri desktop app's Rust layer across Windows / macOS / Linux, plus meeting-detection prompts (Day 12-14). This is the product's single biggest platform-specific workstream and is the reason Larity can claim to work with any conferencing tool.
+2. Land dual-channel host audio intake in the Tauri desktop app's Rust layer across Windows / macOS / Linux, plus meeting-detection prompts (Day 12-14). This is the product's single biggest platform-specific workstream and is the reason Larity can claim to work with any conferencing tool.
 
 ### Day 8-9: VAD Speaking Signals & Server-Side Diarization Correlation
 
-> **Decision:** Voice embedding (sherpa-onnx / voiceprints) is eliminated entirely. Since all team members run Larity on their own machines, local VAD on each member's mic provides a reliable, zero-enrollment, platform-agnostic way to identify which diarization index belongs to which team member. The server correlates timestamped VAD signals against Deepgram diarization timestamps to build the identity mapping. Works on Zoom, Meet, Teams, or any platform since the audio capture is OS-level.
+> **Decision:** Voice embedding (sherpa-onnx / voiceprints) is eliminated entirely. Since all team members run Larity on their own machines, local VAD on each member's mic provides a reliable, zero-enrollment, platform-agnostic way to identify which channel-1 diarization index belongs to which non-host team member. The host is identified directly from channel 0 in dual-channel mode. Works on Zoom, Meet, Teams, or any platform since the audio capture is OS-level.
 
 #### Day 8: VAD in Tauri Desktop App ✓ COMPLETED
 
@@ -343,8 +345,9 @@ The `packages/stt` package has Deepgram integration but needs:
   - [x] VAD runs on the local mic stream only — detects when THIS user is speaking
   - [x] Emit `speakingStart` and `speakingEnd` events with precise ms timestamps
 - [x] Wire VAD events to the existing WebSocket session connection:
-  - [x] On `speakingStart`: send `{ type: "vad_speaking", userId, sessionId, ts: Date.now() }`
-  - [x] On `speakingEnd`: send `{ type: "vad_silence", userId, sessionId, ts: Date.now() }`
+  - [x] On `speakingStart`: send `{ type: "vad_speaking", userId, sessionId, ts }`
+  - [x] On `speakingEnd`: send `{ type: "vad_silence", userId, sessionId, ts }`
+  - [ ] Replace `Date.now()` timestamps with monotonic `performance.now()`-derived timestamps (or Rust `Instant` once VAD moves Rust-side)
 - [x] Handle edge cases:
   - [x] Mic not available or permission denied → log warning, VAD disabled for this session
   - [x] User muted in the meeting platform → VAD still fires from mic (this is fine — muted means their audio isn't in the system stream, so no diarization index will be active at that timestamp)
@@ -369,15 +372,16 @@ The `packages/stt` package has Deepgram integration but needs:
   ```
 - [x] Implement diarization correlation on the server:
   - [x] On each Deepgram diarized word/utterance: check which team member's VAD was active at `word.startTime`
+  - [ ] On channel 0 in dual-channel mode: assign host identity directly without VAD correlation
   - [x] Use a ±300ms correlation window to account for clock drift and audio pipeline delay between mic and system audio
-  - [x] If exactly one team member overlaps → assign: `diarizationIndex → TEAM (userId)`
+  - [x] If exactly one team member overlaps → assign: `channel + diarizationIndex → TEAM (userId)`
   - [x] If multiple overlap (simultaneous speech) → ambiguous, defer, accumulate more signals
   - [x] If no team member overlaps → `diarizationIndex → EXTERNAL`
 - [x] Build `SpeakerIdentifier` class (in `packages/meeting-mode/src/speaker-identification/`):
   ```ts
   class SpeakerIdentifier {
-    // Diarization index → identified SpeakerIdentity (cached once confirmed)
-    private identifiedSpeakers: Map<number, SpeakerIdentity>
+    // channel:index → identified SpeakerIdentity (cached once confirmed)
+    private identifiedSpeakers: Map<string, SpeakerIdentity>
     // Buffered utterances awaiting identity (default EXTERNAL until confirmed)
     private pendingBuffer: Map<number, Utterance[]>
     // Recent VAD signals with timestamps (rolling ~2s window)
@@ -386,9 +390,9 @@ The `packages/stt` package has Deepgram integration but needs:
   ```
 - [x] Implement identification flow:
   1. VAD signal arrives → update `vadState`
-  2. Utterance arrives with `diarizationIndex`
+  2. Utterance arrives with `channel` and `diarizationIndex`
   3. If index already in `identifiedSpeakers` cache → emit immediately with cached identity
-  4. If not → correlate against `vadState` at utterance timestamp
+  4. If channel is 0 in dual-channel mode → assign host immediately; otherwise correlate against `vadState` at utterance timestamp
   5. If match → assign TEAM identity, cache, flush pending buffer for this index
   6. If no match → emit as EXTERNAL (conservative default), buffer for potential retroactive update
 - [x] Implement retroactive reprocessing:
@@ -406,6 +410,7 @@ The `packages/stt` package has Deepgram integration but needs:
 > **Architectural additions on top of Day 8-9's working VAD correlation:** clock-offset reconciliation (B.5) and diarization-index reassignment-merge (B.4). These are the two failure modes that break naive VAD correlation in production. See [meeting-mode.md §3.3.1 and §3.3.2](./meeting-mode.md#331-clock-offset-reconciliation).
 
 - [x] Wire full pipeline: Audio → Deepgram (diarized) → `SttResult` (with `diarizationIndex`) → `SpeakerIdentifier` → `Utterance` (with `SpeakerIdentity`)
+- [ ] Extend full pipeline for dual-channel mode: `SttResult.channel` → `SpeakerIdentifier` host-channel short-circuit → `Utterance.channel`
 - [x] Update `UtteranceFinalizer`: emit utterance immediately with current identity (EXTERNAL if not yet identified), do not block on identification
 - [x] Handle retroactive identity updates: when a diarization index gets identified after utterances were already emitted → re-emit corrected utterances to all subscribers
 - [x] Broadcast all identified utterances to session participants via Redis (`meeting.utterance.{sessionId}`)
@@ -419,7 +424,9 @@ The `packages/stt` package has Deepgram integration but needs:
   - [x] If offset median shifts >500ms within a short window (likely sleep/resume), mark recent VAD untrusted for ~2s and defer assignment in that gap
 - [x] **Diarization index reassignment-merge (B.4):**
   - [x] Change `SpeakerIdentity.diarizationIndex` (single) → `SpeakerIdentity.diarizationIndices: Set<number>`
-  - [x] Restructure cache from `Map<diarizationIndex, SpeakerIdentity>` to `Map<diarizationIndex, speakerId>` → `Map<speakerId, SpeakerIdentity>`
+  - [ ] Change `SpeakerIdentity.diarizationIndices` to channel-aware pairs: `{ channel: 0 | 1; index: number }[]`
+  - [x] Restructure cache from `Map<diarizationIndex, SpeakerIdentity>` to `Map<diarizationIndex, speakerId>` → `Map<speakerId, SpeakerIdentity>` (single-channel baseline)
+  - [ ] Restructure cache key to `Map<channel:index, speakerId>` for dual-channel mode
   - [x] On a new, unseen diarization index: run VAD correlation → candidate userId; if an existing SpeakerIdentity has the same userId AND gap since its `lastUtteranceTs` > 15s, **merge** (add the new index to the existing identity's set)
   - [x] Do not emit a "new speaker" event for merged indices
   - [x] If gap < 15s and correlation conflicts → genuinely a different speaker → new SpeakerIdentity
@@ -431,31 +438,36 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **Deliverable:** Complete audio → identified utterance pipeline working end-to-end. TEAM members identified via VAD within one utterance of speaking. ✓
 
-### Day 12-13: OS-Level System Audio Capture (Tauri / Rust) — ✓ COMPLETED
+### Day 12-13: Dual-Channel OS-Level Audio Capture (Tauri / Rust) — PARTIAL
 
-> **Why this phase exists:** Larity is a native desktop app. The host's Larity instance must capture OS-level loopback audio of the system mixer so it works identically regardless of which conferencing app (Zoom, Meet, Teams, Discord, Slack Huddle, dial-in SIP app, etc.) is producing the meeting audio. This is the single biggest platform-specific workstream in the whole product and must not be deferred to "Week 6 frontend" where it was previously hidden as a one-line "audio capture hook".
+> **Why this phase exists:** Larity is a native desktop app. The host's Larity instance must capture host mic + OS-level loopback audio of the system mixer so it works identically regardless of which conferencing app (Zoom, Meet, Teams, Discord, Slack Huddle, dial-in SIP app, etc.) is producing the meeting audio. The mic channel gives clean host speech and deterministic host identity; the loopback channel keeps platform-agnostic remote audio intake. This is the single biggest platform-specific workstream in the whole product and must not be deferred to "Week 6 frontend" where it was previously hidden as a one-line "audio capture hook".
 
 **apps/desktop (Rust / Tauri side — `src-tauri`)**
 
-- [x] Add Rust crates for system audio loopback capture:
+- [x] Add Rust crates for audio capture:
   - [x] `cpal` (cross-platform baseline) with feature flags where possible
-  - [x] Windows: evaluate `cpal`'s WASAPI loopback or `wasapi` crate — WASAPI loopback on the default render device
-  - [x] macOS: prefer **ScreenCaptureKit audio-only** (macOS 13+, no kext, no virtual device). Fallback path: instruct user to install a virtual audio device (BlackHole / Loopback) and record it as an input device via `cpal`
-  - [x] Linux: PipeWire / PulseAudio `.monitor` source of default sink via `cpal` / `libpulse` / `pipewire-rs`
+  - [x] Host mic capture via `cpal`
+  - [ ] Windows: implement true WASAPI loopback on the default render device (`wasapi-rs` or cpal loopback-capable path)
+  - [ ] macOS: implement **ScreenCaptureKit audio-only** (macOS 13+, no kext, no virtual device). Fallback path: instruct user to install a virtual audio device (BlackHole / Loopback) and record it as an input device via `cpal`
+  - [x] Linux: PipeWire / PulseAudio `.monitor` source of default sink via `parec` / PipeWire-Pulse bridge
 - [x] Define Tauri commands (exposed from Rust to the React frontend):
   - [x] `audio_capture_list_devices()` → enumerate candidate loopback sources
-  - [x] `audio_capture_start(sessionId, deviceOverride?)` → start loopback capture, stream raw PCM frames as Tauri events to the frontend
+  - [x] `audio_capture_start(sessionId, deviceOverride?)` → start current capture path
+  - [ ] `audio_capture_start(sessionId, micDeviceId?, loopbackDeviceId?, role)` → host starts dual-channel capture; participants start VAD/control only
   - [x] `audio_capture_stop()` → stop capture cleanly
   - [x] `audio_capture_status()` → current state + per-platform backend in use + any permission errors
-- [x] Frame format: 16 kHz mono 16-bit PCM (downsampled in Rust), 20–100 ms frames, tagged with monotonic timestamp. Deepgram accepts this directly.
+- [ ] Frame format: 16 kHz **2-channel** interleaved 16-bit PCM (host mic ch0, system loopback ch1), 50 ms frames, aligned by sample counter and tagged with monotonic timestamp. Deepgram accepts this directly with `multichannel=true`.
+- [x] Current fallback frame format: 16 kHz mono 16-bit PCM, 50 ms frames.
 - [x] Handle OS permission prompts:
   - [x] macOS: request screen-recording permission (SCK) once, surface failure gracefully
   - [x] Windows: no extra permission for WASAPI loopback
   - [x] Linux: detect PipeWire vs PulseAudio vs neither; guide user if neither is present
 - [x] Fail-silent: if capture cannot start, the desktop app surfaces a clear error modal but **does not crash the session** for other participants — the host just can't be a host on this machine right now
-- [x] Unit tests in Rust for frame sizing, resampling, and state machine (start → running → stop)
+- [ ] Unit tests in Rust for dual-channel frame sizing, sample-counter alignment, resampling, and state machine (start → running → stop)
+- [ ] Move resampling and PCM encoding off the cpal real-time callback into a worker/ring-buffer path
+- [ ] Add clipping-safe handling: no client-side summing in dual-channel mode; if single-channel fallback ever mixes, use soft limiter or <=0.5 gain per source
 
-**Deliverable (Day 12-13):** Host can capture mixed OS audio on all three major platforms, emitted as PCM frames the frontend can ship over WebSocket. No conferencing platform has special-cased code anywhere. ✓
+**Deliverable (Day 12-13):** Prototype host capture exists, with Linux loopback functional and the intended dual-channel shape specified. Production dual-channel correctness (Rust-native WebSocket transport, true Windows/macOS loopback, channel-aware STT schema, and Rust-side VAD cleanup) is completed in the Post-Day 23 patch below.
 
 ### Day 14: Meeting Detection & Desktop App Wiring ✓ COMPLETED
 
@@ -463,7 +475,12 @@ The `packages/stt` package has Deepgram integration but needs:
 
 - [x] Meeting-detection signals (all are *prompts*, never auto-start):
   - [x] **Manual start:** Always available via tray icon or overlay button
-- [x] Wire frontend audio streaming:
+- [ ] Wire Rust-native audio streaming:
+  - [ ] Open the realtime WebSocket from Rust for host PCM frames
+  - [ ] Send binary PCM frames directly from Rust (no Tauri event bridge, no base64, no JS `atob` decode)
+  - [ ] Keep JS/React responsible for UI state, warnings, and control messages only
+  - [ ] Back-pressure handling in Rust: bounded queue, drop oldest with metrics, surface a heartbeat warning
+- [x] Current fallback frontend audio streaming:
   - [x] Subscribe to the Rust `audio-frame` Tauri event
   - [x] Push each frame as a binary WebSocket message to `apps/realtime`
   - [x] Back-pressure handling: if WS buffer grows past threshold, drop oldest frame + surface a heartbeat warning
@@ -473,11 +490,12 @@ The `packages/stt` package has Deepgram integration but needs:
   - [x] Audio is exactly one-producer (host WS) → one-consumer (Deepgram WS); fan-out is not required, so a Redis hop would be pure latency with no value
   - [x] Session affinity is enforced at the load balancer / reverse proxy (sticky by `sessionId`) so the host's WS always lands on the worker that holds that session's Deepgram connection
 - [x] Document this invariant in `apps/realtime/README.md` so no one "helpfully" routes audio through Redis later
-- [x] Integration test: fake conferencing app → host starts session → frames reach realtime server → Deepgram returns diarized transcript
+- [ ] Integration test: fake conferencing app + host mic fixture → host starts session → dual-channel frames reach realtime server → Deepgram returns channel-indexed diarized transcript
+- [x] Current fallback integration test: fake audio → host starts session → frames reach realtime server → Deepgram returns diarized transcript
 
 > **Note:** Calendar trigger and process/audio-activity heuristic (optional features) are not yet implemented.
 
-**Deliverable (Day 14):** Desktop app can be launched, detect or be told about a meeting, start OS-level system audio capture, stream to the remote server, and appear in the server's session registry — end-to-end, on whatever conferencing app the user happens to be using. ✓
+**Deliverable (Day 14):** Desktop app can be launched, detect or be told about a meeting, start the prototype host capture path, stream to the remote server, and appear in the server's session registry. Production dual-channel intake is intentionally scheduled after Day 22-23 so Tier 3+ work builds on the final utterance shape.
 
 #### Post-Day 14 Patch: Desktop Realtime Identity Inputs ✓ COMPLETED
 
@@ -492,7 +510,6 @@ The `packages/stt` package has Deepgram integration but needs:
 **Deliverable:** Desktop app can connect to strict-validated UUID meeting sessions by using the correct host user ID instead of relying on validation-bypass session IDs.
 
 ---
-
 
 ## Week 3: State Management & New Tier System
 
@@ -700,6 +717,52 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **Deliverable:** Every utterance is classified by small LLM as the single semantic source of truth (alerts + topic deltas) — replaces ALL old regex pattern libraries. Works in any language.
 
+### Post-Day 23 Patch: Dual-Channel Audio Intake Hardening — REQUIRED BEFORE DAY 24
+
+**apps/desktop + apps/realtime + packages/stt + packages/meeting-mode**
+
+> This patch is applied immediately after the current completed Day 22-23 work, before Tier 3 begins. It turns the prototype intake into the production intake described in `meeting-mode.md`: host mic on ch0, system loopback on ch1, direct Rust-to-realtime WebSocket, channel-aware utterances, and host identity assigned by channel. Doing this now prevents Tier 3, Tier 4, and observability work from being built on the old mono/JS-relay assumptions.
+
+- [ ] **Rust audio transport:**
+  - [ ] Add Rust WebSocket client for host PCM frames (`tokio-tungstenite` or equivalent)
+  - [ ] Remove the hot-path Rust → Tauri event → JS → WebSocket PCM relay from production mode
+  - [ ] Keep a dev fallback flag for the current JS relay while the Rust socket is being stabilized
+  - [ ] Add per-session upload metrics: frames sent, frames dropped before WS, WS buffered bytes, last frame timestamp
+- [ ] **Dual-channel frame builder:**
+  - [ ] Maintain separate mic and loopback sample counters
+  - [ ] Align frames by sample counter, not `SystemTime::now()` callback time
+  - [ ] Interleave `i16` samples as `[mic0, sys0, mic1, sys1, ...]`
+  - [ ] Send 50 ms frames: 800 samples/channel, 1600 samples total, 3200 bytes/frame
+  - [ ] If one stream fails, emit single-channel fallback and set `multichannel=false` for Deepgram
+- [ ] **Platform capture correctness:**
+  - [ ] Linux: keep `parec @DEFAULT_MONITOR@` path, but expose PipeWire/Pulse error status
+  - [ ] Windows: replace current output-device `build_input_stream` fallback with real WASAPI loopback
+  - [ ] macOS: wire ScreenCaptureKit / Core Audio process tap; remove unused dependency if not implemented in this patch
+- [ ] **Rust-side VAD cleanup:**
+  - [ ] Run VAD on the mic samples already captured by Rust
+  - [ ] Emit VAD edge events with a monotonic timestamp derived from `Instant`
+  - [ ] Stop opening the microphone a second time from `@ricky0123/vad-web` in production mode
+  - [ ] Keep web VAD only as a fallback for platforms where Rust VAD is disabled
+- [ ] **STT + utterance schema:**
+  - [ ] Add `multichannel` and `channels` config to Deepgram connection
+  - [ ] Parse Deepgram `channel_index` and propagate it in `SttResult`
+  - [ ] Add `channel` to `Utterance`
+  - [ ] Change speaker cache key to `channel:index`
+  - [ ] Host channel short-circuit: `channel === 0` maps to `hostUserId` immediately
+  - [ ] VAD correlation runs on `channel === 1` only
+- [ ] **Cost + observability:**
+  - [ ] Include Deepgram channel-minute cost in the per-meeting cost rollup
+  - [ ] Update budget expectation from `~$0.30` LLM-only to `~$1.22` dual-channel all-in nominal
+  - [ ] Add per-utterance metrics fields: `channel`, `diarizationIndex`, `speakerCacheHit`, `hostChannelShortCircuit`
+- [ ] **Tests:**
+  - [ ] Unit test dual-channel interleaving and single-channel fallback
+  - [ ] Unit test speaker cache keying by `channel:index`
+  - [ ] Integration test: host ch0 utterance → TEAM host identity without VAD
+  - [ ] Integration test: remote TEAM utterance on ch1 → VAD correlation → TEAM identity
+  - [ ] Integration test: EXTERNAL utterance on ch1 with no VAD → EXTERNAL
+
+**Deliverable:** Production audio intake matches the spec before Tier 3/Tier 4 build on it: lower latency, no base64/IPC hot path, no client-side mixing distortion, host identity is deterministic, and channel-aware utterances still feed the existing ring buffer, topic, commitment, and alert context mechanisms unchanged.
+
 ### Day 24-25: Tier 3 — Embedding Search & Novelty Check
 
 **packages/meeting-mode**
@@ -808,7 +871,7 @@ The `packages/stt` package has Deepgram integration but needs:
   - [ ] Basic Prometheus histograms for p50/p95/p99 end-to-end latency (optional — only if infra is in place; otherwise stdout JSON is sufficient for MVP)
 - [ ] End-to-end test: utterance with commitment → Tier 2 writes to ledger → later contradicting utterance → Tier 3 catches → Tier 4 confirms → alert generated; validate total latency <800ms
 - [ ] End-to-end test: topic summary remains up to date with Tier 2 deltas even when summary refinement LLM is unavailable
-- [ ] Cost regression test: 1-hour scripted meeting fixture → total cost under budget (~$0.30 nominal, $2.00 hard cap)
+- [ ] Cost regression test: 1-hour scripted meeting fixture → total cost under budget (~$1.22 dual-channel nominal, $2.00 hard cap)
 - [ ] Parallel-vs-sequential benchmark: same fixture run both ways, confirm parallel saves ~150-200ms p95
 
 **Deliverable:** Complete four-tier pipeline with parallel 1-2-3 execution, per-session semantic cache, per-meeting cost cap, and structured observability. End-to-end p95 latency fits <800ms budget.
@@ -979,7 +1042,7 @@ The `packages/stt` package has Deepgram integration but needs:
 
 ### Day 37-38: Desktop App Foundation
 
-> **Note:** The heavy lifting of OS-level audio capture was already completed in Day 12-13. This phase is about wiring the React frontend around it.
+> **Note:** Prototype host capture started in Day 12-13, and production dual-channel intake is hardened in the Post-Day 23 patch. This phase is about wiring the React frontend around the finalized Rust capture/transport surface.
 
 **apps/desktop**
 
@@ -988,7 +1051,7 @@ The `packages/stt` package has Deepgram integration but needs:
 - [ ] Build WebSocket connection manager (to **remote** realtime server)
 - [ ] Implement session state in React context
 - [ ] Wire the Rust audio-capture commands (`audio_capture_start/stop/status` from Day 12-13) to the React UI
-- [ ] Build audio streaming pipeline: Tauri audio-frame event → WebSocket binary frames — host only
+- [ ] Build audio streaming controls around Rust-native WebSocket transport — React starts/stops capture and shows status; PCM frames do not cross the React runtime in production
 - [ ] Add connection status indicator + audio-capture heartbeat
 - [ ] Onboarding screen:
   - [ ] Sign in to org, join/select clients
@@ -1078,8 +1141,8 @@ The `packages/stt` package has Deepgram integration but needs:
 
 - [ ] Integration test: full pipeline
   ```
-  Host OS-level system audio capture (Tauri/Rust) → WebSocket → Remote server →
-  Deepgram (diarized) → VAD-correlation speaker identification →
+  Host dual-channel capture (Tauri/Rust: mic ch0 + loopback ch1) → Rust WebSocket → Remote server →
+  Deepgram (multichannel diarized) → host-channel short-circuit + VAD-correlation speaker identification →
   Utterance (with SpeakerIdentity) →
   Pre-filter → Tier 1 → Tier 2 (small LLM) → Tier 3 (embedding search) →
   Tier 4 (large LLM) → Alert (with routing) → Shared/Personal channels →
@@ -1106,7 +1169,8 @@ The `packages/stt` package has Deepgram integration but needs:
   - [ ] Host disconnect stops tracking
 - [ ] Test speaker identification (VAD correlation):
   - [ ] 3+ speakers correctly identified (2 TEAM + 1 EXTERNAL at minimum)
-  - [ ] TEAM members correctly mapped from VAD signals → diarization indices
+  - [ ] Host correctly mapped from channel 0 without VAD
+  - [ ] TEAM members correctly mapped from VAD signals → channel-1 diarization indices
   - [ ] External speakers labeled correctly (fallthrough case)
   - [ ] Retroactive reprocessing works when VAD arrives late
   - [ ] Simultaneous TEAM speech → both stay EXTERNAL until unambiguous
@@ -1118,7 +1182,7 @@ The `packages/stt` package has Deepgram integration but needs:
   - [ ] Tier 4 (large LLM): <500ms
   - [ ] Voice identification: <100ms
   - [ ] End-to-end: <800ms
-- [ ] Cost verification (~$0.30 per hour-long meeting, hard cap $2.00)
+- [ ] Cost verification (~$1.22 per hour-long dual-channel meeting nominal, hard cap $2.00)
 - [ ] Add structured logging throughout pipeline (per-utterance JSON lines — see Day 28)
 - [ ] Implement basic observability (timing metrics, tier invocation counts, cost rollups)
 - [ ] Fix bugs and edge cases
@@ -1393,9 +1457,9 @@ The `packages/stt` package has Deepgram integration but needs:
 | Week | Days | Focus | Key Deliverables |
 |------|------|-------|------------------|
 | 1 | 1-7 | **Migration & Multi-User** | Speaker model migration (YOU/THEM → SpeakerIdentity), Deepgram diarization, multi-user session join, Redis alert channels |
-| 2 | 8-14 | **Speaker ID (VAD) + OS Audio Capture** | VAD signals from desktop mic, clock-offset-corrected diarization correlation, diarization-index merge logic, **OS-level system audio capture in Tauri/Rust (Win / macOS / Linux)**, meeting-detection prompts, **direct uWS → Deepgram audio path (no Redis hop)** |
+| 2 | 8-14 | **Speaker ID (VAD) + Prototype Audio Capture** | VAD signals from desktop mic, clock-offset-corrected diarization correlation, diarization-index merge baseline, prototype host capture in Tauri/Rust, meeting-detection prompts, direct realtime → Deepgram audio path (no Redis hop) |
 | 3 | 15-21 | **State & Structural Detection** | Topic state, commitment ledger (**in-memory HNSW + Redis snapshot**, with embeddings), constraint ledger, pre-filter, Tier 1 structural |
-| 4 | 22-28 | **LLM Classification & Search** | Tier 2 small LLM (single semantic source replacing all regex), Tier 3 embedding search + commitment ledger search (shared embedding reuse), Tier 4 deep reasoning, **parallel Tier 1/2/3 orchestration, async topic-summary refinement off hot path, Tier 2 semantic cache, per-meeting cost cap, structured observability** |
+| 4 | 22-28 | **LLM Classification & Search** | Tier 2 small LLM (single semantic source replacing all regex), **Post-Day 23 dual-channel intake hardening before Tier 3**, Tier 3 embedding search + commitment ledger search (shared embedding reuse), Tier 4 deep reasoning, **parallel Tier 1/2/3 orchestration, async topic-summary refinement off hot path, Tier 2 semantic cache, per-meeting cost cap, structured observability** |
 | 5 | 29-36 | **Alert System & Speaker Tracking** | All 12 alert categories, alert routing (shared/personal), speaker state tracker, tone trajectory, client disengagement, speculative processing, **atomic alert UX (no progressive flicker)** |
 | 6 | 37-46+ | **Desktop Frontend, E2E & Distribution** | Desktop UI (tray + overlay + main), ambient components, alert UI (12 categories), meeting mode screen, multi-user end-to-end testing, **signed/notarized installers + auto-update across Win/macOS/Linux** |
 | 7 | 47-55 | **Post-Meeting** | Workers, **MinIO raw audio persistence (30-day lifecycle)**, Whisper refinement, speaker-attributed transcripts, commitment ledger → pgvector, extraction, memory writes |
@@ -1421,8 +1485,8 @@ packages/
 ├── stt/                      # DONE (needs diarization changes)
 │   ├── deepgram/
 │   │   ├── client.ts         # Deepgram streaming client
-│   │   ├── connection.ts     # CHANGE: diarization parsing, remove source→speaker
-│   │   └── types.ts          # CHANGE: add diarize:true, diarization types
+│   │   ├── connection.ts     # CHANGE: channel_index + diarization parsing, remove source→speaker
+│   │   └── types.ts          # CHANGE: add diarize:true, multichannel:true, channels:2
 │   ├── subscriber.ts         # Redis audio subscriber
 │   └── index.ts
 ├── meeting-mode/             # PARTIALLY DONE (major additions needed)
@@ -1439,7 +1503,7 @@ packages/
 │   │   ├── clock-offset.ts         # Per-client rolling median offset (last 30 samples)
 │   │   ├── correlation.ts          # ±250ms offset-corrected timestamp correlation
 │   │   ├── pending-buffer.ts       # Utterances awaiting late VAD confirmation (~2s)
-│   │   └── types.ts                # SpeakerIdentity with diarizationIndices: number[]
+│   │   └── types.ts                # SpeakerIdentity with diarizationIndices: {channel,index}[]
 │   ├── state/
 │   │   ├── topic-state.ts          # Topic clustering + completeness
 │   │   ├── constraint-ledger.ts    # Constraint tracking
@@ -1513,9 +1577,9 @@ apps/
 ├── realtime/                 # DONE - uWebSockets.js
 │   └── Needs: multi-connection per session (DONE), host/participant roles (DONE),
 │              broadcast to participants (DONE), alert channel subscriptions
-├── desktop/                  # SCAFFOLD + VAD (Day 8) only - Tauri + React
-│   └── Needs: Rust-side OS-level system audio capture (Day 12-13),
-│              meeting detection (Day 14), React UI (Week 6), assistant (Week 8)
+├── desktop/                  # SCAFFOLD + VAD + prototype audio capture - Tauri + React
+│   └── Needs: production dual-channel Rust audio transport (Post-Day 23 patch),
+│              true Win/macOS loopback, React UI (Week 6), assistant (Week 8)
 ├── workers/                  # SCAFFOLD ONLY
 │   └── Needs: Everything (Week 7)
 └── web/                      # NOT YET CREATED
@@ -1529,7 +1593,7 @@ apps/
 | Risk | Mitigation |
 |------|------------|
 | Deepgram latency spikes | Implement timeout + skip, don't block pipeline |
-| Deepgram diarization inaccurate | VAD-correlation handles TEAM attribution; diarization still needs to be internally consistent (same index for same speaker within a window). Reassignment-merge logic (Day 10-11) collapses post-silence index swaps back onto the existing `SpeakerIdentity` so a single talker is never mistaken for two |
+| Deepgram diarization inaccurate | Host channel short-circuit handles host attribution; VAD-correlation handles non-host TEAM attribution on channel 1. Diarization still needs to be internally consistent (same index for same speaker within a window). Reassignment-merge logic (Day 10-11) collapses post-silence index swaps back onto the existing `SpeakerIdentity` so a single talker is never mistaken for two |
 | Client clock drift / sleep-resume | Per-client rolling-median clock offset (Day 10-11) aligns VAD timestamps with the server clock; correlation window tightened to ±250ms |
 | **macOS system audio capture denied / no ScreenCaptureKit permission** | Surface clear instructions + fallback instructions for virtual device (BlackHole); the user can still participate as a non-host |
 | **macOS pre-13 support** | Require macOS 13+ for ScreenCaptureKit audio; document virtual-device fallback for older versions |
@@ -1537,6 +1601,10 @@ apps/
 | **Windows exclusive-mode audio apps** | WASAPI loopback cannot capture exclusive-mode sinks — warn user if detected; instruct them to turn off exclusive mode |
 | VAD mis-fires on loud background noise | `@ricky0123/vad-web` thresholds already tuned; if correlated VAD fires while system-audio has no diarized speech, confidence-score the correlation lower |
 | VAD correlation latency | Cache identified speakers; only first occurrence per diarization index triggers correlation |
+| Host mic and loopback clocks drift apart | Align by sample counter, not wall-clock callback time; emit single-channel fallback if one source stalls |
+| Client-side mixing distorts audio | Do not mix in dual-channel mode; send channels separately to Deepgram. If single-channel fallback must mix, use <=0.5 gain per source or a soft limiter |
+| Rust → JS audio relay adds latency | Production path opens the realtime WebSocket from Rust and sends binary PCM directly; JS only controls start/stop/status |
+| macOS/Windows loopback prototype captures nothing | Replace output-device `build_input_stream` fallback with ScreenCaptureKit/Core Audio process tap on macOS and true WASAPI loopback on Windows |
 | Tier 2 LLM (small) too slow | 200ms timeout, fail-silent; if consistently slow, batch utterances |
 | Tier 2 LLM classification quality | Test with multilingual samples; tune prompt; consider fine-tuning small model |
 | Redundant semantic extraction between topic and Tier 2 | Tier 2 becomes single semantic source; topic summaries derive from reducer state with async refinement only on significant deltas |
@@ -1562,7 +1630,7 @@ apps/
 
 ## Success Metrics
 
-### End of Week 2 (Speaker Identification + OS Audio Capture Complete)
+### End of Week 2 (Speaker Identification + Prototype Audio Capture Complete)
 
 | Metric | Target |
 |--------|--------|
@@ -1570,10 +1638,8 @@ apps/
 | Diarization index → speaker mapping time | < 50ms |
 | False identification rate (wrong team member assigned to an index) | < 5% |
 | Retroactive reprocessing latency when VAD arrives late | < 500ms |
-| Host OS audio capture works on Windows 10+ | Yes |
-| Host OS audio capture works on macOS 13+ (ScreenCaptureKit) | Yes |
-| Host OS audio capture works on Linux (PipeWire + PulseAudio) | Yes |
-| End-to-end frame latency (capture → WS → server) | < 100ms |
+| Prototype host capture can feed realtime server | Yes |
+| Linux loopback prototype captures meeting audio | Yes |
 
 ### End of Week 4 (Pipeline Complete)
 
@@ -1590,9 +1656,15 @@ apps/
 | Tier 2 classification accuracy | > 85% |
 | Tier 2 multilingual accuracy (Hindi/Hinglish) | > 80% |
 | Tier 2 semantic-cache hit rate on filler/confirmations | ≥ 30% |
+| Host OS audio capture works on Windows 10+ | Yes |
+| Host OS audio capture works on macOS 13+ (ScreenCaptureKit) | Yes |
+| Host OS audio capture works on Linux (PipeWire + PulseAudio) | Yes |
+| Dual-channel host frame integrity (ch0 mic + ch1 loopback) | 100% channel order correct |
+| Host-channel identity short-circuit accuracy | 100% for ch0 utterances |
+| End-to-end frame latency (capture → WS → server) | < 100ms |
 | Commitment ledger top-K search (HNSW) | < 2ms |
 | Commitment ledger snapshot write to Redis | < 20ms (async, off hot path) |
-| Cost per 1-hour meeting (nominal) | < $0.35 |
+| Cost per 1-hour meeting (nominal, dual-channel all-in) | < $1.25 |
 | Per-meeting cost cap enforcement | 100% (no session exceeds hard cap) |
 
 ### End of Week 5 (Alert System Complete)
@@ -1665,8 +1737,10 @@ See Desktop / OS-Level Dependencies below — all of this is bundled into the si
 
 ### Desktop / OS-Level Dependencies (Tauri Rust side — Day 12-13)
 - **`cpal`** (Rust) — cross-platform audio I/O baseline
-- **Windows** — WASAPI loopback (via `cpal` or `wasapi` crate). No driver install.
-- **macOS** — ScreenCaptureKit audio (macOS 13+). One-time screen-recording permission prompt. Fallback: BlackHole / Loopback virtual device.
+- **Rust WebSocket client** — production PCM transport from the audio engine to `apps/realtime`; avoids Rust→JS IPC/base64 on the hot path.
+- **Rust-side VAD** — WebRTC VAD or equivalent over the already-captured mic stream; browser VAD remains fallback only.
+- **Windows** — WASAPI loopback (via `wasapi-rs` or cpal loopback-capable path). No driver install.
+- **macOS** — ScreenCaptureKit audio / Core Audio process tap (macOS 13+). One-time screen-recording permission prompt. Fallback: BlackHole / Loopback virtual device.
 - **Linux** — PipeWire or PulseAudio monitor source. No root / no kernel modules.
 
 ### No Python, No ML Service
@@ -1679,8 +1753,8 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 | Aspect | Previous | Now |
 |--------|----------|-----|
 | **Speaker model** | `"YOU" \| "THEM"` binary | `SpeakerIdentity` with TEAM/EXTERNAL, userId, name |
-| **Speaker identification** | Audio source (mic=YOU, tab=THEM) → voice embeddings + Python microservice | VAD correlation (per-user local-mic VAD ↔ server-side Deepgram diarization timestamps) — zero ML voice models, zero enrollment |
-| **Audio capture** | Browser / Meet tab (extension) | **OS-level system audio loopback via Tauri/Rust (WASAPI / ScreenCaptureKit / PipeWire). Platform-agnostic — any conferencing app works.** |
+| **Speaker identification** | Audio source (mic=YOU, tab=THEM) → voice embeddings + Python microservice | Host-channel short-circuit + VAD correlation (per-user local-mic VAD ↔ server-side Deepgram channel-1 diarization timestamps) — zero ML voice models, zero enrollment |
+| **Audio capture** | Browser / Meet tab (extension) | **Dual-channel Tauri/Rust capture: host mic ch0 + OS-level system loopback ch1 (WASAPI / ScreenCaptureKit / PipeWire). Platform-agnostic — any conferencing app works.** |
 | **Desktop vs. extension** | Chrome extension + Tauri assist | **Native Tauri desktop app only. No browser extension ever.** |
 | **Web presence** | None | **`apps/web` dashboard for post-meeting review, admin, audit** |
 | **Processing location** | Local (Tauri-spawned) | Remote shared server |
@@ -1690,11 +1764,12 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 | **Tier 3** | Topic novelty check only | Embedding search (pgvector + commitment ledger) — safety net |
 | **Pattern libraries** | ~8 regex pattern files | REMOVED — replaced by Tier 2 LLM |
 | **Commitment ledger** | YOU + THEM, basic | Full SpeakerIdentity, embeddings, **in-memory HNSW (hot path) + Redis snapshot (durability)**, entire meeting |
-| **Audio path** | Redis stream → consumer → Deepgram | **Direct uWS → Deepgram inside the realtime worker. No Redis on audio bytes.** |
+| **Audio path** | Redis stream → consumer → Deepgram | **Direct Rust/uWS → Deepgram inside the realtime worker. No Redis, no Tauri IPC/base64, no JS PCM relay on audio bytes.** |
 | **Pipeline orchestration** | Tiers 1→2→3→4 sequential | **Tiers 1, 2, 3 run in parallel; Tier 4 gated after** |
 | **Tier 2 LLM calls** | One per post-filter utterance | **Per-session semantic cache on utterance embedding (~30% hit rate on filler), and Tier 2 output reused as topic-state semantic source** |
 | **Cost control** | Nominal budget only | **Per-meeting Redis cost counter; gate tightening at 80% of cap; Tier 4 disabled at 100% of cap** |
 | **Diarization index drift** | Ignored | **Reassignment-merge onto existing SpeakerIdentity after silence** |
+| **Host speaker attribution** | VAD correlation like everyone else | **Channel 0 short-circuit maps directly to host identity; VAD correlation runs on channel 1 for non-host TEAM members** |
 | **Client clock drift** | Fixed ±300ms tolerance | **Per-client rolling-median offset + ±250ms window** |
 | **Alert UX** | Progressive / preliminary alerts | **Single atomic alert per Tier 4; content-free "Checking…" indicator only** |
 | **Raw audio persistence** | Not specified | **Parallel fire-and-forget stream to MinIO, 30-day lifecycle** |
@@ -1705,7 +1780,7 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 | **Language support** | English only (regex) | Any language (LLM-based) |
 | **New service** | Python microservice | **None — TypeScript everywhere** |
 | **Week 1** | Deepgram integration | Codebase migration + multi-user foundation |
-| **Week 2** | State management | VAD-based speaker ID + OS-level system audio capture |
+| **Week 2** | State management | VAD-based speaker ID + prototype audio capture |
 | **Total duration** | 58 days (~6 weeks) | 76 days (~11 weeks, including web dashboard) |
 
 ---
@@ -1715,12 +1790,12 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 - This timeline assumes 1 developer working full-time
 - 76 working days = ~11 weeks at 7 days/week, or ~15 weeks with weekends
 - Week 1 is primarily migration work (updating existing code to new architecture)
-- Week 2 is the single biggest platform-specific workstream: **OS-level system audio capture in Tauri/Rust across Windows, macOS, and Linux.** Budget extra time here if any platform misbehaves.
+- Audio intake is the biggest platform-specific workstream. Week 2 establishes the prototype capture path; the Post-Day 23 patch hardens production dual-channel capture before Tier 3/Tier 4 work builds on utterance shape.
 - Pattern library work from the old timeline is completely removed (replaced by Tier 2 LLM)
 - Weeks 7-8-9 can be parallelized if additional developers are available
 - Adjust based on actual velocity after Week 1
 - **No Chrome / Edge / Firefox extension.** Larity is a native desktop app (Tauri). The only web surface is the dashboard (`apps/web`) for post-meeting review and admin, and it never captures audio.
-- **Platform-agnostic meeting capture is a core product bet** — the product must work identically on Zoom, Meet, Teams, Slack Huddle, Discord, SIP phone, or anything else that makes sound on the host's machine. OS-level loopback is the mechanism.
+- **Platform-agnostic meeting capture is a core product bet** — the product must work identically on Zoom, Meet, Teams, Slack Huddle, Discord, SIP phone, or anything else that makes sound on the host's machine. Dual-channel host capture (mic + OS-level loopback) is the mechanism.
 - **Alert system with 12 categories is a core differentiator — prioritize quality over speed**
 - **Multi-user support is architecturally foundational — cannot be bolted on later**
 - **VAD correlation accuracy is critical path — benchmark with real multi-person audio early**

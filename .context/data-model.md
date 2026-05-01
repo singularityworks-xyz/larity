@@ -25,7 +25,7 @@ Org (Your agency)
 |-------|-------|---------|
 | `Org` | Root | Your agency |
 | `Client` | Org | Tenant boundary, all business data flows through here |
-| `User` | Org | Staff members (no voiceprints — speaker ID is VAD-correlation based) |
+| `User` | Org | Staff members (no voiceprints — speaker ID is host-channel short-circuit + VAD-correlation based) |
 | `ClientMember` | Client | User ↔ Client assignment with role (LEAD/MEMBER/OBSERVER) |
 
 ### Meeting Domain
@@ -33,7 +33,7 @@ Org (Your agency)
 | Model | Scope | Purpose |
 |-------|-------|---------|
 | `Meeting` | Client | Meetings with/about a client |
-| `MeetingParticipant` | Meeting | Who attended (tracks `type: TEAM \| EXTERNAL`, `speakerId`, and `confidence`) |
+| `MeetingParticipant` | Meeting | Who attended (tracks `type: TEAM \| EXTERNAL`, `speakerId`, `confidence`, and any Deepgram channel/index pairs mapped to that speaker) |
 | `Transcript` | Meeting | Full STT output with speaker identities, stored post-meeting |
 
 ### Decisions & Tasks
@@ -91,7 +91,7 @@ Transcript (STT) + Speaker Identities
 - `ImportantPoint` (feeds policy guardrails context)
 - `PolicyGuardrail` (for pre-meeting context)
 
-> No voice embeddings stored. Speaker identification at runtime uses VAD signals correlated with Deepgram diarization timestamps — see [meeting-mode.md §3](./meeting-mode.md#3-speaker-identification-via-vad-speaking-signals).
+> No voice embeddings stored. Speaker identification at runtime uses the host mic channel for direct host attribution and VAD signals correlated with Deepgram channel-1 diarization timestamps for everyone else — see [meeting-mode.md §3](./meeting-mode.md#3-speaker-identification-via-vad-speaking-signals).
 
 ### What Stays Ephemeral (Live Mode)
 
@@ -101,6 +101,7 @@ Transcript (STT) + Speaker Identities
 - Risks (detected live, not stored)
 - Policy violations (flagged live, not stored)
 - Speaker State Trackers (tone trajectory, engagement metrics)
+- Speaker Identity Mappings (`speakerId` → TEAM/EXTERNAL + `{ channel, index }[]`; persisted only as post-meeting evidence/metadata)
 
 ### External APIs (No DB Storage)
 

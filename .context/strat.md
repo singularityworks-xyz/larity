@@ -154,12 +154,12 @@
 ---
 
 **Day 24 — Twitter**
-> ~$0.30 for a full hour of meeting intelligence.
+> ~$0.30 for the LLM/embedding intelligence layer of a full hour meeting.
 >
 > not "here's your transcript".
 > 4-tier LLM pipeline. contradiction detection. commitment tracking. alert routing.
 >
-> $0.30.
+> ~$1.22 all-in with dual-channel STT.
 
 *(Numbers are always interesting to investors. Drop it without framing.)*
 
@@ -178,7 +178,7 @@
 >
 > tiers 1, 2, and 3 run in parallel.
 >
-> total: <720ms. ~$0.30/meeting.
+> total: <720ms. ~$0.30 for the intelligence layer, ~$1.22 all-in with dual-channel STT.
 >
 > the discipline is knowing when NOT to call a model.
 
@@ -296,7 +296,7 @@
 >
 > 🥉 recording + transcript
 > 🥈 post-meeting summary
-> 🥇 silent co-pilot that catches contradictions during the call, routes alerts to the right people, and costs you $0.30 a meeting
+> 🥇 silent co-pilot that catches contradictions during the call, routes alerts to the right people, and costs about $1.22 for a dual-channel hour
 >
 > we're building the gold medal.
 
@@ -340,7 +340,7 @@
 **Day 54 — LinkedIn post**
 > We've been building Larity privately for the past two months.
 >
-> It's a native desktop application for client-facing teams. It captures OS-level system audio from whatever conferencing tool the team uses — Zoom, Teams, Meet, anything — and runs a real-time intelligence pipeline on top.
+> It's a native desktop application for client-facing teams. It captures a dual-channel feed from the host's machine — clean host mic plus OS-level system audio from whatever conferencing tool the team uses: Zoom, Teams, Meet, anything — and runs a real-time intelligence pipeline on top.
 >
 > During a meeting, it silently tracks commitments, flags contradictions, detects scope creep, identifies pressure tactics, and routes alerts to the right teammates — some are team-wide, some are private.
 >
@@ -348,7 +348,7 @@
 >
 > Speaker identification works by correlating local VAD signals with Deepgram's diarization — zero voice models, works across any conferencing platform.
 >
-> The pipeline costs ~$0.30 per meeting.
+> The LLM/embedding pipeline costs ~$0.30 per meeting; dual-channel STT brings the all-in nominal cost to about $1.22 for an hour.
 >
 > If this is in the intersection of things you care about, [link to waitlist / contact].
 
@@ -408,7 +408,7 @@
 
 **Recurring post formats:**
 
-**"The $0.30 meeting"** — periodic updates on actual per-meeting costs from internal dogfooding.
+**"The $1.22 meeting"** — periodic updates on actual all-in per-meeting costs from internal dogfooding, with the $0.30 intelligence-layer cost broken out when useful.
 
 **"Things we decided not to build"** — philosophy thread on deliberate exclusions (no chrome ext, no voice models, no regex libraries, no local server).
 
@@ -424,7 +424,7 @@
 
 | What to drop | How to drop it |
 |---|---|
-| $0.30/meeting cost | As a fact, not a feature |
+| ~$1.22/meeting all-in cost | As a fact, not a feature |
 | No per-platform integrations needed | As a design principle |
 | VAD correlation with zero ML models | As a technical aside |
 | 4-tier pipeline with parallel execution | In the technical thread |

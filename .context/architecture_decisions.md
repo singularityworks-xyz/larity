@@ -49,9 +49,9 @@ The decisions below (B.1–B.11) were adopted after a full audit of the pipeline
 - **Subtlety:** Tier 2's ledger write is awaited inside the Tier 2 task, so Tier 3's ledger search sees prior commitments but not the current one. Tier 1 blocklist/technical hits still fire "instant" alerts without waiting on Tier 4.
 - **Where:** [meeting-mode.md §5.6.1](./meeting-mode.md#561-pipeline-orchestration--parallel-tier-execution), timeline Day 28.
 
-### B.2 Direct uWS → Deepgram audio path (no Redis hop)
-- **Context:** Audio is exactly one-producer (host WS) → one-consumer (Deepgram WS). Routing PCM frames through a Redis stream adds ~2–5ms per 20–100ms frame and no fan-out value.
-- **Decision:** The realtime worker holds both the client WS and the Deepgram WS in the same process and relays audio frame-for-frame. Redis stays reserved for state, control, and pub/sub — never audio.
+### B.2 Direct Rust/uWS → Deepgram audio path (no Redis, no JS PCM relay)
+- **Context:** Audio is exactly one-producer (host Rust audio engine) → one-consumer (Deepgram WS). Routing PCM frames through Redis adds ~2–5ms per 20–100ms frame and no fan-out value. Routing PCM through Tauri events and JS adds base64 inflation, IPC overhead, and renderer-thread contention.
+- **Decision:** The host desktop opens the realtime WebSocket from Rust and sends binary PCM frames directly. The realtime worker holds both the host WS and the Deepgram WS in the same process and relays audio frame-for-frame. Redis stays reserved for state, control, and pub/sub — never audio. React controls start/stop/status but does not carry PCM in production.
 - **Where:** [architecture-and-flow.md §6](./architecture-and-flow.md#6-audio-capture--transport), timeline Day 14.
 
 ### B.3 Commitment ledger = in-memory HNSW + Redis snapshot
@@ -59,9 +59,9 @@ The decisions below (B.1–B.11) were adopted after a full audit of the pipeline
 - **Decision:** Primary = per-session in-memory HNSW (sub-ms top-K). Secondary = Redis JSON snapshot for durability, observer fan-out (`meeting.ledger.{sessionId}` pub/sub), and crash recovery. Tertiary = pgvector at meeting end for org memory.
 - **Where:** [meeting-mode.md §5.4.2](./meeting-mode.md#542-commitment-ledger-in-memory-hnsw--redis-snapshot-entire-meeting), timeline Day 17-18.
 
-### B.4 Diarization index reassignment-merge
+### B.4 Channel-aware diarization index reassignment-merge
 - **Context:** Deepgram reassigns speaker indices after long silences — the same talker may appear as `speaker=0` then later as `speaker=3`. Treating these as two speakers destroys contradiction detection.
-- **Decision:** `SpeakerIdentity` owns a **set** of diarization indices. On a new unseen index, if VAD points to the same userId and the gap since the candidate identity last spoke > 15s, merge (don't create a new speaker). Cache changes from `Map<index, SpeakerIdentity>` to `Map<index, speakerId>` + `Map<speakerId, SpeakerIdentity>`.
+- **Decision:** `SpeakerIdentity` owns a **set** of `{ channel, index }` pairs. On a new unseen channel/index pair, channel 0 short-circuits to the host identity; channel 1 uses VAD correlation. If VAD points to the same userId and the gap since the candidate identity last spoke > 15s, merge (don't create a new speaker). Cache changes from `Map<index, SpeakerIdentity>` to `Map<channel:index, speakerId>` + `Map<speakerId, SpeakerIdentity>`.
 - **Where:** [meeting-mode.md §3.3.2](./meeting-mode.md#332-diarization-index-reassignment--merge-logic), timeline Day 10-11.
 
 ### B.5 Per-client rolling-median clock-offset reconciliation
@@ -76,8 +76,8 @@ The decisions below (B.1–B.11) were adopted after a full audit of the pipeline
 - **Where:** timeline Day 28.
 
 ### B.7 Per-meeting cost ceiling
-- **Context:** A pathological meeting (lots of contradictions, long recent-utterance windows) could blow the nominal $0.30 cost budget by 10×.
-- **Decision:** Redis counter `meeting:cost:{sessionId}` updated with real token usage after every Tier 2 and Tier 4 call. Default cap $2.00/meeting. At 80% of cap raise Tier 4 gate thresholds; at 100% disable Tier 4 entirely for the rest of the meeting (Tiers 1-3 and Tier 1 instant alerts keep running).
+- **Context:** The nominal LLM/embedding intelligence layer is ~$0.30 per meeting, while the dual-channel all-in path is ~$1.22 for a 1-hour meeting once Deepgram channel-minutes are included. A pathological meeting (lots of contradictions, long recent-utterance windows) could still blow the LLM-side budget by 10× if Tier 4 is ungated.
+- **Decision:** Redis counter `meeting:cost:{sessionId}` updated with real token usage after every Tier 2 and Tier 4 call, plus Deepgram channel-minute estimates from the audio intake. Default cap $2.00/meeting. At 80% of cap raise Tier 4 gate thresholds; at 100% disable Tier 4 entirely for the rest of the meeting (Tiers 1-3 and Tier 1 instant alerts keep running).
 - **Where:** timeline Day 28.
 
 ### B.8 Atomic alerts, no progressive flicker
@@ -99,3 +99,9 @@ The decisions below (B.1–B.11) were adopted after a full audit of the pipeline
 - **Context:** Without metrics, the <800ms budget is aspirational. Smoke scripts aren't enough.
 - **Decision:** Per-utterance JSON line with all per-tier latencies, costs, cache hits, gate decisions, and total end-to-end latency. Per-session rollup (p50/p95/p99 latency, total cost, tier counts) on meeting end. Optional Prometheus histograms if infra is in place. Metrics key off `sessionId` / `utteranceId` so anything can be drilled down.
 - **Where:** timeline Day 28 (pipeline side) + Day 44-46 (E2E validation).
+
+### B.12 Dual-channel host audio intake
+- **Context:** Mixing the host mic with system loopback before STT risks clipping, comb filtering, and ambiguous diarization. It also makes the host's own speech depend on VAD correlation, even though the host mic is directly available on the host machine.
+- **Decision:** Host streams a 2-channel interleaved linear16 feed: ch0 = host mic, ch1 = OS-level system loopback. Deepgram runs with `diarize=true`, `multichannel=true`, `channels=2`. Channel 0 is assigned to the host `SpeakerIdentity` directly; channel 1 continues to use VAD-correlation for non-host TEAM speakers and EXTERNAL fallback.
+- **Tradeoff:** Deepgram cost doubles from one channel-minute to two channel-minutes during live meetings. The all-in nominal 1-hour cost moves from ~$0.76 single-channel to ~$1.22 dual-channel, but host WER and host identity reliability improve materially.
+- **Where:** [meeting-mode.md §5.1](./meeting-mode.md#51-audio--stt--utterance-pipeline), timeline Post-Day 23 Patch.
