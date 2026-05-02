@@ -1,4 +1,6 @@
-import type { PreloadedContextPayload } from "../constraint/types";
+import type { Alert } from "../alerts/types";
+import type { Commitment } from "../commitment/types";
+import type { Constraint, PreloadedContextPayload } from "../constraint/types";
 import { createMeetingModeLogger } from "../logger";
 import type { TopicState } from "../topic/types";
 import type { Utterance } from "../utterance/types";
@@ -6,11 +8,15 @@ import { PreFilter } from "./pre-filter";
 import { Tier1StructuralDetector } from "./tier1";
 import { Tier2Classifier } from "./tier2";
 import { Tier3SearchEngine } from "./tier3";
+import type { Tier4DeepReasoner } from "./tier4";
+import { buildAlertFromTier4Response } from "./tier4-alert";
+import { assembleTier4Context } from "./tier4-context";
 import type {
   Tier1Result,
   Tier2Classification,
   Tier2Input,
   Tier3Result,
+  Tier4Response,
 } from "./types";
 
 const log = createMeetingModeLogger("pipeline-engine");
@@ -18,6 +24,10 @@ const log = createMeetingModeLogger("pipeline-engine");
 const PERF = {
   now: () => performance.now(),
 };
+
+export interface Tier4AlertsPublisher {
+  publish(sessionId: string, alert: Alert): Promise<void>;
+}
 
 interface PipelineFinalizerAdapter {
   getRecentSameSpeakerText(
@@ -27,6 +37,10 @@ interface PipelineFinalizerAdapter {
     limit?: number
   ): string[];
   getRecentEmbeddings(sessionId: string, limit?: number): number[][];
+  getRecentUtterancesChronological(
+    sessionId: string,
+    options?: { excludeUtteranceId?: string; limit?: number }
+  ): Utterance[];
   applyTier2TopicDelta(
     sessionId: string,
     topicId: string | undefined,
@@ -37,6 +51,7 @@ interface PipelineFinalizerAdapter {
 interface ConstraintManagerAdapter {
   ensureHydrated(sessionId: string): Promise<void>;
   processUtterance(utterance: Utterance): Promise<unknown>;
+  getAll(sessionId: string): Constraint[];
 }
 
 interface CommitmentManagerAdapter {
@@ -72,6 +87,7 @@ interface CommitmentManagerAdapter {
     embedding: number[],
     options?: { limit?: number; threshold?: number }
   ): Array<{ id: string; score: number }>;
+  getAll(sessionId: string): Commitment[];
 }
 
 export interface PipelineEngineDependencies {
@@ -88,6 +104,14 @@ export interface PipelineEngineDependencies {
   preFilter?: PreFilter;
   tier1?: Tier1StructuralDetector;
   tier2?: Tier2Classifier;
+  tier4?: Tier4DeepReasoner;
+  tier4Alerts?: Tier4AlertsPublisher;
+}
+
+export interface Tier4EvaluationSummary {
+  invoked: boolean;
+  surfaced?: boolean;
+  latencyMs?: number;
 }
 
 export interface PipelineEvaluationResult {
@@ -95,13 +119,19 @@ export interface PipelineEvaluationResult {
   dropReason?: string;
   tier1?: Tier1Result;
   tier2?: Tier2Classification;
+  /** Mirrors Tier 2 classifier `shouldStopForDeepReasoning` (shown in traces / QA) */
+  tier2StopDeepReasoning?: boolean;
   tier3?: Tier3Result;
+  /** Raw Tier 4 model output — **omit** downstream / logs for privacy unless required */
+  tier4Response?: Tier4Response | null;
+  tier4Outcome?: Tier4EvaluationSummary;
   runTier4: boolean;
   latencies: {
     preFilterMs: number;
     tier1Ms?: number;
     tier2Ms?: number;
     gateMs?: number;
+    tier4Ms?: number;
     pipelineBudgetMs?: number;
   };
 }
@@ -124,6 +154,8 @@ export class MeetingPipelineEngine {
   private readonly getCurrentTopicLabel: NonNullable<
     PipelineEngineDependencies["getCurrentTopicLabel"]
   >;
+  private readonly tier4?: Tier4DeepReasoner;
+  private readonly tier4Alerts?: Tier4AlertsPublisher;
 
   constructor(deps: PipelineEngineDependencies) {
     this.preFilter = deps.preFilter ?? new PreFilter();
@@ -136,6 +168,8 @@ export class MeetingPipelineEngine {
     this.getContextPayload = deps.getContextPayload;
     this.getCurrentTopicLabel =
       deps.getCurrentTopicLabel ?? (async () => undefined);
+    this.tier4 = deps.tier4;
+    this.tier4Alerts = deps.tier4Alerts;
   }
 
   async evaluateUtterance(
@@ -153,6 +187,7 @@ export class MeetingPipelineEngine {
         dropped: true,
         dropReason: decision.reason,
         runTier4: false,
+        tier4Outcome: { invoked: false },
         latencies: {
           preFilterMs,
           pipelineBudgetMs: PERF.now() - start,
@@ -204,23 +239,136 @@ export class MeetingPipelineEngine {
       tier2.classification.intent === "concern" ||
       tier2.classification.riskSignals.length > 0;
 
+    // Respect Tier 2 "low-value / filler" gate for the whole Tier 4 call: Tier 3
+    // ledger/memory hits can otherwise force Tier 4 on every greeting when embeddings
+    // loosely match hydrated commitments — wasteful and breaks the tiered design.
     const runTier4 =
-      (highSignal && !tier2.shouldStopForDeepReasoning) || tier3.forceTier4;
+      !tier2.shouldStopForDeepReasoning && (highSignal || tier3.forceTier4);
     const gateMs = PERF.now() - gateStart;
+
+    const { tier4Response, tier4Outcome, tier4Ms } =
+      await this.evaluateTier4AfterGate({
+        utterance,
+        runTier4,
+        tier1,
+        tier2Classification: tier2.classification,
+        tier3,
+        payload,
+      });
 
     return {
       dropped: false,
       tier1,
       tier2: tier2.classification,
+      tier2StopDeepReasoning: tier2.shouldStopForDeepReasoning,
       tier3,
+      tier4Response,
+      tier4Outcome,
       runTier4,
       latencies: {
         preFilterMs,
         tier1Ms,
         tier2Ms,
         gateMs,
+        tier4Ms,
         pipelineBudgetMs: PERF.now() - start,
       },
+    };
+  }
+
+  private async evaluateTier4AfterGate(params: {
+    utterance: Utterance;
+    runTier4: boolean;
+    tier1: Tier1Result;
+    tier2Classification: Tier2Classification;
+    tier3: Tier3Result;
+    payload: PreloadedContextPayload | null;
+  }): Promise<{
+    tier4Response: Tier4Response | null;
+    tier4Outcome: Tier4EvaluationSummary;
+    tier4Ms?: number;
+  }> {
+    const { utterance, runTier4, tier1, tier2Classification, tier3, payload } =
+      params;
+
+    if (!runTier4) {
+      return {
+        tier4Response: null,
+        tier4Outcome: { invoked: false },
+      };
+    }
+
+    const tier4 = this.tier4;
+    const tier4Alerts = this.tier4Alerts;
+    if (!(tier4 && tier4Alerts)) {
+      log.debug(
+        { sessionId: utterance.sessionId, utteranceId: utterance.utteranceId },
+        "Tier4 gated positive but Tier4 deps missing; skipping silently"
+      );
+      return {
+        tier4Response: null,
+        tier4Outcome: { invoked: false, surfaced: false },
+      };
+    }
+
+    const topicSummaryRaw = await this.getCurrentTopicLabel(
+      utterance.sessionId,
+      utterance.topicId
+    );
+    const topicSummary =
+      typeof topicSummaryRaw === "string" ? topicSummaryRaw : "";
+
+    const recentUtterances = this.finalizer.getRecentUtterancesChronological(
+      utterance.sessionId,
+      { excludeUtteranceId: utterance.utteranceId, limit: 48 }
+    );
+
+    const tier4Ctx = assembleTier4Context({
+      utterance,
+      topicSummary,
+      tier1,
+      tier2: tier2Classification,
+      tier3,
+      payload,
+      recentUtterances,
+      allCommitments: this.commitmentManager.getAll(utterance.sessionId),
+      allConstraints: this.constraintManager.getAll(utterance.sessionId),
+    });
+
+    const tier4WallStart = PERF.now();
+    const tier4Response = await tier4.reason(tier4Ctx);
+    const tier4Ms = PERF.now() - tier4WallStart;
+
+    let tier4Surfaced = false;
+    if (tier4Response) {
+      const alert = buildAlertFromTier4Response({
+        response: tier4Response,
+        triggerUtteranceId: utterance.utteranceId,
+        speaker: utterance.speaker,
+        topicId: utterance.topicId,
+      });
+
+      if (alert) {
+        try {
+          await tier4Alerts.publish(utterance.sessionId, alert);
+          tier4Surfaced = true;
+        } catch (error) {
+          log.warn(
+            { err: error, utteranceId: utterance.utteranceId },
+            "Tier4 alert publishing failed silently"
+          );
+        }
+      }
+    }
+
+    return {
+      tier4Response,
+      tier4Outcome: {
+        invoked: true,
+        surfaced: tier4Surfaced,
+        latencyMs: tier4Ms,
+      },
+      tier4Ms,
     };
   }
 

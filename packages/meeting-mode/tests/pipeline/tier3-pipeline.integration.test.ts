@@ -33,12 +33,14 @@ describe("Tier3 Pipeline Integration (Embed Once)", () => {
     constraintManagerMock = {
       ensureHydrated: mock(() => Promise.resolve()),
       processUtterance: mock(() => Promise.resolve()),
+      getAll: mock(() => []),
     };
 
     commitmentManagerMock = {
       hydrateSession: mock(() => Promise.resolve()),
       addCommitment: mock(() => Promise.resolve()),
       search: mock(() => []),
+      getAll: mock(() => []),
     };
 
     finalizer = new UtteranceFinalizer(publisherMock, {

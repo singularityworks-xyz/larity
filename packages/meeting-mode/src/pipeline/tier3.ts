@@ -51,10 +51,9 @@ export class Tier3SearchEngine {
     const [noveltyScore, ledgerMatches, memoryMatches] =
       await Promise.all(tasks);
 
-    // If novelty score is extremely high, this is basically a duplicate of what was just said.
-    // However, the rule says:
-    // - Memory match found -> force Tier 4
-    // - Commitment ledger match found (potential contradiction) -> force Tier 4
+    // Suggest Tier 4: memory or commitment-ledger similarity (potential contradiction).
+    // The pipeline engine still respects Tier 2 `shouldStopForDeepReasoning` so low-value
+    // lines do not invoke Tier 4 even when ledger embedding matches loosely.
     const forceTier4 = memoryMatches.length > 0 || ledgerMatches.length > 0;
 
     return {

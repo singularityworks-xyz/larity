@@ -61,6 +61,11 @@ describe("AlertSubscriber channel resolution", () => {
       expect(extractSessionId(channel)).toBe(sessionId);
     });
 
+    it("should extract sessionId from pipeline trace channel", () => {
+      const channel = `meeting.pipeline.${sessionId}`;
+      expect(extractSessionId(channel)).toBe(sessionId);
+    });
+
     it("should extract sessionId from speaker channel", () => {
       const channel = `meeting.speaker.${sessionId}`;
       expect(extractSessionId(channel)).toBe(sessionId);

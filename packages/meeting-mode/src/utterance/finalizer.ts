@@ -216,6 +216,39 @@ export class UtteranceFinalizer {
       .reverse();
   }
 
+  /**
+   * Utterances before the latest finalize (excluding optional id), chronological order (oldest first).
+   * Used for Tier 4 recent transcript context — current utterance is not yet appended when handlers run.
+   */
+  getRecentUtterancesChronological(
+    sessionId: string,
+    options?: { excludeUtteranceId?: string; limit?: number }
+  ): Utterance[] {
+    const ringBuffer = this.ringBuffers.get(sessionId);
+    if (!ringBuffer) {
+      return [];
+    }
+
+    const excludeId = options?.excludeUtteranceId;
+    const limitOut = Math.min(Math.max(options?.limit ?? 48, 1), 120);
+
+    const stats = ringBuffer.getStats();
+    const fetch = Math.min(Math.max(stats.count, 1), 120);
+
+    let recentNewestFirst = ringBuffer.getRecent(fetch);
+    if (excludeId) {
+      recentNewestFirst = recentNewestFirst.filter(
+        (utterance) => utterance.utteranceId !== excludeId
+      );
+    }
+
+    const ascending = [...recentNewestFirst].sort(
+      (first, second) => first.timestamp - second.timestamp
+    );
+
+    return ascending.slice(Math.max(0, ascending.length - limitOut));
+  }
+
   async applyTier2TopicDelta(
     sessionId: string,
     topicId: string | undefined,
