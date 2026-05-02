@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { TTL } from "@larity/infra/redis/ttl";
 import type { Redis as RedisClient } from "ioredis";
 import Redis from "ioredis-mock";
-import { TTL } from "../../../infra/redis/ttl";
 import { constraintChannel } from "../../src/channels";
 import { ConstraintLedger } from "../../src/constraint/ledger";
 import { createTeamSpeaker } from "../helpers";

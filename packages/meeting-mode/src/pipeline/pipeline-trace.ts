@@ -3,7 +3,12 @@ import { PIPELINE_TRACE_PRETTY_JSON } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import type { Utterance } from "../utterance/types";
 import type { PipelineEvaluationResult } from "./engine";
-import type { Tier1Result, Tier2Classification, Tier3Result, Tier4Response } from "./types";
+import type {
+  Tier1Result,
+  Tier2Classification,
+  Tier3Result,
+  Tier4Response,
+} from "./types";
 
 export const PIPELINE_TRACE_VERSION = 1 as const;
 

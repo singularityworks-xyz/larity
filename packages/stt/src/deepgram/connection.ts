@@ -8,8 +8,9 @@
 
 import type { ListenLiveClient } from "@deepgram/sdk";
 import { LiveTranscriptionEvents } from "@deepgram/sdk";
-import { redis } from "../../../infra/redis";
+import { redis } from "@larity/infra/redis";
 import { partialChannel, transcriptChannel } from "../channels";
+import { createSttLogger } from "../logger";
 import type { SttResult } from "../types";
 import { getDeepgramClient } from "./client";
 import {
@@ -17,6 +18,8 @@ import {
   type DeepgramWord,
   type TranscriptResult,
 } from "./types";
+
+const log = createSttLogger("dg-connection");
 
 /**
  * Sleep utility for reconnection delays
@@ -86,10 +89,7 @@ export class DeepgramConnection {
       this.connection = client.listen.live(DEFAULT_DG_CONFIG);
       this.setupEventHandlers();
     } catch (error) {
-      console.error(
-        `[DG] Failed to create connection for ${this.sessionId}:`,
-        error
-      );
+      log.error(`Failed to create connection for ${this.sessionId}:`, error);
       this.isConnecting = false;
       await this.reconnect();
     }
@@ -104,7 +104,7 @@ export class DeepgramConnection {
     }
 
     this.connection.on(LiveTranscriptionEvents.Open, () => {
-      console.log(`[DG] Connection opened for ${this.sessionId}`);
+      log.info(`Connection opened for ${this.sessionId}`);
       this.isConnected = true;
       this.isConnecting = false;
       this.retryCount = 0; // Reset retry count on successful connection
@@ -116,7 +116,7 @@ export class DeepgramConnection {
         reason?: string;
         wasClean?: boolean;
       };
-      console.log(`[DG] Connection closed for ${this.sessionId}`, {
+      log.info(`Connection closed for ${this.sessionId}`, {
         code: closeEvent?.code,
         reason: closeEvent?.reason,
       });
@@ -131,7 +131,7 @@ export class DeepgramConnection {
     });
 
     this.connection.on(LiveTranscriptionEvents.Error, (error) => {
-      console.error(`[DG] Error for ${this.sessionId}:`, error);
+      log.error(`Error for ${this.sessionId}:`, error);
     });
 
     this.connection.on(
@@ -155,9 +155,7 @@ export class DeepgramConnection {
 
     // Lazy connect on first audio
     if (!(this.isConnected || this.isConnecting)) {
-      console.log(
-        `[DG] Lazy connecting for ${this.sessionId} (first audio received)`
-      );
+      log.info(`Lazy connecting for ${this.sessionId} (first audio received)`);
       await this.connect();
     }
 
@@ -222,8 +220,8 @@ export class DeepgramConnection {
     };
 
     const diarizeSummary = summarizeDiarizedSpeakers(alternative.words);
-    console.log(
-      `[DG] "${transcript}" | session=${this.sessionId} capture_ch=${channelIndex} ` +
+    log.info(
+      `"${transcript}" | session=${this.sessionId} capture_ch=${channelIndex} ` +
         `dg_speaker=${diarizationIndex} dg_speakers=[${diarizeSummary}] ` +
         `speech_final=${result.speech_final} ${is_final ? "final" : "partial"} ` +
         `conf=${(alternative.confidence || 0).toFixed(2)}`
@@ -242,10 +240,7 @@ export class DeepgramConnection {
     try {
       await redis.publish(channel, JSON.stringify(result));
     } catch (error) {
-      console.error(
-        `[DG] Failed to publish transcript for ${this.sessionId}:`,
-        error
-      );
+      log.error(`Failed to publish transcript for ${this.sessionId}:`, error);
     }
   }
 
@@ -258,15 +253,15 @@ export class DeepgramConnection {
     }
 
     if (this.retryCount >= this.maxRetries) {
-      console.error(`[DG] Max retries exceeded for ${this.sessionId}`);
+      log.error(`Max retries exceeded for ${this.sessionId}`);
       return;
     }
 
     const delay = Math.min(this.baseDelay * 2 ** this.retryCount, 30_000);
     this.retryCount++;
 
-    console.log(
-      `[DG] Reconnecting ${this.sessionId} in ${delay}ms (attempt ${this.retryCount})`
+    log.info(
+      `Reconnecting ${this.sessionId} in ${delay}ms (attempt ${this.retryCount})`
     );
 
     await sleep(delay);
@@ -285,15 +280,12 @@ export class DeepgramConnection {
       try {
         this.connection.requestClose();
       } catch (error) {
-        console.error(
-          `[DG] Error closing connection for ${this.sessionId}:`,
-          error
-        );
+        log.error(`Error closing connection for ${this.sessionId}:`, error);
       }
       this.connection = null;
     }
 
-    console.log(`[DG] Session ${this.sessionId} closed permanently`);
+    log.info(`Session ${this.sessionId} closed permanently`);
   }
 
   /**

@@ -1,10 +1,10 @@
-import type { Redis } from "ioredis";
 import {
   connectRedis,
   disconnectRedis,
   getRedisClient,
-} from "../../infra/redis";
-import { redisKeys } from "../../infra/redis/keys";
+} from "@larity/infra/redis";
+import { redisKeys } from "@larity/infra/redis/keys";
+import type { Redis } from "ioredis";
 import { AlertPublisher } from "./alerts/publisher";
 import type { Alert } from "./alerts/types";
 import { CommitmentManager } from "./commitment/manager";

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
-import { redisKeys } from "../../../infra/redis/keys";
-import { TTL } from "../../../infra/redis/ttl";
+import { redisKeys } from "@larity/infra/redis/keys";
+import { TTL } from "@larity/infra/redis/ttl";
 import { AlertQueueManager } from "../../src/alerts/queue";
 import {
   resolveAlertRouting,

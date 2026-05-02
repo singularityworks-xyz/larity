@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { redisKeys } from "@larity/infra/redis/keys";
 import Redis from "ioredis-mock";
-import { redisKeys } from "../../../infra/redis/keys";
 import { SpeakerPersistence } from "../../src/speaker/persistence";
 import type { SpeakerMapping } from "../../src/speaker/types";
 
