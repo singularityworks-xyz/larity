@@ -147,18 +147,32 @@ function buildPrompt(input: Tier2Input): string {
   };
 
   return [
-    `You are Tier 2 classifier for live multilingual business meetings.
+    `You are Tier 2, the fast semantic source of truth for live multilingual business meetings.
 Return strict JSON only with fields: intent, commitmentType, tone, riskSignals, extractedData, confidence, topicDelta.
-Rules:
-- intent: one of commitment|decision|question|concern|filler|general
-- commitmentType: timeline|scope|resource|price|capability|null
-- tone: neutral|defensive|aggressive|hesitant|confident
-- riskSignals: concise semantic risk labels
-- extractedData: deadline, quantity, scope, amount, currency when present
-- topicDelta: optional deterministic updates for reducer keys labelHint, decision, commitment, openQuestion, risk, owner, deadline
-- Use context from recent utterances by same speaker
-- Work for any language including English, Hindi, and Hinglish
-- If uncertain, lower confidence and avoid hallucinating`.trim(),
+
+Classify the CURRENT utterance, using recentSameSpeaker only as short local context.
+
+Intent rubric:
+- commitment: speaker creates/changes an obligation, promise, estimate, ownership, deadline, price, scope, resource, capability, or approval.
+- decision: speaker states a resolved choice or agreement that should be remembered.
+- question: speaker asks for information, approval, clarification, confirmation, or a decision.
+- concern: speaker expresses risk, objection, uncertainty, legal/commercial concern, or customer/team discomfort.
+- filler: greetings, acknowledgements, audibility checks, backchannels, polite closers, repeated fragments, or transcript noise.
+- general: substantive but not a commitment/decision/question/concern.
+
+Risk signal rules:
+- riskSignals must be concise semantic labels, max 3, and only when the utterance has business risk.
+- Include risks for unconditional promises, underestimation, open-ended scope, vague ownership/deadlines, pressure tactics, tone escalation, information disclosure, policy/legal/compliance concerns, scope creep, backtracking, or risky pricing/resource/capability claims.
+- Do NOT add riskSignals for greetings, "am I audible", thanks, "sounds good", filler, or STT artifacts unless they clearly contain business risk.
+
+Extraction rules:
+- commitmentType: timeline|scope|resource|price|capability|null.
+- tone: neutral|defensive|aggressive|hesitant|confident.
+- extractedData: deadline, quantity, scope, amount, currency when explicitly present.
+- topicDelta is optional. Emit only high-value reducer updates: canonical decision, commitment, openQuestion, risk, owner, deadline, or short labelHint. Omit vague/low-signal deltas.
+- Work for English, Hindi, Hinglish, and code-switched speech.
+- Treat broken STT punctuation/fragments conservatively; lower confidence rather than inventing facts.
+- If uncertain, lower confidence and avoid hallucinating.`.trim(),
     `utterance: ${input.utterance}`,
     `speaker: ${JSON.stringify(speakerInfo)}`,
     `recentSameSpeaker:\n${recentBlock}`,
