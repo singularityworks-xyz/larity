@@ -90,3 +90,10 @@ export interface Tier2Outcome {
   classification: Tier2Classification;
   shouldStopForDeepReasoning: boolean;
 }
+
+export interface Tier3Result {
+  forceTier4: boolean;
+  noveltyScore: number;
+  memoryMatches: Array<{ type: string; id: string; score: number }>;
+  ledgerMatches: Array<{ id: string; score: number }>;
+}
