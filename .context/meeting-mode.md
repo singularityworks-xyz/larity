@@ -548,6 +548,19 @@ interface Constraint {
 
 ---
 
+### 5.5.1 Utterance merger and publish timing
+
+After a **STT final**, meeting-mode builds one `Utterance`, embeds, assigns a topic, then passes it through **`UtteranceMerger`** before Redis publish and the tiered pipeline:
+
+- **Same-speaker, short gap:** If the next final is from the **same `speakerId`** and starts within **`MERGE_GAP_MS`** after the previous segment’s audio end (`timestamp + duration`), the merger **combines text** into a single utterance (one publish, one pipeline pass).
+- **Otherwise:** The previous pending segment is **published** first; the new segment becomes pending.
+
+**Important — avoid one-utterance lag:** The merger traditionally held the **first** segment as `pending` until a **second** final arrived, which deferred the pipeline (and Tier 4) by one line. **Current behavior:** if a segment stays pending with no sibling merge, **`UtteranceFinalizer` schedules a flush** at **`pending audio end + MERGE_GAP_MS`**. Incoming finals **clear and reschedule** that timer; **`closeSession`** cancels it and **`flush()`** publishes any remainder.
+
+Configurable via **`MERGE_GAP_MS`** in env (default 5000). Tests may pass a shorter `mergerGapMs` on `UtteranceFinalizer`; production merges use the env default.
+
+---
+
 ### 5.6 Trigger Evaluation — Tiered Processing Pipeline
 
 This is the core intelligence pipeline. For each finalized utterance, it runs through four tiers.
@@ -694,17 +707,33 @@ Three parallel checks:
 - This is how contradictions from 40 minutes ago get caught
 - Especially important for **team inconsistency** detection (Rahul says "2 weeks", then 40 minutes later Raj says "2 months")
 
-**Tier 3 forcing logic:**
-- If memory match found (similarity > threshold) → **force Tier 4** regardless of Tier 2 classification
-- If commitment ledger match found (potential contradiction) → **force Tier 4**
-- If Tier 2 already flagged this for Tier 4 → continues to Tier 4
-- If no matches and Tier 2 said stop → **STOP**
+**Tier 3 signal — `forceTier4`:**
+Embedding search sets **`forceTier4 = true`** when there is at least one **memory** hit or **commitment ledger** hit above similarity threshold. That is a **hint** that the line may contradict org memory or an in-meeting commitment.
+
+**Combined Tier 4 gate (implemented):** Tier 4 runs only if Tier 2 does **not** request “stop deep reasoning” **and** either the utterance is **high-signal** from Tier 1/2 **or** Tier 3 set **`forceTier4`**:
+
+```
+shouldStopForDeepReasoning =
+  intent ∈ {filler, general} ∧ riskSignals.length === 0 ∧ confidence > 0.8
+
+highSignal =
+  tier1.blocklistHit ∨ tier1.technicalHit ∨
+  intent ∈ {commitment, decision, concern} ∨ riskSignals.length > 0
+
+runTier4 = ¬shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)
+```
+
+So **`forceTier4` still matters** whenever the utterance is not a high-confidence filler/general line: it can turn on Tier 4 even when Tier 2’s headline intent looks low-signal but embeddings matched the ledger/memory. Conversely, **`forceTier4` alone does not invoke Tier 4** on **`shouldStopForDeepReasoning`** (avoids Gemini on “hi / sounds good” when spurious ledger similarity fires).
+
+Legacy doc lines that said “force Tier 4 regardless of Tier 2” apply only to **`highSignal`** and **`forceTier4` inside the parentheses** above — not to the veto from **`shouldStopForDeepReasoning`**.
 
 **Cost:** ~$0.00002 per embedding call × ~80 calls per meeting = **~$0.002 per meeting for Tier 3**
 
-#### Tier 4: Deep LLM Reasoning (~$0.02/call, 300-500ms)
+#### Tier 4: Deep LLM Reasoning (~$0.02/call; wall-clock timeout configurable)
 
-**Large model (Gemini Pro class by default).** Only called for high-signal utterances — approximately **5-10% of total utterances** (~8-12 calls per hour-long meeting).
+**Large model** (default from `GEMINI_TIER4_MODEL`; typically Pro-class vs Flash Tier 2). Only runs when **`runTier4`** is true (§5.6.1 gate). Typical share **~5-10%** of post-filter finals; actual count depends on content and embeddings.
+
+**Timeout:** Gemini call is raced with **`GEMINI_TIER4_TIMEOUT_MS`** (default **1500** ms); on timeout / parse failure / schema failure the pass **fail-silently** (no alert).
 
 **Rich context assembly for Tier 4:**
 
@@ -755,19 +784,19 @@ interface Tier4Context {
 interface Tier4Response {
   alertType: AlertCategory | "none"
   severity: "low" | "medium" | "high" | "critical"
-  message: string                              // Short, actionable
-  suggestion?: string                          // Alternative phrasing or action
+  message: string                              // Headline / what to notice (overlay)
+  surfaceReason?: string                       // One short user-visible “why flagged” line when surfacing
+  suggestion?: string                         // One or two sentences: what to say or do next (when surfacing)
   confidence: number
   shouldSurface: boolean
-  reasoning: string                            // For logging, not shown to user
+  reasoning: string                            // Internal audit only — omit from traces/UI
 
-  // Routing (see Section 7 — Alert Routing)
   routing: "shared" | "personal" | "both"
-  targetUserId?: string                        // For personal alerts
+  targetUserId?: string
 }
 ```
 
-If `shouldSurface = false` or `alertType = "none"`, nothing happens.
+If `shouldSurface = false` or `alertType = "none"`, nothing happens. When **`shouldSurface` is true**, validation requires user-facing copy: **`message`**, **`surfaceReason`**, and **`suggestion`** (alerts and pipeline traces expose the same surfaced fields; internal **`reasoning`** stays server-side only).
 
 **Cost:** ~$0.02 per call × ~8 calls per meeting = **~$0.16 per meeting for Tier 4**
 
@@ -816,13 +845,20 @@ if (gate.runTier4) {
 **Gate logic (runs in process after Tiers 1-3 resolve):**
 
 ```
-runTier4 = (
-  tier2.intent in ["commitment", "decision", "concern"] ||
-  tier2.riskSignals.length > 0 ||
-  tier3.memoryMatches.length > 0 ||
-  tier3.ledgerMatches.length > 0 ||
-  tier1.blocklistHit || tier1.technicalHit
-) && !(tier2.intent in ["filler", "general"] && tier2.confidence > 0.8 && tier3.empty)
+shouldStopForDeepReasoning =
+  tier2.intent ∈ {filler, general}
+  ∧ tier2.riskSignals.length === 0
+  ∧ tier2.confidence > 0.8
+
+highSignal =
+  tier1.blocklistHit ∨ tier1.technicalHit ∨
+  tier2.intent ∈ {commitment, decision, concern} ∨
+  tier2.riskSignals.length > 0
+
+forceTier4 =
+  tier3.memoryMatches.length > 0 ∨ tier3.ledgerMatches.length > 0
+
+runTier4 = ¬shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)
 ```
 
 **Latency envelope (after pre-filter):**
@@ -831,7 +867,7 @@ runTier4 = (
 Pre-filter              <10ms
 Tier 1 ∥ Tier 2 ∥ Tier 3 max(50, 200, 100) = 200ms
 Gate decision           <5ms
-Tier 4 (when needed)    300-500ms
+Tier 4 (when needed)    bounded by GEMINI_TIER4_TIMEOUT_MS (default 1500ms; fail-silent on timeout)
 -----------------------------------
 Without Tier 4:         <220ms
 With Tier 4:            <720ms
@@ -843,6 +879,17 @@ This fits the <800ms end-to-end budget from speech-final to alert delivery (Deep
 - Tier 2, on `intent ∈ {"commitment", "decision"}`, writes to the in-session commitment index (§5.4.2) **after** its own promise resolves but **before** `Promise.all` returns — the write is awaited inside the Tier 2 task. Tier 3's ledger search therefore sees prior commitments but not the current one (correct: you don't want to match an utterance against itself).
 - Tier 1 blocklist/technical hits are dispatched as "instant" alerts without waiting for Tier 4. These go out on the shared channel immediately.
 - Topic summary LLM refinement is explicitly off the hot path. It triggers only on topic shift/topic close/significant delta and never blocks the Tier 1/2/3 → gate → Tier 4 flow.
+
+#### 5.6.2 Pipeline traces (`meeting.pipeline.{sessionId}`)
+
+For manual QA and dev observability, meeting-mode publishes a **versioned JSON** trace per utterance after evaluation to Redis pub/sub **`meeting.pipeline.{sessionId}`** (see `pipelineTraceChannel` in `packages/meeting-mode/src/channels.ts`).
+
+- **Safe payload:** No embeddings vectors, no Tier 4 internal `reasoning` field — those stay out of the trace by design.
+- **Gate visibility:** Includes Tier 2 “stop deep reasoning”, `forceTier4` from Tier 3, **`runTier4`**, and a **`highSignal`** summary flag for logs.
+- **Tier 4 when surfaced:** The trace may include **`message`**, **`surfaceReason`**, and **`suggestion`** (user-visible copy that also ships on alerts).
+- **`PIPELINE_TRACE_PRETTY_JSON`:** When truthy (default non-production), traces and matching realtime subscriber logs use indented JSON for readability.
+
+Prometheus/session rollups in B.11 remain roadmap; **this channel is the current MVP for structured tier visibility.**
 
 #### Three Model Tiers
 

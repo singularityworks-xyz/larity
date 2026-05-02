@@ -44,6 +44,7 @@ describe("AlertQueueManager", () => {
 
   afterEach(() => {
     queue.clear();
+    vi.runAllTimers();
     vi.useRealTimers();
   });
 

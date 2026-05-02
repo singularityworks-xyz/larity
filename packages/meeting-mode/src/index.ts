@@ -1,18 +1,23 @@
+import type { Redis } from "ioredis";
 import {
   connectRedis,
   disconnectRedis,
   getRedisClient,
 } from "../../infra/redis";
 import { redisKeys } from "../../infra/redis/keys";
+import { AlertPublisher } from "./alerts/publisher";
+import type { Alert } from "./alerts/types";
 import { CommitmentManager } from "./commitment/manager";
 import { ConstraintManager } from "./constraint/manager";
 import type { PreloadedContextPayload } from "./constraint/types";
 import { validateEnv } from "./env";
 import { rootLogger } from "./logger";
 import { MeetingPipelineEngine } from "./pipeline/engine";
+import { publishPipelineEvaluationTrace } from "./pipeline/pipeline-trace";
 import { PreFilter } from "./pipeline/pre-filter";
 import { Tier1StructuralDetector } from "./pipeline/tier1";
 import { Tier2Classifier } from "./pipeline/tier2";
+import { Tier4DeepReasoner } from "./pipeline/tier4";
 import { SpeakerManager } from "./speaker/manager";
 import { startSubscriber, stopSubscriber } from "./subscriber";
 import { UtteranceFinalizer } from "./utterance/finalizer";
@@ -30,6 +35,9 @@ export * from "./pipeline/engine";
 export * from "./pipeline/pre-filter";
 export * from "./pipeline/tier1";
 export * from "./pipeline/tier2";
+export { Tier4DeepReasoner } from "./pipeline/tier4";
+export * from "./pipeline/tier4-alert";
+export * from "./pipeline/tier4-context";
 export * from "./pipeline/types";
 export { SpeakerIdentifier } from "./speaker/identifier";
 export * from "./speaker/types";
@@ -125,6 +133,14 @@ async function main(): Promise<void> {
     preFilter: new PreFilter(),
     tier1: new Tier1StructuralDetector(),
     tier2: new Tier2Classifier(),
+    tier4: new Tier4DeepReasoner(),
+    tier4Alerts: {
+      publish: async (sessionId: string, alert: Alert) =>
+        new AlertPublisher({
+          redis: redisClient as Redis,
+          sessionId,
+        }).publish(alert),
+    },
     getContextPayload: async (sessionId) => {
       const payload = await redisClient.get(
         redisKeys.meetingContext(sessionId)
@@ -149,7 +165,8 @@ async function main(): Promise<void> {
       return;
     }
 
-    await pipelineEngine.evaluateUtterance(utterance);
+    const evaluation = await pipelineEngine.evaluateUtterance(utterance);
+    await publishPipelineEvaluationTrace(redisClient, utterance, evaluation);
   });
 
   await startSubscriber(

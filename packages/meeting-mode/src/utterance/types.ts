@@ -48,6 +48,7 @@ export interface Utterance {
   wordCount: number;
   mergedCount: number;
   topicId?: string;
+  embedding?: number[];
 }
 
 export interface FinalizeResult {

@@ -1,5 +1,5 @@
+import { PrismaClient } from "@larity/infra/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../../../packages/infra/prisma/generated/prisma/client";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {

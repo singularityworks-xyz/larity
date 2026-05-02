@@ -31,6 +31,8 @@ export interface Alert {
 
   title: string;
   message: string;
+  /** Brief user-visible “why flagged” line from Tier 4 when surfaced */
+  surfaceReason?: string;
   suggestion?: string;
 
   routing: AlertRouting;

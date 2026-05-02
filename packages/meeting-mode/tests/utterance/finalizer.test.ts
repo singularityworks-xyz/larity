@@ -63,6 +63,26 @@ describe("UtteranceFinalizer", () => {
       expect(publisher.calls).toHaveLength(0);
     });
 
+    it("should publish a lone final after merge-gap without a second final", async () => {
+      const soloPublisher = createMockPublisher();
+      const fz = new UtteranceFinalizer(soloPublisher, { mergerGapMs: 35 });
+      const solo = createTestSttResult({
+        isFinal: true,
+        transcript: "Only line.",
+        duration: 0.05,
+      });
+
+      await fz.process(solo);
+      expect(soloPublisher.calls).toHaveLength(0);
+
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 120);
+      });
+      expect(soloPublisher.calls).toHaveLength(1);
+      const published = JSON.parse(soloPublisher.calls[0]?.message ?? "{}");
+      expect(published.text).toBe("Only line.");
+    });
+
     it("should create utterance with createUnidentifiedSpeaker on final result", async () => {
       const final1 = createTestSttResult({
         isFinal: true,

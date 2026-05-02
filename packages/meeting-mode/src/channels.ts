@@ -34,6 +34,11 @@ export function ledgerChannel(sessionId: string): string {
   return `meeting.ledger.${sessionId}`;
 }
 
+/** Dev telemetry: Tier 1–4 summarization emitted after evaluation (Redis pub/sub) */
+export function pipelineTraceChannel(sessionId: string): string {
+  return `meeting.pipeline.${sessionId}`;
+}
+
 export function speakerChannel(sessionId: string): string {
   return `meeting.speaker.${sessionId}`;
 }
@@ -54,6 +59,7 @@ const meetingSessionChannels = new Set([
   "constraint",
   "ledger",
   "speaker",
+  "pipeline",
 ]);
 
 const realtimeSessionChannels = new Set(["audio", "stt", "vad"]);

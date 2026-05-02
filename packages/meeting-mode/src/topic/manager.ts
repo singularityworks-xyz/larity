@@ -60,8 +60,9 @@ export class TopicManager {
   async assignTopic(utterance: Utterance): Promise<string> {
     const { sessionId, text } = utterance;
 
-    // 1. Embed utterance
-    const newVector = await this.embedder.embed(text);
+    // 1. Embed utterance (use pre-computed if available)
+    const newVector = utterance.embedding ?? (await this.embedder.embed(text));
+    utterance.embedding = newVector;
 
     // 2. Find best match
     const sessionTopics = this.activeTopics.get(sessionId) || [];
