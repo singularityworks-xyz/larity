@@ -172,6 +172,7 @@ Redis Channels (new):
 - meeting.alert.{sessionId}.user.{userId} — personal alerts
 - meeting.utterance.{sessionId} — processed utterances (broadcast to all)
 - meeting.topic.{sessionId} — topic change events
+- meeting.pipeline.{sessionId} — versioned tier/gate/trace JSON (manual QA / dev; see §5.6.2, B.11)
 ```
 
 ### STT Package Details (production host path — see B.12)
@@ -767,7 +768,11 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Status — ✓ implemented (verification: `cd packages/meeting-mode && bun test`; repo root `bun x ultracite check packages/meeting-mode`).**
 
-**Wire-up:** `packages/meeting-mode/src/pipeline/tier4.ts` (`Tier4DeepReasoner`), `types.ts` (Zod + `Tier4Context`), `tier4-context.ts` (preload hydrate + assemble), `tier4-alert.ts` (routing/coercion → `Alert`), `engine.ts` (gate → single publish), `index.ts` (Redis `AlertPublisher`), `env.ts` (`GEMINI_TIER4_MODEL`).
+**Related (utterance UX / latency):** Same-speaker merge + **`MERGE_GAP_MS`** timed flush prevents “lag one utterance” before tiers run ([meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing), B.14).
+
+**Related (gate):** Tier 4 runs only when **`runTier4 = !shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)`**; Tier 3’s **`forceTier4`** alone does **not** beat Tier 2’s filler/general stop (B.13).
+
+**Wire-up:** `packages/meeting-mode/src/pipeline/tier4.ts` (`Tier4DeepReasoner`), `types.ts` (Zod + `Tier4Context`), `tier4-context.ts` (preload hydrate + assemble), `tier4-alert.ts` (routing/coercion → `Alert`), `engine.ts` (gate → single publish), `index.ts` (Redis `AlertPublisher`), `env.ts` (`GEMINI_TIER4_MODEL`, `GEMINI_TIER4_TIMEOUT_MS`, `MERGE_GAP_MS`, `PIPELINE_TRACE_PRETTY_JSON`).
 
 - [x] Set up large LLM integration (Gemini Pro–class via `GEMINI_TIER4_MODEL`, `@google/genai`)
 - [x] Define Tier 4 context assembly:
@@ -789,19 +794,20 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   interface Tier4Response {
     alertType: AlertCategory | "none"
     severity: "low" | "medium" | "high" | "critical"
-    message: string
-    suggestion?: string
+    message: string                          // Overlay headline when surfacing
+    surfaceReason?: string                   // User-visible “why”; required when surfaced (guards)
+    suggestion?: string                      // Concrete next-step copy when surfaced (guards)
     confidence: number
     shouldSurface: boolean
-    reasoning: string
+    reasoning: string                        // Logs / audits only — never in Redis pipeline traces
     routing: "shared" | "personal" | "both"
     targetUserId?: string
   }
   ```
 - [x] Build prompt templates for all alert categories (explicit category list + routing rules in Tier 4 system prompt)
 - [x] **Atomic surfaced alerts only** — one validated `Alert` publish per invocation (see B.8 / §5.9); *Gemini SDK stream aggregator for faster TTFB can be added later without changing the single-surface contract.*
-- [x] Timeout **500ms** (default) and fail-silent on timeout / malformed / invalid schema / publish failure
-- [x] Response validation (`tier4ResponseSchema`) + Gemini `responseSchema`; surfacing guard (`MIN_TIER4_SURFACING_CONFIDENCE`)
+- [x] Wall-clock timeout **`GEMINI_TIER4_TIMEOUT_MS`** (default **1500**) and fail-silent on timeout / malformed / invalid schema / publish failure
+- [x] Response validation (`tier4ResponseSchema`) + Gemini `responseSchema`; surfacing guard (`MIN_TIER4_SURFACING_CONFIDENCE`); user-facing **`message` / `surfaceReason` / `suggestion`** when surfaced — same fields mirrored in **`meeting.pipeline.*`** traces (§5.6.2)
 
 **Deliverable:** Tier 4 can reason about contradictions, risks, and conflicts and generate structured alerts with routing.
 
@@ -811,19 +817,19 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 > **Architectural anchor:** This is where the realtime pipeline hits its <800ms end-to-end budget. Key design points, all per [meeting-mode.md §5.6.1](./meeting-mode.md#561-pipeline-orchestration--parallel-tier-execution):
 > - Tiers 1, 2, 3 run in parallel (independent inputs)
-> - Tier 4 is gated by the combined output
+> - Tier 4 is gated by **`runTier4`** ( **`highSignal` ∨ `forceTier4`**, with Tier 2 stop veto — B.13)
 > - Topic summary generation is off the hot path and derived from Tier 2 outputs
 > - Tier 2 has a per-session semantic cache
 > - Tier 4 invocations respect a per-meeting cost ceiling
-> - Every stage emits structured latency/cost metrics
+> - Every stage emits structured latency/cost metrics (Redis **`meeting.pipeline.*`** MVP for traces — partial below)
 
-- [ ] **Parallel tier orchestration (B.1):**
-  - [ ] Replace any sequential `await tier1; await tier2; await tier3;` with `const [t1, t2, t3] = await Promise.all([runTier1, runTier2, runTier3])`
-  - [ ] Tier 2 commitment writes awaited *inside* the Tier 2 task, so Tier 3's ledger search sees prior commitments but not the current one
-  - [ ] Tier 1 instant alerts (blocklist/technical hit) dispatch without waiting for Tier 4
-  - [ ] Topic state updates run as deterministic reducer side-effects from Tier 2 output in the same tick
-  - [ ] Gate decision runs after `Promise.all` — pure in-process logic, <5ms
-  - [ ] Instrument each tier with a `performance.now`-based span; record `pipelineBudget` (target: <220ms without Tier 4, <720ms with)
+- [x] **Parallel tier orchestration (B.1) — MVP done:**
+  - [x] `const [t1, t2, t3] = await Promise.all([runTier1, runTier2, runTier3])` (`MeetingPipelineEngine`)
+  - [x] Tier 2 commitment writes awaited *inside* the Tier 2 task, so Tier 3's ledger search sees prior commitments but not the current one
+  - [x] Tier 1 instant alerts (blocklist/technical hit) dispatch without waiting for Tier 4
+  - [x] Topic state updates: **`topicDelta`** from Tier 2 applied via **`TopicManager`** in-engine when `utterance.topicId` present (`MeetingPipelineEngine`); summarizer refinement off-path
+  - [x] Gate decision runs after parallel tiers — **`runTier4 = !tier2.shouldStopForDeepReasoning && (highSignal || tier3.forceTier4)`**
+  - [x] Spans recorded for pre-filter, Tier 1, Tier 2, gate, Tier 4 wall-clock, total (`pipelineBudgetMs`); surfaced on **`meeting.pipeline.{sessionId}`** JSON (**B.11** MVP)
 - [ ] **Tier 2 semantic cache (B.6):**
   - [ ] Per-session LRU cache keyed by utterance embedding (cosine ≥ 0.97 = cache hit) or normalized text
   - [ ] Max ~200 entries per session, evict on LRU
@@ -840,11 +846,10 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - [ ] On reaching 80% of cap: log a warning, raise Tier 4 gate thresholds (harder to trigger)
   - [ ] On reaching 100% of cap: disable Tier 4 entirely for the rest of the meeting, keep Tiers 1-3 and Tier 1 instant alerts running
   - [ ] Surface to dashboard on session end
-- [ ] **Pipeline observability (B.11):**
-  - [ ] Structured metrics per utterance: `sessionId`, `utteranceId`, `prefilterDropped`, `t1Latency`, `t2Latency`, `t2Cost`, `t2CacheHit`, `t3Latency`, `t3MatchCount`, `tier4Gated`, `t4Latency`, `t4Cost`, `alertEmitted`, `endToEndLatency`
-  - [ ] Emit to stdout as one JSON line per utterance (easy to ship to any log aggregator)
-  - [ ] Per-session rollup on meeting end: p50/p95/p99 latency, total cost, tier invocation counts, gate decision distribution
-  - [ ] Basic Prometheus histograms for p50/p95/p99 end-to-end latency (optional — only if infra is in place; otherwise stdout JSON is sufficient for MVP)
+- [x] **Pipeline observability — MVP (`meeting.pipeline.*`, B.11):**
+  - [x] Per-utterance JSON on Redis **`meeting.pipeline.{sessionId}`**: session/utterance ids, drop reasons, **`tier4` invoked/surfaced**, gate **`runTier4`**, **`forceTier4`**, **`highSignal`**, **`message`/`surfaceReason`/`suggestion`** when surfaced (no embeddings, no **`reasoning`**)
+  - [x] Optional pretty JSON via **`PIPELINE_TRACE_PRETTY_JSON`**; realtime can subscribe and log (**`pipeline`** in `channels.ts` extractor)
+  - [ ] Prometheus histograms / per-session rollup on meeting end *(roadmap)*
 - [ ] End-to-end test: utterance with commitment → Tier 2 writes to ledger → later contradicting utterance → Tier 3 catches → Tier 4 confirms → alert generated; validate total latency <800ms
 - [ ] End-to-end test: topic summary remains up to date with Tier 2 deltas even when summary refinement LLM is unavailable
 - [ ] Cost regression test: 1-hour scripted meeting fixture → total cost under budget (~$1.22 dual-channel nominal, $2.00 hard cap)

@@ -41,12 +41,13 @@ This document tracks architectural decisions, technical tradeoffs, and implement
 
 ## Architectural Overhaul — Latency & Cost Hardening (pre-Week 4 review)
 
-The decisions below (B.1–B.11) were adopted after a full audit of the pipeline for latency, cost, and failure modes. All of them are already reflected in `meeting-mode.md`, `architecture-and-flow.md`, and `timeline.md` — this section exists to make the reasoning easy to audit without diffing the long docs.
+The decisions below (B.1–B.14) were adopted after a full audit of the pipeline for latency, cost, and failure modes. All of them are reflected in `meeting-mode.md`, `architecture-and-flow.md`, and `timeline.md` — this section exists to make the reasoning easy to audit without diffing the long docs.
 
 ### B.1 Parallel Tier 1 / Tier 2 / Tier 3 execution
 - **Context:** Tiers 1, 2, 3 each take a different latency (50ms / 200ms / 100ms) and none consumes another's output. Running them sequentially costs ~350ms for no reason.
 - **Decision:** Run them with `Promise.all`. A pure-in-process gate decides Tier 4 after they resolve. Latency envelope drops from ~350ms to ~200ms without Tier 4, and <720ms with Tier 4 — fitting the <800ms end-to-end budget.
 - **Subtlety:** Tier 2's ledger write is awaited inside the Tier 2 task, so Tier 3's ledger search sees prior commitments but not the current one. Tier 1 blocklist/technical hits still fire "instant" alerts without waiting on Tier 4.
+- **Subtlety:** Tier 4 **`forceTier4`** (from Tier 3 memory/ledger hits) does **not** run Gemini when **`shouldStopForDeepReasoning`** is true (Tier 2 high-confidence `filler`/`general`, no risks), unless **`highSignal`** is already true. Traces/logs may therefore show **`fT4=yes`** with **`runT4=no`**.
 - **Where:** [meeting-mode.md §5.6.1](./meeting-mode.md#561-pipeline-orchestration--parallel-tier-execution), timeline Day 28.
 
 ### B.2 Direct Rust/uWS → Deepgram audio path (no Redis, no JS PCM relay)
@@ -97,8 +98,8 @@ The decisions below (B.1–B.11) were adopted after a full audit of the pipeline
 
 ### B.11 Structured pipeline observability
 - **Context:** Without metrics, the <800ms budget is aspirational. Smoke scripts aren't enough.
-- **Decision:** Per-utterance JSON line with all per-tier latencies, costs, cache hits, gate decisions, and total end-to-end latency. Per-session rollup (p50/p95/p99 latency, total cost, tier counts) on meeting end. Optional Prometheus histograms if infra is in place. Metrics key off `sessionId` / `utteranceId` so anything can be drilled down.
-- **Where:** timeline Day 28 (pipeline side) + Day 44-46 (E2E validation).
+- **Decision:** Per-utterance structured trace covering tier outcomes, **`runTier4`** / **`forceTier4`** / **`highSignal`**, latency slices (`tier2`, gate, Tier 4 wall, total), optional Tier 4 **surfacing** copy (**`message`**, **`surfaceReason`**, **`suggestion`**) — **no** embeddings, **no** internal Tier 4 **`reasoning`**. Implemented as Redis pub/sub on **`meeting.pipeline.{sessionId}`** (`pipelineTraceChannel`, version field in payload). Logs can pretty-print JSON when **`PIPELINE_TRACE_PRETTY_JSON`** is on (non-production default). Per-session rollup (p50/p95/p99) and Prometheus histograms remain optional roadmap.
+- **Where:** `packages/meeting-mode/src/pipeline/pipeline-trace.ts`, timeline Day 28 (partial), realtime subscriber for **`meeting.pipeline.*`**.
 
 ### B.12 Dual-channel host audio — two mono Deepgram streams (implemented)
 
@@ -109,3 +110,15 @@ The decisions below (B.1–B.11) were adopted after a full audit of the pipeline
 - **Where:** `packages/stt/src/dual-channel-session.ts`, `packages/stt/src/deepgram/*`, `apps/realtime/src/handlers/on-message.ts`, desktop `src-tauri/src/audio/*` (evolving), [meeting-mode.md §2.1](./meeting-mode.md#21-the-host-model).
 
 **Supersedes:** earlier B.12 text that specified a single Deepgram connection with `multichannel=true`, `channels=2`, and interleaved PCM on the wire.
+
+### B.13 Tier 4 gate — Tier 2 “stop deep reasoning” vetoes naive `forceTier4`
+
+- **Context:** Tier 3 can set **`forceTier4`** from loose embedding similarity against hydrated ledger rows (e.g. greetings near older commitments). Invoking Gemini on every such line wastes cost and violates the staged design.
+- **Decision:** **`runTier4 = !shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)`** with **`shouldStopForDeepReasoning`** matching Tier 2’s filler/general shortcut (no risk signals, confidence > 0.8). Embedding hits raise **`forceTier4`** but cannot alone trigger Tier 4 on those lines unless **`highSignal`** is already true (e.g. blocklist).
+- **Where:** [meeting-mode.md §5.6.1](./meeting-mode.md#561-pipeline-orchestration--parallel-tier-execution).
+
+### B.14 Utterance merger — timed flush (`MERGE_GAP_MS`)
+
+- **Context:** Coalescing same-speaker consecutive finals avoids duplicate pipeline work but can defer publishing the **first** segment until a second final arrives (“lag one utterance”).
+- **Decision:** **`UtteranceMerger`** + **`UtteranceFinalizer`** schedule a **`setTimeout`** flush at **audio end + `MERGE_GAP_MS`** for a lone pending segment; new finals reschedule; **`closeSession`** cancels and flushes.
+- **Where:** [meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing).
