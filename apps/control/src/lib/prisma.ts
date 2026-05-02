@@ -1,11 +1,6 @@
-import { PrismaClient } from "@larity/infra/prisma";
-import { PrismaPg } from "@prisma/adapter-pg";
+// biome-ignore lint/performance/noBarrelFile: re-export prisma singleton with env validation
+export { prisma } from "@larity/infra/prisma/client";
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
+if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is not set");
 }
-
-const adapter = new PrismaPg({ connectionString });
-
-export const prisma = new PrismaClient({ adapter });
