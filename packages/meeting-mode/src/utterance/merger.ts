@@ -79,6 +79,8 @@ export class UtteranceMerger {
       duration: Math.round(combinedDuration * 100) / 100,
       wordCount: totalWords,
       mergedCount: prev.mergedCount + next.mergedCount,
+      topicId: prev.topicId,
+      embedding: prev.embedding,
     };
   }
 }

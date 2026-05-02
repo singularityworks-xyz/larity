@@ -3,6 +3,7 @@ import { utteranceChannel } from "../channels";
 import { createMeetingModeLogger } from "../logger";
 import type { Tier2TopicDelta } from "../pipeline/types";
 import type { SpeakerIdentifier } from "../speaker/identifier";
+import { GoogleGenAIEmbedder } from "../topic/embedder";
 import {
   TopicManager,
   type TopicManagerOptions,
@@ -37,6 +38,7 @@ export class UtteranceFinalizer {
   private readonly retroactiveHandlers: RetroactiveUpdateHandler[] = [];
   private readonly publishedHandlers: UtterancePublishedHandler[] = [];
   private readonly topicManager: TopicManager;
+  private readonly embedder: GoogleGenAIEmbedder;
 
   constructor(
     publisher: UtterancePublisher,
@@ -44,6 +46,7 @@ export class UtteranceFinalizer {
   ) {
     this.publisher = publisher;
     this.topicManager = new TopicManager(publisher, options.topicManager);
+    this.embedder = new GoogleGenAIEmbedder();
   }
 
   registerSpeakerIdentifier(
@@ -147,6 +150,15 @@ export class UtteranceFinalizer {
       mergedCount: 1,
     };
 
+    try {
+      utterance.embedding = await this.embedder.embed(utterance.text);
+    } catch (error) {
+      log.warn(
+        { err: error, utteranceId: utterance.utteranceId },
+        "Failed to generate embedding for utterance"
+      );
+    }
+
     // Assign topic
     const topicId = await this.topicManager.assignTopic(utterance);
     utterance.topicId = topicId;
@@ -189,6 +201,19 @@ export class UtteranceFinalizer {
       .reverse();
 
     return sameSpeakerUtterances.map((utterance) => utterance.text);
+  }
+
+  getRecentEmbeddings(sessionId: string, limit = 10): number[][] {
+    const ringBuffer = this.ringBuffers.get(sessionId);
+    if (!ringBuffer) {
+      return [];
+    }
+
+    const recent = ringBuffer.getRecent(limit);
+    return Array.from(recent)
+      .map((u) => u.embedding)
+      .filter((e): e is number[] => Array.isArray(e) && e.length > 0)
+      .reverse();
   }
 
   async applyTier2TopicDelta(
