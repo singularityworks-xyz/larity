@@ -5,7 +5,13 @@ import type { Utterance } from "../utterance/types";
 import { PreFilter } from "./pre-filter";
 import { Tier1StructuralDetector } from "./tier1";
 import { Tier2Classifier } from "./tier2";
-import type { Tier1Result, Tier2Classification, Tier2Input } from "./types";
+import { Tier3SearchEngine } from "./tier3";
+import type {
+  Tier1Result,
+  Tier2Classification,
+  Tier2Input,
+  Tier3Result,
+} from "./types";
 
 const log = createMeetingModeLogger("pipeline-engine");
 
@@ -20,6 +26,7 @@ interface PipelineFinalizerAdapter {
     currentUtteranceId?: string,
     limit?: number
   ): string[];
+  getRecentEmbeddings(sessionId: string, limit?: number): number[][];
   applyTier2TopicDelta(
     sessionId: string,
     topicId: string | undefined,
@@ -60,6 +67,11 @@ interface CommitmentManagerAdapter {
       };
     }
   ): Promise<unknown>;
+  search(
+    sessionId: string,
+    embedding: number[],
+    options?: { limit?: number; threshold?: number }
+  ): Array<{ id: string; score: number }>;
 }
 
 export interface PipelineEngineDependencies {
@@ -83,7 +95,7 @@ export interface PipelineEvaluationResult {
   dropReason?: string;
   tier1?: Tier1Result;
   tier2?: Tier2Classification;
-  tier3Placeholder: { ran: boolean };
+  tier3?: Tier3Result;
   runTier4: boolean;
   latencies: {
     preFilterMs: number;
@@ -102,6 +114,7 @@ export class MeetingPipelineEngine {
   private readonly preFilter: PreFilter;
   private readonly tier1: Tier1StructuralDetector;
   private readonly tier2: Tier2Classifier;
+  private readonly tier3: Tier3SearchEngine;
   private readonly sessions = new Map<string, SessionPipelineState>();
 
   private readonly finalizer: PipelineFinalizerAdapter;
@@ -116,6 +129,7 @@ export class MeetingPipelineEngine {
     this.preFilter = deps.preFilter ?? new PreFilter();
     this.tier1 = deps.tier1 ?? new Tier1StructuralDetector();
     this.tier2 = deps.tier2 ?? new Tier2Classifier();
+    this.tier3 = new Tier3SearchEngine();
     this.finalizer = deps.finalizer;
     this.constraintManager = deps.constraintManager;
     this.commitmentManager = deps.commitmentManager;
@@ -138,7 +152,6 @@ export class MeetingPipelineEngine {
       return {
         dropped: true,
         dropReason: decision.reason,
-        tier3Placeholder: { ran: false },
         runTier4: false,
         latencies: {
           preFilterMs,
@@ -153,7 +166,23 @@ export class MeetingPipelineEngine {
     const tier2Start = PERF.now();
     const tier2Task = this.runTier2(utterance);
 
-    const [tier1, tier2] = await Promise.all([tier1Task, tier2Task]);
+    const payload = await this.getContextPayload(utterance.sessionId);
+    const recentEmbeddings = this.finalizer.getRecentEmbeddings(
+      utterance.sessionId,
+      10
+    );
+    const tier3Task = this.tier3.evaluate(
+      utterance,
+      payload,
+      this.commitmentManager,
+      recentEmbeddings
+    );
+
+    const [tier1, tier2, tier3] = await Promise.all([
+      tier1Task,
+      tier2Task,
+      tier3Task,
+    ]);
     const tier1Ms = PERF.now() - tier1Start;
     const tier2Ms = PERF.now() - tier2Start;
 
@@ -175,14 +204,15 @@ export class MeetingPipelineEngine {
       tier2.classification.intent === "concern" ||
       tier2.classification.riskSignals.length > 0;
 
-    const runTier4 = highSignal && !tier2.shouldStopForDeepReasoning;
+    const runTier4 =
+      (highSignal && !tier2.shouldStopForDeepReasoning) || tier3.forceTier4;
     const gateMs = PERF.now() - gateStart;
 
     return {
       dropped: false,
       tier1,
       tier2: tier2.classification,
-      tier3Placeholder: { ran: true },
+      tier3,
       runTier4,
       latencies: {
         preFilterMs,
@@ -256,7 +286,7 @@ export class MeetingPipelineEngine {
           type,
           timestamp: utterance.timestamp,
           utteranceId: utterance.utteranceId,
-          embedding: [0],
+          embedding: utterance.embedding ?? [0],
           extractedData: {
             deadline: tier2.classification.extractedData.deadline,
             quantity: tier2.classification.extractedData.quantity,

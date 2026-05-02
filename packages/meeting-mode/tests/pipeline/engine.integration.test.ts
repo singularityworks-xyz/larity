@@ -37,6 +37,7 @@ describe("pipeline/engine integration", () => {
     const engine = new MeetingPipelineEngine({
       finalizer: {
         getRecentSameSpeakerText: () => ["Earlier we promised the migration"],
+        getRecentEmbeddings: () => [],
         applyTier2TopicDelta: (_sid, _tid, delta) => {
           if (delta.commitment) {
             appliedTopicDeltas.push(delta.commitment);
