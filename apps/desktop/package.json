@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "check-types": "tsc --noEmit",
     "preview": "vite preview",
     "tauri": "tauri",
     "lint": "biome check --log-level=info --diagnostic-level=warn .",

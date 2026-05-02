@@ -33,8 +33,7 @@ const deleteMock = mock(async (_path: string) => Promise.resolve({}));
 
 mock.module("@tanstack/react-query", () => ({
   useQuery: (config: QueryConfig) => useQueryMock(config),
-  useMutation: <TInput>(config: MutationConfig<TInput>) =>
-    useMutationMock(config),
+  useMutation: (config: any) => useMutationMock(config),
   useQueryClient: () => ({
     invalidateQueries: invalidateQueriesMock,
   }),
