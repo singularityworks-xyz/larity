@@ -6,7 +6,7 @@ import { tier2ClassificationSchema } from "./types";
 
 const log = createMeetingModeLogger("tier2-classifier");
 
-const TIER2_TIMEOUT_MS = 200;
+const TIER2_TIMEOUT_MS = 3000;
 
 export interface Tier2ClassifierOptions {
   timeoutMs?: number;
