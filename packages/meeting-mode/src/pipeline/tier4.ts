@@ -200,29 +200,39 @@ export class Tier4DeepReasoner {
     prompt: string,
     timeoutMs: number
   ): Promise<string> {
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      const timeoutHandle = setTimeout(() => {
-        clearTimeout(timeoutHandle);
-        reject(new Error("Tier4 Gemini timeout"));
+    const controller = new AbortController();
+    let timeoutHandle: NodeJS.Timeout | undefined;
+
+    try {
+      timeoutHandle = setTimeout(() => {
+        controller.abort();
       }, timeoutMs);
-    });
 
-    const call = this.ai.models.generateContent({
-      model: GEMINI_TIER4_MODEL,
-      contents: prompt,
-      config: {
-        temperature: 0,
-        responseMimeType: "application/json",
-        responseSchema: geminiTier4StructuredSchema(),
-      },
-    });
+      const response = await this.ai.models.generateContent({
+        model: GEMINI_TIER4_MODEL,
+        contents: prompt,
+        config: {
+          temperature: 0,
+          responseMimeType: "application/json",
+          responseSchema: geminiTier4StructuredSchema(),
+          signal: controller.signal,
+        },
+      });
 
-    const response = await Promise.race([call, timeoutPromise]);
+      if (!response.text) {
+        throw new Error("Gemini tier4 returned empty content");
+      }
 
-    if (!response.text) {
-      throw new Error("Gemini tier4 returned empty content");
+      return response.text;
+    } catch (error) {
+      if (controller.signal.aborted) {
+        throw new Error("Tier4 Gemini timeout");
+      }
+      throw error;
+    } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
     }
-
-    return response.text;
   }
 }

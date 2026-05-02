@@ -48,7 +48,6 @@ describe("Tier3 Pipeline Integration (Embed Once)", () => {
         updateDebounceMs: 0,
         model: "gemini-test",
       },
-      bufferSize: 10,
     });
 
     engine = new MeetingPipelineEngine({
