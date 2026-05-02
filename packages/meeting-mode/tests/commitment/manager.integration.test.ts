@@ -97,5 +97,6 @@ describe("commitment/manager integration", () => {
       await recoveringManager.endSessionAndDeleteSnapshot(sessionId);
     expect(drained).toHaveLength(3);
     expect(await redis.get(`meeting:ledger:${sessionId}`)).toBeNull();
+    redis.quit();
   });
 });

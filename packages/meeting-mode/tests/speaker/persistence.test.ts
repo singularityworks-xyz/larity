@@ -17,6 +17,7 @@ describe("SpeakerPersistence", () => {
 
   afterEach(() => {
     redis.flushall();
+    redis.quit();
   });
 
   const generateMapping = (index: number): SpeakerMapping => ({

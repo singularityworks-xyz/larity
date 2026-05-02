@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { TTL } from "@larity/infra/redis/ttl";
 import type { Redis as RedisClient } from "ioredis";
 import Redis from "ioredis-mock";
@@ -19,6 +19,10 @@ describe("constraint/ledger", () => {
       now: () => 1_700_000_000_000,
       idFactory: mock(() => "constraint-fixed-id"),
     });
+  });
+
+  afterEach(() => {
+    redis.quit();
   });
 
   it("inserts constraints, writes snapshot, and publishes event", async () => {

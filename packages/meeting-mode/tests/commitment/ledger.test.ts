@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { TTL } from "@larity/infra/redis/ttl";
 import type { Redis as RedisClient } from "ioredis";
 import Redis from "ioredis-mock";
@@ -34,6 +34,10 @@ describe("commitment/ledger", () => {
       now,
       idFactory: mock(() => "commitment-fixed-id"),
     });
+  });
+
+  afterEach(() => {
+    redis.quit();
   });
 
   it("inserts commitments, writes snapshot, and publishes insert event", async () => {
