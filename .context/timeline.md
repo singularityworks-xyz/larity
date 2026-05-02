@@ -765,21 +765,26 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [ ] Set up large LLM integration (Gemini Pro/Flash)
-- [ ] Define Tier 4 context assembly:
+**Status — ✓ implemented (verification: `cd packages/meeting-mode && bun test`; repo root `bun x ultracite check packages/meeting-mode`).**
+
+**Wire-up:** `packages/meeting-mode/src/pipeline/tier4.ts` (`Tier4DeepReasoner`), `types.ts` (Zod + `Tier4Context`), `tier4-context.ts` (preload hydrate + assemble), `tier4-alert.ts` (routing/coercion → `Alert`), `engine.ts` (gate → single publish), `index.ts` (Redis `AlertPublisher`), `env.ts` (`GEMINI_TIER4_MODEL`).
+
+- [x] Set up large LLM integration (Gemini Pro–class via `GEMINI_TIER4_MODEL`, `@google/genai`)
+- [x] Define Tier 4 context assembly:
   ```ts
   interface Tier4Context {
     utterance: string
     tier2Classification: Tier2Classification
     speaker: SpeakerIdentity
     topicSummary: string
-    recentUtterances: Utterance[]              // Ring buffer
-    matchedHistoricalItems: HistoricalMatch[]  // From pgvector
-    matchedCommitments: CommitmentMatch[]      // From commitment ledger
+    recentUtterances: Utterance[]              // Ring buffer (chronological via UtteranceFinalizer)
+    matchedHistoricalItems: HistoricalMatch[] // Preload hydrate + Tier 3 memory ids / pgvector
+    matchedCommitments: CommitmentMatch[]     // Ledger hydrate from Tier 3 ledger matches
     relevantConstraints: Constraint[]
+    // Implementation also passes tier1Result, topicId, triggerUtteranceId for prompt JSON fidelity.
   }
   ```
-- [ ] Define Tier 4 output schema (Zod-enforced):
+- [x] Define Tier 4 output schema (Zod-enforced):
   ```ts
   interface Tier4Response {
     alertType: AlertCategory | "none"
@@ -793,10 +798,10 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
     targetUserId?: string
   }
   ```
-- [ ] Build prompt templates for all alert categories
-- [ ] Implement streaming LLM response handling **internally** to reduce TTFB — but emit exactly one atomic alert per call (no progressive / preliminary alerts surfaced to the UI; see B.8 and [meeting-mode.md §5.9](./meeting-mode.md#59-live-llm-invocation-non-streaming-atomic-alerts))
-- [ ] Implement timeout (500ms max) and fail-silent logic
-- [ ] Add response validation and schema enforcement
+- [x] Build prompt templates for all alert categories (explicit category list + routing rules in Tier 4 system prompt)
+- [x] **Atomic surfaced alerts only** — one validated `Alert` publish per invocation (see B.8 / §5.9); *Gemini SDK stream aggregator for faster TTFB can be added later without changing the single-surface contract.*
+- [x] Timeout **500ms** (default) and fail-silent on timeout / malformed / invalid schema / publish failure
+- [x] Response validation (`tier4ResponseSchema`) + Gemini `responseSchema`; surfacing guard (`MIN_TIER4_SURFACING_CONFIDENCE`)
 
 **Deliverable:** Tier 4 can reason about contradictions, risks, and conflicts and generate structured alerts with routing.
 
