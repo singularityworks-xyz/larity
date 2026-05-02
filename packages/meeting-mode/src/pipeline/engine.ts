@@ -300,10 +300,10 @@ export class MeetingPipelineEngine {
 
     const tier4 = this.tier4;
     const tier4Alerts = this.tier4Alerts;
-    if (!(tier4 && tier4Alerts)) {
+    if (!tier4) {
       log.debug(
         { sessionId: utterance.sessionId, utteranceId: utterance.utteranceId },
-        "Tier4 gated positive but Tier4 deps missing; skipping silently"
+        "Tier4 gated positive but Tier4 missing; skipping silently"
       );
       return {
         tier4Response: null,
@@ -311,36 +311,47 @@ export class MeetingPipelineEngine {
       };
     }
 
-    const topicSummaryRaw = await this.getCurrentTopicLabel(
-      utterance.sessionId,
-      utterance.topicId
-    );
-    const topicSummary =
-      typeof topicSummaryRaw === "string" ? topicSummaryRaw : "";
+    let tier4Response: Tier4Response | null = null;
+    let tier4Ms = 0;
 
-    const recentUtterances = this.finalizer.getRecentUtterancesChronological(
-      utterance.sessionId,
-      { excludeUtteranceId: utterance.utteranceId, limit: 48 }
-    );
+    try {
+      const topicSummaryRaw = await this.getCurrentTopicLabel(
+        utterance.sessionId,
+        utterance.topicId
+      );
+      const topicSummary =
+        typeof topicSummaryRaw === "string" ? topicSummaryRaw : "";
 
-    const tier4Ctx = assembleTier4Context({
-      utterance,
-      topicSummary,
-      tier1,
-      tier2: tier2Classification,
-      tier3,
-      payload,
-      recentUtterances,
-      allCommitments: this.commitmentManager.getAll(utterance.sessionId),
-      allConstraints: this.constraintManager.getAll(utterance.sessionId),
-    });
+      const recentUtterances = this.finalizer.getRecentUtterancesChronological(
+        utterance.sessionId,
+        { excludeUtteranceId: utterance.utteranceId, limit: 48 }
+      );
 
-    const tier4WallStart = PERF.now();
-    const tier4Response = await tier4.reason(tier4Ctx);
-    const tier4Ms = PERF.now() - tier4WallStart;
+      const tier4Ctx = assembleTier4Context({
+        utterance,
+        topicSummary,
+        tier1,
+        tier2: tier2Classification,
+        tier3,
+        payload,
+        recentUtterances,
+        allCommitments: this.commitmentManager.getAll(utterance.sessionId),
+        allConstraints: this.constraintManager.getAll(utterance.sessionId),
+      });
+
+      const tier4WallStart = PERF.now();
+      tier4Response = await tier4.reason(tier4Ctx);
+      tier4Ms = PERF.now() - tier4WallStart;
+    } catch (error) {
+      log.warn(
+        { err: error, utteranceId: utterance.utteranceId },
+        "Tier4 reasoning sequence failed silently"
+      );
+      tier4Response = null;
+    }
 
     let tier4Surfaced = false;
-    if (tier4Response) {
+    if (tier4Response && tier4Alerts) {
       const alert = buildAlertFromTier4Response({
         response: tier4Response,
         triggerUtteranceId: utterance.utteranceId,
@@ -359,6 +370,11 @@ export class MeetingPipelineEngine {
           );
         }
       }
+    } else if (tier4Response && !tier4Alerts) {
+      log.debug(
+        { utteranceId: utterance.utteranceId },
+        "Tier4 response available but tier4Alerts publisher missing"
+      );
     }
 
     return {
