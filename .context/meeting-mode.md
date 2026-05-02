@@ -30,16 +30,15 @@ Think of it as a **flight control system** — silent when things are fine, imme
 Real agency/team work involves multiple team members meeting with a client together over a conferencing tool (Zoom, Google Meet, Microsoft Teams, Slack Huddle, Discord, Jitsi, a dialed-in phone call bridged through the OS — whatever). Larity is a **native desktop application** that does not care which conferencing app is used. It supports multi-user sessions through a **host model**:
 
 * **Larity is a native desktop application** (Tauri) installed on every team member's machine. There is **no browser extension**. Meeting platform doesn't matter — Larity captures host mic + OS-level system audio (loopback) from whichever app is producing the meeting audio on the host's machine.
-* **One team member is the host** — they run Larity's desktop app and capture two local streams from their machine: host microphone on channel 0 and OS-level system audio loopback on channel 1
+* **One team member is the host** — they run Larity's desktop app and capture two local streams from their machine: host microphone (**logical capture channel 0**) and OS-level system audio loopback (**logical capture channel 1**)
 * **Other team members join the same shared meeting session** — they connect to the session from their own desktop app but do NOT send system audio
 * **All participants are remote** — everyone is on separate machines in the underlying meeting call (or even physically co-located, the conferencing platform is irrelevant to Larity)
-* **The host's Larity instance is the single audio source** — it streams one interleaved 2-channel PCM feed to the server: clean host mic pre-codec on ch0, and combined meeting audio from the OS mixer on ch1
+* **The host's Larity instance is the single audio source** — it streams **tagged mono PCM** to the realtime server: each binary frame is **`byte 0 = 0` (mic) or `1` (system)**, followed by **16 kHz mono linear16** samples for that source only (see `packages/stt/src/dual-channel-session.ts`). The realtime worker opens **two** Deepgram live connections (one per logical source).
 
 **Why host model:**
-* Only one Deepgram STT connection needed (cost + consistency)
-* No duplicate/conflicting transcriptions
-* Single source of truth for the audio stream
-* Simple to reason about — one audio pipeline, shared state
+* **Two** Deepgram **live** connections per host session (mic + system), each **mono** — avoids interleaved multichannel coupling and per-source latency skew; still one host sender and one STT vendor
+* No duplicate/conflicting transcriptions from multiple hosts
+* Single source of truth for meeting audio **entering** the server
 * **Platform-agnostic:** because capture is OS-level loopback, it works identically whether the host is on Zoom, Meet, Teams, Discord, a dialed-in phone call, or a future platform that doesn't exist yet — no per-platform integration work ever required
 
 **Host failure:** If the host disconnects, meeting tracking stops. No failover in v1. This is acceptable — the host is typically the meeting organizer or team lead.
@@ -289,10 +288,10 @@ When topic shifts occur, relevant constraints are already loaded.
         * **Windows:** WASAPI loopback (`wasapi-rs`, or `cpal`'s loopback-capable WASAPI path).
         * **macOS:** ScreenCaptureKit audio (macOS 13+) / Core Audio process tap, or fallback to a user-installed virtual device (BlackHole / Loopback).
         * **Linux:** PipeWire / PulseAudio monitor source of the default sink.
-* Both streams are downmixed to mono, resampled to 16 kHz, aligned by sample counter (not wall-clock callback time), and interleaved into one **2-channel linear16 PCM** stream chunked at 50 ms frames. The channels are not mixed together.
-* PCM is streamed directly from Rust over the realtime WebSocket to the remote `realtime` server. It does not cross the Tauri Rust→JS event bridge, is not base64 encoded, and never goes through Redis.
-* Deepgram streaming connection opened server-side with `diarize=true`, `multichannel=true`, `channels=2`, `encoding=linear16`, `sample_rate=16000`.
-* **Single-channel fallback:** if one of the two capture streams cannot start, the host falls back to single-channel mode using the surviving stream (`multichannel=false`). VAD correlation behaves as described in §3.3, and the host sees a non-fatal ambient warning.
+* Both streams are downmixed to mono, resampled to 16 kHz, chunked at **50 ms** frames. **No interleaved stereo blob:** each frame is tagged **mic** or **sys** and sent on the host WebSocket as **`[tag: u8][mono linear16…]`** (see §2.1 and `dual-channel-session.ts`).
+* PCM is streamed over the realtime WebSocket to the remote server (**Rust-native path preferred**; avoid base64/JS hot path in production). Audio bytes never go through Redis.
+* The realtime worker opens **two** Deepgram live connections — one per logical source — each with `diarize=true`, `channels=1`, `encoding=linear16`, `sample_rate=16000`.
+* **Single-stream fallback (if implemented):** if one capture path fails, send only the surviving source with the correct tag and reduce to one Deepgram connection or idle the other; document in ops. VAD correlation on channel 1 behaves as in §3.3.
 
 Team members do NOT arm the audio-capture layer — their desktop apps only send local-mic VAD signals (see Section 3.3) and receive processed utterances/alerts from the server.
 
@@ -317,9 +316,9 @@ This loop runs continuously on the **remote server** until the meeting ends. All
 
 **For every audio chunk (host sends):**
 
-1. Audio arrives at server from host's Larity desktop app as a **2-channel interleaved stream**: ch0 = host mic, ch1 = OS-level system loopback. Conferencing platform is opaque to the server.
-2. Forwarded to streaming STT (Deepgram) with `diarize=true`, `multichannel=true`, `channels=2`
-3. STT emits partial hypotheses **with channel index + speaker indices**
+1. Audio arrives from the host as **tagged mono** frames: **`tag=0`** = host mic (**logical capture channel 0**), **`tag=1`** = system loopback (**logical capture channel 1**). Conferencing platform is opaque to the server.
+2. Realtime **`createDualChannelSession`** routes each frame to **its** Deepgram socket — both use `diarize=true`, `channels=1`.
+3. STT emits partial hypotheses **with logical capture channel + diarization indices** (per mono stream)
 4. **Speculative processing begins on partials** (see 5.2)
 5. Normalizer waits for `isFinal = true`
 6. Speaker identification resolves:
@@ -1658,7 +1657,7 @@ Before finalizing, the system compares discussed topics against pre-loaded agend
 ## 12. Development Approach
 
 ### Phase 1: Core Pipeline
-1. Dual-channel audio capture (host mic ch0 + system loopback ch1) → direct Rust WebSocket transport to remote server → Deepgram STT integration with `diarize=true`, `multichannel=true`
+1. Dual-source audio capture (host mic ch0 + system loopback ch1) → **tagged mono** WebSocket transport → **`createDualChannelSession`** with `diarize=true` on each mono stream
 2. Utterance finalizer with channel index + speaker diarization indices
 3. Basic ring buffer implementation
 4. Session lifecycle (start/join/end)
@@ -1775,7 +1774,7 @@ If any operation exceeds max acceptable, it is **skipped**, not queued.
 | Host disconnects | Meeting tracking stops. No failover in v1 |
 | Team member disconnects | They stop receiving alerts. Others unaffected |
 | Voice identification fails | Speaker treated as EXTERNAL (conservative default), except channel 0 host utterances in dual-channel mode |
-| One host capture stream fails | Fall back to single-channel mode with `multichannel=false`; show host-only ambient warning; meeting continues |
+| One host capture stream fails | Fall back to single-source mode (tagged mono for surviving stream); reduce to one Deepgram connection if implemented; host ambient warning; meeting continues where possible |
 | Tier 2 LLM times out | Skip classification, treat as general (no alert) |
 | Tier 4 LLM times out | Skip this evaluation, log for debugging |
 | LLM returns invalid schema | Discard, don't surface |

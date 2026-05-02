@@ -63,7 +63,7 @@ interface SpeakerIdentity {
 |------|---------------------|
 | `packages/stt/src/types.ts:16` | `Speaker = "YOU" \| "THEM"` → remove type, `SttResult.speaker` → `SttResult.channel: number` + `SttResult.diarizationIndex: number` |
 | `packages/stt/src/deepgram/connection.ts:177` | `speaker: this.currentSource === "mic" ? "YOU" : "THEM"` → use Deepgram channel index + diarization index instead |
-| `packages/stt/src/deepgram/types.ts` | `DEFAULT_DG_CONFIG` needs `diarize: true`, `multichannel: true`, `channels: 2` added for the default host path |
+| `packages/stt/src/deepgram/types.ts` | `DEFAULT_DG_CONFIG`: **`diarize: true`**, **`channels: 1`** per connection; host path uses **`createDualChannelSession`** (two connections), not `multichannel` stereo |
 | `packages/stt/src/types.ts:11` | `AudioSource = "mic" \| "system"` — keep but no longer determines identity |
 | `packages/meeting-mode/src/utterance/types.ts:1` | `Speaker = "YOU" \| "THEM"` → replace with `SpeakerIdentity` import |
 | `packages/meeting-mode/src/utterance/types.ts:6` | `Utterance.speaker: Speaker` → `Utterance.speaker: SpeakerIdentity` |
@@ -80,7 +80,7 @@ Current Deepgram config does NOT enable diarization. Changes needed:
 
 | File | What needs to change |
 |------|---------------------|
-| `packages/stt/src/deepgram/types.ts` | Add `diarize: true`, `multichannel: true`, `channels: 2` to `DEFAULT_DG_CONFIG` for dual-channel mode |
+| `packages/stt/src/deepgram/types.ts` | `diarize: true`, mono defaults; **`createDualChannelSession`** opens **two** `channels: 1` live streams for host path (see B.12) |
 | `packages/stt/src/deepgram/types.ts` | `TranscriptResult` type needs to include speaker/diarization fields from Deepgram response |
 | `packages/stt/src/deepgram/connection.ts` | Parse `channel_index` and `channel.alternatives[0].words[].speaker` from diarized results |
 | `packages/stt/src/deepgram/connection.ts` | Remove `currentSource → speaker` mapping logic |
@@ -141,12 +141,10 @@ Tier 1 is now **structural detection only** — dates, numbers, blocklist keywor
 The `apps/realtime` server is functional but needs multi-user updates:
 
 ```
-Current Audio Flow:
-Host desktop → WebSocket (binary frames) → onMessage handler → Deepgram session in same worker
+Host audio flow (production):
+Host → WebSocket (**tagged mono**: `[tag u8][linear16 mono]`) → onMessage → **`createDualChannelSession`** → **two** Deepgram live connections
 
-Needs to become:
-Host desktop Rust audio engine → WebSocket (dual-channel binary frames) → onMessage handler → Deepgram session in same worker
-Team Clients → WebSocket (control only) → receive processed results
+Team → WebSocket (control + VAD) → receive processed results
 
 Current Session Flow:
 Connect → onOpen → addSession → publish session.start
@@ -169,13 +167,12 @@ Redis Channels (new):
 - meeting.topic.{sessionId} — topic change events
 ```
 
-### STT Package Details (Already Built, Needs Changes)
+### STT Package Details (production host path — see B.12)
 
-The `packages/stt` package has Deepgram integration but needs:
-- Diarization + multichannel enabled (`diarize: true`, `multichannel: true`, `channels: 2`) for the default host path
+The `packages/stt` package hosts Deepgram integration. **Production host path:** tagged mono intake, **`createDualChannelSession`**, **`diarize: true`** on each mono stream, logical **`SttResult.channel`** (0 = mic, 1 = system) from frame routing — not Deepgram multichannel decode.
 - Channel index + diarization index parsing from Deepgram responses
-- Removal of `source → speaker` identity mapping
-- `SttResult` to carry `channel` + `diarizationIndex` instead of `Speaker`
+- No `source → speaker` identity mapping; identity is meeting-mode **`SpeakerIdentifier`**
+- `SttResult` carries `channel` + `diarizationIndex`
 
 ### Not Started
 
@@ -215,18 +212,14 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **Deliverable:** All existing code compiles with new speaker model. No remaining `"YOU" | "THEM"` references. ✓
 
-### Day 3-4: Deepgram Diarization Updates ✓ COMPLETEDBL2025260500484
+### Day 3-4: Deepgram Diarization Updates ✓ COMPLETED
 
 **packages/stt**
 
 - [x] Add `diarize: true` to `DEFAULT_DG_CONFIG` in `packages/stt/src/deepgram/types.ts`
-- [ ] Add dual-channel Deepgram config for host default path: `multichannel: true`, `channels: 2`
-- [x] Update `TranscriptResult` type to include diarization fields (`DeepgramWord` with `speaker?: number`)
-- [x] Update `DeepgramConnection` — parse speaker index from `words[0].speaker`
-- [ ] Update `DeepgramConnection` — parse and propagate `channel_index`
-- [x] Remove `currentSource === "mic" ? "YOU" : "THEM"` logic in `connection.ts`
-- [x] Emit `SttResult` with `diarizationIndex` instead of `speaker`
-- [ ] Emit `SttResult` with `channel` for dual-channel mode
+- [x] Production host path: **two** mono Deepgram connections via `createDualChannelSession` (supersedes single `multichannel: true`, `channels: 2`)
+- [x] Update `DeepgramConnection` — logical `channel` from session tag / connection arm (not multichannel `channel_index`)
+- [x] Emit `SttResult` with `channel` for mic vs system
 - [x] Test diarization output with multi-speaker audio (requires live Deepgram connection) — *Mock test implemented in `packages/stt/src/deepgram/connection.test.ts`*
 - [x] Handle edge case: diarization not ready yet (first few seconds) — emit with `diarizationIndex: -1`
 
@@ -456,7 +449,7 @@ The `packages/stt` package has Deepgram integration but needs:
   - [ ] `audio_capture_start(sessionId, micDeviceId?, loopbackDeviceId?, role)` → host starts dual-channel capture; participants start VAD/control only
   - [x] `audio_capture_stop()` → stop capture cleanly
   - [x] `audio_capture_status()` → current state + per-platform backend in use + any permission errors
-- [ ] Frame format: 16 kHz **2-channel** interleaved 16-bit PCM (host mic ch0, system loopback ch1), 50 ms frames, aligned by sample counter and tagged with monotonic timestamp. Deepgram accepts this directly with `multichannel=true`.
+- [x] Frame format (production host): 16 kHz **tagged mono** — each WS binary frame is `[tag: u8]` + **mono** linear16 little-endian (50 ms chunks per source path). Realtime opens **two** Deepgram connections (`channels=1`, `diarize=true`); not interleaved `multichannel` PCM.
 - [x] Current fallback frame format: 16 kHz mono 16-bit PCM, 50 ms frames.
 - [x] Handle OS permission prompts:
   - [x] macOS: request screen-recording permission (SCK) once, surface failure gracefully
@@ -717,51 +710,18 @@ The `packages/stt` package has Deepgram integration but needs:
 
 **Deliverable:** Every utterance is classified by small LLM as the single semantic source of truth (alerts + topic deltas) — replaces ALL old regex pattern libraries. Works in any language.
 
-### Post-Day 23 Patch: Dual-Channel Audio Intake Hardening — REQUIRED BEFORE DAY 24
+### Post-Day 23 Patch: Dual-source audio intake (B.12) — ✓ IMPLEMENTED (see ground truth in B.12)
 
 **apps/desktop + apps/realtime + packages/stt + packages/meeting-mode**
 
-> This patch is applied immediately after the current completed Day 22-23 work, before Tier 3 begins. It turns the prototype intake into the production intake described in `meeting-mode.md`: host mic on ch0, system loopback on ch1, direct Rust-to-realtime WebSocket, channel-aware utterances, and host identity assigned by channel. Doing this now prevents Tier 3, Tier 4, and observability work from being built on the old mono/JS-relay assumptions.
+> **Server + STT complete:** Tagged mono wire format **`[tag: u8][mono linear16 @ 16 kHz]`**; realtime **`createDualChannelSession`**; **`SttResult.channel`** = logical 0/1; **`SpeakerIdentifier`** keys **`channel:diarizationIndex`**. **Desktop** may still be mid-migration: production requires **per-source tagged frames** (Rust-native WebSocket and/or non-mixing relay); **interleaved `mixer.rs` + mixed mono** is **not** aligned with dual Deepgram sessions until the client sends tagged per-source PCM.
 
-- [ ] **Rust audio transport:**
-  - [ ] Add Rust WebSocket client for host PCM frames (`tokio-tungstenite` or equivalent)
-  - [ ] Remove the hot-path Rust → Tauri event → JS → WebSocket PCM relay from production mode
-  - [ ] Keep a dev fallback flag for the current JS relay while the Rust socket is being stabilized
-  - [ ] Add per-session upload metrics: frames sent, frames dropped before WS, WS buffered bytes, last frame timestamp
-- [ ] **Dual-channel frame builder:**
-  - [ ] Maintain separate mic and loopback sample counters
-  - [ ] Align frames by sample counter, not `SystemTime::now()` callback time
-  - [ ] Interleave `i16` samples as `[mic0, sys0, mic1, sys1, ...]`
-  - [ ] Send 50 ms frames: 800 samples/channel, 1600 samples total, 3200 bytes/frame
-  - [ ] If one stream fails, emit single-channel fallback and set `multichannel=false` for Deepgram
-- [ ] **Platform capture correctness:**
-  - [ ] Linux: keep `parec @DEFAULT_MONITOR@` path, but expose PipeWire/Pulse error status
-  - [ ] Windows: replace current output-device `build_input_stream` fallback with real WASAPI loopback
-  - [ ] macOS: wire ScreenCaptureKit / Core Audio process tap; remove unused dependency if not implemented in this patch
-- [ ] **Rust-side VAD cleanup:**
-  - [ ] Run VAD on the mic samples already captured by Rust
-  - [ ] Emit VAD edge events with a monotonic timestamp derived from `Instant`
-  - [ ] Stop opening the microphone a second time from `@ricky0123/vad-web` in production mode
-  - [ ] Keep web VAD only as a fallback for platforms where Rust VAD is disabled
-- [ ] **STT + utterance schema:**
-  - [ ] Add `multichannel` and `channels` config to Deepgram connection
-  - [ ] Parse Deepgram `channel_index` and propagate it in `SttResult`
-  - [ ] Add `channel` to `Utterance`
-  - [ ] Change speaker cache key to `channel:index`
-  - [ ] Host channel short-circuit: `channel === 0` maps to `hostUserId` immediately
-  - [ ] VAD correlation runs on `channel === 1` only
-- [ ] **Cost + observability:**
-  - [ ] Include Deepgram channel-minute cost in the per-meeting cost rollup
-  - [ ] Update budget expectation from `~$0.30` LLM-only to `~$1.22` dual-channel all-in nominal
-  - [ ] Add per-utterance metrics fields: `channel`, `diarizationIndex`, `speakerCacheHit`, `hostChannelShortCircuit`
-- [ ] **Tests:**
-  - [ ] Unit test dual-channel interleaving and single-channel fallback
-  - [ ] Unit test speaker cache keying by `channel:index`
-  - [ ] Integration test: host ch0 utterance → TEAM host identity without VAD
-  - [ ] Integration test: remote TEAM utterance on ch1 → VAD correlation → TEAM identity
-  - [ ] Integration test: EXTERNAL utterance on ch1 with no VAD → EXTERNAL
+- [x] `packages/stt`: `dual-channel-session.ts`, dual `DeepgramConnection`, default `SessionManager` factory
+- [x] `apps/realtime`: binary frames forwarded to `sessionManager.sendAudio`
+- [x] `packages/meeting-mode`: host short-circuit ch0; VAD correlation on ch1
+- [ ] **Remaining:** Rust-native tagged upload path on desktop (replace or augment Tauri `audio-frame` + JS relay); per-session upload metrics; Windows/macOS loopback parity
 
-**Deliverable:** Production audio intake matches the spec before Tier 3/Tier 4 build on it: lower latency, no base64/IPC hot path, no client-side mixing distortion, host identity is deterministic, and channel-aware utterances still feed the existing ring buffer, topic, commitment, and alert context mechanisms unchanged.
+**Deliverable (architecture):** Dual mono STT and channel-aware identity are canonical; finish desktop transport to match the wire contract.
 
 ### Day 24-25: Tier 3 — Embedding Search & Novelty Check
 
@@ -1141,8 +1101,8 @@ The `packages/stt` package has Deepgram integration but needs:
 
 - [ ] Integration test: full pipeline
   ```
-  Host dual-channel capture (Tauri/Rust: mic ch0 + loopback ch1) → Rust WebSocket → Remote server →
-  Deepgram (multichannel diarized) → host-channel short-circuit + VAD-correlation speaker identification →
+  Host dual-source capture (mic ch0 + loopback ch1) → **tagged mono** on WebSocket → Remote server →
+  **Two** Deepgram mono streams (**diarize**) → host-channel short-circuit + VAD-correlation speaker identification →
   Utterance (with SpeakerIdentity) →
   Pre-filter → Tier 1 → Tier 2 (small LLM) → Tier 3 (embedding search) →
   Tier 4 (large LLM) → Alert (with routing) → Shared/Personal channels →
@@ -1482,12 +1442,13 @@ packages/
 │   ├── rabbitmq/             # Connection, exchanges, queues, publish/consume
 │   └── prisma/               # Schema, generated client
 │                             # + Commitment model (no Voiceprint — VAD-based ID)
-├── stt/                      # DONE (needs diarization changes)
+├── stt/                      # DONE — dual mono Deepgram (`createDualChannelSession`), diarize per stream
 │   ├── deepgram/
-│   │   ├── client.ts         # Deepgram streaming client
-│   │   ├── connection.ts     # CHANGE: channel_index + diarization parsing, remove source→speaker
-│   │   └── types.ts          # CHANGE: add diarize:true, multichannel:true, channels:2
-│   ├── subscriber.ts         # Redis audio subscriber
+│   │   ├── client.ts
+│   │   ├── connection.ts     # Logical channel + diarization; `[DG]` logging
+│   │   └── types.ts          # `diarize: true`, `channels: 1`; dual assembly in `dual-channel-session.ts`
+│   ├── dual-channel-session.ts
+│   ├── subscriber.ts
 │   └── index.ts
 ├── meeting-mode/             # PARTIALLY DONE (major additions needed)
 │   ├── utterance/
