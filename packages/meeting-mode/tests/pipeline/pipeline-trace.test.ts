@@ -83,4 +83,63 @@ describe("buildPipelineTracePayload", () => {
     expect(trace.terminalLine).toContain("T2 commitment");
     expect(trace.terminalLine).toContain("T4(skipped)");
   });
+
+  it("includes surfaced Tier 4 message, surfaceReason, and suggestion in trace", () => {
+    const utterance = baseUtterance();
+    const result: PipelineEvaluationResult = {
+      dropped: false,
+      runTier4: true,
+      tier2StopDeepReasoning: false,
+      tier1: {
+        detections: [],
+        technicalHit: false,
+        blocklistHit: false,
+      },
+      tier2: {
+        intent: "concern",
+        commitmentType: null,
+        tone: "neutral",
+        riskSignals: ["internal_data", "client_present"],
+        extractedData: {},
+        confidence: 0.95,
+      },
+      tier3: {
+        forceTier4: true,
+        noveltyScore: 1,
+        memoryMatches: [],
+        ledgerMatches: [],
+      },
+      tier4Outcome: {
+        invoked: true,
+        surfaced: true,
+        latencyMs: 1200,
+      },
+      tier4Response: {
+        alertType: "information_risk",
+        severity: "high",
+        message: "Margin detail may leak to the client.",
+        surfaceReason:
+          "Speaker disclosed internal margin and secrecy instructions.",
+        suggestion:
+          "Move margin talk off this call; agree on external messaging only.",
+        confidence: 0.9,
+        shouldSurface: true,
+        reasoning: "internal audit only",
+        routing: "both",
+      },
+      latencies: {
+        preFilterMs: 0.1,
+        tier1Ms: 1,
+        tier2Ms: 80,
+        gateMs: 0.01,
+        tier4Ms: 1200,
+        pipelineBudgetMs: 1300,
+      },
+    };
+    const trace = buildPipelineTracePayload(utterance, result);
+    expect(trace.tier4?.surfaced).toBe(true);
+    expect(trace.tier4?.message).toBe("Margin detail may leak to the client.");
+    expect(trace.tier4?.surfaceReason).toContain("internal margin");
+    expect(trace.tier4?.suggestion).toContain("off this call");
+  });
 });

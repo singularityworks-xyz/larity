@@ -7,7 +7,7 @@ import type { Tier1Result, Tier2Classification, Tier3Result } from "./types";
 
 export const PIPELINE_TRACE_VERSION = 1 as const;
 
-/** Safe for Redis + desktop logs — no embeddings, reasoning, or full transcripts */
+/** Safe for Redis + desktop logs — no embeddings or internal `reasoning`; surfaced copy is user-visible UI text */
 export interface PipelineTracePayload {
   v: typeof PIPELINE_TRACE_VERSION;
   sessionId: string;
@@ -35,6 +35,9 @@ export interface PipelineTracePayload {
     ms?: number;
     alertType?: string;
     severity?: string;
+    message?: string;
+    surfaceReason?: string;
+    suggestion?: string;
   };
   latencyMs?: {
     tier2?: number;
@@ -77,10 +80,39 @@ function shortUtteranceId(id: string): string {
 
 type Tier4TraceSnap = NonNullable<PipelineTracePayload["tier4"]>;
 
+function traceTier4SurfacedCopy(
+  t4Rsp: Tier4Response
+):
+  | Pick<Tier4TraceSnap, "message" | "surfaceReason" | "suggestion">
+  | undefined {
+  const message = typeof t4Rsp.message === "string" ? t4Rsp.message.trim() : "";
+  if (!message) {
+    return undefined;
+  }
+
+  const out: Pick<Tier4TraceSnap, "message" | "surfaceReason" | "suggestion"> =
+    { message };
+
+  const sr =
+    typeof t4Rsp.surfaceReason === "string" ? t4Rsp.surfaceReason.trim() : "";
+  if (sr.length > 0) {
+    out.surfaceReason = sr;
+  }
+
+  const sug =
+    typeof t4Rsp.suggestion === "string" ? t4Rsp.suggestion.trim() : "";
+  if (sug.length > 0) {
+    out.suggestion = sug;
+  }
+
+  return out;
+}
+
 function assembleTier4Trace(result: PipelineEvaluationResult): Tier4TraceSnap {
   const t4Outcome = result.tier4Outcome;
   const t4Rsp = result.tier4Response;
-  return {
+
+  const base: Tier4TraceSnap = {
     invoked: t4Outcome?.invoked ?? false,
     surfaced: t4Outcome?.surfaced,
     ms:
@@ -91,6 +123,19 @@ function assembleTier4Trace(result: PipelineEvaluationResult): Tier4TraceSnap {
       typeof t4Rsp?.alertType === "string" ? t4Rsp.alertType : undefined,
     severity: typeof t4Rsp?.severity === "string" ? t4Rsp.severity : undefined,
   };
+
+  const surfacedOk =
+    t4Outcome?.surfaced === true &&
+    t4Rsp !== null &&
+    t4Rsp !== undefined &&
+    t4Rsp.alertType !== "none";
+
+  if (!surfacedOk) {
+    return base;
+  }
+
+  const copy = traceTier4SurfacedCopy(t4Rsp);
+  return copy === undefined ? base : { ...base, ...copy };
 }
 
 function formatTier4Brief(
