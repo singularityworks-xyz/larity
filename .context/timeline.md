@@ -12,7 +12,7 @@
 Before going into phases, align on what Larity actually is:
 
 1. **Larity is a native desktop application (Tauri).** It is NOT a browser extension. There is no Chrome/Edge/Firefox extension and there will not be one. The desktop app is installed on every team member's machine and runs as a tray/overlay app.
-2. **The desktop app captures a dual-channel audio feed from the host's machine**: host microphone on channel 0 and OS-level system audio loopback on channel 1, regardless of which conferencing tool is producing that audio (Zoom, Google Meet, Microsoft Teams, Discord, Slack Huddle, Jitsi, a dial-in phone bridged through the OS, etc.). No per-platform integrations are required, ever.
+2. **The desktop app captures two logical sources from the host’s machine** (**capture channel 0** = microphone, **capture channel 1** = OS-level system / loopback), regardless of which conferencing tool is producing that audio (Zoom, Google Meet, Microsoft Teams, Discord, Slack Huddle, Jitsi, a dial-in phone bridged through the OS, etc.). Production host intake sends **tagged mono** over the wire (`[tag: u8][linear16 mono @ 16 kHz]` per frame) so the server can open **two** mono Deepgram sessions — **no** client-side downmix of mic + sys into one blob. No per-platform *conferencing* integrations are required, ever.
 3. **A web app (`apps/web`) exists, but only as a dashboard / logs / settings surface** — history of past meetings, decisions, commitments, team / client / policy management, post-meeting review. The web app never captures audio and is not required during meetings.
 4. **All real-time processing happens on a shared remote server** — see [architecture-and-flow.md](./architecture-and-flow.md). The desktop app is a thin client that streams audio up and renders ambient UI + alerts.
 5. **Speaker identification is VAD-correlation based, not voice-embedding based.** No ML voice models, no Python microservice, no enrollment.
@@ -32,6 +32,13 @@ Before going into phases, align on what Larity actually is:
 | **apps/realtime** | Done | uWebSockets.js server with session management, host audio frame ingestion, direct Deepgram relay, Redis state/control publishing |
 | **packages/stt** | Done | Deepgram integration, session manager, Redis audio subscriber, utterance output |
 | **packages/meeting-mode** | Done | Speaker identification, alerts system, topic state management, context assembler |
+
+### Recently completed — desktop audio ↔ dual Deepgram (2026)
+
+- **Host desktop (`apps/desktop` / Tauri Rust):** `mixer.rs` is a **tag-and-forward** path: mic and system frames are **not** paired or summed; each frame is emitted as **`[0|1][pcm]`** (tags aligned with `packages/stt` `WS_AUDIO_TAG_*`). **Unbounded** `MixerMessage` queue from capture callbacks replaces `try_send` on a small bounded channel (avoids silent drops under burst).
+- **Linux loopback:** `parec` → same forwarder with `SourceType::Sys`.
+- **Transport to realtime:** still **Tauri `audio-frame` event → React `AudioStreamingClient` → WebSocket**; `ensureTaggedAudioFrame` in TS remains a **legacy fallback** if any path emits raw PCM.
+- **Still open:** Rust-native WebSocket from host (no base64/JS hot path), per-session upload metrics, true WASAPI / ScreenCaptureKit loopback parity on Windows / macOS.
 
 ### What Needs Architectural Changes (Existing Code)
 
@@ -431,9 +438,11 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Deliverable:** Complete audio → identified utterance pipeline working end-to-end. TEAM members identified via VAD within one utterance of speaking. ✓
 
-### Day 12-13: Dual-Channel OS-Level Audio Capture (Tauri / Rust) — PARTIAL
+### Day 12-13: Dual-Channel OS-Level Audio Capture (Tauri / Rust) — PARTIAL (decoupled forwarder ✓)
 
 > **Why this phase exists:** Larity is a native desktop app. The host's Larity instance must capture host mic + OS-level loopback audio of the system mixer so it works identically regardless of which conferencing app (Zoom, Meet, Teams, Discord, Slack Huddle, dial-in SIP app, etc.) is producing the meeting audio. The mic channel gives clean host speech and deterministic host identity; the loopback channel keeps platform-agnostic remote audio intake. This is the single biggest platform-specific workstream in the whole product and must not be deferred to "Week 6 frontend" where it was previously hidden as a one-line "audio capture hook".
+>
+> **Update:** The legacy **interleaved / time-aligned mixer** that **summed** mic + sys into one mono stream is **removed**. The host path now **forwards each source separately** with wire tags **0 = mic**, **1 = system**, matching `createDualChannelSession` on the server — fixing latency when one source is silent and aligning with B.12.
 
 **apps/desktop (Rust / Tauri side — `src-tauri`)**
 
@@ -450,7 +459,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - [x] `audio_capture_stop()` → stop capture cleanly
   - [x] `audio_capture_status()` → current state + per-platform backend in use + any permission errors
 - [x] Frame format (production host): 16 kHz **tagged mono** — each WS binary frame is `[tag: u8]` + **mono** linear16 little-endian (50 ms chunks per source path). Realtime opens **two** Deepgram connections (`channels=1`, `diarize=true`); not interleaved `multichannel` PCM.
-- [x] Current fallback frame format: 16 kHz mono 16-bit PCM, 50 ms frames.
+- [x] **Legacy:** untagged mono-only `audio-frame` payloads (older builds); current path is **always tagged** from Rust; TS `ensureTaggedAudioFrame` only fixes stray untagged bytes.
 - [x] Handle OS permission prompts:
   - [x] macOS: request screen-recording permission (SCK) once, surface failure gracefully
   - [x] Windows: no extra permission for WASAPI loopback
@@ -458,9 +467,9 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 - [x] Fail-silent: if capture cannot start, the desktop app surfaces a clear error modal but **does not crash the session** for other participants — the host just can't be a host on this machine right now
 - [ ] Unit tests in Rust for dual-channel frame sizing, sample-counter alignment, resampling, and state machine (start → running → stop)
 - [ ] Move resampling and PCM encoding off the cpal real-time callback into a worker/ring-buffer path
-- [ ] Add clipping-safe handling: no client-side summing in dual-channel mode; if single-channel fallback ever mixes, use soft limiter or <=0.5 gain per source
+- [x] No client-side summing in dual-source mode: host sends **separate tagged** mic and sys frames (no clipping from `(mic + sys) * gain` in the forwarder). *Single-stream fallback (if ever implemented) still TBD: soft limiter / <=0.5 gain per source.*
 
-**Deliverable (Day 12-13):** Prototype host capture exists, with Linux loopback functional and the intended dual-channel shape specified. Production dual-channel correctness (Rust-native WebSocket transport, true Windows/macOS loopback, channel-aware STT schema, and Rust-side VAD cleanup) is completed in the Post-Day 23 patch below.
+**Deliverable (Day 12-13):** Prototype host capture exists, with Linux loopback functional. **Per-source tagged mono** to the realtime worker is **implemented** (Tauri event + JS relay). **Remaining for “production complete” on desktop:** Rust-native WebSocket upload, Windows/macOS native loopback, richer Rust tests, optional worker offload of resampling from cpal callbacks.
 
 ### Day 14: Meeting Detection & Desktop App Wiring ✓ COMPLETED
 
@@ -475,6 +484,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - [ ] Back-pressure handling in Rust: bounded queue, drop oldest with metrics, surface a heartbeat warning
 - [x] Current fallback frontend audio streaming:
   - [x] Subscribe to the Rust `audio-frame` Tauri event
+  - [x] Rust emits **tagged** payload in `data` (base64 of `[tag][pcm]`); React forwards bytes as-is; `ensureTaggedAudioFrame` tags only **legacy** untagged PCM
   - [x] Push each frame as a binary WebSocket message to `apps/realtime`
   - [x] Back-pressure handling: if WS buffer grows past threshold, drop oldest frame + surface a heartbeat warning
 - [x] **Server-side audio path is direct, not via Redis (B.2):**
@@ -488,7 +498,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 > **Note:** Calendar trigger and process/audio-activity heuristic (optional features) are not yet implemented.
 
-**Deliverable (Day 14):** Desktop app can be launched, detect or be told about a meeting, start the prototype host capture path, stream to the remote server, and appear in the server's session registry. Production dual-channel intake is intentionally scheduled after Day 22-23 so Tier 3+ work builds on the final utterance shape.
+**Deliverable (Day 14):** Desktop app can be launched, detect or be told about a meeting, start the prototype host capture path, stream to the remote server, and appear in the server's session registry. **Dual-source tagged intake is live** through the Tauri-event + JS path; **Rust-native WebSocket** remains optional hardening (see Post-Day 23).
 
 #### Post-Day 14 Patch: Desktop Realtime Identity Inputs ✓ COMPLETED
 
@@ -714,14 +724,15 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **apps/desktop + apps/realtime + packages/stt + packages/meeting-mode**
 
-> **Server + STT complete:** Tagged mono wire format **`[tag: u8][mono linear16 @ 16 kHz]`**; realtime **`createDualChannelSession`**; **`SttResult.channel`** = logical 0/1; **`SpeakerIdentifier`** keys **`channel:diarizationIndex`**. **Desktop** may still be mid-migration: production requires **per-source tagged frames** (Rust-native WebSocket and/or non-mixing relay); **interleaved `mixer.rs` + mixed mono** is **not** aligned with dual Deepgram sessions until the client sends tagged per-source PCM.
+> **Server + STT + desktop wire contract:** Tagged mono **`[tag: u8][mono linear16 @ 16 kHz]`**; realtime **`createDualChannelSession`** (two Deepgram connections); **`SttResult.channel`** = logical 0/1; **`SpeakerIdentifier`** keys **`channel:diarizationIndex`**. **Desktop Rust** (`audio/mixer.rs`) emits **per-source tagged** frames over the **`audio-frame`** Tauri event (no mixing, **unbounded** queue from capture). **React** forwards binary WebSocket frames; TS **`ensureTaggedAudioFrame`** only patches stray **untagged** PCM. **Optional next:** open realtime WebSocket from **Rust** (skip base64 + renderer), per-session upload metrics, Windows/macOS native loopback.
 
 - [x] `packages/stt`: `dual-channel-session.ts`, dual `DeepgramConnection`, default `SessionManager` factory
 - [x] `apps/realtime`: binary frames forwarded to `sessionManager.sendAudio`
 - [x] `packages/meeting-mode`: host short-circuit ch0; VAD correlation on ch1
-- [ ] **Remaining:** Rust-native tagged upload path on desktop (replace or augment Tauri `audio-frame` + JS relay); per-session upload metrics; Windows/macOS loopback parity
+- [x] **Desktop:** tag-and-forward host audio; Linux `parec` → tagged sys; mic → tag 0; **removed** paired-buffer / summed mono mixer
+- [ ] **Remaining (hardening):** Rust-native WebSocket upload from host; per-session upload metrics; true WASAPI / ScreenCaptureKit loopback on Windows / macOS
 
-**Deliverable (architecture):** Dual mono STT and channel-aware identity are canonical; finish desktop transport to match the wire contract.
+**Deliverable (architecture):** Dual mono STT, channel-aware identity, and **decoupled** host capture → server wire format are **aligned**. Remaining work is transport/observability and platform loopback parity, not STT schema or tagging semantics.
 
 ### Day 24-25: Tier 3 — Embedding Search & Novelty Check
 
@@ -1002,7 +1013,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 ### Day 37-38: Desktop App Foundation
 
-> **Note:** Prototype host capture started in Day 12-13, and production dual-channel intake is hardened in the Post-Day 23 patch. This phase is about wiring the React frontend around the finalized Rust capture/transport surface.
+> **Note:** Host capture and **per-source tagged mono** (`audio-frame` → JS WebSocket) are **implemented**. This phase is about **meeting UI**, session UX, and optional **Rust-native WebSocket** (no base64 through React) as a performance hardening step.
 
 **apps/desktop**
 
@@ -1538,9 +1549,9 @@ apps/
 ├── realtime/                 # DONE - uWebSockets.js
 │   └── Needs: multi-connection per session (DONE), host/participant roles (DONE),
 │              broadcast to participants (DONE), alert channel subscriptions
-├── desktop/                  # SCAFFOLD + VAD + prototype audio capture - Tauri + React
-│   └── Needs: production dual-channel Rust audio transport (Post-Day 23 patch),
-│              true Win/macOS loopback, React UI (Week 6), assistant (Week 8)
+├── desktop/                  # Host capture: dual-source tagged mono (mic+sys forwarder); VAD - Tauri + React
+│   └── Needs: Rust-native WS (optional), per-session audio metrics, true Win/macOS loopback,
+│              React meeting UI polish (Week 6), assistant (Week 8)
 ├── workers/                  # SCAFFOLD ONLY
 │   └── Needs: Everything (Week 7)
 └── web/                      # NOT YET CREATED
@@ -1751,7 +1762,7 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 - This timeline assumes 1 developer working full-time
 - 76 working days = ~11 weeks at 7 days/week, or ~15 weeks with weekends
 - Week 1 is primarily migration work (updating existing code to new architecture)
-- Audio intake is the biggest platform-specific workstream. Week 2 establishes the prototype capture path; the Post-Day 23 patch hardens production dual-channel capture before Tier 3/Tier 4 work builds on utterance shape.
+- Audio intake is the biggest platform-specific workstream. Week 2 establishes the prototype capture path; **Post-Day 23 / B.12** aligns **server STT + desktop tagged per-source frames** (no client-side mic/sys mix). **Rust-native WebSocket** and **Win/mac loopback** remain the main follow-ups before calling desktop capture “fully production-grade” on every OS.
 - Pattern library work from the old timeline is completely removed (replaced by Tier 2 LLM)
 - Weeks 7-8-9 can be parallelized if additional developers are available
 - Adjust based on actual velocity after Week 1
