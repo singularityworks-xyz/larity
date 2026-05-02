@@ -69,7 +69,7 @@ model User {
   name          String
   email         String   @unique
   emailVerified Boolean  @default(false)
-  image         String?  @default("https://www.catstalkers.com/_next/static/media/bg-footer.1b0868cc.png")
+  image         String?
   role          UserRole @default(MEMBER)
   timezone      String?
   createdAt     DateTime @default(now())
