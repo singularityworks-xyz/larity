@@ -2,6 +2,8 @@
  * realtime-socket.ts — WebSocket Manager for Desktop App
  */
 
+import { createLogger } from "../lib/logger";
+
 export type VadSignalType = "vad_speaking" | "vad_silence";
 
 export interface VadSignal {
@@ -16,6 +18,7 @@ export class RealtimeSocket {
   private readonly url: string;
   private readonly sessionId: string;
   private readonly userId: string;
+  private readonly log = createLogger("realtime-socket");
 
   constructor(sessionId: string, userId: string) {
     this.sessionId = sessionId;
@@ -32,16 +35,16 @@ export class RealtimeSocket {
     this.ws = new WebSocket(this.url);
 
     this.ws.onopen = () => {
-      console.log("[RealtimeSocket] Connected to realtime plane.");
+      this.log.info("Connected to realtime plane.");
     };
 
     this.ws.onclose = () => {
-      console.log("[RealtimeSocket] Disconnected.");
+      this.log.info("Disconnected.");
       this.ws = null;
     };
 
     this.ws.onerror = (err) => {
-      console.error("[RealtimeSocket] Error:", err);
+      this.log.error("Error:", err);
     };
   }
 
@@ -54,7 +57,7 @@ export class RealtimeSocket {
 
   sendVadSignal(type: VadSignalType): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.warn("[RealtimeSocket] Cannot send VAD signal, socket not open.");
+      this.log.warn("Cannot send VAD signal, socket not open.");
       return;
     }
 
@@ -68,7 +71,7 @@ export class RealtimeSocket {
     try {
       this.ws.send(JSON.stringify(payload));
     } catch (err) {
-      console.error("[RealtimeSocket] Failed to send VAD signal:", err);
+      this.log.error("Failed to send VAD signal:", err);
     }
   }
 }

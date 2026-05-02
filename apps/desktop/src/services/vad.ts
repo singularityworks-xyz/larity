@@ -2,6 +2,7 @@
  * vad.ts — Local VAD Processor
  */
 import { MicVAD } from "@ricky0123/vad-web";
+import { createLogger } from "../lib/logger";
 
 export interface VadCallbacks {
   onSpeechStart: () => void;
@@ -10,6 +11,7 @@ export interface VadCallbacks {
 
 export class VadManager {
   private micVad: MicVAD | null = null;
+  private readonly log = createLogger("vad");
 
   async start(callbacks: VadCallbacks): Promise<void> {
     try {
@@ -29,10 +31,10 @@ export class VadManager {
       });
 
       this.micVad.start();
-      console.log("[VadManager] VAD initialized and started successfully.");
+      this.log.info("VAD initialized and started successfully.");
     } catch (err) {
-      console.warn(
-        "[VadManager] Failed to start VAD. Microphone might be denied or unavailable:",
+      this.log.warn(
+        "Failed to start VAD. Microphone might be denied or unavailable:",
         err
       );
       // Fail silently without crashing the app
@@ -44,7 +46,7 @@ export class VadManager {
     if (this.micVad) {
       this.micVad.pause();
       this.micVad = null;
-      console.log("[VadManager] VAD destroyed.");
+      this.log.info("VAD destroyed.");
     }
   }
 }

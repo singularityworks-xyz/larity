@@ -149,7 +149,7 @@ export function MeetingPage() {
           streamingClient.sendVadSignal("vad_silence", sessionId);
         },
       })
-      .catch((e) => console.error("Failed to start VAD", e));
+      .catch((e) => console.warn("Failed to start VAD", e));
 
     return () => {
       vadManager.destroy();
