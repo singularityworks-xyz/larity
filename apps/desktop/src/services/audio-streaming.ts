@@ -37,6 +37,9 @@ const DEFAULT_WS_URL = "ws://127.0.0.1:9001";
 const DEFAULT_USER_ID = "desktop-host";
 const DEFAULT_BACKPRESSURE_THRESHOLD = 64 * 1024;
 const DEFAULT_MAX_PENDING_FRAMES = 8;
+const WS_AUDIO_TAG_MIC = 0;
+const WS_AUDIO_TAG_SYS = 1;
+const LEGACY_AUDIO_FRAME_TAG = WS_AUDIO_TAG_SYS;
 
 export function buildRealtimeSocketUrl(
   wsBaseUrl: string,
@@ -58,6 +61,22 @@ function decodeBase64ToBytes(base64: string): Uint8Array {
     bytes[i] = binary.charCodeAt(i);
   }
   return bytes;
+}
+
+export function ensureTaggedAudioFrame(frameBytes: Uint8Array): Uint8Array {
+  const maybeTag = frameBytes[0];
+  const hasTag =
+    frameBytes.length % 2 === 1 &&
+    (maybeTag === WS_AUDIO_TAG_MIC || maybeTag === WS_AUDIO_TAG_SYS);
+
+  if (hasTag) {
+    return frameBytes;
+  }
+
+  const taggedFrame = new Uint8Array(frameBytes.length + 1);
+  taggedFrame[0] = LEGACY_AUDIO_FRAME_TAG;
+  taggedFrame.set(frameBytes, 1);
+  return taggedFrame;
 }
 
 export function shouldDropFrame(
@@ -201,7 +220,9 @@ export class AudioStreamingClient {
       return { sent: false, dropped: true };
     }
 
-    const frameBytes = decodeBase64ToBytes(payload.data);
+    const frameBytes = ensureTaggedAudioFrame(
+      decodeBase64ToBytes(payload.data)
+    );
     this.pendingFrames.push(frameBytes);
 
     let dropped = false;

@@ -5,7 +5,9 @@ use tokio::process::Command;
 use tokio::sync::mpsc;
 use crate::audio::mixer::{MixerMessage, SourceType};
 
-pub fn start_linux_sys_capture(tx: mpsc::Sender<MixerMessage>) -> tauri::async_runtime::JoinHandle<()> {
+pub fn start_linux_sys_capture(
+    tx: mpsc::UnboundedSender<MixerMessage>,
+) -> tauri::async_runtime::JoinHandle<()> {
     tauri::async_runtime::spawn(async move {
         // Start `parec` targeting the default monitor
         // Using s16le, 16000 Hz, 1 channel (mono), raw PCM
@@ -50,11 +52,14 @@ pub fn start_linux_sys_capture(tx: mpsc::Sender<MixerMessage>) -> tauri::async_r
                         samples.push(sample);
                     }
 
-                    if tx.send(MixerMessage {
-                        source: SourceType::Sys,
-                        timestamp_ms: ts,
-                        samples,
-                    }).await.is_err() {
+                    if tx
+                        .send(MixerMessage {
+                            source: SourceType::Sys,
+                            timestamp_ms: ts,
+                            samples,
+                        })
+                        .is_err()
+                    {
                         // Channel closed
                         break;
                     }

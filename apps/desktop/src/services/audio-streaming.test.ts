@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   AudioStreamingClient,
   buildRealtimeSocketUrl,
+  ensureTaggedAudioFrame,
   shouldDropFrame,
 } from "./audio-streaming";
 
@@ -87,6 +88,18 @@ describe("audio streaming backpressure", () => {
     expect(shouldDropFrame(65_536, 65_535)).toBe(true);
     expect(shouldDropFrame(65_535, 65_535)).toBe(false);
     expect(shouldDropFrame(0, 65_535)).toBe(false);
+  });
+
+  it("tags legacy raw PCM frames for the dual-channel STT session", () => {
+    const taggedFrame = ensureTaggedAudioFrame(new Uint8Array([2, 3]));
+
+    expect([...taggedFrame]).toEqual([1, 2, 3]);
+  });
+
+  it("does not double-tag frames that already carry an audio source tag", () => {
+    const taggedFrame = ensureTaggedAudioFrame(new Uint8Array([1, 2, 3]));
+
+    expect([...taggedFrame]).toEqual([1, 2, 3]);
   });
 
   it("builds realtime websocket URL with required query params", () => {
