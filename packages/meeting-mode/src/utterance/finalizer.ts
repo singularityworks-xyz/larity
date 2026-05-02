@@ -1,5 +1,6 @@
 import type { SttResult } from "../../../stt/src/types";
 import { utteranceChannel } from "../channels";
+import { MERGE_GAP_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import type { Tier2TopicDelta } from "../pipeline/types";
 import type { SpeakerIdentifier } from "../speaker/identifier";
@@ -29,6 +30,7 @@ export type RetroactiveUpdateHandler = (
 export type UtterancePublishedHandler = (utterance: Utterance) => Promise<void>;
 
 export class UtteranceFinalizer {
+  private readonly mergerGapMs: number;
   private readonly buffer = new Map<string, PartialBuffer>();
   private readonly mergers = new Map<string, UtteranceMerger>();
   private readonly sequences = new Map<string, number>();
@@ -39,12 +41,21 @@ export class UtteranceFinalizer {
   private readonly publishedHandlers: UtterancePublishedHandler[] = [];
   private readonly topicManager: TopicManager;
   private readonly embedder: GoogleGenAIEmbedder;
+  private readonly mergerFlushTimers = new Map<
+    string,
+    ReturnType<typeof setTimeout>
+  >();
 
   constructor(
     publisher: UtterancePublisher,
-    options: { topicManager?: TopicManagerOptions } = {}
+    options: {
+      topicManager?: TopicManagerOptions;
+      /** Same-window merge threshold and post-utterance flush delay; defaults to `MERGE_GAP_MS`. */
+      mergerGapMs?: number;
+    } = {}
   ) {
     this.publisher = publisher;
+    this.mergerGapMs = options.mergerGapMs ?? MERGE_GAP_MS;
     this.topicManager = new TopicManager(publisher, options.topicManager);
     this.embedder = new GoogleGenAIEmbedder();
   }
@@ -124,6 +135,8 @@ export class UtteranceFinalizer {
     result: SttResult,
     buffer: PartialBuffer
   ): Promise<void> {
+    this.clearMergerFlushTimer(sessionId);
+
     const finalized = buffer.finalize(result);
     if (!finalized.text.trim()) {
       return;
@@ -168,6 +181,10 @@ export class UtteranceFinalizer {
 
     if (toPublish) {
       await this.publishUtterance(toPublish);
+    }
+
+    if (merger.hasPending()) {
+      this.scheduleMergerGapFlush(sessionId);
     }
 
     let ringBuffer = this.ringBuffers.get(sessionId);
@@ -279,6 +296,8 @@ export class UtteranceFinalizer {
   async closeSession(sessionId: string): Promise<void> {
     log.info({ sessionId }, "Closing session");
 
+    this.clearMergerFlushTimer(sessionId);
+
     const merger = this.mergers.get(sessionId);
     if (merger) {
       const pending = merger.flush();
@@ -319,10 +338,58 @@ export class UtteranceFinalizer {
   private getOrCreateMerger(sessionId: string): UtteranceMerger {
     let merger = this.mergers.get(sessionId);
     if (!merger) {
-      merger = new UtteranceMerger();
+      merger = new UtteranceMerger(this.mergerGapMs);
       this.mergers.set(sessionId, merger);
     }
     return merger;
+  }
+
+  private clearMergerFlushTimer(sessionId: string): void {
+    const handle = this.mergerFlushTimers.get(sessionId);
+    if (handle !== undefined) {
+      clearTimeout(handle);
+      this.mergerFlushTimers.delete(sessionId);
+    }
+  }
+
+  /**
+   * When the merger holds a line waiting for a possible same-speaker sibling, still publish
+   * past the pending audio end plus `mergerGapMs` if no new final arrives — otherwise
+   * pipeline and alerts lag one utterance behind realtime speech.
+   */
+  private scheduleMergerGapFlush(sessionId: string): void {
+    const merger = this.mergers.get(sessionId);
+    const pending = merger?.peekPending();
+    if (!pending) {
+      return;
+    }
+
+    const pendingEndMs = pending.timestamp + pending.duration * 1000;
+    const fireAt = pendingEndMs + this.mergerGapMs;
+    const delayMs = Math.max(0, Math.ceil(fireAt - Date.now()));
+
+    this.clearMergerFlushTimer(sessionId);
+
+    const handle = setTimeout(() => {
+      this.mergerFlushTimers.delete(sessionId);
+      this.flushMergerPendingAfterGap(sessionId).catch((error) => {
+        log.error({ err: error, sessionId }, "Merger gap flush failed");
+      });
+    }, delayMs);
+
+    this.mergerFlushTimers.set(sessionId, handle);
+  }
+
+  private async flushMergerPendingAfterGap(sessionId: string): Promise<void> {
+    const merger = this.mergers.get(sessionId);
+    if (!merger?.hasPending()) {
+      return;
+    }
+
+    const flushed = merger.flush();
+    if (flushed) {
+      await this.publishUtterance(flushed);
+    }
   }
 
   private generateUtteranceId(sessionId: string): string {
