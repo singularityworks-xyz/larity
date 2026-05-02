@@ -29,6 +29,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 *.tsbuildinfo
 .turbo
 
+# local tooling indexes
+.opencode/
+
 # IntelliJ based IDEs
 .idea
 
