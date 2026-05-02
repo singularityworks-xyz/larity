@@ -36,6 +36,7 @@ export interface SttResult {
   transcript: string;
   confidence: number;
   diarizationIndex: number; // Deepgram speaker index (0, 1, 2...)
+  channel: number; // 0 for host mic, 1 for loopback
   start: number; // Seconds from Deepgram
   duration: number;
   ts: number; // Unix timestamp when processed

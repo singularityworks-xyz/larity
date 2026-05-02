@@ -40,8 +40,8 @@ export const DEFAULT_DG_CONFIG = {
   encoding: "linear16",
   sample_rate: 16_000,
   channels: 1,
-  keepAlive: true, // Prevent idle disconnections
-  diarize: true, // Enable speaker diarization
+  keepAlive: true,
+  diarize: true,
 } as const;
 
 /**

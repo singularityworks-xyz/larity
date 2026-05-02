@@ -21,8 +21,8 @@ export const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY || "";
 export const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
 /**
- * Maximum concurrent Deepgram connections per process
- * Deepgram has rate limits, so we cap this
+ * Maximum concurrent *meeting sessions* (each session opens 2 Deepgram live
+ * connections: microphone mono + system capture mono).
  */
 export const MAX_CONNECTIONS = Number.parseInt(
   process.env.MAX_CONNECTIONS || "50",

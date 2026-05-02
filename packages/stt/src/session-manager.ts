@@ -5,7 +5,7 @@
  * Enforces connection limits and provides session lifecycle methods.
  */
 
-import { DeepgramConnection } from "./deepgram/connection";
+import { createDualChannelSession } from "./dual-channel-session";
 import { MAX_CONNECTIONS } from "./env";
 
 interface SessionConnection {
@@ -30,7 +30,7 @@ export class SessionManager {
   constructor(createConnection?: ConnectionFactory) {
     this.createConnection =
       createConnection ??
-      ((sessionId: string) => new DeepgramConnection(sessionId));
+      ((sessionId: string) => createDualChannelSession(sessionId));
   }
 
   /**
@@ -65,14 +65,14 @@ export class SessionManager {
   /**
    * Close and remove a session
    */
-  async closeSession(sessionId: string): Promise<void> {
+  closeSession(sessionId: string): void {
     const connection = this.connections.get(sessionId);
     if (!connection) {
       console.log(`[SessionManager] Session ${sessionId} not found for close`);
       return;
     }
 
-    await connection.close();
+    connection.close();
     this.connections.delete(sessionId);
 
     console.log(
@@ -81,11 +81,10 @@ export class SessionManager {
   }
 
   /**
-   * Send audio to a session's Deepgram connection.
+   * Send audio to a session.
    *
-   * In the host model, all audio comes from a single source
-   * (the host's system capture). Speaker differentiation is
-   * handled by Deepgram diarization, not by audio source.
+   * Buffer layout: `[tag: u8][pcm mono linear16 LE]`.
+   * See `@larity/stt/dual-channel-session` for tag constants.
    */
   async sendAudio(sessionId: string, audioBuffer: Buffer): Promise<void> {
     const connection = this.connections.get(sessionId);
@@ -114,16 +113,16 @@ export class SessionManager {
   /**
    * Close all sessions (for graceful shutdown)
    */
-  async closeAll(): Promise<void> {
+  closeAll(): void {
     console.log(
       `[SessionManager] Closing all ${this.connections.size} sessions...`
     );
 
-    const closePromises = Array.from(this.connections.keys()).map((sessionId) =>
-      this.closeSession(sessionId)
-    );
+    const sessionIds = Array.from(this.connections.keys());
+    for (const sessionId of sessionIds) {
+      this.closeSession(sessionId);
+    }
 
-    await Promise.all(closePromises);
     console.log("[SessionManager] All sessions closed");
   }
 }

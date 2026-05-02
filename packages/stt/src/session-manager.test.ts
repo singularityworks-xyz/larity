@@ -47,22 +47,22 @@ describe("SessionManager", () => {
     expect(sendAudioMock).toHaveBeenCalledWith(Buffer.from([1, 2, 3]));
   });
 
-  it("closes and removes session connections", async () => {
+  it("closes and removes session connections", () => {
     manager.createSession("session-a");
     expect(manager.hasSession("session-a")).toBe(true);
 
-    await manager.closeSession("session-a");
+    manager.closeSession("session-a");
 
     expect(closeMock).toHaveBeenCalledTimes(1);
     expect(manager.hasSession("session-a")).toBe(false);
     expect(manager.sessionCount).toBe(0);
   });
 
-  it("closeAll closes every active session", async () => {
+  it("closeAll closes every active session", () => {
     manager.createSession("session-a");
     manager.createSession("session-b");
 
-    await manager.closeAll();
+    manager.closeAll();
 
     expect(closeMock).toHaveBeenCalledTimes(2);
     expect(manager.sessionCount).toBe(0);

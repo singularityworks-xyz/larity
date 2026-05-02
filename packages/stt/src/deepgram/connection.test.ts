@@ -202,4 +202,41 @@ describe("DeepgramConnection Diarization", () => {
 
     expect(redis.publish).not.toHaveBeenCalled();
   });
+
+  it("stamps logical channel on published STT payload when logicalChannel is 1", async () => {
+    const connection = new DeepgramConnection(sessionId, 1);
+    const transcript: TranscriptResult = {
+      type: "Results",
+      channel_index: [0],
+      duration: 1.5,
+      start: 0,
+      is_final: true,
+      speech_final: true,
+      channel: {
+        alternatives: [
+          {
+            transcript: "Loopback line",
+            confidence: 0.99,
+            words: [
+              {
+                word: "Loopback",
+                start: 0,
+                end: 0.5,
+                confidence: 0.99,
+                speaker: 0,
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    await (connection as any).handleTranscript(transcript);
+
+    const calls = (redis.publish as any).mock.calls;
+    const lastCall = calls.at(-1);
+    const payload = JSON.parse(lastCall[1]);
+
+    expect(payload.channel).toBe(1);
+  });
 });

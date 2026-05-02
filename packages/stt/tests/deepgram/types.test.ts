@@ -7,7 +7,7 @@ import {
 
 describe("Deepgram Types", () => {
   describe("DEFAULT_DG_CONFIG", () => {
-    it("should have diarize enabled", () => {
+    it("should have diarize enabled for per-stream speaker labels in logs and Redis", () => {
       expect(DEFAULT_DG_CONFIG.diarize).toBe(true);
     });
 
