@@ -3,6 +3,19 @@ import { createRealtimeLogger } from "../logger";
 import { broadcast, sendToUser } from "../session";
 
 const log = createRealtimeLogger("subscriber");
+const pipelineTraceLog = createRealtimeLogger("pipeline-trace");
+
+/** Same semantics as `packages/meeting-mode` `PIPELINE_TRACE_PRETTY_JSON` */
+function pipelineTracePrettyLogsEnabled(): boolean {
+  const raw = process.env.PIPELINE_TRACE_PRETTY_JSON;
+  if (raw === "false" || raw === "0") {
+    return false;
+  }
+  if (raw === "true" || raw === "1") {
+    return true;
+  }
+  return process.env.NODE_ENV !== "production";
+}
 
 let subscriber: Redis | null = null;
 
@@ -31,11 +44,13 @@ export async function startSubscriber(): Promise<void> {
   // Pattern: meeting.topic.{sessionId}
   // Pattern: meeting.alert.{sessionId}.shared
   // Pattern: meeting.alert.{sessionId}.user.{userId}
+  // Pattern: meeting.pipeline.{sessionId} — tier / gate trace (logged only, no WS relay)
   await subscriber.psubscribe(
     "meeting.utterance.*",
     "meeting.topic.*",
     "meeting.alert.*",
-    "meeting.ledger.*"
+    "meeting.ledger.*",
+    "meeting.pipeline.*"
   );
 
   subscriber.on("pmessage", (pattern, channel, message) => {
@@ -55,6 +70,11 @@ function handleMessage(
   const _ = pattern;
 
   try {
+    if (channel.startsWith("meeting.pipeline.")) {
+      handlePipelineTraceMessage(message);
+      return;
+    }
+
     if (handleBroadcastSessionChannel(channel, message)) {
       return;
     }
@@ -114,6 +134,34 @@ function handleAlertChannel(channel: string, message: string): void {
   }
 
   sendToUser(sessionId, userId, message);
+}
+
+function handlePipelineTraceMessage(message: string): void {
+  try {
+    const data = JSON.parse(message) as {
+      sessionId?: string;
+      utteranceId?: string;
+      terminalLine?: string;
+      [key: string]: unknown;
+    };
+    if (
+      !(typeof data.terminalLine === "string" && data.terminalLine.length > 0)
+    ) {
+      return;
+    }
+    const display = pipelineTracePrettyLogsEnabled()
+      ? `${data.terminalLine}\n${JSON.stringify(data, null, 2)}`
+      : data.terminalLine;
+    pipelineTraceLog.info(
+      {
+        sessionId: data.sessionId,
+        utteranceId: data.utteranceId,
+      },
+      display
+    );
+  } catch (error) {
+    log.warn({ err: error }, "Invalid meeting.pipeline trace JSON");
+  }
 }
 
 export const __test_only_handleBroadcastSessionChannel =
