@@ -96,16 +96,16 @@ export const ssoButtonClass = cx(
 );
 
 export const authSplitRootClass =
-  "flex h-screen w-screen overflow-hidden bg-black";
+  "flex h-screen min-h-0 w-screen flex-row overflow-hidden bg-black";
 
 export const authBrandPanelClass =
-  "relative flex h-full basis-[42%] flex-col overflow-hidden border-white/5 border-r bg-black";
+  "relative hidden h-full min-h-0 basis-[42%] flex-col overflow-hidden border-white/5 border-r bg-black md:flex";
 
 export const authFormPanelClass =
-  "flex h-full flex-1 flex-col overflow-y-auto bg-[#060606] pt-9";
+  "flex h-full min-h-0 flex-1 flex-col overflow-y-auto bg-[#060606] pt-9";
 
 export const authBrandInnerClass =
-  "relative z-[1] flex h-full flex-col justify-end px-9 pt-[100px] pb-10";
+  "relative z-[1] flex h-full min-h-0 flex-col justify-end px-6 pt-[100px] pb-10 md:px-9";
 
 export const authBrandBgClass =
   "absolute inset-0 z-0 animate-[brandPulse_8s_ease-in-out_infinite_alternate] bg-[radial-gradient(ellipse_at_30%_20%,rgba(255,255,255,0.28)_0%,transparent_55%),radial-gradient(ellipse_at_70%_75%,rgba(200,200,200,0.18)_0%,transparent_50%)]";
@@ -122,7 +122,7 @@ export const authBrandFeaturesClass =
   "m-0 flex list-none flex-col gap-2.5 p-0 [&_li]:relative [&_li]:pl-4 [&_li]:text-xs [&_li]:font-medium [&_li]:leading-normal [&_li]:text-[rgba(161,161,161,0.55)] [&_li]:before:absolute [&_li]:before:left-0 [&_li]:before:top-[7px] [&_li]:before:h-px [&_li]:before:w-[5px] [&_li]:before:bg-white/55 [&_li]:before:content-['']";
 
 export const authFormInnerClass =
-  "mx-auto w-full max-w-[340px] px-6 pt-12 pb-10";
+  "mx-auto w-full max-w-[340px] px-4 pt-10 pb-8 sm:px-6 sm:pt-12 sm:pb-10 lg:my-auto lg:pt-8 lg:pb-12";
 
 export const authBackClass =
   "mb-5 inline-flex items-center gap-1 text-xs font-medium text-fg-muted no-underline transition-colors duration-150 hover:text-fg [&_svg]:h-3.5 [&_svg]:w-3.5";
