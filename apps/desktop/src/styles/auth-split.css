@@ -56,12 +56,12 @@
   background:
     radial-gradient(
       ellipse at 30% 20%,
-      rgba(124, 92, 255, 0.28) 0%,
+      rgba(255, 255, 255, 0.28) 0%,
       transparent 55%
     ),
     radial-gradient(
       ellipse at 70% 75%,
-      rgba(90, 58, 242, 0.18) 0%,
+      rgba(200, 200, 200, 0.18) 0%,
       transparent 50%
     );
   animation: brandPulse 8s ease-in-out infinite alternate;
@@ -87,7 +87,7 @@
 }
 
 .auth-brand-logo img {
-  filter: drop-shadow(0 0 16px rgba(124, 92, 255, 0.5));
+  filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.5));
 }
 
 .auth-brand-wordmark {
@@ -97,8 +97,8 @@
   letter-spacing: 0.2em;
   color: #ededed;
   text-shadow:
-    0 0 24px rgba(124, 92, 255, 0.4),
-    0 0 6px rgba(124, 92, 255, 0.15);
+    0 0 24px rgba(255, 255, 255, 0.4),
+    0 0 6px rgba(255, 255, 255, 0.15);
 }
 
 /* Tagline */
@@ -137,7 +137,7 @@
   top: 7px;
   width: 5px;
   height: 1px;
-  background: rgba(124, 92, 255, 0.55);
+  background: rgba(255, 255, 255, 0.55);
 }
 
 /* ── Form panel contents ── */

@@ -1,11 +1,15 @@
 import { ArrowLeft } from "lucide-react";
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
+import larityLogo from "../assets/larity-logo-dark.svg";
 import { GoogleIcon, MicrosoftIcon } from "../components/icons";
+import { TitleBar } from "../components/title-bar";
 import { api } from "../lib/api";
 import { signIn, signUp } from "../lib/auth-client";
+import { applyWindowProfile, WINDOW_PROFILES } from "../lib/window";
+import "../styles/auth-split.css";
 
 function toSlug(value: string): string {
   return value
@@ -78,6 +82,13 @@ export function RegisterPage() {
   const [inviteCode, setInviteCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Resize window to wide auth layout
+  useEffect(() => {
+    applyWindowProfile(WINDOW_PROFILES.auth).catch(() => {
+      // best-effort outside Tauri
+    });
+  }, []);
 
   const accountError = useMemo(() => {
     const parsed = accountSchema.safeParse({
@@ -152,9 +163,7 @@ export function RegisterPage() {
     setError(null);
 
     try {
-      const result = await signIn.social({
-        provider: "google",
-      });
+      const result = await signIn.social({ provider: "google" });
       if (result.error) {
         throw new Error(result.error.message ?? "Google sign up failed");
       }
@@ -170,169 +179,194 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <Link className="auth-back" to="/welcome">
-          <ArrowLeft size={14} />
-          Back
-        </Link>
+    <div className="auth-split-root">
+      <TitleBar />
 
-        <div className="welcome-hero" style={{ marginBottom: 20 }}>
-          <p className="eyebrow">Get started</p>
-          <h1
-            style={{
-              margin: "4px 0 0",
-              fontSize: 20,
-              fontWeight: 600,
-              lineHeight: 1.3,
-              color: "var(--fg)",
-            }}
-          >
-            Create your Larity account
-          </h1>
+      {/* ── Left panel — brand / ambient ── */}
+      <aside
+        aria-hidden="true"
+        className="auth-split-panel auth-split-panel--brand"
+      >
+        <div className="auth-brand-inner">
+          <div className="auth-brand-logo">
+            <img alt="" height={36} src={larityLogo} width={36} />
+            <span className="auth-brand-wordmark">LARITY</span>
+          </div>
+          <p className="auth-brand-tagline">Work, with memory.</p>
+          <ul aria-label="Features" className="auth-brand-features">
+            <li>OS-level meeting capture</li>
+            <li>Real-time speaker intelligence</li>
+            <li>Deep-reasoning memory pipeline</li>
+          </ul>
         </div>
+        <div className="auth-brand-bg" />
+      </aside>
 
-        <div className="sso-group">
-          <button
-            className="btn-sso"
-            disabled={isSubmitting}
-            onClick={handleGoogleSignUp}
-            type="button"
-          >
-            <GoogleIcon />
-            Continue with Google
-          </button>
-          <button className="btn-sso" disabled={isSubmitting} type="button">
-            <MicrosoftIcon />
-            Continue with Microsoft
-          </button>
-        </div>
+      {/* ── Right panel — form ── */}
+      <main className="auth-split-panel auth-split-panel--form">
+        <div className="auth-form-inner">
+          <Link className="auth-back" to="/welcome">
+            <ArrowLeft size={13} />
+            Back
+          </Link>
 
-        <div className="divider">
-          <span className="divider-label">or continue with email</span>
-        </div>
-
-        <form className="auth-form" onSubmit={onSubmit}>
-          <div className="form-group">
-            <label htmlFor="register-name">Full name</label>
-            <input
-              autoComplete="name"
-              id="register-name"
-              onChange={(event) => setName(event.target.value)}
-              type="text"
-              value={name}
-            />
+          <div className="auth-form-header">
+            <p className="eyebrow">Get started</p>
+            <h1 className="auth-form-title">Create your account</h1>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="register-email">Email</label>
-            <input
-              autoComplete="email"
-              id="register-email"
-              onChange={(event) => setEmail(event.target.value)}
-              type="email"
-              value={email}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="register-password">Password</label>
-            <input
-              autoComplete="new-password"
-              id="register-password"
-              onChange={(event) => setPassword(event.target.value)}
-              type="password"
-              value={password}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="register-confirm">Confirm password</label>
-            <input
-              autoComplete="new-password"
-              id="register-confirm"
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              type="password"
-              value={confirmPassword}
-            />
-          </div>
-
-          <div className="divider" style={{ margin: "4px 0" }}>
-            <span className="divider-label">Organization</span>
-          </div>
-
-          <div className="segmented-control">
+          <div className="sso-group">
             <button
-              className={`segment-button${orgMode === "create" ? "segment-button-active" : ""}`}
-              onClick={(e) => {
-                e.preventDefault();
-                setOrgMode("create");
-              }}
+              className="btn-sso"
+              disabled={isSubmitting}
+              onClick={handleGoogleSignUp}
               type="button"
             >
-              Create new
+              <GoogleIcon />
+              Continue with Google
             </button>
-            <button
-              className={`segment-button${orgMode === "join" ? "segment-button-active" : ""}`}
-              onClick={(e) => {
-                e.preventDefault();
-                setOrgMode("join");
-              }}
-              type="button"
-            >
-              Join with code
+            <button className="btn-sso" disabled={isSubmitting} type="button">
+              <MicrosoftIcon />
+              Continue with Microsoft
             </button>
           </div>
 
-          {orgMode === "create" ? (
+          <div className="divider">
+            <span className="divider-label">or continue with email</span>
+          </div>
+
+          <form className="auth-form" onSubmit={onSubmit}>
             <div className="form-group">
-              <label htmlFor="register-org-name">Organization name</label>
+              <label htmlFor="register-name">Full name</label>
               <input
-                id="register-org-name"
-                onChange={(event) => setOrgName(event.target.value)}
-                placeholder="Acme Corp"
+                autoComplete="name"
+                id="register-name"
+                onChange={(event) => {
+                  setName(event.target.value);
+                }}
                 type="text"
-                value={orgName}
+                value={name}
               />
             </div>
-          ) : (
+
             <div className="form-group">
-              <label htmlFor="register-invite-code">Invite code</label>
+              <label htmlFor="register-email">Email</label>
               <input
-                id="register-invite-code"
-                onChange={(event) =>
-                  setInviteCode(event.target.value.toUpperCase())
-                }
-                placeholder="ABC123"
-                type="text"
-                value={inviteCode}
+                autoComplete="email"
+                id="register-email"
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                }}
+                type="email"
+                value={email}
               />
             </div>
-          )}
 
-          {error ? <p className="form-error">{error}</p> : null}
+            <div className="form-group">
+              <label htmlFor="register-password">Password</label>
+              <input
+                autoComplete="new-password"
+                id="register-password"
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                }}
+                type="password"
+                value={password}
+              />
+            </div>
 
-          <button
-            className="btn-primary btn-block"
-            disabled={
-              isSubmitting ||
-              !name ||
-              !email ||
-              !password ||
-              !confirmPassword ||
-              Boolean(accountError) ||
-              Boolean(orgError)
-            }
-            type="submit"
-          >
-            {isSubmitting ? "Creating account..." : "Create Account"}
-          </button>
-        </form>
+            <div className="form-group">
+              <label htmlFor="register-confirm">Confirm password</label>
+              <input
+                autoComplete="new-password"
+                id="register-confirm"
+                onChange={(event) => {
+                  setConfirmPassword(event.target.value);
+                }}
+                type="password"
+                value={confirmPassword}
+              />
+            </div>
 
-        <p className="auth-switch">
-          Already have an account? <Link to="/login">Sign in</Link>
-        </p>
-      </div>
+            <div className="divider" style={{ margin: "4px 0" }}>
+              <span className="divider-label">Organization</span>
+            </div>
+
+            <div className="segmented-control">
+              <button
+                className={`segment-button${orgMode === "create" ? "segment-button-active" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setOrgMode("create");
+                }}
+                type="button"
+              >
+                Create new
+              </button>
+              <button
+                className={`segment-button${orgMode === "join" ? "segment-button-active" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setOrgMode("join");
+                }}
+                type="button"
+              >
+                Join with code
+              </button>
+            </div>
+
+            {orgMode === "create" ? (
+              <div className="form-group">
+                <label htmlFor="register-org-name">Organization name</label>
+                <input
+                  id="register-org-name"
+                  onChange={(event) => {
+                    setOrgName(event.target.value);
+                  }}
+                  placeholder="Acme Corp"
+                  type="text"
+                  value={orgName}
+                />
+              </div>
+            ) : (
+              <div className="form-group">
+                <label htmlFor="register-invite-code">Invite code</label>
+                <input
+                  id="register-invite-code"
+                  onChange={(event) => {
+                    setInviteCode(event.target.value.toUpperCase());
+                  }}
+                  placeholder="ABC123"
+                  type="text"
+                  value={inviteCode}
+                />
+              </div>
+            )}
+
+            {error ? <p className="form-error">{error}</p> : null}
+
+            <button
+              className="btn-primary btn-block"
+              disabled={
+                isSubmitting ||
+                !name ||
+                !email ||
+                !password ||
+                !confirmPassword ||
+                Boolean(accountError) ||
+                Boolean(orgError)
+              }
+              type="submit"
+            >
+              {isSubmitting ? "Creating account…" : "Create Account"}
+            </button>
+          </form>
+
+          <p className="auth-switch">
+            Already have an account? <Link to="/login">Sign in</Link>
+          </p>
+        </div>
+      </main>
     </div>
   );
 }

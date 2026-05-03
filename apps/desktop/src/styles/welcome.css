@@ -33,13 +33,13 @@
   background: conic-gradient(
     from var(--angle, 0rad) at 50% 50%,
     transparent 0deg,
-    #5a3af240 40deg,
-    #7c5cff60 80deg,
-    #9b7fff38 110deg,
+    #ffffff40 40deg,
+    #cccccc60 80deg,
+    #99999938 110deg,
     transparent 150deg,
     transparent 210deg,
-    #4a2be255 250deg,
-    #7c5cff48 290deg,
+    #e6e6e655 250deg,
+    #ffffff48 290deg,
     transparent 330deg,
     transparent 360deg
   );
@@ -54,8 +54,8 @@
   border-radius: 50%;
   background: radial-gradient(
     ellipse at 50% 60%,
-    rgba(124, 92, 255, 0.22) 0%,
-    rgba(90, 58, 242, 0.12) 35%,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(200, 200, 200, 0.12) 35%,
     transparent 70%
   );
   animation: splashBloom 5s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
@@ -69,7 +69,7 @@
   border-radius: 50%;
   background: radial-gradient(
     ellipse at 50% 50%,
-    rgba(124, 92, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.14) 0%,
     transparent 65%
   );
   animation: splashBloom 7s cubic-bezier(0.45, 0, 0.55, 1) infinite
@@ -129,7 +129,7 @@
   width: 44px;
   height: auto;
   display: block;
-  filter: drop-shadow(0 0 18px rgba(124, 92, 255, 0.55));
+  filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.55));
 }
 
 /* ── Wordmark — OCR-style ── */
@@ -144,8 +144,8 @@
   text-align: center;
   line-height: 1;
   text-shadow:
-    0 0 32px rgba(124, 92, 255, 0.45),
-    0 0 8px rgba(124, 92, 255, 0.2);
+    0 0 32px rgba(255, 255, 255, 0.45),
+    0 0 8px rgba(255, 255, 255, 0.2);
   /* Additional delay so it trails the logo gracefully */
   transition-delay: 120ms;
 }
@@ -172,7 +172,7 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(124, 92, 255, 0.55),
+    rgba(255, 255, 255, 0.55),
     transparent
   );
   margin-bottom: 36px;
@@ -192,7 +192,7 @@
   padding: 11px 28px;
   height: auto;
   cursor: pointer;
-  border-radius: 0;
+  border-radius: var(--radius-1);
   position: relative;
   overflow: hidden;
   /* Entry animation inherits from .splash-item */
@@ -211,7 +211,11 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(124, 92, 255, 0.1), transparent 55%);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1),
+    transparent 55%
+  );
   opacity: 0;
   transition: opacity 280ms ease;
 }
@@ -221,11 +225,11 @@
 }
 
 .splash-cta:hover {
-  border-color: rgba(124, 92, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.45);
   color: #fff;
   box-shadow:
-    0 0 20px rgba(124, 92, 255, 0.18),
-    inset 0 0 16px rgba(124, 92, 255, 0.06);
+    0 0 20px rgba(255, 255, 255, 0.18),
+    inset 0 0 16px rgba(255, 255, 255, 0.06);
 }
 
 .splash-cta:active {
