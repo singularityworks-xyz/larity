@@ -12,6 +12,7 @@ import {
   clientsRoutes,
   decisionsRoutes,
   documentsRoutes,
+  homeRoutes,
   importantPointsRoutes,
   internalSessionRoutes,
   meetingSessionRoutes,
@@ -89,6 +90,8 @@ export const app = new Elysia()
       .use(orgsRoutes)
       .use(clientsRoutes)
       .use(usersRoutes)
+      // Home / dashboard
+      .use(homeRoutes)
       // Meeting domain
       .use(meetingsRoutes)
       // Decisions & tasks
