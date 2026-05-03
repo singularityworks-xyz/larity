@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import larityLogo from "../assets/larity-logo-dark.svg";
-import { GoogleIcon, MicrosoftIcon } from "../components/icons";
+import { GitHubIcon, GoogleIcon } from "../components/icons";
 import { TitleBar } from "../components/title-bar";
 import { signIn } from "../lib/auth-client";
 import {
@@ -104,15 +104,15 @@ export function LoginPage() {
     }
   }
 
-  async function handleMicrosoftSignIn() {
+  async function handleGitHubSignIn() {
     setIsSubmitting(true);
     setError(null);
 
-    const result = await signIn.social({ provider: "microsoft" });
+    const result = await signIn.social({ provider: "github" });
 
     if (result.error) {
       setIsSubmitting(false);
-      setError(result.error.message ?? "Microsoft sign in failed");
+      setError(result.error.message ?? "GitHub sign in failed");
     }
   }
 
@@ -169,11 +169,11 @@ export function LoginPage() {
             <button
               className={ssoButtonClass}
               disabled={isSubmitting}
-              onClick={handleMicrosoftSignIn}
+              onClick={handleGitHubSignIn}
               type="button"
             >
-              <MicrosoftIcon />
-              Continue with Microsoft
+              <GitHubIcon />
+              Continue with GitHub
             </button>
           </div>
 

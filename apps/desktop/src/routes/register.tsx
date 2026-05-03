@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import larityLogo from "../assets/larity-logo-dark.svg";
-import { GoogleIcon, MicrosoftIcon } from "../components/icons";
+import { GitHubIcon, GoogleIcon } from "../components/icons";
 import { TitleBar } from "../components/title-bar";
 import { api } from "../lib/api";
 import { signIn, signUp } from "../lib/auth-client";
@@ -209,6 +209,26 @@ export function RegisterPage() {
     }
   }
 
+  async function handleGitHubSignUp() {
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const result = await signIn.social({ provider: "github" });
+      if (result.error) {
+        throw new Error(result.error.message ?? "GitHub sign up failed");
+      }
+    } catch (signUpError) {
+      setError(
+        signUpError instanceof Error
+          ? signUpError.message
+          : "GitHub sign up failed"
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div className={authSplitRootClass}>
       <TitleBar />
@@ -262,10 +282,11 @@ export function RegisterPage() {
             <button
               className={ssoButtonClass}
               disabled={isSubmitting}
+              onClick={handleGitHubSignUp}
               type="button"
             >
-              <MicrosoftIcon />
-              Continue with Microsoft
+              <GitHubIcon />
+              Continue with GitHub
             </button>
           </div>
 
