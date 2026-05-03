@@ -3,6 +3,15 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useCreateClient } from "../../features/clients/use-create-client";
+import {
+  buttonClass,
+  formClass,
+  formErrorClass,
+  formPanelClass,
+  inputClass,
+  labelClass,
+  textareaClass,
+} from "../../lib/ui";
 import { AppShell } from "../shared";
 
 const createClientSchema = z.object({
@@ -81,10 +90,13 @@ export function AddClientPage() {
       subtitle="Create a client for your organization"
       title="Add client"
     >
-      <section className="panel form-panel">
-        <form className="auth-form" onSubmit={onSubmit}>
-          <label htmlFor="client-name">Client name</label>
+      <section className={formPanelClass}>
+        <form className={formClass} onSubmit={onSubmit}>
+          <label className={labelClass} htmlFor="client-name">
+            Client name
+          </label>
           <input
+            className={inputClass}
             id="client-name"
             onChange={(event) => {
               const value = event.target.value;
@@ -97,8 +109,11 @@ export function AddClientPage() {
             value={name}
           />
 
-          <label htmlFor="client-slug">Slug</label>
+          <label className={labelClass} htmlFor="client-slug">
+            Slug
+          </label>
           <input
+            className={inputClass}
             id="client-slug"
             onChange={(event) => {
               setSlugEdited(true);
@@ -108,26 +123,32 @@ export function AddClientPage() {
             value={slug}
           />
 
-          <label htmlFor="client-industry">Industry (optional)</label>
+          <label className={labelClass} htmlFor="client-industry">
+            Industry (optional)
+          </label>
           <input
+            className={inputClass}
             id="client-industry"
             onChange={(event) => setIndustry(event.target.value)}
             type="text"
             value={industry}
           />
 
-          <label htmlFor="client-description">Description (optional)</label>
+          <label className={labelClass} htmlFor="client-description">
+            Description (optional)
+          </label>
           <textarea
-            className="text-area-input"
+            className={textareaClass}
             id="client-description"
             onChange={(event) => setDescription(event.target.value)}
             rows={4}
             value={description}
           />
 
-          {error ? <p className="form-error">{error}</p> : null}
+          {error ? <p className={formErrorClass}>{error}</p> : null}
 
           <button
+            className={buttonClass()}
             disabled={createClient.isPending || Boolean(validationError)}
             type="submit"
           >

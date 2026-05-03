@@ -3,6 +3,15 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClients } from "../../features/meetings/use-clients";
 import { useStartMeeting } from "../../features/meetings/use-start-meeting";
+import {
+  buttonClass,
+  formClass,
+  formErrorClass,
+  formPanelClass,
+  inputClass,
+  labelClass,
+  selectClass,
+} from "../../lib/ui";
 import { AppShell } from "../shared";
 
 export function StartMeetingPage() {
@@ -50,16 +59,18 @@ export function StartMeetingPage() {
 
   return (
     <AppShell title="Start ad-hoc meeting">
-      <section className="panel form-panel">
+      <section className={formPanelClass}>
         {clientsQuery.isPending ? <p>Loading clients...</p> : null}
         {clientsQuery.error ? (
-          <p className="form-error">{clientsQuery.error.message}</p>
+          <p className={formErrorClass}>{clientsQuery.error.message}</p>
         ) : null}
 
-        <form className="auth-form" onSubmit={onSubmit}>
-          <label htmlFor="meeting-client">Client</label>
+        <form className={formClass} onSubmit={onSubmit}>
+          <label className={labelClass} htmlFor="meeting-client">
+            Client
+          </label>
           <select
-            className="select-input"
+            className={selectClass}
             id="meeting-client"
             onChange={(event) => setClientId(event.target.value)}
             value={clientId}
@@ -72,17 +83,24 @@ export function StartMeetingPage() {
             ))}
           </select>
 
-          <label htmlFor="meeting-title">Meeting title (optional)</label>
+          <label className={labelClass} htmlFor="meeting-title">
+            Meeting title (optional)
+          </label>
           <input
+            className={inputClass}
             id="meeting-title"
             onChange={(event) => setTitle(event.target.value)}
             type="text"
             value={title}
           />
 
-          {error ? <p className="form-error">{error}</p> : null}
+          {error ? <p className={formErrorClass}>{error}</p> : null}
 
-          <button disabled={isSubmitDisabled} type="submit">
+          <button
+            className={buttonClass()}
+            disabled={isSubmitDisabled}
+            type="submit"
+          >
             {startMeetingMutation.isPending
               ? "Starting..."
               : "Start and enter room"}

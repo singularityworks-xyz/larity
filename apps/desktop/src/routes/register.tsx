@@ -8,8 +8,38 @@ import { GoogleIcon, MicrosoftIcon } from "../components/icons";
 import { TitleBar } from "../components/title-bar";
 import { api } from "../lib/api";
 import { signIn, signUp } from "../lib/auth-client";
+import {
+  authBackClass,
+  authBrandBgClass,
+  authBrandFeaturesClass,
+  authBrandInnerClass,
+  authBrandLogoClass,
+  authBrandPanelClass,
+  authBrandTaglineClass,
+  authBrandWordmarkClass,
+  authFormHeaderClass,
+  authFormInnerClass,
+  authFormPanelClass,
+  authFormTitleClass,
+  authSplitRootClass,
+  authSwitchClass,
+  buttonClass,
+  cx,
+  dividerClass,
+  dividerLabelClass,
+  eyebrowClass,
+  formClass,
+  formErrorClass,
+  formGroupClass,
+  inputClass,
+  labelClass,
+  segmentButtonActiveClass,
+  segmentButtonClass,
+  segmentControlClass,
+  ssoButtonClass,
+  ssoGroupClass,
+} from "../lib/ui";
 import { applyWindowProfile, WINDOW_PROFILES } from "../lib/window";
-import "../styles/auth-split.css";
 
 function toSlug(value: string): string {
   return value
@@ -179,45 +209,48 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="auth-split-root">
+    <div className={authSplitRootClass}>
       <TitleBar />
 
       {/* ── Left panel — brand / ambient ── */}
-      <aside
-        aria-hidden="true"
-        className="auth-split-panel auth-split-panel--brand"
-      >
-        <div className="auth-brand-inner">
-          <div className="auth-brand-logo">
-            <img alt="" height={36} src={larityLogo} width={36} />
-            <span className="auth-brand-wordmark">LARITY</span>
+      <aside aria-hidden="true" className={authBrandPanelClass}>
+        <div className={authBrandInnerClass}>
+          <div className={authBrandLogoClass}>
+            <img
+              alt=""
+              className="drop-shadow-[0_0_16px_rgba(255,255,255,0.5)]"
+              height={36}
+              src={larityLogo}
+              width={36}
+            />
+            <span className={authBrandWordmarkClass}>LARITY</span>
           </div>
-          <p className="auth-brand-tagline">Work, with memory.</p>
-          <ul aria-label="Features" className="auth-brand-features">
+          <p className={authBrandTaglineClass}>Work, with memory.</p>
+          <ul aria-label="Features" className={authBrandFeaturesClass}>
             <li>OS-level meeting capture</li>
             <li>Real-time speaker intelligence</li>
             <li>Deep-reasoning memory pipeline</li>
           </ul>
         </div>
-        <div className="auth-brand-bg" />
+        <div className={authBrandBgClass} />
       </aside>
 
       {/* ── Right panel — form ── */}
-      <main className="auth-split-panel auth-split-panel--form">
-        <div className="auth-form-inner">
-          <Link className="auth-back" to="/welcome">
+      <main className={authFormPanelClass}>
+        <div className={authFormInnerClass}>
+          <Link className={authBackClass} to="/welcome">
             <ArrowLeft size={13} />
             Back
           </Link>
 
-          <div className="auth-form-header">
-            <p className="eyebrow">Get started</p>
-            <h1 className="auth-form-title">Create your account</h1>
+          <div className={authFormHeaderClass}>
+            <p className={eyebrowClass}>Get started</p>
+            <h1 className={authFormTitleClass}>Create your account</h1>
           </div>
 
-          <div className="sso-group">
+          <div className={ssoGroupClass}>
             <button
-              className="btn-sso"
+              className={ssoButtonClass}
               disabled={isSubmitting}
               onClick={handleGoogleSignUp}
               type="button"
@@ -225,21 +258,28 @@ export function RegisterPage() {
               <GoogleIcon />
               Continue with Google
             </button>
-            <button className="btn-sso" disabled={isSubmitting} type="button">
+            <button
+              className={ssoButtonClass}
+              disabled={isSubmitting}
+              type="button"
+            >
               <MicrosoftIcon />
               Continue with Microsoft
             </button>
           </div>
 
-          <div className="divider">
-            <span className="divider-label">or continue with email</span>
+          <div className={dividerClass}>
+            <span className={dividerLabelClass}>or continue with email</span>
           </div>
 
-          <form className="auth-form" onSubmit={onSubmit}>
-            <div className="form-group">
-              <label htmlFor="register-name">Full name</label>
+          <form className={formClass} onSubmit={onSubmit}>
+            <div className={formGroupClass}>
+              <label className={labelClass} htmlFor="register-name">
+                Full name
+              </label>
               <input
                 autoComplete="name"
+                className={inputClass}
                 id="register-name"
                 onChange={(event) => {
                   setName(event.target.value);
@@ -249,10 +289,13 @@ export function RegisterPage() {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="register-email">Email</label>
+            <div className={formGroupClass}>
+              <label className={labelClass} htmlFor="register-email">
+                Email
+              </label>
               <input
                 autoComplete="email"
+                className={inputClass}
                 id="register-email"
                 onChange={(event) => {
                   setEmail(event.target.value);
@@ -262,10 +305,13 @@ export function RegisterPage() {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="register-password">Password</label>
+            <div className={formGroupClass}>
+              <label className={labelClass} htmlFor="register-password">
+                Password
+              </label>
               <input
                 autoComplete="new-password"
+                className={inputClass}
                 id="register-password"
                 onChange={(event) => {
                   setPassword(event.target.value);
@@ -275,10 +321,13 @@ export function RegisterPage() {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="register-confirm">Confirm password</label>
+            <div className={formGroupClass}>
+              <label className={labelClass} htmlFor="register-confirm">
+                Confirm password
+              </label>
               <input
                 autoComplete="new-password"
+                className={inputClass}
                 id="register-confirm"
                 onChange={(event) => {
                   setConfirmPassword(event.target.value);
@@ -288,13 +337,16 @@ export function RegisterPage() {
               />
             </div>
 
-            <div className="divider" style={{ margin: "4px 0" }}>
-              <span className="divider-label">Organization</span>
+            <div className={cx(dividerClass, "my-1")}>
+              <span className={dividerLabelClass}>Organization</span>
             </div>
 
-            <div className="segmented-control">
+            <div className={segmentControlClass}>
               <button
-                className={`segment-button${orgMode === "create" ? "segment-button-active" : ""}`}
+                className={cx(
+                  segmentButtonClass,
+                  orgMode === "create" && segmentButtonActiveClass
+                )}
                 onClick={(e) => {
                   e.preventDefault();
                   setOrgMode("create");
@@ -304,7 +356,11 @@ export function RegisterPage() {
                 Create new
               </button>
               <button
-                className={`segment-button${orgMode === "join" ? "segment-button-active" : ""}`}
+                className={cx(
+                  segmentButtonClass,
+                  "border-border border-l",
+                  orgMode === "join" && segmentButtonActiveClass
+                )}
                 onClick={(e) => {
                   e.preventDefault();
                   setOrgMode("join");
@@ -316,9 +372,12 @@ export function RegisterPage() {
             </div>
 
             {orgMode === "create" ? (
-              <div className="form-group">
-                <label htmlFor="register-org-name">Organization name</label>
+              <div className={formGroupClass}>
+                <label className={labelClass} htmlFor="register-org-name">
+                  Organization name
+                </label>
                 <input
+                  className={inputClass}
                   id="register-org-name"
                   onChange={(event) => {
                     setOrgName(event.target.value);
@@ -329,9 +388,12 @@ export function RegisterPage() {
                 />
               </div>
             ) : (
-              <div className="form-group">
-                <label htmlFor="register-invite-code">Invite code</label>
+              <div className={formGroupClass}>
+                <label className={labelClass} htmlFor="register-invite-code">
+                  Invite code
+                </label>
                 <input
+                  className={inputClass}
                   id="register-invite-code"
                   onChange={(event) => {
                     setInviteCode(event.target.value.toUpperCase());
@@ -343,10 +405,10 @@ export function RegisterPage() {
               </div>
             )}
 
-            {error ? <p className="form-error">{error}</p> : null}
+            {error ? <p className={formErrorClass}>{error}</p> : null}
 
             <button
-              className="btn-primary btn-block"
+              className={buttonClass({ block: true })}
               disabled={
                 isSubmitting ||
                 !name ||
@@ -362,7 +424,7 @@ export function RegisterPage() {
             </button>
           </form>
 
-          <p className="auth-switch">
+          <p className={authSwitchClass}>
             Already have an account? <Link to="/login">Sign in</Link>
           </p>
         </div>

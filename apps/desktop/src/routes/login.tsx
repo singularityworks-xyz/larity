@@ -7,8 +7,36 @@ import larityLogo from "../assets/larity-logo-dark.svg";
 import { GoogleIcon, MicrosoftIcon } from "../components/icons";
 import { TitleBar } from "../components/title-bar";
 import { signIn } from "../lib/auth-client";
+import {
+  authBackClass,
+  authBrandBgClass,
+  authBrandFeaturesClass,
+  authBrandInnerClass,
+  authBrandLogoClass,
+  authBrandPanelClass,
+  authBrandTaglineClass,
+  authBrandWordmarkClass,
+  authFormHeaderClass,
+  authFormInnerClass,
+  authFormPanelClass,
+  authFormTitleClass,
+  authSplitRootClass,
+  authSwitchClass,
+  buttonClass,
+  cx,
+  dividerClass,
+  dividerLabelClass,
+  errorInputClass,
+  eyebrowClass,
+  formClass,
+  formErrorClass,
+  formGroupClass,
+  inputClass,
+  labelClass,
+  ssoButtonClass,
+  ssoGroupClass,
+} from "../lib/ui";
 import { applyWindowProfile, WINDOW_PROFILES } from "../lib/window";
-import "../styles/auth-split.css";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email"),
@@ -89,45 +117,48 @@ export function LoginPage() {
   }
 
   return (
-    <div className="auth-split-root">
+    <div className={authSplitRootClass}>
       <TitleBar />
 
       {/* ── Left panel — brand / ambient ── */}
-      <aside
-        aria-hidden="true"
-        className="auth-split-panel auth-split-panel--brand"
-      >
-        <div className="auth-brand-inner">
-          <div className="auth-brand-logo">
-            <img alt="" height={36} src={larityLogo} width={36} />
-            <span className="auth-brand-wordmark">LARITY</span>
+      <aside aria-hidden="true" className={authBrandPanelClass}>
+        <div className={authBrandInnerClass}>
+          <div className={authBrandLogoClass}>
+            <img
+              alt=""
+              className="drop-shadow-[0_0_16px_rgba(255,255,255,0.5)]"
+              height={36}
+              src={larityLogo}
+              width={36}
+            />
+            <span className={authBrandWordmarkClass}>LARITY</span>
           </div>
-          <p className="auth-brand-tagline">Work, with memory.</p>
-          <ul aria-label="Features" className="auth-brand-features">
+          <p className={authBrandTaglineClass}>Work, with memory.</p>
+          <ul aria-label="Features" className={authBrandFeaturesClass}>
             <li>OS-level meeting capture</li>
             <li>Real-time speaker intelligence</li>
             <li>Deep-reasoning memory pipeline</li>
           </ul>
         </div>
-        <div className="auth-brand-bg" />
+        <div className={authBrandBgClass} />
       </aside>
 
       {/* ── Right panel — form ── */}
-      <main className="auth-split-panel auth-split-panel--form">
-        <div className="auth-form-inner">
-          <Link className="auth-back" to="/welcome">
+      <main className={authFormPanelClass}>
+        <div className={authFormInnerClass}>
+          <Link className={authBackClass} to="/welcome">
             <ArrowLeft size={13} />
             Back
           </Link>
 
-          <div className="auth-form-header">
-            <p className="eyebrow">Welcome back</p>
-            <h1 className="auth-form-title">Sign in to Larity</h1>
+          <div className={authFormHeaderClass}>
+            <p className={eyebrowClass}>Welcome back</p>
+            <h1 className={authFormTitleClass}>Sign in to Larity</h1>
           </div>
 
-          <div className="sso-group">
+          <div className={ssoGroupClass}>
             <button
-              className="btn-sso"
+              className={ssoButtonClass}
               disabled={isSubmitting}
               onClick={handleGoogleSignIn}
               type="button"
@@ -136,7 +167,7 @@ export function LoginPage() {
               Continue with Google
             </button>
             <button
-              className="btn-sso"
+              className={ssoButtonClass}
               disabled={isSubmitting}
               onClick={handleMicrosoftSignIn}
               type="button"
@@ -146,16 +177,18 @@ export function LoginPage() {
             </button>
           </div>
 
-          <div className="divider">
-            <span className="divider-label">or continue with email</span>
+          <div className={dividerClass}>
+            <span className={dividerLabelClass}>or continue with email</span>
           </div>
 
-          <form className="auth-form" onSubmit={onSubmit}>
-            <div className="form-group">
-              <label htmlFor="login-email">Email</label>
+          <form className={formClass} onSubmit={onSubmit}>
+            <div className={formGroupClass}>
+              <label className={labelClass} htmlFor="login-email">
+                Email
+              </label>
               <input
                 autoComplete="email"
-                className={error ? "error" : ""}
+                className={cx(inputClass, error && errorInputClass)}
                 id="login-email"
                 onChange={(event) => {
                   setEmail(event.target.value);
@@ -165,11 +198,13 @@ export function LoginPage() {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="login-password">Password</label>
+            <div className={formGroupClass}>
+              <label className={labelClass} htmlFor="login-password">
+                Password
+              </label>
               <input
                 autoComplete="current-password"
-                className={error ? "error" : ""}
+                className={cx(inputClass, error && errorInputClass)}
                 id="login-password"
                 onChange={(event) => {
                   setPassword(event.target.value);
@@ -179,10 +214,10 @@ export function LoginPage() {
               />
             </div>
 
-            {error ? <p className="form-error">{error}</p> : null}
+            {error ? <p className={formErrorClass}>{error}</p> : null}
 
             <button
-              className="btn-primary btn-block"
+              className={buttonClass({ block: true })}
               disabled={
                 isSubmitting ||
                 (email !== "" && password !== "" && Boolean(validationError))
@@ -193,7 +228,7 @@ export function LoginPage() {
             </button>
           </form>
 
-          <p className="auth-switch">
+          <p className={authSwitchClass}>
             Need an account? <Link to="/register">Create one</Link>
           </p>
         </div>

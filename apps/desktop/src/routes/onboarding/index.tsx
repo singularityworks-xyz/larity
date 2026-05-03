@@ -13,6 +13,28 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthSession } from "../../features/auth/use-session";
+import {
+  buttonClass,
+  calendarComingSoonClass,
+  calendarPlaceholderClass,
+  cx,
+  formErrorClass,
+  permissionDescriptionClass,
+  permissionInfoClass,
+  permissionLabelClass,
+  permissionStateClass,
+  permissionStatusClass,
+  progressDotClass as progressDotBaseClass,
+  progressDotsClass,
+  statusDotClass,
+  wizardBodyClass,
+  wizardCardClass,
+  wizardFooterClass,
+  wizardHeaderClass,
+  wizardPageClass,
+  wizardStepLabelClass,
+  wizardTitleClass,
+} from "../../lib/ui";
 
 type PermissionKey = "microphone" | "systemAudio" | "notifications";
 
@@ -105,7 +127,7 @@ function permissionStateLabel(state: PermissionState, onRequest: () => void) {
     return (
       <>
         <Check size={12} />
-        <span className="permission-granted">Granted</span>
+        <span className="text-success-fg">Granted</span>
       </>
     );
   }
@@ -114,7 +136,7 @@ function permissionStateLabel(state: PermissionState, onRequest: () => void) {
     return (
       <>
         <X size={12} />
-        <span className="permission-denied">Denied</span>
+        <span className="text-danger-fg">Denied</span>
       </>
     );
   }
@@ -123,14 +145,14 @@ function permissionStateLabel(state: PermissionState, onRequest: () => void) {
     return (
       <>
         <AlertTriangle size={12} />
-        <span className="permission-pending">Unavailable</span>
+        <span className="text-fg-subtle">Unavailable</span>
       </>
     );
   }
 
   return (
     <button
-      className="btn btn-secondary btn-sm"
+      className={buttonClass({ size: "sm", variant: "secondary" })}
       onClick={onRequest}
       type="button"
     >
@@ -141,10 +163,10 @@ function permissionStateLabel(state: PermissionState, onRequest: () => void) {
 
 function permissionStatusDot(state: PermissionState) {
   if (state.status === "granted") {
-    return <div className="status-dot status-dot-success" />;
+    return <div className={cx(statusDotClass, "bg-success-fg")} />;
   }
   if (state.status === "denied") {
-    return <div className="status-dot status-dot-danger" />;
+    return <div className={cx(statusDotClass, "bg-danger-fg")} />;
   }
   return null;
 }
@@ -163,15 +185,15 @@ function PermissionRow({
   onRequest: () => void;
 }) {
   return (
-    <div className="permission-status">
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ color: "var(--fg-subtle)", flexShrink: 0 }}>{icon}</div>
-        <div className="permission-info">
-          <span className="permission-label">{label}</span>
-          <span className="permission-desc">{description}</span>
+    <div className={permissionStatusClass}>
+      <div className="flex items-center gap-2.5">
+        <div className="shrink-0 text-fg-subtle">{icon}</div>
+        <div className={permissionInfoClass}>
+          <span className={permissionLabelClass}>{label}</span>
+          <span className={permissionDescriptionClass}>{description}</span>
         </div>
       </div>
-      <div className="permission-state">
+      <div className={permissionStateClass}>
         {permissionStateLabel(state, onRequest)}
         {permissionStatusDot(state)}
       </div>
@@ -195,7 +217,7 @@ function StepPermissions({ onComplete }: { onComplete: () => void }) {
 
   return (
     <>
-      <div className="wizard-body">
+      <div className={wizardBodyClass}>
         <PermissionRow
           description="Required for voice detection and assistant"
           icon={<Mic size={14} />}
@@ -219,9 +241,9 @@ function StepPermissions({ onComplete }: { onComplete: () => void }) {
         />
       </div>
 
-      <div className="wizard-footer">
+      <div className={wizardFooterClass}>
         <button
-          className="btn btn-primary btn-lg"
+          className={buttonClass({ size: "lg" })}
           disabled={!canProceed}
           onClick={onComplete}
           type="button"
@@ -232,10 +254,7 @@ function StepPermissions({ onComplete }: { onComplete: () => void }) {
       </div>
 
       {allRequested && !canProceed ? (
-        <p
-          className="form-error"
-          style={{ textAlign: "center", marginTop: 12 }}
-        >
+        <p className={cx(formErrorClass, "mt-3 text-center")}>
           Microphone access is required. You can run as participant-only after
           setup.
         </p>
@@ -247,23 +266,23 @@ function StepPermissions({ onComplete }: { onComplete: () => void }) {
 function StepCalendar({ onSkip }: { onSkip: () => void }) {
   return (
     <>
-      <div className="wizard-body">
-        <div className="permission-status" style={{ marginBottom: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ color: "var(--fg-subtle)", flexShrink: 0 }}>
+      <div className={wizardBodyClass}>
+        <div className={cx(permissionStatusClass, "mb-2")}>
+          <div className="flex items-center gap-2.5">
+            <div className="shrink-0 text-fg-subtle">
               <Calendar size={14} />
             </div>
-            <div className="permission-info">
-              <span className="permission-label">Calendar connect</span>
-              <span className="permission-desc">
+            <div className={permissionInfoClass}>
+              <span className={permissionLabelClass}>Calendar connect</span>
+              <span className={permissionDescriptionClass}>
                 Sync your meetings to get briefs and alerts
               </span>
             </div>
           </div>
-          <span className="calendar-coming-soon">Coming soon</span>
+          <span className={calendarComingSoonClass}>Coming soon</span>
         </div>
 
-        <div className="calendar-placeholder">
+        <div className={calendarPlaceholderClass}>
           <Calendar size={20} />
           <p>
             Google and Microsoft calendar integration will be available in a
@@ -272,9 +291,9 @@ function StepCalendar({ onSkip }: { onSkip: () => void }) {
         </div>
       </div>
 
-      <div className="wizard-footer">
+      <div className={wizardFooterClass}>
         <button
-          className="btn btn-primary btn-lg"
+          className={buttonClass({ size: "lg" })}
           onClick={onSkip}
           type="button"
         >
@@ -378,7 +397,7 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
     if (state === "idle") {
       return (
         <button
-          className="btn btn-primary btn-lg"
+          className={buttonClass({ size: "lg" })}
           onClick={startRecording}
           type="button"
         >
@@ -391,9 +410,11 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
     if (state === "recording") {
       return (
         <>
-          <span className="voice-timer">{countdown}s</span>
+          <span className="font-medium font-mono text-[13px] text-fg-muted tabular-nums">
+            {countdown}s
+          </span>
           <button
-            className="btn btn-secondary"
+            className={buttonClass({ variant: "secondary" })}
             onClick={stopRecording}
             type="button"
           >
@@ -404,14 +425,18 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
       );
     }
 
-    return <span className="voice-timer">Calibrated</span>;
+    return (
+      <span className="font-medium font-mono text-[13px] text-fg-muted tabular-nums">
+        Calibrated
+      </span>
+    );
   }
 
   return (
     <>
-      <div className="wizard-body">
-        <div className="voice-baseline">
-          <div className="voice-meter">
+      <div className={wizardBodyClass}>
+        <div className="grid gap-4 text-center">
+          <div className="flex h-10 items-end justify-center gap-0.5 py-1">
             {Array.from({ length: VOICE_BAR_COUNT }, (_, i) => {
               const height =
                 state === "recording"
@@ -419,7 +444,10 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
                   : 3;
               return (
                 <div
-                  className={`voice-bar${state === "recording" ? "voice-bar-active" : ""}`}
+                  className={cx(
+                    "w-[3px] rounded-none bg-border transition-[height,background-color] duration-[80ms] ease-[cubic-bezier(0.2,0,0,1)]",
+                    state === "recording" && "bg-accent"
+                  )}
                   key={`voice-bar-${i.toString()}`}
                   style={{ height: `${height}px` }}
                 />
@@ -429,12 +457,12 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
 
           {voiceControls()}
 
-          <p className="voice-hint">
+          <p className="m-0 font-medium text-fg-muted text-xs leading-normal">
             Speak naturally for 10 seconds. This calibrates your microphone for
             local voice detection.
           </p>
 
-          <p className="voice-privacy">
+          <p className="m-0 inline-flex items-center gap-1 font-medium text-[11px] text-fg-subtle leading-[1.45] [&_svg]:h-3 [&_svg]:w-3">
             <Shield size={12} />
             We do not store voice samples. Audio never leaves your device during
             calibration.
@@ -442,10 +470,10 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
         </div>
       </div>
 
-      <div className="wizard-footer">
+      <div className={wizardFooterClass}>
         {state === "done" ? (
           <button
-            className="btn btn-primary btn-lg"
+            className={buttonClass({ size: "lg" })}
             onClick={handleComplete}
             type="button"
           >
@@ -454,7 +482,7 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
           </button>
         ) : (
           <button
-            className="btn btn-secondary btn-lg"
+            className={buttonClass({ size: "lg", variant: "secondary" })}
             onClick={handleComplete}
             type="button"
           >
@@ -470,12 +498,12 @@ const STEPS = ["Permissions check", "Calendar connect", "Voice baseline"];
 
 function progressDotClass(i: number, step: number): string {
   if (i === step) {
-    return "progress-dot progress-dot-active";
+    return cx(progressDotBaseClass, "w-4 bg-accent");
   }
   if (i < step) {
-    return "progress-dot progress-dot-done";
+    return cx(progressDotBaseClass, "bg-accent");
   }
-  return "progress-dot";
+  return progressDotBaseClass;
 }
 
 function renderStepContent(
@@ -504,12 +532,12 @@ export function OnboardingPage() {
   }, [session.user?.orgId, navigate]);
 
   return (
-    <div className="wizard-page">
-      <div className="wizard-card">
-        <div className="wizard-header">
-          <h1 className="wizard-title">Set up Larity</h1>
-          <p className="wizard-step-label">{STEPS[step]}</p>
-          <div className="progress-dots">
+    <div className={wizardPageClass}>
+      <div className={wizardCardClass}>
+        <div className={wizardHeaderClass}>
+          <h1 className={wizardTitleClass}>Set up Larity</h1>
+          <p className={wizardStepLabelClass}>{STEPS[step]}</p>
+          <div className={progressDotsClass}>
             {STEPS.map((label, i) => (
               <div className={progressDotClass(i, step)} key={label} />
             ))}

@@ -3,6 +3,21 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveSessions } from "../../features/meetings/use-active-sessions";
 import { useJoinMeeting } from "../../features/meetings/use-join-meeting";
+import {
+  activeListClass,
+  buttonClass,
+  cx,
+  formClass,
+  formErrorClass,
+  heroSubtitleClass,
+  inputClass,
+  labelClass,
+  sessionRowClass,
+  tabActiveClass,
+  tabButtonClass,
+  tabsPanelClass,
+  tabsRowClass,
+} from "../../lib/ui";
 import { AppShell } from "../shared";
 
 type JoinTab = "active" | "manual";
@@ -54,11 +69,14 @@ export function JoinMeetingPage() {
 
   return (
     <AppShell title="Join meeting">
-      <section className="panel tabs-panel">
-        <div className="tabs-row" role="tablist">
+      <section className={tabsPanelClass}>
+        <div className={tabsRowClass} role="tablist">
           <button
             aria-selected={activeTab === "active"}
-            className={activeTab === "active" ? "tab-active" : "tab-button"}
+            className={cx(
+              tabButtonClass,
+              activeTab === "active" && tabActiveClass
+            )}
             onClick={() => setActiveTab("active")}
             role="tab"
             type="button"
@@ -67,7 +85,10 @@ export function JoinMeetingPage() {
           </button>
           <button
             aria-selected={activeTab === "manual"}
-            className={activeTab === "manual" ? "tab-active" : "tab-button"}
+            className={cx(
+              tabButtonClass,
+              activeTab === "manual" && tabActiveClass
+            )}
             onClick={() => setActiveTab("manual")}
             role="tab"
             type="button"
@@ -76,31 +97,32 @@ export function JoinMeetingPage() {
           </button>
         </div>
 
-        {error ? <p className="form-error">{error}</p> : null}
+        {error ? <p className={formErrorClass}>{error}</p> : null}
 
         {activeTab === "active" ? (
-          <div className="active-list">
+          <div className={activeListClass}>
             {activeSessions.isPending ? (
               <p>Loading active meetings...</p>
             ) : null}
             {activeSessions.error ? (
-              <p className="form-error">{activeSessions.error.message}</p>
+              <p className={formErrorClass}>{activeSessions.error.message}</p>
             ) : null}
             {showEmptyState ? (
               <p>No active sessions in your organization right now.</p>
             ) : null}
 
             {(activeSessions.data ?? []).map((session) => (
-              <article className="session-row" key={session.sessionId}>
+              <article className={sessionRowClass} key={session.sessionId}>
                 <div>
                   <h3>{session.title}</h3>
-                  <p className="hero-subtitle">
+                  <p className={heroSubtitleClass}>
                     {session.clientName}
                     {session.hostName ? ` • Host: ${session.hostName}` : ""}
                     {` • Participants: ${session.participantCount}`}
                   </p>
                 </div>
                 <button
+                  className={buttonClass()}
                   onClick={() => joinById(session.sessionId)}
                   type="button"
                 >
@@ -110,15 +132,22 @@ export function JoinMeetingPage() {
             ))}
           </div>
         ) : (
-          <form className="auth-form" onSubmit={onManualJoin}>
-            <label htmlFor="manual-session-id">Session ID</label>
+          <form className={formClass} onSubmit={onManualJoin}>
+            <label className={labelClass} htmlFor="manual-session-id">
+              Session ID
+            </label>
             <input
+              className={inputClass}
               id="manual-session-id"
               onChange={(event) => setManualSessionId(event.target.value)}
               type="text"
               value={manualSessionId}
             />
-            <button disabled={joinMeeting.isPending} type="submit">
+            <button
+              className={buttonClass()}
+              disabled={joinMeeting.isPending}
+              type="submit"
+            >
               {joinMeeting.isPending ? "Joining..." : "Join session"}
             </button>
           </form>

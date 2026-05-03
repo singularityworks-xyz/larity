@@ -2,6 +2,21 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthSession } from "../features/auth/use-session";
 import { useOrgInvites } from "../features/org-invites/use-org-invites";
+import {
+  buttonClass,
+  cardTextClass,
+  cardTitleClass,
+  choiceCardClass,
+  cx,
+  dashboardGridClass,
+  eyebrowClass,
+  formErrorClass,
+  heroSubtitleClass,
+  inviteListClass,
+  inviteRowClass,
+  panelClass,
+  successTextClass,
+} from "../lib/ui";
 import { AppShell } from "./shared";
 
 export function DashboardPage() {
@@ -53,46 +68,63 @@ export function DashboardPage() {
       }
       title="Dashboard"
     >
-      <section className="panel dashboard-grid">
-        <article className="choice-card">
-          <p className="eyebrow">Meetings</p>
-          <h2>Start meeting</h2>
-          <p>Pick a client and launch an ad-hoc live session as host.</p>
-          <button onClick={() => navigate("/meetings/start")} type="button">
+      <section className={cx(panelClass, dashboardGridClass)}>
+        <article className={choiceCardClass}>
+          <p className={eyebrowClass}>Meetings</p>
+          <h2 className={cardTitleClass}>Start meeting</h2>
+          <p className={cardTextClass}>
+            Pick a client and launch an ad-hoc live session as host.
+          </p>
+          <button
+            className={cx(buttonClass(), "mt-3")}
+            onClick={() => navigate("/meetings/start")}
+            type="button"
+          >
             Start Meeting
           </button>
         </article>
 
-        <article className="choice-card">
-          <p className="eyebrow">Meetings</p>
-          <h2>Join meeting</h2>
-          <p>
+        <article className={choiceCardClass}>
+          <p className={eyebrowClass}>Meetings</p>
+          <h2 className={cardTitleClass}>Join meeting</h2>
+          <p className={cardTextClass}>
             Join any active meeting from your organization or use a session ID.
           </p>
-          <button onClick={() => navigate("/meetings/join")} type="button">
+          <button
+            className={cx(buttonClass(), "mt-3")}
+            onClick={() => navigate("/meetings/join")}
+            type="button"
+          >
             Join Meeting
           </button>
         </article>
 
         {canManageClients ? (
-          <article className="choice-card">
-            <p className="eyebrow">Organization</p>
-            <h2>Add client</h2>
-            <p>Create a client profile before starting ad-hoc meetings.</p>
-            <button onClick={() => navigate("/clients/add")} type="button">
+          <article className={choiceCardClass}>
+            <p className={eyebrowClass}>Organization</p>
+            <h2 className={cardTitleClass}>Add client</h2>
+            <p className={cardTextClass}>
+              Create a client profile before starting ad-hoc meetings.
+            </p>
+            <button
+              className={cx(buttonClass(), "mt-3")}
+              onClick={() => navigate("/clients/add")}
+              type="button"
+            >
               Add Client
             </button>
           </article>
         ) : null}
 
         {invites.canManage ? (
-          <article className="choice-card invites-card">
-            <p className="eyebrow">Organization</p>
-            <h2>Invite teammates</h2>
-            <p>
+          <article className={cx(choiceCardClass, "col-span-full")}>
+            <p className={eyebrowClass}>Organization</p>
+            <h2 className={cardTitleClass}>Invite teammates</h2>
+            <p className={cardTextClass}>
               Create invite codes and share them so members can join your org.
             </p>
             <button
+              className={cx(buttonClass(), "mt-3")}
               disabled={invites.createInvite.isPending}
               onClick={() => {
                 handleCreateInvite().catch(() => {
@@ -104,24 +136,31 @@ export function DashboardPage() {
               {invites.createInvite.isPending ? "Creating..." : "Create Invite"}
             </button>
 
-            {copyMessage ? <p className="success-text">{copyMessage}</p> : null}
-            {inviteError ? <p className="form-error">{inviteError}</p> : null}
+            {copyMessage ? (
+              <p className={successTextClass}>{copyMessage}</p>
+            ) : null}
+            {inviteError ? (
+              <p className={formErrorClass}>{inviteError}</p>
+            ) : null}
 
             {invites.invitesQuery.isPending ? <p>Loading invites...</p> : null}
 
             {(invites.invitesQuery.data?.length ?? 0) > 0 ? (
-              <ul className="invite-list">
+              <ul className={inviteListClass}>
                 {invites.invitesQuery.data?.map((invite) => (
-                  <li className="invite-row" key={invite.id}>
+                  <li className={inviteRowClass} key={invite.id}>
                     <div>
                       <strong>{invite.code}</strong>
-                      <p className="hero-subtitle">
+                      <p className={heroSubtitleClass}>
                         Expires {new Date(invite.expiresAt).toLocaleString()}
                       </p>
                     </div>
-                    <div className="invite-actions">
+                    <div className="flex shrink-0 gap-2">
                       <button
-                        className="small-button"
+                        className={buttonClass({
+                          size: "sm",
+                          variant: "secondary",
+                        })}
                         onClick={() => {
                           handleCopyInvite(invite.code).catch(() => {
                             // clipboard errors are ignored silently
@@ -132,7 +171,10 @@ export function DashboardPage() {
                         Copy
                       </button>
                       <button
-                        className="small-button danger-button"
+                        className={buttonClass({
+                          size: "sm",
+                          variant: "danger",
+                        })}
                         onClick={() => {
                           handleRevokeInvite(invite.id).catch(() => {
                             // handled in function

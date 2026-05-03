@@ -3,8 +3,7 @@
 @import "@fontsource/geist-sans/latin-600.css";
 @import "@fontsource/geist-mono/latin-400.css";
 @import "@fontsource/geist-mono/latin-500.css";
-
-@import "./tokens.css";
+@import "@fontsource/share-tech-mono/latin-400.css";
 
 @import "tailwindcss";
 
@@ -48,6 +47,45 @@
 }
 
 @layer base {
+  :root {
+    --bg: #000000;
+    --bg-elevated: #0a0a0a;
+    --bg-subtle: #111111;
+    --bg-emphasis: #171717;
+    --surface-overlay: #0e0e0ee6;
+
+    --border: #262626;
+    --border-strong: #3a3a3a;
+    --border-subtle: #1a1a1a;
+
+    --fg: #ededed;
+    --fg-muted: #a1a1a1;
+    --fg-subtle: #6b6b6b;
+    --fg-on-accent: #0a0a0a;
+
+    --accent: #ffffff;
+    --accent-hover: #e0e0e0;
+    --accent-pressed: #c0c0c0;
+    --accent-subtle: #ffffff1a;
+    --accent-fg: #000000;
+
+    --success-fg: #3fb950;
+    --success-bg: #3fb9501a;
+    --warning-fg: #d29922;
+    --warning-bg: #d299221a;
+    --danger-fg: #f85149;
+    --danger-bg: #f851491a;
+    --info-fg: #58a6ff;
+    --info-bg: #58a6ff1a;
+
+    --radius-0: 12px;
+    --radius-1: 8px;
+
+    --ring: var(--accent);
+
+    color-scheme: dark;
+  }
+
   * {
     box-sizing: border-box;
     border-color: var(--border);
@@ -90,5 +128,29 @@
   code,
   pre {
     font-family: var(--font-mono);
+  }
+}
+
+@keyframes splashBloom {
+  from {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes brandPulse {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1.04);
   }
 }
