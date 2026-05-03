@@ -76,10 +76,10 @@ describe("route guards", () => {
     await expectRedirect(rootIndexLoader(), "/onboarding");
   });
 
-  it("root index redirects org members to dashboard", async () => {
+  it("root index redirects org members to home", async () => {
     getSessionMock.mockResolvedValue(sessionResponse("org-1"));
 
-    await expectRedirect(rootIndexLoader(), "/dashboard");
+    await expectRedirect(rootIndexLoader(), "/home");
   });
 
   it("auth gate redirects unauthenticated users to welcome", async () => {
@@ -110,12 +110,12 @@ describe("route guards", () => {
     expect(result).toBeNull();
   });
 
-  it("guest loader redirects authenticated users to dashboard", async () => {
+  it("guest loader redirects authenticated users to home", async () => {
     getSessionMock.mockResolvedValue(sessionResponse("org-1"));
 
     await expectRedirect(
       guestOnlyLoader({ request: new Request("http://local/login") }),
-      "/dashboard"
+      "/home"
     );
   });
 

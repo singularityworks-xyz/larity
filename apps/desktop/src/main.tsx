@@ -12,7 +12,7 @@ import {
   rootIndexLoader,
 } from "./routes/_guard";
 import { AddClientPage } from "./routes/clients/add";
-import { DashboardPage } from "./routes/dashboard";
+import { HomePage } from "./routes/home";
 import { LoginPage } from "./routes/login";
 import { MeetingPage } from "./routes/meeting/$session-id";
 import { JoinMeetingPage } from "./routes/meetings/join";
@@ -51,9 +51,9 @@ const router = createBrowserRouter([
         loader: rootIndexLoader,
       },
       {
-        path: "dashboard",
+        path: "home",
         loader: authGateLoader,
-        element: <DashboardPage />,
+        element: <HomePage />,
       },
       {
         path: "clients/add",

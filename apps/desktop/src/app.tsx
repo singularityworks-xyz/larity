@@ -20,8 +20,8 @@ function App() {
   return (
     <div className="min-h-screen bg-bg font-sans text-fg">
       <TitleBar>
-        <Link className={navLinkClass("/dashboard")} to="/dashboard">
-          Dashboard
+        <Link className={navLinkClass("/home")} to="/home">
+          Home
         </Link>
         <Link className={navLinkClass("/meetings/start")} to="/meetings/start">
           Start
