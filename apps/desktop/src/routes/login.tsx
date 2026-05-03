@@ -52,7 +52,7 @@ export function LoginPage() {
 
   // Resize window to wide auth layout
   useEffect(() => {
-    applyWindowProfile(WINDOW_PROFILES.auth).catch(() => {
+    applyWindowProfile(WINDOW_PROFILES.auth, { center: true }).catch(() => {
       // best-effort outside Tauri
     });
   }, []);

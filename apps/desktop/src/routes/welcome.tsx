@@ -33,7 +33,7 @@ export function WelcomePage() {
 
   // Set window to small portrait intro size
   useEffect(() => {
-    applyWindowProfile(WINDOW_PROFILES.intro).catch(() => {
+    applyWindowProfile(WINDOW_PROFILES.intro, { center: true }).catch(() => {
       // window resize is best-effort outside Tauri
     });
   }, []);
