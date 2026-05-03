@@ -43,7 +43,8 @@
   --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
 
   --radius-none: 0px;
-  --radius-sm: 2px;
+  --radius-0: var(--radius-0);
+  --radius-1: var(--radius-1);
 }
 
 @layer base {

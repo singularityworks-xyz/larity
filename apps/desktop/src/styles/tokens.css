@@ -16,11 +16,11 @@
   --fg-subtle: #6b6b6b;
   --fg-on-accent: #0a0a0a;
 
-  --accent: #7c5cff;
-  --accent-hover: #8e73ff;
-  --accent-pressed: #6a4de8;
-  --accent-subtle: #7c5cff1a;
-  --accent-fg: #ffffff;
+  --accent: #ffffff;
+  --accent-hover: #e0e0e0;
+  --accent-pressed: #c0c0c0;
+  --accent-subtle: #ffffff1a;
+  --accent-fg: #000000;
 
   --success-fg: #3fb950;
   --success-bg: #3fb9501a;
@@ -31,8 +31,8 @@
   --info-fg: #58a6ff;
   --info-bg: #58a6ff1a;
 
-  --radius-0: 0px;
-  --radius-1: 2px;
+  --radius-0: 12px;
+  --radius-1: 8px;
 
   --duration-fast: 100ms;
   --duration-base: 150ms;
