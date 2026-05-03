@@ -3,28 +3,20 @@ import type { UtterancePublisher } from "../../src/utterance/finalizer";
 import { UtteranceFinalizer } from "../../src/utterance/finalizer";
 import { createTestSttResult, resetUtteranceSeq } from "../helpers";
 
-vi.mock("../../src/topic/embedder", () => {
-  return {
-    GoogleGenAIEmbedder: vi.fn().mockImplementation(() => {
-      return {
-        embed: vi.fn().mockResolvedValue(new Array(768).fill(0)),
-      };
-    }),
-  };
-});
+vi.mock("../../src/topic/embedder", () => ({
+  GoogleGenAIEmbedder: vi.fn(() => ({
+    embed: vi.fn().mockResolvedValue(new Array(768).fill(0)),
+  })),
+}));
 
-vi.mock("../../src/topic/summarizer", () => {
-  return {
-    TopicSummarizer: vi.fn().mockImplementation(() => {
-      return {
-        summarize: vi.fn().mockResolvedValue({
-          summary: "Mock summary",
-          actionItems: [],
-        }),
-      };
+vi.mock("../../src/topic/summarizer", () => ({
+  TopicSummarizer: vi.fn(() => ({
+    summarize: vi.fn().mockResolvedValue({
+      summary: "Mock summary",
+      actionItems: [],
     }),
-  };
-});
+  })),
+}));
 
 function createMockPublisher(): UtterancePublisher & {
   calls: Array<{ channel: string; message: string }>;
