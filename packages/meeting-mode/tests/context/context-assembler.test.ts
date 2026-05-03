@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { ContextAssembler } from "../../src/context/context-assembler";
 import { RingBuffer } from "../../src/utterance/ring-buffer";
 import {

@@ -1,6 +1,6 @@
+import { describe, expect, it, vi } from "bun:test";
 import type { Redis as RedisClient } from "ioredis";
 import Redis from "ioredis-mock";
-import { describe, expect, it, vi } from "vitest";
 import { ConstraintManager } from "../../src/constraint/manager";
 import type { UtterancePublisher } from "../../src/utterance/finalizer";
 import { UtteranceFinalizer } from "../../src/utterance/finalizer";
@@ -124,5 +124,6 @@ describe("constraint pipeline integration", () => {
       ([channel]) => channel === `meeting.constraint.${sessionId}`
     );
     expect(publishedConstraintEvents.length).toBeGreaterThan(0);
+    await redis.quit();
   });
 });

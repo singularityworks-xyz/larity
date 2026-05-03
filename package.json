@@ -32,8 +32,7 @@
     "ioredis-mock": "^8.13.1",
     "prisma": "^7.2.0",
     "turbo": "^2.6.3",
-    "ultracite": "7.1.4",
-    "vitest": "^4.0.18"
+    "ultracite": "7.1.4"
   },
   "peerDependencies": {
     "typescript": "^5"

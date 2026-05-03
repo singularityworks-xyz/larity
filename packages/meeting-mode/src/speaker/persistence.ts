@@ -1,6 +1,6 @@
+import { redisKeys } from "@larity/infra/redis/keys";
+import { TTL } from "@larity/infra/redis/ttl";
 import type { Redis } from "ioredis";
-import { redisKeys } from "../../../infra/redis/keys";
-import { TTL } from "../../../infra/redis/ttl";
 import { createMeetingModeLogger } from "../logger";
 import type { SpeakerMapping } from "./types";
 

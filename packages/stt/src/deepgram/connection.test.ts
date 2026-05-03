@@ -1,10 +1,10 @@
 import { describe, expect, it, mock } from "bun:test";
-import { redis } from "../../../infra/redis";
+import { redis } from "@larity/infra/redis";
 import { DeepgramConnection } from "./connection";
 import type { TranscriptResult } from "./types";
 
 // Mock the Redis module
-mock.module("../../../infra/redis", () => ({
+mock.module("@larity/infra/redis", () => ({
   redis: {
     publish: mock(() => Promise.resolve(1)),
   },

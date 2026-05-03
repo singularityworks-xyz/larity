@@ -1,11 +1,47 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
-import { AlertQueueManager } from "../../src/alerts/queue";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { AlertQueueManager, type TimeProvider } from "../../src/alerts/queue";
 import {
   ALERT_PRIORITY,
   type Alert,
   type AlertCategory,
 } from "../../src/alerts/types";
 import { createExternalSpeaker } from "../helpers";
+
+class MockTimeProvider implements TimeProvider {
+  private currentTime = 0;
+  private timers: { id: number; cb: () => void; triggerTime: number }[] = [];
+  private nextTimerId = 1;
+
+  now() {
+    return this.currentTime;
+  }
+
+  setTimeout(cb: () => void, ms: number) {
+    const id = this.nextTimerId++;
+    this.timers.push({ id, cb, triggerTime: this.currentTime + ms });
+    return id;
+  }
+
+  clearTimeout(id: unknown) {
+    this.timers = this.timers.filter((t) => t.id !== id);
+  }
+
+  advanceTime(ms: number) {
+    this.currentTime += ms;
+    while (true) {
+      const ready = this.timers.filter(
+        (t) => t.triggerTime <= this.currentTime
+      );
+      if (ready.length === 0) {
+        break;
+      }
+      this.timers = this.timers.filter((t) => t.triggerTime > this.currentTime);
+      for (const t of ready) {
+        t.cb();
+      }
+    }
+  }
+}
 
 function makeAlert(
   id: string,
@@ -32,20 +68,20 @@ function makeAlert(
 
 describe("AlertQueueManager", () => {
   let queue: AlertQueueManager;
+  let timeProvider: MockTimeProvider;
 
   beforeEach(() => {
-    vi.useFakeTimers();
+    timeProvider = new MockTimeProvider();
     queue = new AlertQueueManager({
       maxVisible: 2,
       debounceWindow: 5000,
       recentlyShownWindow: 60_000,
+      timeProvider,
     });
   });
 
   afterEach(() => {
     queue.clear();
-    vi.runAllTimers();
-    vi.useRealTimers();
   });
 
   describe("enqueue", () => {
@@ -106,7 +142,7 @@ describe("AlertQueueManager", () => {
     it("should deduplicate same category + topic within debounce window", () => {
       queue.enqueue(makeAlert("a1", "scope_creep", "medium", "topic-1"));
 
-      vi.advanceTimersByTime(1000);
+      timeProvider.advanceTime(1000);
 
       const result = queue.enqueue(
         makeAlert("a2", "scope_creep", "medium", "topic-1")
@@ -119,7 +155,7 @@ describe("AlertQueueManager", () => {
     it("should allow same category after debounce window", () => {
       queue.enqueue(makeAlert("a1", "scope_creep", "medium", "topic-1"));
 
-      vi.advanceTimersByTime(5001);
+      timeProvider.advanceTime(5001);
 
       const result = queue.enqueue(
         makeAlert("a2", "scope_creep", "medium", "topic-1")
@@ -200,7 +236,7 @@ describe("AlertQueueManager", () => {
 
       expect(queue.getActiveCount()).toBe(1);
 
-      vi.advanceTimersByTime(10_000);
+      timeProvider.advanceTime(10_000);
 
       expect(queue.getActiveCount()).toBe(0);
     });
@@ -208,7 +244,7 @@ describe("AlertQueueManager", () => {
     it("should expire a medium severity alert after 15 seconds", () => {
       queue.enqueue(makeAlert("a1", "scope_creep", "medium"));
 
-      vi.advanceTimersByTime(15_000);
+      timeProvider.advanceTime(15_000);
 
       expect(queue.getActiveCount()).toBe(0);
     });
@@ -216,7 +252,7 @@ describe("AlertQueueManager", () => {
     it("should expire a high severity alert after 20 seconds", () => {
       queue.enqueue(makeAlert("a1", "policy_violation", "high"));
 
-      vi.advanceTimersByTime(20_000);
+      timeProvider.advanceTime(20_000);
 
       expect(queue.getActiveCount()).toBe(0);
     });
@@ -224,7 +260,7 @@ describe("AlertQueueManager", () => {
     it("should expire a critical severity alert after 30 seconds", () => {
       queue.enqueue(makeAlert("a1", "policy_violation", "critical"));
 
-      vi.advanceTimersByTime(30_000);
+      timeProvider.advanceTime(30_000);
 
       expect(queue.getActiveCount()).toBe(0);
     });
@@ -237,7 +273,7 @@ describe("AlertQueueManager", () => {
       expect(queue.getActiveCount()).toBe(2);
       expect(queue.getPendingCount()).toBe(1);
 
-      vi.advanceTimersByTime(10_000);
+      timeProvider.advanceTime(10_000);
 
       expect(queue.getActiveCount()).toBe(1);
       expect(queue.getPendingCount()).toBe(0);
@@ -247,7 +283,7 @@ describe("AlertQueueManager", () => {
       const alert = makeAlert("a1", "scope_creep", "low");
       queue.enqueue(alert);
 
-      vi.advanceTimersByTime(10_000);
+      timeProvider.advanceTime(10_000);
 
       const active = queue.getActiveAlerts();
       expect(active).toHaveLength(0);

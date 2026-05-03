@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { redisKeys } from "@larity/infra/redis/keys";
 import Redis from "ioredis-mock";
-import { redisKeys } from "../../../infra/redis/keys";
 import { SpeakerPersistence } from "../../src/speaker/persistence";
 import type { SpeakerMapping } from "../../src/speaker/types";
 
@@ -15,8 +15,9 @@ describe("SpeakerPersistence", () => {
     persistence = new SpeakerPersistence(redis, sessionId);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     redis.flushall();
+    await redis.quit();
   });
 
   const generateMapping = (index: number): SpeakerMapping => ({

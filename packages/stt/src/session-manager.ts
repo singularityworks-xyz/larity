@@ -7,6 +7,9 @@
 
 import { createDualChannelSession } from "./dual-channel-session";
 import { MAX_CONNECTIONS } from "./env";
+import { createSttLogger } from "./logger";
+
+const log = createSttLogger("session-manager");
 
 interface SessionConnection {
   sendAudio(audioBuffer: Buffer): Promise<void>;
@@ -39,14 +42,14 @@ export class SessionManager {
   createSession(sessionId: string): boolean {
     // Check if session already exists
     if (this.connections.has(sessionId)) {
-      console.log(`[SessionManager] Session ${sessionId} already exists`);
+      log.info(`Session ${sessionId} already exists`);
       return true;
     }
 
     // Enforce connection limit
     if (this.connections.size >= MAX_CONNECTIONS) {
-      console.error(
-        `[SessionManager] Max connections (${MAX_CONNECTIONS}) reached, rejecting ${sessionId}`
+      log.error(
+        `Max connections (${MAX_CONNECTIONS}) reached, rejecting ${sessionId}`
       );
       return false;
     }
@@ -55,8 +58,8 @@ export class SessionManager {
     const connection = this.createConnection(sessionId);
     this.connections.set(sessionId, connection);
 
-    console.log(
-      `[SessionManager] Session ${sessionId} ready (${this.connections.size}/${MAX_CONNECTIONS})`
+    log.info(
+      `Session ${sessionId} ready (${this.connections.size}/${MAX_CONNECTIONS})`
     );
 
     return true;
@@ -68,15 +71,15 @@ export class SessionManager {
   closeSession(sessionId: string): void {
     const connection = this.connections.get(sessionId);
     if (!connection) {
-      console.log(`[SessionManager] Session ${sessionId} not found for close`);
+      log.info(`Session ${sessionId} not found for close`);
       return;
     }
 
     connection.close();
     this.connections.delete(sessionId);
 
-    console.log(
-      `[SessionManager] Closed session ${sessionId} (${this.connections.size}/${MAX_CONNECTIONS})`
+    log.info(
+      `Closed session ${sessionId} (${this.connections.size}/${MAX_CONNECTIONS})`
     );
   }
 
@@ -114,16 +117,14 @@ export class SessionManager {
    * Close all sessions (for graceful shutdown)
    */
   closeAll(): void {
-    console.log(
-      `[SessionManager] Closing all ${this.connections.size} sessions...`
-    );
+    log.info(`Closing all ${this.connections.size} sessions...`);
 
     const sessionIds = Array.from(this.connections.keys());
     for (const sessionId of sessionIds) {
       this.closeSession(sessionId);
     }
 
-    console.log("[SessionManager] All sessions closed");
+    log.info("All sessions closed");
   }
 }
 

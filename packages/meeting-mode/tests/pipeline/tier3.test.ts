@@ -4,13 +4,13 @@ import { Tier3SearchEngine } from "../../src/pipeline/tier3";
 import type { Utterance } from "../../src/utterance/types";
 
 // Mock the prisma client
-mock.module("../../../infra/prisma/client", () => ({
+mock.module("@larity/infra/prisma/client", () => ({
   prisma: {
     $queryRaw: mock(() => Promise.resolve([])),
   },
 }));
 
-import { prisma } from "../../../infra/prisma/client";
+import { prisma } from "@larity/infra/prisma/client";
 
 describe("Tier3SearchEngine", () => {
   let engine: Tier3SearchEngine;

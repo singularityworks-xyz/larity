@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "bun:test";
 import type { SttResult } from "../../stt/src/types";
 import { ContextAssembler } from "../src/context/context-assembler";
 import type { UtterancePublisher } from "../src/utterance/finalizer";

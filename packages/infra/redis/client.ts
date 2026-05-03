@@ -12,6 +12,14 @@ export const redis = new Redis(REDIS_URL, {
   showFriendlyErrorStack: true,
 });
 
+redis.on("error", (error) => {
+  if (process.env.NODE_ENV === "test") {
+    // Swallow error during unit tests so it doesn't crash the test runner
+    return;
+  }
+  log.error({ err: error }, "Unhandled Redis error event");
+});
+
 export async function connectRedis() {
   try {
     await redis.connect();
