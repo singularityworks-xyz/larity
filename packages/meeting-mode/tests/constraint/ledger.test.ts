@@ -21,8 +21,8 @@ describe("constraint/ledger", () => {
     });
   });
 
-  afterEach(() => {
-    redis.quit();
+  afterEach(async () => {
+    await redis.quit();
   });
 
   it("inserts constraints, writes snapshot, and publishes event", async () => {

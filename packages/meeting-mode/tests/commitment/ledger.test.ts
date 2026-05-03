@@ -36,8 +36,8 @@ describe("commitment/ledger", () => {
     });
   });
 
-  afterEach(() => {
-    redis.quit();
+  afterEach(async () => {
+    await redis.quit();
   });
 
   it("inserts commitments, writes snapshot, and publishes insert event", async () => {

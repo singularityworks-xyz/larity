@@ -119,6 +119,7 @@ describe("Alert Routing Integration", () => {
 
   afterEach(() => {
     queue.clear();
+    vi.clearAllTimers();
     vi.useRealTimers();
   });
 

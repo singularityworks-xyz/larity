@@ -46,6 +46,7 @@ describe("AlertQueueManager", () => {
     queue.clear();
     vi.clearAllTimers();
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   describe("enqueue", () => {

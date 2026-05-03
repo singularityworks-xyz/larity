@@ -124,6 +124,6 @@ describe("constraint pipeline integration", () => {
       ([channel]) => channel === `meeting.constraint.${sessionId}`
     );
     expect(publishedConstraintEvents.length).toBeGreaterThan(0);
-    redis.quit();
+    await redis.quit();
   });
 });

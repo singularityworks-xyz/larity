@@ -15,9 +15,9 @@ describe("SpeakerPersistence", () => {
     persistence = new SpeakerPersistence(redis, sessionId);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     redis.flushall();
-    redis.quit();
+    await redis.quit();
   });
 
   const generateMapping = (index: number): SpeakerMapping => ({
