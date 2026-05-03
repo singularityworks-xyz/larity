@@ -23,12 +23,6 @@ function App() {
         <Link className={navLinkClass("/home")} to="/home">
           Home
         </Link>
-        <Link className={navLinkClass("/meetings/start")} to="/meetings/start">
-          Start
-        </Link>
-        <Link className={navLinkClass("/meetings/join")} to="/meetings/join">
-          Join
-        </Link>
         {session.user ? (
           <button
             className="ml-auto font-medium text-[11px] text-[rgba(161,161,161,0.5)] leading-none transition-colors duration-150 [-webkit-app-region:no-drag] [app-region:no-drag] hover:text-[rgba(237,237,237,0.8)]"
