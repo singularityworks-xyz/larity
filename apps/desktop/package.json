@@ -17,6 +17,7 @@
   "dependencies": {
     "@fontsource/geist-mono": "^5.2.7",
     "@fontsource/geist-sans": "^5.2.5",
+    "@fontsource/share-tech-mono": "^5.2.7",
     "@ricky0123/vad-web": "^0.0.30",
     "@tanstack/react-query": "^5.90.3",
     "@tauri-apps/api": "^2",
