@@ -32,6 +32,7 @@ export * from "./channels";
 export * from "./commitment";
 export * from "./constraint";
 export * from "./pipeline/engine";
+export { getMetricsText, startDefaultMetrics } from "./pipeline/metrics";
 export * from "./pipeline/pre-filter";
 export * from "./pipeline/tier1";
 export * from "./pipeline/tier2";
