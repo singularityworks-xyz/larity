@@ -1,21 +1,26 @@
-import { beforeEach, describe, expect, it, vi } from "bun:test";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { UtterancePublisher } from "../../src/utterance/finalizer";
 import { UtteranceFinalizer } from "../../src/utterance/finalizer";
 import { createTestSttResult, resetUtteranceSeq } from "../helpers";
 
-vi.mock("../../src/topic/embedder", () => ({
-  GoogleGenAIEmbedder: vi.fn(() => ({
-    embed: vi.fn().mockResolvedValue(new Array(768).fill(0)),
-  })),
+mock.module("../../src/topic/embedder", () => ({
+  GoogleGenAIEmbedder: function () {
+    return {
+      embed: () => Promise.resolve(new Array(768).fill(0)),
+    };
+  },
 }));
 
-vi.mock("../../src/topic/summarizer", () => ({
-  TopicSummarizer: vi.fn(() => ({
-    summarize: vi.fn().mockResolvedValue({
-      summary: "Mock summary",
-      actionItems: [],
-    }),
-  })),
+mock.module("../../src/topic/summarizer", () => ({
+  TopicSummarizer: function () {
+    return {
+      summarize: () =>
+        Promise.resolve({
+          summary: "Mock summary",
+          actionItems: [],
+        }),
+    };
+  },
 }));
 
 function createMockPublisher(): UtterancePublisher & {
@@ -24,13 +29,13 @@ function createMockPublisher(): UtterancePublisher & {
   const calls: Array<{ channel: string; message: string }> = [];
   return {
     calls,
-    publish: vi.fn((channel: string, message: string) => {
+    publish: (channel: string, message: string) => {
       if (channel.startsWith("meeting.utterance.")) {
         calls.push({ channel, message });
       }
       return Promise.resolve(1);
-    }),
-    hset: vi.fn(() => Promise.resolve(1)),
+    },
+    hset: () => Promise.resolve(1),
   };
 }
 
