@@ -1,13 +1,15 @@
-const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 } as const;
+import pino from "pino";
 
-type Level = keyof typeof LOG_LEVELS;
+const isDev = import.meta.env.DEV;
+const level =
+  (import.meta.env.VITE_LOG_LEVEL as string) || (isDev ? "debug" : "info");
 
-const currentLevel: Level =
-  (import.meta.env?.VITE_LOG_LEVEL as Level) ?? "info";
-
-function shouldLog(level: Level): boolean {
-  return LOG_LEVELS[level] >= LOG_LEVELS[currentLevel];
-}
+const root = pino({
+  level,
+  browser: {
+    asObject: true,
+  },
+});
 
 export interface Logger {
   info: (msg: string, data?: unknown) => void;
@@ -17,26 +19,20 @@ export interface Logger {
 }
 
 export function createLogger(name: string): Logger {
+  const logger = root.child({ module: name });
+
   return {
     info: (msg: string, data?: unknown) => {
-      if (shouldLog("info")) {
-        console.log(`[${name}] ${msg}`, data ?? "");
-      }
+      logger.info(data ?? {}, msg);
     },
     warn: (msg: string, data?: unknown) => {
-      if (shouldLog("warn")) {
-        console.warn(`[${name}] ${msg}`, data ?? "");
-      }
+      logger.warn(data ?? {}, msg);
     },
     error: (msg: string, data?: unknown) => {
-      if (shouldLog("error")) {
-        console.error(`[${name}] ${msg}`, data ?? "");
-      }
+      logger.error(data ?? {}, msg);
     },
     debug: (msg: string, data?: unknown) => {
-      if (shouldLog("debug")) {
-        console.debug(`[${name}] ${msg}`, data ?? "");
-      }
+      logger.debug(data ?? {}, msg);
     },
   };
 }
