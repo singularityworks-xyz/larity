@@ -1,29 +1,49 @@
-import { Outlet } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { TitleBar } from "./components/title-bar";
+import { useAuthSession } from "./features/auth/use-session";
+import { signOut } from "./lib/auth-client";
+import { cx } from "./lib/ui";
 
-/**
- * Desktop main window shell — `.context/ui-spec.md` §10.2 (initial layout).
- */
 function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const session = useAuthSession();
+
+  const navLinkClass = (path: string) =>
+    cx(
+      "text-[11px] font-medium leading-none no-underline transition-colors duration-150 [-webkit-app-region:no-drag] [app-region:no-drag]",
+      location.pathname === path
+        ? "text-fg"
+        : "text-[rgba(161,161,161,0.5)] hover:text-[rgba(237,237,237,0.8)]"
+    );
+
   return (
-    <div className="flex min-h-screen flex-col bg-bg font-sans text-fg">
-      <header className="flex h-10 shrink-0 items-center border-border border-b bg-bg px-4">
-        <span className="font-semibold text-sm tracking-tight">Larity</span>
-      </header>
-      <div className="flex min-h-0 flex-1">
-        <aside
-          aria-label="Primary"
-          className="w-[180px] shrink-0 border-border border-r bg-bg"
-        />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <main className="min-h-0 flex-1 overflow-auto">
-            <div className="mx-auto w-full max-w-[1280px] px-6 py-4">
-              <Outlet />
-            </div>
-          </main>
-          <footer className="flex h-6 shrink-0 items-center border-border border-t bg-bg px-4 text-fg-muted text-xs">
-            <span className="font-mono">Ready</span>
-          </footer>
-        </div>
+    <div className="min-h-screen bg-bg font-sans text-fg">
+      <TitleBar>
+        <Link className={navLinkClass("/dashboard")} to="/dashboard">
+          Dashboard
+        </Link>
+        <Link className={navLinkClass("/meetings/start")} to="/meetings/start">
+          Start
+        </Link>
+        <Link className={navLinkClass("/meetings/join")} to="/meetings/join">
+          Join
+        </Link>
+        {session.user ? (
+          <button
+            className="ml-auto font-medium text-[11px] text-[rgba(161,161,161,0.5)] leading-none transition-colors duration-150 [-webkit-app-region:no-drag] [app-region:no-drag] hover:text-[rgba(237,237,237,0.8)]"
+            onClick={async () => {
+              await signOut();
+              navigate("/login");
+            }}
+            type="button"
+          >
+            Sign Out
+          </button>
+        ) : null}
+      </TitleBar>
+      <div className="mx-auto w-full max-w-[1280px] px-6 pt-9 pb-8">
+        <Outlet />
       </div>
     </div>
   );

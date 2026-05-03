@@ -12,6 +12,7 @@ import {
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { TitleBar } from "../../components/title-bar";
 import { useAuthSession } from "../../features/auth/use-session";
 import {
   buttonClass,
@@ -532,20 +533,23 @@ export function OnboardingPage() {
   }, [session.user?.orgId, navigate]);
 
   return (
-    <div className={wizardPageClass}>
-      <div className={wizardCardClass}>
-        <div className={wizardHeaderClass}>
-          <h1 className={wizardTitleClass}>Set up Larity</h1>
-          <p className={wizardStepLabelClass}>{STEPS[step]}</p>
-          <div className={progressDotsClass}>
-            {STEPS.map((label, i) => (
-              <div className={progressDotClass(i, step)} key={label} />
-            ))}
+    <>
+      <TitleBar />
+      <div className={cx(wizardPageClass, "pt-9")}>
+        <div className={wizardCardClass}>
+          <div className={wizardHeaderClass}>
+            <h1 className={wizardTitleClass}>Set up Larity</h1>
+            <p className={wizardStepLabelClass}>{STEPS[step]}</p>
+            <div className={progressDotsClass}>
+              {STEPS.map((label, i) => (
+                <div className={progressDotClass(i, step)} key={label} />
+              ))}
+            </div>
           </div>
-        </div>
 
-        {renderStepContent(step, setStep, () => navigate("/dashboard"))}
+          {renderStepContent(step, setStep, () => navigate("/dashboard"))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -1,12 +1,6 @@
-/**
- * Custom frameless title bar with native window controls.
- * Rendered on auth and app windows (not the intro splash).
- *
- * The `data-tauri-drag-region` attribute makes the bar drag-to-move the window.
- */
-
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, X } from "lucide-react";
+import type { ReactNode } from "react";
 import { cx } from "../lib/ui";
 
 async function minimize() {
@@ -39,7 +33,7 @@ async function close() {
   }
 }
 
-export function TitleBar() {
+export function TitleBar({ children }: { children?: ReactNode }) {
   const titleBarButtonClass =
     "flex h-full w-[46px] cursor-pointer items-center justify-center rounded-none border-0 bg-transparent p-0 text-[rgba(161,161,161,0.55)] transition-colors duration-[140ms] ease-in [-webkit-app-region:no-drag] [app-region:no-drag] hover:bg-white/6 hover:text-[rgba(237,237,237,0.9)] active:bg-white/4";
 
@@ -48,11 +42,11 @@ export function TitleBar() {
       className="fixed inset-x-0 top-0 z-[9999] flex h-9 select-none items-center justify-between bg-transparent pl-4 [-webkit-user-select:none]"
       data-tauri-drag-region
     >
-      {/* Drag region fills the bar — controls are excluded from dragging */}
-      <div className="flex flex-1 items-center gap-2" data-tauri-drag-region>
+      <div className="flex flex-1 items-center gap-3" data-tauri-drag-region>
         <span className="font-['Share_Tech_Mono','Courier_New',monospace] font-normal text-[11px] text-[rgba(161,161,161,0.5)] tracking-[0.22em]">
           LARITY
         </span>
+        {children}
       </div>
 
       <div className="flex h-full items-stretch">
