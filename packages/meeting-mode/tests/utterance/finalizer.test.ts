@@ -1,30 +1,27 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 import type { UtterancePublisher } from "../../src/utterance/finalizer";
 import { UtteranceFinalizer } from "../../src/utterance/finalizer";
 import { createTestSttResult, resetUtteranceSeq } from "../helpers";
 
-vi.mock("../../src/topic/embedder", () => {
-  return {
-    GoogleGenAIEmbedder: vi.fn().mockImplementation(() => {
-      return {
-        embed: vi.fn().mockResolvedValue(new Array(768).fill(0)),
-      };
-    }),
-  };
-});
+mock.module("../../src/topic/embedder", () => ({
+  GoogleGenAIEmbedder: function () {
+    return {
+      embed: () => Promise.resolve(new Array(768).fill(0)),
+    };
+  },
+}));
 
-vi.mock("../../src/topic/summarizer", () => {
-  return {
-    TopicSummarizer: vi.fn().mockImplementation(() => {
-      return {
-        summarize: vi.fn().mockResolvedValue({
+mock.module("../../src/topic/summarizer", () => ({
+  TopicSummarizer: function () {
+    return {
+      summarize: () =>
+        Promise.resolve({
           summary: "Mock summary",
           actionItems: [],
         }),
-      };
-    }),
-  };
-});
+    };
+  },
+}));
 
 function createMockPublisher(): UtterancePublisher & {
   calls: Array<{ channel: string; message: string }>;
@@ -32,13 +29,13 @@ function createMockPublisher(): UtterancePublisher & {
   const calls: Array<{ channel: string; message: string }> = [];
   return {
     calls,
-    publish: vi.fn((channel: string, message: string) => {
+    publish: (channel: string, message: string) => {
       if (channel.startsWith("meeting.utterance.")) {
         calls.push({ channel, message });
       }
       return Promise.resolve(1);
-    }),
-    hset: vi.fn(() => Promise.resolve(1)),
+    },
+    hset: () => Promise.resolve(1),
   };
 }
 
@@ -61,6 +58,26 @@ describe("UtteranceFinalizer", () => {
 
       await finalizer.process(partial);
       expect(publisher.calls).toHaveLength(0);
+    });
+
+    it("should publish a lone final after merge-gap without a second final", async () => {
+      const soloPublisher = createMockPublisher();
+      const fz = new UtteranceFinalizer(soloPublisher, { mergerGapMs: 35 });
+      const solo = createTestSttResult({
+        isFinal: true,
+        transcript: "Only line.",
+        duration: 0.05,
+      });
+
+      await fz.process(solo);
+      expect(soloPublisher.calls).toHaveLength(0);
+
+      await new Promise<void>((resolve) => {
+        setTimeout(resolve, 120);
+      });
+      expect(soloPublisher.calls).toHaveLength(1);
+      const published = JSON.parse(soloPublisher.calls[0]?.message ?? "{}");
+      expect(published.text).toBe("Only line.");
     });
 
     it("should create utterance with createUnidentifiedSpeaker on final result", async () => {

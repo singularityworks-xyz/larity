@@ -5,6 +5,12 @@ set -e
 # Run only unit tests (exclude *.integration.test.ts which require Docker)
 find packages apps -name '*.test.ts' ! -name '*.integration.test.ts' -not -path '*/node_modules/*' -type f | xargs bun test
 
+# Type-check desktop app if any of its source files are staged
+if echo "$(git diff --cached --name-only)" | grep -q "^apps/desktop/src/"; then
+  echo "Running TypeScript type check for desktop..."
+  (cd apps/desktop && bun x tsc --noEmit)
+fi
+
 # Check if there are any staged files
 if [ -z "$(git diff --cached --name-only)" ]; then
   echo "No staged files to format"

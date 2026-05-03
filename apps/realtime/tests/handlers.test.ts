@@ -1,7 +1,3 @@
-// Test environment setup - must be before any imports
-process.env.REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
-process.env.LOG_LEVEL = "error";
-
 import { mock } from "bun:test";
 
 mock.module("@larity/stt", () => ({

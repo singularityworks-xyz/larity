@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
+import type { ClientSummary } from "../meetings/types";
+import type { CreateClientInput } from "./use-create-client";
+
 interface MutationConfig<TInput> {
   mutationFn: (input: TInput) => Promise<unknown> | unknown;
   onSuccess?: () => Promise<void> | void;
@@ -21,8 +24,7 @@ const postMock = mock(async (_path: string, _payload: unknown) =>
 );
 
 mock.module("@tanstack/react-query", () => ({
-  useMutation: <TInput>(config: MutationConfig<TInput>) =>
-    useMutationMock(config),
+  useMutation: (config: any) => useMutationMock(config),
   useQueryClient: () => ({
     invalidateQueries: invalidateQueriesMock,
   }),
@@ -45,8 +47,11 @@ describe("useCreateClient", () => {
 
   it("posts required fields and omits empty optional values", async () => {
     const mutation = useCreateClient();
+    const fn = (mutation as any).mutationFn as (
+      input: CreateClientInput
+    ) => Promise<ClientSummary>;
 
-    await mutation.mutationFn({
+    await fn({
       name: "Acme",
       slug: "acme",
       description: "",
@@ -61,8 +66,11 @@ describe("useCreateClient", () => {
 
   it("includes optional fields when provided", async () => {
     const mutation = useCreateClient();
+    const fn = (mutation as any).mutationFn as (
+      input: CreateClientInput
+    ) => Promise<ClientSummary>;
 
-    await mutation.mutationFn({
+    await fn({
       name: "Acme",
       slug: "acme",
       description: "Strategic account",
@@ -80,7 +88,7 @@ describe("useCreateClient", () => {
   it("invalidates clients query after successful creation", async () => {
     const mutation = useCreateClient();
 
-    await mutation.onSuccess?.();
+    await ((mutation as any).onSuccess as () => Promise<void>)?.();
 
     expect(invalidateQueriesMock).toHaveBeenCalledWith({
       queryKey: ["clients"],

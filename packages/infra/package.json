@@ -4,10 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./prisma": "./generated/prisma/index.js",
-    "./generated/prisma": "./generated/prisma/index.js"
+    "./prisma": "./prisma/generated/prisma/client.ts",
+    "./generated/prisma": "./prisma/generated/prisma/client.ts",
+    "./prisma/client": "./prisma/client.ts",
+    "./redis": "./redis/index.ts",
+    "./redis/keys": "./redis/keys.ts",
+    "./redis/ttl": "./redis/ttl.ts"
   },
   "dependencies": {
-    "@larity/logger": "workspace:*"
+    "@larity/logger": "workspace:*",
+    "@prisma/adapter-pg": "^7.2.0",
+    "@prisma/client": "^7.2.0"
   }
 }

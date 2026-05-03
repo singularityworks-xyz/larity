@@ -1,3 +1,5 @@
+import { createLogger } from "../lib/logger";
+
 export interface AudioStatusSnapshot {
   active: boolean;
   backend: string;
@@ -94,6 +96,7 @@ export class AudioStreamingClient {
   private readonly backpressureThresholdBytes: number;
   private readonly maxPendingFrames: number;
   private readonly pendingFrames: Uint8Array[] = [];
+  private readonly log = createLogger("audio-streaming");
 
   private readonly metrics: AudioStreamingMetrics = {
     framesSent: 0,
@@ -118,9 +121,7 @@ export class AudioStreamingClient {
       this.socket?.readyState === WebSocket.OPEN ||
       this.socket?.readyState === WebSocket.CONNECTING
     ) {
-      console.log(
-        "[AudioStreamingClient] Socket already open/connecting. Skipping connect."
-      );
+      this.log.info("Socket already open/connecting. Skipping connect.");
       return;
     }
 
@@ -138,25 +139,21 @@ export class AudioStreamingClient {
       return;
     }
 
-    console.log("[AudioStreamingClient] Connecting to", url.split("?")[0]);
+    this.log.info("Connecting to", url.split("?")[0]);
     const ws = new WebSocket(url);
     ws.binaryType = "arraybuffer";
 
     ws.onopen = () => {
-      console.log("[AudioStreamingClient] WebSocket connected");
+      this.log.info("WebSocket connected");
       if (this.socket === ws) {
         this.warning = "";
       }
     };
 
     ws.onclose = (event) => {
-      console.log(
-        `[AudioStreamingClient] WebSocket closed (code: ${event.code})`
-      );
+      this.log.info(`WebSocket closed (code: ${event.code})`);
       if (this.socket !== ws) {
-        console.log(
-          "[AudioStreamingClient] Ignoring close event from stale socket"
-        );
+        this.log.info("Ignoring close event from stale socket");
         return;
       }
 
@@ -168,7 +165,7 @@ export class AudioStreamingClient {
     };
 
     ws.onerror = () => {
-      console.error("[AudioStreamingClient] WebSocket error");
+      this.log.error("WebSocket error");
       if (this.socket !== ws) {
         return;
       }
@@ -187,7 +184,7 @@ export class AudioStreamingClient {
 
   disconnect(): void {
     if (this.socket) {
-      console.log("[AudioStreamingClient] Disconnecting socket manually");
+      this.log.info("Disconnecting socket manually");
       this.socket.close();
       this.socket = null;
     }

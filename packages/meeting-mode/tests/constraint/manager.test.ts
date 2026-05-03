@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import type { Redis as RedisClient } from "ioredis";
 import Redis from "ioredis-mock";
 import { ConstraintManager } from "../../src/constraint/manager";
@@ -14,6 +14,10 @@ describe("constraint/manager", () => {
     manager = new ConstraintManager(redis, {
       now: () => 1_700_000_000_000,
     });
+  });
+
+  afterEach(async () => {
+    await redis.quit();
   });
 
   it("hydrates constraints from preloaded context payload", async () => {

@@ -228,7 +228,7 @@ interface SpeakerIdentity {
       "ts": 1730000004
     }
     ```
-* **Constraint:** Only these normalized objects move forward
+* **Constraint:** Only these normalized objects move forward (after **same-speaker merge** within `MERGE_GAP_MS`; see [meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing))
 * **Broadcast:** Every final utterance pushed to ALL connected team members
 
 ### 9. Processing Pipeline (Tiered, Cost-Optimized)
@@ -237,9 +237,11 @@ interface SpeakerIdentity {
 
 The pipeline replaces the old regex-heavy approach with LLM-based classification. **No English-only pattern libraries.** Works in any language.
 
-**Execution model:** After pre-filter, Tiers 1, 2, and 3 run **in parallel** (independent reads of the same utterance). Tier 4 runs after Tiers 2 and 3 resolve, gated by their combined output. See [meeting-mode.md §5.6.1](./meeting-mode.md#561-pipeline-orchestration--parallel-tier-execution).
+**Execution model:** After pre-filter, Tiers 1, 2, and 3 run **in parallel** (independent reads of the same utterance). Tier 4 runs **after** they resolve and is gated by **`runTier4 = ¬shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)`**, where **`shouldStopForDeepReasoning`** is Tier 2’s high-confidence filler/general with no risks, **`highSignal`** is Tier 1 instant hits plus commitment/decision/concern or any risk signals, and **`forceTier4`** comes from Tier 3 memory or ledger similarity hits. **`forceTier4` does not override** the filler/general stop — this avoids Tier 4 on low-value lines when embeddings spuriously match the ledger.
 
-Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with Tier 4 when gated in: `≤ 720 ms`. Sequential execution would add Tier 1 + Tier 2 + Tier 3 (~350 ms) for no benefit.
+**Observability (MVP):** Versioned structured traces publish to **`meeting.pipeline.{sessionId}`** (Redis pub/sub): tier summaries, gate flags, latency slices; when Tier 4 surfaces, **`message` / `surfaceReason` / `suggestion`** appear in the trace (no embeddings, no internal `reasoning`). See [meeting-mode.md §5.6.2](./meeting-mode.md#562-pipeline-traces-meetingpipelinesessionid).
+
+Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with Tier 4 when gated in: **`≤ gate + GEMINI_TIER4_TIMEOUT_MS`** (default **1500 ms** budget; Tier 4 fail-silent on timeout so p95 UX stays bounded by product tuning). Sequential execution would add Tier 1 + Tier 2 + Tier 3 (~350 ms) for no benefit.
 
 #### Pre-filter (Free, <10ms)
 * Kill noise: <3 words, pure acknowledgments, exact duplicates
@@ -265,14 +267,15 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
     * **Novelty check**: semantic deduplication within meeting
     * **Memory search**: pgvector search for past decisions, commitments, policies (client-scoped + org-wide)
     * **Commitment ledger search**: compare against ALL commitments from THIS meeting (catches contradictions from 40 min ago)
-* If match found → **force Tier 4** regardless of Tier 2 label
+* **Ledger / memory forcing:** Embedding hits set **`forceTier4`**; Tier 4 still runs **only if** Tier 2 has not signaled **`shouldStopForDeepReasoning`** (high-confidence filler/general, no risks), unless **`highSignal`** is already true.
 
-#### Tier 4: Deep LLM Reasoning (~$0.02/call, 300-500ms)
-* **Large model (Gemini Pro-class by default)**
-* Only for high-signal utterances (~5-10% of total, ~8 calls per meeting)
+#### Tier 4: Deep LLM Reasoning (~$0.02/call, wall-clock timeout via env)
+
+* **Large model** (Gemini Pro–class configurable; defaults may use flash in dev — see env)
+* Only runs when **`runTier4`** is true (~5–10% of finals, content-dependent)
 * Rich context: utterance + speaker identity + topic summary + ring buffer + Tier 3 matches (historical + commitment ledger) + relevant constraints
-* Returns: alert type, severity, message, suggestion, routing (shared/personal/both)
-* Zod-enforced output schema
+* Returns: alert type, severity, **`message`**, **`surfaceReason`** and **`suggestion`** when surfacing, routing — Zod-enforced; internal **`reasoning`** is audit-only (not in pipeline traces UI path)
+* **Timeout:** Gemini call raced with **`GEMINI_TIER4_TIMEOUT_MS`** (default **1500 ms**); timeout / validation failure → fail-silent (no alert)
 
 #### Three Model Tiers
 
@@ -317,9 +320,9 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 ### 12. Live LLM Invocation (Read-Only, Atomic Alerts)
 * **LLM Characteristics:**
     * Tier 2: Small, fast model (Gemini flash-lite) for classification — every utterance
-    * Tier 4: Large model (Gemini Pro-class) for reasoning — ~8 calls/meeting
+    * Tier 4: Large model (configurable) for reasoning — gated share of finals; wall-clock budget **`GEMINI_TIER4_TIMEOUT_MS`** (default **1500 ms**), fail-silent on breach
 * **Context for Tier 4:** Known constraints, recent commitments, topic summary, utterance, speaker identity, Tier 3 matches (historical + commitment ledger). **No full transcript.**
-* **Structure:** Zod-enforced output schemas
+* **Structure:** Zod-enforced output schemas; surfaced alerts include **`message`**, **`surfaceReason`**, **`suggestion`**
 * **UI Pattern:** Content-free "Checking..." indicator only; final alerts render atomically after full validation (no preliminary/progressive alert text)
 * **Output:** Ephemeral alert with routing. **No persistence during meeting.**
 * *Note: If slow or wrong → silently skipped.*

@@ -1,4 +1,4 @@
-import { redis } from "../../../../packages/infra/redis";
+import { redis } from "@larity/infra/redis";
 import { createRealtimeLogger } from "../logger";
 import type {
   ParticipantJoinEvent,

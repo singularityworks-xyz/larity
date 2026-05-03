@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { UtteranceMerger } from "../../src/utterance/merger";
 import {
   createExternalSpeaker,
@@ -18,9 +18,11 @@ describe("UtteranceMerger", () => {
   describe("push", () => {
     it("should buffer the first utterance and return null", () => {
       const u = createTestUtterance();
+      expect(merger.peekPending()).toBeNull();
       const result = merger.push(u);
       expect(result).toBeNull();
       expect(merger.hasPending()).toBe(true);
+      expect(merger.peekPending()).toBe(u);
     });
 
     it("should merge same-speakerId utterances within gap threshold", () => {

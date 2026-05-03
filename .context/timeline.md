@@ -12,7 +12,7 @@
 Before going into phases, align on what Larity actually is:
 
 1. **Larity is a native desktop application (Tauri).** It is NOT a browser extension. There is no Chrome/Edge/Firefox extension and there will not be one. The desktop app is installed on every team member's machine and runs as a tray/overlay app.
-2. **The desktop app captures a dual-channel audio feed from the host's machine**: host microphone on channel 0 and OS-level system audio loopback on channel 1, regardless of which conferencing tool is producing that audio (Zoom, Google Meet, Microsoft Teams, Discord, Slack Huddle, Jitsi, a dial-in phone bridged through the OS, etc.). No per-platform integrations are required, ever.
+2. **The desktop app captures two logical sources from the host’s machine** (**capture channel 0** = microphone, **capture channel 1** = OS-level system / loopback), regardless of which conferencing tool is producing that audio (Zoom, Google Meet, Microsoft Teams, Discord, Slack Huddle, Jitsi, a dial-in phone bridged through the OS, etc.). Production host intake sends **tagged mono** over the wire (`[tag: u8][linear16 mono @ 16 kHz]` per frame) so the server can open **two** mono Deepgram sessions — **no** client-side downmix of mic + sys into one blob. No per-platform *conferencing* integrations are required, ever.
 3. **A web app (`apps/web`) exists, but only as a dashboard / logs / settings surface** — history of past meetings, decisions, commitments, team / client / policy management, post-meeting review. The web app never captures audio and is not required during meetings.
 4. **All real-time processing happens on a shared remote server** — see [architecture-and-flow.md](./architecture-and-flow.md). The desktop app is a thin client that streams audio up and renders ambient UI + alerts.
 5. **Speaker identification is VAD-correlation based, not voice-embedding based.** No ML voice models, no Python microservice, no enrollment.
@@ -32,6 +32,13 @@ Before going into phases, align on what Larity actually is:
 | **apps/realtime** | Done | uWebSockets.js server with session management, host audio frame ingestion, direct Deepgram relay, Redis state/control publishing |
 | **packages/stt** | Done | Deepgram integration, session manager, Redis audio subscriber, utterance output |
 | **packages/meeting-mode** | Done | Speaker identification, alerts system, topic state management, context assembler |
+
+### Recently completed — desktop audio ↔ dual Deepgram (2026)
+
+- **Host desktop (`apps/desktop` / Tauri Rust):** `mixer.rs` is a **tag-and-forward** path: mic and system frames are **not** paired or summed; each frame is emitted as **`[0|1][pcm]`** (tags aligned with `packages/stt` `WS_AUDIO_TAG_*`). **Unbounded** `MixerMessage` queue from capture callbacks replaces `try_send` on a small bounded channel (avoids silent drops under burst).
+- **Linux loopback:** `parec` → same forwarder with `SourceType::Sys`.
+- **Transport to realtime:** still **Tauri `audio-frame` event → React `AudioStreamingClient` → WebSocket**; `ensureTaggedAudioFrame` in TS remains a **legacy fallback** if any path emits raw PCM.
+- **Still open:** Rust-native WebSocket from host (no base64/JS hot path), per-session upload metrics, true WASAPI / ScreenCaptureKit loopback parity on Windows / macOS.
 
 ### What Needs Architectural Changes (Existing Code)
 
@@ -165,6 +172,7 @@ Redis Channels (new):
 - meeting.alert.{sessionId}.user.{userId} — personal alerts
 - meeting.utterance.{sessionId} — processed utterances (broadcast to all)
 - meeting.topic.{sessionId} — topic change events
+- meeting.pipeline.{sessionId} — versioned tier/gate/trace JSON (manual QA / dev; see §5.6.2, B.11)
 ```
 
 ### STT Package Details (production host path — see B.12)
@@ -431,9 +439,11 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Deliverable:** Complete audio → identified utterance pipeline working end-to-end. TEAM members identified via VAD within one utterance of speaking. ✓
 
-### Day 12-13: Dual-Channel OS-Level Audio Capture (Tauri / Rust) — PARTIAL
+### Day 12-13: Dual-Channel OS-Level Audio Capture (Tauri / Rust) — PARTIAL (decoupled forwarder ✓)
 
 > **Why this phase exists:** Larity is a native desktop app. The host's Larity instance must capture host mic + OS-level loopback audio of the system mixer so it works identically regardless of which conferencing app (Zoom, Meet, Teams, Discord, Slack Huddle, dial-in SIP app, etc.) is producing the meeting audio. The mic channel gives clean host speech and deterministic host identity; the loopback channel keeps platform-agnostic remote audio intake. This is the single biggest platform-specific workstream in the whole product and must not be deferred to "Week 6 frontend" where it was previously hidden as a one-line "audio capture hook".
+>
+> **Update:** The legacy **interleaved / time-aligned mixer** that **summed** mic + sys into one mono stream is **removed**. The host path now **forwards each source separately** with wire tags **0 = mic**, **1 = system**, matching `createDualChannelSession` on the server — fixing latency when one source is silent and aligning with B.12.
 
 **apps/desktop (Rust / Tauri side — `src-tauri`)**
 
@@ -450,7 +460,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - [x] `audio_capture_stop()` → stop capture cleanly
   - [x] `audio_capture_status()` → current state + per-platform backend in use + any permission errors
 - [x] Frame format (production host): 16 kHz **tagged mono** — each WS binary frame is `[tag: u8]` + **mono** linear16 little-endian (50 ms chunks per source path). Realtime opens **two** Deepgram connections (`channels=1`, `diarize=true`); not interleaved `multichannel` PCM.
-- [x] Current fallback frame format: 16 kHz mono 16-bit PCM, 50 ms frames.
+- [x] **Legacy:** untagged mono-only `audio-frame` payloads (older builds); current path is **always tagged** from Rust; TS `ensureTaggedAudioFrame` only fixes stray untagged bytes.
 - [x] Handle OS permission prompts:
   - [x] macOS: request screen-recording permission (SCK) once, surface failure gracefully
   - [x] Windows: no extra permission for WASAPI loopback
@@ -458,9 +468,9 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 - [x] Fail-silent: if capture cannot start, the desktop app surfaces a clear error modal but **does not crash the session** for other participants — the host just can't be a host on this machine right now
 - [ ] Unit tests in Rust for dual-channel frame sizing, sample-counter alignment, resampling, and state machine (start → running → stop)
 - [ ] Move resampling and PCM encoding off the cpal real-time callback into a worker/ring-buffer path
-- [ ] Add clipping-safe handling: no client-side summing in dual-channel mode; if single-channel fallback ever mixes, use soft limiter or <=0.5 gain per source
+- [x] No client-side summing in dual-source mode: host sends **separate tagged** mic and sys frames (no clipping from `(mic + sys) * gain` in the forwarder). *Single-stream fallback (if ever implemented) still TBD: soft limiter / <=0.5 gain per source.*
 
-**Deliverable (Day 12-13):** Prototype host capture exists, with Linux loopback functional and the intended dual-channel shape specified. Production dual-channel correctness (Rust-native WebSocket transport, true Windows/macOS loopback, channel-aware STT schema, and Rust-side VAD cleanup) is completed in the Post-Day 23 patch below.
+**Deliverable (Day 12-13):** Prototype host capture exists, with Linux loopback functional. **Per-source tagged mono** to the realtime worker is **implemented** (Tauri event + JS relay). **Remaining for “production complete” on desktop:** Rust-native WebSocket upload, Windows/macOS native loopback, richer Rust tests, optional worker offload of resampling from cpal callbacks.
 
 ### Day 14: Meeting Detection & Desktop App Wiring ✓ COMPLETED
 
@@ -475,6 +485,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - [ ] Back-pressure handling in Rust: bounded queue, drop oldest with metrics, surface a heartbeat warning
 - [x] Current fallback frontend audio streaming:
   - [x] Subscribe to the Rust `audio-frame` Tauri event
+  - [x] Rust emits **tagged** payload in `data` (base64 of `[tag][pcm]`); React forwards bytes as-is; `ensureTaggedAudioFrame` tags only **legacy** untagged PCM
   - [x] Push each frame as a binary WebSocket message to `apps/realtime`
   - [x] Back-pressure handling: if WS buffer grows past threshold, drop oldest frame + surface a heartbeat warning
 - [x] **Server-side audio path is direct, not via Redis (B.2):**
@@ -488,7 +499,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 > **Note:** Calendar trigger and process/audio-activity heuristic (optional features) are not yet implemented.
 
-**Deliverable (Day 14):** Desktop app can be launched, detect or be told about a meeting, start the prototype host capture path, stream to the remote server, and appear in the server's session registry. Production dual-channel intake is intentionally scheduled after Day 22-23 so Tier 3+ work builds on the final utterance shape.
+**Deliverable (Day 14):** Desktop app can be launched, detect or be told about a meeting, start the prototype host capture path, stream to the remote server, and appear in the server's session registry. **Dual-source tagged intake is live** through the Tauri-event + JS path; **Rust-native WebSocket** remains optional hardening (see Post-Day 23).
 
 #### Post-Day 14 Patch: Desktop Realtime Identity Inputs ✓ COMPLETED
 
@@ -714,14 +725,15 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **apps/desktop + apps/realtime + packages/stt + packages/meeting-mode**
 
-> **Server + STT complete:** Tagged mono wire format **`[tag: u8][mono linear16 @ 16 kHz]`**; realtime **`createDualChannelSession`**; **`SttResult.channel`** = logical 0/1; **`SpeakerIdentifier`** keys **`channel:diarizationIndex`**. **Desktop** may still be mid-migration: production requires **per-source tagged frames** (Rust-native WebSocket and/or non-mixing relay); **interleaved `mixer.rs` + mixed mono** is **not** aligned with dual Deepgram sessions until the client sends tagged per-source PCM.
+> **Server + STT + desktop wire contract:** Tagged mono **`[tag: u8][mono linear16 @ 16 kHz]`**; realtime **`createDualChannelSession`** (two Deepgram connections); **`SttResult.channel`** = logical 0/1; **`SpeakerIdentifier`** keys **`channel:diarizationIndex`**. **Desktop Rust** (`audio/mixer.rs`) emits **per-source tagged** frames over the **`audio-frame`** Tauri event (no mixing, **unbounded** queue from capture). **React** forwards binary WebSocket frames; TS **`ensureTaggedAudioFrame`** only patches stray **untagged** PCM. **Optional next:** open realtime WebSocket from **Rust** (skip base64 + renderer), per-session upload metrics, Windows/macOS native loopback.
 
 - [x] `packages/stt`: `dual-channel-session.ts`, dual `DeepgramConnection`, default `SessionManager` factory
 - [x] `apps/realtime`: binary frames forwarded to `sessionManager.sendAudio`
 - [x] `packages/meeting-mode`: host short-circuit ch0; VAD correlation on ch1
-- [ ] **Remaining:** Rust-native tagged upload path on desktop (replace or augment Tauri `audio-frame` + JS relay); per-session upload metrics; Windows/macOS loopback parity
+- [x] **Desktop:** tag-and-forward host audio; Linux `parec` → tagged sys; mic → tag 0; **removed** paired-buffer / summed mono mixer
+- [ ] **Remaining (hardening):** Rust-native WebSocket upload from host; per-session upload metrics; true WASAPI / ScreenCaptureKit loopback on Windows / macOS
 
-**Deliverable (architecture):** Dual mono STT and channel-aware identity are canonical; finish desktop transport to match the wire contract.
+**Deliverable (architecture):** Dual mono STT, channel-aware identity, and **decoupled** host capture → server wire format are **aligned**. Remaining work is transport/observability and platform loopback parity, not STT schema or tagging semantics.
 
 ### Day 24-25: Tier 3 — Embedding Search & Novelty Check
 
@@ -754,38 +766,48 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [ ] Set up large LLM integration (Gemini Pro/Flash)
-- [ ] Define Tier 4 context assembly:
+**Status — ✓ implemented (verification: `cd packages/meeting-mode && bun test`; repo root `bun x ultracite check packages/meeting-mode`).**
+
+**Related (utterance UX / latency):** Same-speaker merge + **`MERGE_GAP_MS`** timed flush prevents “lag one utterance” before tiers run ([meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing), B.14).
+
+**Related (gate):** Tier 4 runs only when **`runTier4 = !shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)`**; Tier 3’s **`forceTier4`** alone does **not** beat Tier 2’s filler/general stop (B.13).
+
+**Wire-up:** `packages/meeting-mode/src/pipeline/tier4.ts` (`Tier4DeepReasoner`), `types.ts` (Zod + `Tier4Context`), `tier4-context.ts` (preload hydrate + assemble), `tier4-alert.ts` (routing/coercion → `Alert`), `engine.ts` (gate → single publish), `index.ts` (Redis `AlertPublisher`), `env.ts` (`GEMINI_TIER4_MODEL`, `GEMINI_TIER4_TIMEOUT_MS`, `MERGE_GAP_MS`, `PIPELINE_TRACE_PRETTY_JSON`).
+
+- [x] Set up large LLM integration (Gemini Pro–class via `GEMINI_TIER4_MODEL`, `@google/genai`)
+- [x] Define Tier 4 context assembly:
   ```ts
   interface Tier4Context {
     utterance: string
     tier2Classification: Tier2Classification
     speaker: SpeakerIdentity
     topicSummary: string
-    recentUtterances: Utterance[]              // Ring buffer
-    matchedHistoricalItems: HistoricalMatch[]  // From pgvector
-    matchedCommitments: CommitmentMatch[]      // From commitment ledger
+    recentUtterances: Utterance[]              // Ring buffer (chronological via UtteranceFinalizer)
+    matchedHistoricalItems: HistoricalMatch[] // Preload hydrate + Tier 3 memory ids / pgvector
+    matchedCommitments: CommitmentMatch[]     // Ledger hydrate from Tier 3 ledger matches
     relevantConstraints: Constraint[]
+    // Implementation also passes tier1Result, topicId, triggerUtteranceId for prompt JSON fidelity.
   }
   ```
-- [ ] Define Tier 4 output schema (Zod-enforced):
+- [x] Define Tier 4 output schema (Zod-enforced):
   ```ts
   interface Tier4Response {
     alertType: AlertCategory | "none"
     severity: "low" | "medium" | "high" | "critical"
-    message: string
-    suggestion?: string
+    message: string                          // Overlay headline when surfacing
+    surfaceReason?: string                   // User-visible “why”; required when surfaced (guards)
+    suggestion?: string                      // Concrete next-step copy when surfaced (guards)
     confidence: number
     shouldSurface: boolean
-    reasoning: string
+    reasoning: string                        // Logs / audits only — never in Redis pipeline traces
     routing: "shared" | "personal" | "both"
     targetUserId?: string
   }
   ```
-- [ ] Build prompt templates for all alert categories
-- [ ] Implement streaming LLM response handling **internally** to reduce TTFB — but emit exactly one atomic alert per call (no progressive / preliminary alerts surfaced to the UI; see B.8 and [meeting-mode.md §5.9](./meeting-mode.md#59-live-llm-invocation-non-streaming-atomic-alerts))
-- [ ] Implement timeout (500ms max) and fail-silent logic
-- [ ] Add response validation and schema enforcement
+- [x] Build prompt templates for all alert categories (explicit category list + routing rules in Tier 4 system prompt)
+- [x] **Atomic surfaced alerts only** — one validated `Alert` publish per invocation (see B.8 / §5.9); *Gemini SDK stream aggregator for faster TTFB can be added later without changing the single-surface contract.*
+- [x] Wall-clock timeout **`GEMINI_TIER4_TIMEOUT_MS`** (default **1500**) and fail-silent on timeout / malformed / invalid schema / publish failure
+- [x] Response validation (`tier4ResponseSchema`) + Gemini `responseSchema`; surfacing guard (`MIN_TIER4_SURFACING_CONFIDENCE`); user-facing **`message` / `surfaceReason` / `suggestion`** when surfaced — same fields mirrored in **`meeting.pipeline.*`** traces (§5.6.2)
 
 **Deliverable:** Tier 4 can reason about contradictions, risks, and conflicts and generate structured alerts with routing.
 
@@ -795,19 +817,19 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 > **Architectural anchor:** This is where the realtime pipeline hits its <800ms end-to-end budget. Key design points, all per [meeting-mode.md §5.6.1](./meeting-mode.md#561-pipeline-orchestration--parallel-tier-execution):
 > - Tiers 1, 2, 3 run in parallel (independent inputs)
-> - Tier 4 is gated by the combined output
+> - Tier 4 is gated by **`runTier4`** ( **`highSignal` ∨ `forceTier4`**, with Tier 2 stop veto — B.13)
 > - Topic summary generation is off the hot path and derived from Tier 2 outputs
 > - Tier 2 has a per-session semantic cache
 > - Tier 4 invocations respect a per-meeting cost ceiling
-> - Every stage emits structured latency/cost metrics
+> - Every stage emits structured latency/cost metrics (Redis **`meeting.pipeline.*`** MVP for traces — partial below)
 
-- [ ] **Parallel tier orchestration (B.1):**
-  - [ ] Replace any sequential `await tier1; await tier2; await tier3;` with `const [t1, t2, t3] = await Promise.all([runTier1, runTier2, runTier3])`
-  - [ ] Tier 2 commitment writes awaited *inside* the Tier 2 task, so Tier 3's ledger search sees prior commitments but not the current one
-  - [ ] Tier 1 instant alerts (blocklist/technical hit) dispatch without waiting for Tier 4
-  - [ ] Topic state updates run as deterministic reducer side-effects from Tier 2 output in the same tick
-  - [ ] Gate decision runs after `Promise.all` — pure in-process logic, <5ms
-  - [ ] Instrument each tier with a `performance.now`-based span; record `pipelineBudget` (target: <220ms without Tier 4, <720ms with)
+- [x] **Parallel tier orchestration (B.1) — MVP done:**
+  - [x] `const [t1, t2, t3] = await Promise.all([runTier1, runTier2, runTier3])` (`MeetingPipelineEngine`)
+  - [x] Tier 2 commitment writes awaited *inside* the Tier 2 task, so Tier 3's ledger search sees prior commitments but not the current one
+  - [x] Tier 1 instant alerts (blocklist/technical hit) dispatch without waiting for Tier 4
+  - [x] Topic state updates: **`topicDelta`** from Tier 2 applied via **`TopicManager`** in-engine when `utterance.topicId` present (`MeetingPipelineEngine`); summarizer refinement off-path
+  - [x] Gate decision runs after parallel tiers — **`runTier4 = !tier2.shouldStopForDeepReasoning && (highSignal || tier3.forceTier4)`**
+  - [x] Spans recorded for pre-filter, Tier 1, Tier 2, gate, Tier 4 wall-clock, total (`pipelineBudgetMs`); surfaced on **`meeting.pipeline.{sessionId}`** JSON (**B.11** MVP)
 - [ ] **Tier 2 semantic cache (B.6):**
   - [ ] Per-session LRU cache keyed by utterance embedding (cosine ≥ 0.97 = cache hit) or normalized text
   - [ ] Max ~200 entries per session, evict on LRU
@@ -824,11 +846,10 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - [ ] On reaching 80% of cap: log a warning, raise Tier 4 gate thresholds (harder to trigger)
   - [ ] On reaching 100% of cap: disable Tier 4 entirely for the rest of the meeting, keep Tiers 1-3 and Tier 1 instant alerts running
   - [ ] Surface to dashboard on session end
-- [ ] **Pipeline observability (B.11):**
-  - [ ] Structured metrics per utterance: `sessionId`, `utteranceId`, `prefilterDropped`, `t1Latency`, `t2Latency`, `t2Cost`, `t2CacheHit`, `t3Latency`, `t3MatchCount`, `tier4Gated`, `t4Latency`, `t4Cost`, `alertEmitted`, `endToEndLatency`
-  - [ ] Emit to stdout as one JSON line per utterance (easy to ship to any log aggregator)
-  - [ ] Per-session rollup on meeting end: p50/p95/p99 latency, total cost, tier invocation counts, gate decision distribution
-  - [ ] Basic Prometheus histograms for p50/p95/p99 end-to-end latency (optional — only if infra is in place; otherwise stdout JSON is sufficient for MVP)
+- [x] **Pipeline observability — MVP (`meeting.pipeline.*`, B.11):**
+  - [x] Per-utterance JSON on Redis **`meeting.pipeline.{sessionId}`**: session/utterance ids, drop reasons, **`tier4` invoked/surfaced**, gate **`runTier4`**, **`forceTier4`**, **`highSignal`**, **`message`/`surfaceReason`/`suggestion`** when surfaced (no embeddings, no **`reasoning`**)
+  - [x] Optional pretty JSON via **`PIPELINE_TRACE_PRETTY_JSON`**; realtime can subscribe and log (**`pipeline`** in `channels.ts` extractor)
+  - [ ] Prometheus histograms / per-session rollup on meeting end *(roadmap)*
 - [ ] End-to-end test: utterance with commitment → Tier 2 writes to ledger → later contradicting utterance → Tier 3 catches → Tier 4 confirms → alert generated; validate total latency <800ms
 - [ ] End-to-end test: topic summary remains up to date with Tier 2 deltas even when summary refinement LLM is unavailable
 - [ ] Cost regression test: 1-hour scripted meeting fixture → total cost under budget (~$1.22 dual-channel nominal, $2.00 hard cap)
@@ -1002,7 +1023,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 ### Day 37-38: Desktop App Foundation
 
-> **Note:** Prototype host capture started in Day 12-13, and production dual-channel intake is hardened in the Post-Day 23 patch. This phase is about wiring the React frontend around the finalized Rust capture/transport surface.
+> **Note:** Host capture and **per-source tagged mono** (`audio-frame` → JS WebSocket) are **implemented**. This phase is about **meeting UI**, session UX, and optional **Rust-native WebSocket** (no base64 through React) as a performance hardening step.
 
 **apps/desktop**
 
@@ -1538,9 +1559,9 @@ apps/
 ├── realtime/                 # DONE - uWebSockets.js
 │   └── Needs: multi-connection per session (DONE), host/participant roles (DONE),
 │              broadcast to participants (DONE), alert channel subscriptions
-├── desktop/                  # SCAFFOLD + VAD + prototype audio capture - Tauri + React
-│   └── Needs: production dual-channel Rust audio transport (Post-Day 23 patch),
-│              true Win/macOS loopback, React UI (Week 6), assistant (Week 8)
+├── desktop/                  # Host capture: dual-source tagged mono (mic+sys forwarder); VAD - Tauri + React
+│   └── Needs: Rust-native WS (optional), per-session audio metrics, true Win/macOS loopback,
+│              React meeting UI polish (Week 6), assistant (Week 8)
 ├── workers/                  # SCAFFOLD ONLY
 │   └── Needs: Everything (Week 7)
 └── web/                      # NOT YET CREATED
@@ -1751,7 +1772,7 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 - This timeline assumes 1 developer working full-time
 - 76 working days = ~11 weeks at 7 days/week, or ~15 weeks with weekends
 - Week 1 is primarily migration work (updating existing code to new architecture)
-- Audio intake is the biggest platform-specific workstream. Week 2 establishes the prototype capture path; the Post-Day 23 patch hardens production dual-channel capture before Tier 3/Tier 4 work builds on utterance shape.
+- Audio intake is the biggest platform-specific workstream. Week 2 establishes the prototype capture path; **Post-Day 23 / B.12** aligns **server STT + desktop tagged per-source frames** (no client-side mic/sys mix). **Rust-native WebSocket** and **Win/mac loopback** remain the main follow-ups before calling desktop capture “fully production-grade” on every OS.
 - Pattern library work from the old timeline is completely removed (replaced by Tier 2 LLM)
 - Weeks 7-8-9 can be parallelized if additional developers are available
 - Adjust based on actual velocity after Week 1

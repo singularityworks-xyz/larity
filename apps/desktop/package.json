@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "check-types": "tsc --noEmit",
     "preview": "vite preview",
     "tauri": "tauri",
     "lint": "biome check --log-level=info --diagnostic-level=warn .",
@@ -14,11 +15,12 @@
     "format:check": "biome format ."
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.90.3",
     "@ricky0123/vad-web": "^0.0.30",
+    "@tanstack/react-query": "^5.90.3",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "better-auth": "^1.4.10",
+    "pino": "^10.3.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.9.4",

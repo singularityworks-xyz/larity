@@ -1,5 +1,7 @@
 import { z } from "zod";
-import type { SpeakerIdentity } from "../utterance/types";
+import type { Commitment } from "../commitment/types";
+import type { Constraint } from "../constraint/types";
+import type { SpeakerIdentity, Utterance } from "../utterance/types";
 
 export const tier2IntentSchema = z.enum([
   "commitment",
@@ -54,7 +56,10 @@ export const tier2ClassificationSchema = z
       })
       .strict(),
     confidence: z.number().min(0).max(1),
-    topicDelta: tier2TopicDeltaSchema.optional(),
+    topicDelta: z.preprocess(
+      (val) => (val === null ? undefined : val),
+      tier2TopicDeltaSchema.optional()
+    ),
   })
   .strict();
 
@@ -90,3 +95,127 @@ export interface Tier2Outcome {
   classification: Tier2Classification;
   shouldStopForDeepReasoning: boolean;
 }
+
+export interface Tier3Result {
+  forceTier4: boolean;
+  noveltyScore: number;
+  memoryMatches: Array<{ type: string; id: string; score: number }>;
+  ledgerMatches: Array<{ id: string; score: number }>;
+}
+
+/** Historical memory hydrated for Tier 4 prompts */
+export interface Tier4HistoricalMatch {
+  memoryType: string;
+  sourceId: string;
+  item: string;
+  meetingDate?: string;
+  status?: string;
+  similarity: number;
+}
+
+/** Ledger match hydrated with full commitment for Tier 4 */
+export interface Tier4CommitmentMatch {
+  commitment: Commitment;
+  similarity: number;
+}
+
+/** Rich context assembled after Tiers 1–3 gate for Tier 4 */
+export interface Tier4Context {
+  triggerUtteranceId: string;
+  utterance: string;
+  speaker: SpeakerIdentity;
+  topicId: string | undefined;
+  topicSummary: string;
+  tier1Result: Tier1Result;
+  tier2Classification: Tier2Classification;
+  recentUtterances: Utterance[];
+  matchedHistoricalItems: Tier4HistoricalMatch[];
+  matchedCommitments: Tier4CommitmentMatch[];
+  relevantConstraints: Constraint[];
+}
+
+export const tier4AlertTypeLiterals = [
+  "none",
+  "self_contradiction",
+  "team_inconsistency",
+  "risky_commitment",
+  "scope_creep",
+  "client_backtrack",
+  "missing_clarity",
+  "information_risk",
+  "tone_warning",
+  "pressure_detected",
+  "policy_violation",
+  "client_disengagement",
+  "undiscussed_agenda",
+] as const;
+
+export type Tier4AlertKind = (typeof tier4AlertTypeLiterals)[number];
+
+/** Zod expects a tuple; keep aligned with Tier4AlertKind */
+export const tier4AlertTypeSchema = z.enum(
+  tier4AlertTypeLiterals as unknown as readonly [
+    Tier4AlertKind,
+    ...Tier4AlertKind[],
+  ]
+);
+
+export const tier4SeveritySchema = z.enum([
+  "low",
+  "medium",
+  "high",
+  "critical",
+]);
+
+export const tier4RoutingSchema = z.enum(["shared", "personal", "both"]);
+
+export const tier4ResponseSchema = z
+  .object({
+    alertType: tier4AlertTypeSchema,
+    severity: tier4SeveritySchema,
+    message: z.string().min(1).max(480),
+    /** One short user-visible line (shown in overlay): why this alert fired */
+    surfaceReason: z.preprocess(
+      (val) => (val === null ? undefined : val),
+      z.string().min(1).max(240).optional()
+    ),
+    suggestion: z.preprocess(
+      (val) => (val === null ? undefined : val),
+      z.string().min(1).max(520).optional()
+    ),
+    confidence: z.number().min(0).max(1),
+    shouldSurface: z.boolean(),
+    reasoning: z.string().min(1).max(1500),
+    routing: tier4RoutingSchema,
+    targetUserId: z.preprocess(
+      (val) => (val === null ? undefined : val),
+      z.string().min(1).max(120).optional()
+    ),
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    if (!data.shouldSurface || data.alertType === "none") {
+      return;
+    }
+    const reason = data.surfaceReason?.trim() ?? "";
+    if (reason.length < 8) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "surfaceReason must be a concise one-line rationale when surfacing",
+        path: ["surfaceReason"],
+      });
+    }
+    const sug =
+      typeof data.suggestion === "string" ? data.suggestion.trim() : "";
+    if (sug.length < 12) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "suggestion must give 1-2 short actionable next-step lines when surfacing",
+        path: ["suggestion"],
+      });
+    }
+  });
+
+export type Tier4Response = z.infer<typeof tier4ResponseSchema>;

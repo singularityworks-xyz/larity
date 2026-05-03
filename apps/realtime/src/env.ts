@@ -23,11 +23,17 @@ function optional(name: string, defaultValue: string): string {
 
 export const env = {
   /** WebSocket server port */
-  PORT: Number.parseInt(optional("REALTIME_PORT", "9001"), 10),
+  get PORT() {
+    return Number.parseInt(optional("REALTIME_PORT", "9001"), 10);
+  },
 
   /** Redis connection URL - required, comes from infra */
-  REDIS_URL: required("REDIS_URL"),
+  get REDIS_URL() {
+    return required("REDIS_URL");
+  },
 
   /** Log level - optional, defaults to info/debug */
-  LOG_LEVEL: optional("LOG_LEVEL", "info"),
-} as const;
+  get LOG_LEVEL() {
+    return optional("LOG_LEVEL", "info");
+  },
+};

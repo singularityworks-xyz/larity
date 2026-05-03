@@ -1,7 +1,7 @@
 
 generator client {
   provider = "prisma-client"
-  previewFeatures = ["tracing"]
+  previewFeatures = ["tracing", "postgresqlExtensions"]
   output   = "./generated/prisma"
 }
 
@@ -69,7 +69,7 @@ model User {
   name          String
   email         String   @unique
   emailVerified Boolean  @default(false)
-  image         String?  @default("https://www.catstalkers.com/_next/static/media/bg-footer.1b0868cc.png")
+  image         String?
   role          UserRole @default(MEMBER)
   timezone      String?
   createdAt     DateTime @default(now())
@@ -307,6 +307,7 @@ model Decision {
   evidence     String?
   status       DecisionStatus @default(ACTIVE)
   tags         String[]
+  embedding    Unsupported("vector(768)")?
   createdAt    DateTime       @default(now())
 
   // Linked tasks
@@ -417,6 +418,7 @@ model ImportantPoint {
   content            String
   category           ImportantPointCategory @default(INSIGHT)
   transcriptEvidence String?
+  embedding          Unsupported("vector(768)")?
   createdAt          DateTime               @default(now())
 
   @@index([clientId])
@@ -453,6 +455,7 @@ model PolicyGuardrail {
   isActive    Boolean              @default(true)
   sourceType  GuardrailSourceType?
   sourceId    String?
+  embedding   Unsupported("vector(768)")?
   createdAt   DateTime             @default(now())
   updatedAt   DateTime             @updatedAt
 
