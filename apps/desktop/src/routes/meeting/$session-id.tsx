@@ -5,6 +5,18 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuthSession } from "../../features/auth/use-session";
 import { api } from "../../lib/api";
 import {
+  buttonClass,
+  codeClass,
+  controlRowClass,
+  cx,
+  labelClass,
+  panelClass,
+  preClass,
+  selectClass,
+  statsGridClass,
+  warningBannerClass,
+} from "../../lib/ui";
+import {
   type AudioFramePayload,
   type AudioStatusSnapshot,
   AudioStreamingClient,
@@ -251,19 +263,20 @@ export function MeetingPage() {
 
   return (
     <AppShell subtitle={pageSubtitle} title="Meeting room">
-      <section className="panel">
-        <h2>Session details</h2>
+      <section className={panelClass}>
+        <h2 className="mt-0">Session details</h2>
         <p>
           Role: <strong>{role}</strong>
         </p>
         <p>
-          Session ID: <code>{sessionId}</code>
+          Session ID: <code className={codeClass}>{sessionId}</code>
         </p>
 
-        <div className="control-row">
+        <div className={controlRowClass}>
           {isHost ? (
             <>
               <button
+                className={buttonClass()}
                 disabled={status?.active || isBusy}
                 onClick={() => {
                   startCapture().catch(() => {
@@ -275,6 +288,7 @@ export function MeetingPage() {
                 Start Capture
               </button>
               <button
+                className={buttonClass()}
                 disabled={!status?.active || isBusy}
                 onClick={() => {
                   stopCapture().catch(() => {
@@ -285,24 +299,34 @@ export function MeetingPage() {
               >
                 Stop Capture
               </button>
-              <button disabled={isBusy} onClick={leaveMeeting} type="button">
+              <button
+                className={buttonClass()}
+                disabled={isBusy}
+                onClick={leaveMeeting}
+                type="button"
+              >
                 End Meeting
               </button>
             </>
           ) : (
-            <button disabled={isBusy} onClick={leaveMeeting} type="button">
+            <button
+              className={buttonClass()}
+              disabled={isBusy}
+              onClick={leaveMeeting}
+              type="button"
+            >
               Leave Meeting
             </button>
           )}
         </div>
         {isHost && devices.length > 0 && (
-          <div className="control-row" style={{ marginTop: "1rem" }}>
-            <label>
+          <div className={cx(controlRowClass, "mt-4")}>
+            <label className={labelClass}>
               Microphone:
               <select
+                className={cx(selectClass, "ml-2 w-auto")}
                 disabled={status?.active || isBusy}
                 onChange={(e) => setMicDeviceId(e.target.value)}
-                style={{ marginLeft: "0.5rem" }}
                 value={micDeviceId || ""}
               >
                 <option value="">(OS Default)</option>
@@ -313,12 +337,12 @@ export function MeetingPage() {
                 ))}
               </select>
             </label>
-            <label style={{ marginLeft: "1rem" }}>
+            <label className={cx(labelClass, "ml-4")}>
               System Audio:
               <select
+                className={cx(selectClass, "ml-2 w-auto")}
                 disabled={status?.active || isBusy}
                 onChange={(e) => setSysDeviceId(e.target.value)}
-                style={{ marginLeft: "0.5rem" }}
                 value={sysDeviceId || ""}
               >
                 <option value="">(OS Default Loopback)</option>
@@ -333,13 +357,13 @@ export function MeetingPage() {
         )}
       </section>
 
-      <section className="panel stats-grid">
+      <section className={cx(panelClass, statsGridClass)}>
         <div>
-          <h3>Capture Status</h3>
-          <pre>{JSON.stringify(status, null, 2)}</pre>
+          <h3 className="mt-0">Capture Status</h3>
+          <pre className={preClass}>{JSON.stringify(status, null, 2)}</pre>
         </div>
         <div>
-          <h3>Streaming Metrics</h3>
+          <h3 className="mt-0">Streaming Metrics</h3>
           <p>Frames received from Rust: {framesReceived}</p>
           <p>Frames sent to realtime: {framesSent}</p>
           <p>Frames dropped by backpressure: {framesDropped}</p>
@@ -348,7 +372,7 @@ export function MeetingPage() {
       </section>
 
       {warning ? (
-        <section aria-live="polite" className="warning-banner">
+        <section aria-live="polite" className={warningBannerClass}>
           {warning}
         </section>
       ) : null}

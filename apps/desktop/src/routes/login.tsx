@@ -1,11 +1,45 @@
+import { ArrowLeft } from "lucide-react";
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
+import larityLogo from "../assets/larity-logo-dark.svg";
+import { GoogleIcon, MicrosoftIcon } from "../components/icons";
+import { TitleBar } from "../components/title-bar";
 import { signIn } from "../lib/auth-client";
+import {
+  authBackClass,
+  authBrandBgClass,
+  authBrandFeaturesClass,
+  authBrandInnerClass,
+  authBrandLogoClass,
+  authBrandPanelClass,
+  authBrandTaglineClass,
+  authBrandWordmarkClass,
+  authFormHeaderClass,
+  authFormInnerClass,
+  authFormPanelClass,
+  authFormTitleClass,
+  authSplitRootClass,
+  authSwitchClass,
+  buttonClass,
+  cx,
+  dividerClass,
+  dividerLabelClass,
+  errorInputClass,
+  eyebrowClass,
+  formClass,
+  formErrorClass,
+  formGroupClass,
+  inputClass,
+  labelClass,
+  ssoButtonClass,
+  ssoGroupClass,
+} from "../lib/ui";
+import { applyWindowProfile, WINDOW_PROFILES } from "../lib/window";
 
 const loginSchema = z.object({
-  email: z.email("Enter a valid email"),
+  email: z.string().min(1, "Email is required").email("Enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
@@ -15,6 +49,13 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Resize window to wide auth layout
+  useEffect(() => {
+    applyWindowProfile(WINDOW_PROFILES.auth).catch(() => {
+      // best-effort outside Tauri
+    });
+  }, []);
 
   const validationError = useMemo(() => {
     const parsed = loginSchema.safeParse({ email, password });
@@ -36,63 +77,162 @@ export function LoginPage() {
     setIsSubmitting(true);
     setError(null);
 
-    const { error: signInError } = await signIn.email({
+    const result = await signIn.email({
       email: parsed.data.email,
       password: parsed.data.password,
     });
 
     setIsSubmitting(false);
 
-    if (signInError) {
-      setError(signInError.message ?? "Login failed");
+    if (result.error) {
+      setError(result.error.message ?? "Sign in failed");
       return;
     }
 
     navigate("/");
   }
 
+  async function handleGoogleSignIn() {
+    setIsSubmitting(true);
+    setError(null);
+
+    const result = await signIn.social({ provider: "google" });
+
+    if (result.error) {
+      setIsSubmitting(false);
+      setError(result.error.message ?? "Google sign in failed");
+    }
+  }
+
+  async function handleMicrosoftSignIn() {
+    setIsSubmitting(true);
+    setError(null);
+
+    const result = await signIn.social({ provider: "microsoft" });
+
+    if (result.error) {
+      setIsSubmitting(false);
+      setError(result.error.message ?? "Microsoft sign in failed");
+    }
+  }
+
   return (
-    <main className="desktop-shell auth-shell">
-      <section className="panel auth-panel">
-        <p className="eyebrow">Welcome back</p>
-        <h1>Sign in to Larity Desktop</h1>
-        <p className="hero-subtitle">
-          Continue with your account to access your organization meetings.
-        </p>
+    <div className={authSplitRootClass}>
+      <TitleBar />
 
-        <form className="auth-form" onSubmit={onSubmit}>
-          <label htmlFor="login-email">Email</label>
-          <input
-            autoComplete="email"
-            id="login-email"
-            onChange={(event) => setEmail(event.target.value)}
-            type="email"
-            value={email}
-          />
+      {/* ── Left panel — brand / ambient ── */}
+      <aside aria-hidden="true" className={authBrandPanelClass}>
+        <div className={authBrandInnerClass}>
+          <div className={authBrandLogoClass}>
+            <img
+              alt=""
+              className="drop-shadow-[0_0_16px_rgba(255,255,255,0.5)]"
+              height={36}
+              src={larityLogo}
+              width={36}
+            />
+            <span className={authBrandWordmarkClass}>LARITY</span>
+          </div>
+          <p className={authBrandTaglineClass}>Work, with memory.</p>
+          <ul aria-label="Features" className={authBrandFeaturesClass}>
+            <li>OS-level meeting capture</li>
+            <li>Real-time speaker intelligence</li>
+            <li>Deep-reasoning memory pipeline</li>
+          </ul>
+        </div>
+        <div className={authBrandBgClass} />
+      </aside>
 
-          <label htmlFor="login-password">Password</label>
-          <input
-            autoComplete="current-password"
-            id="login-password"
-            onChange={(event) => setPassword(event.target.value)}
-            type="password"
-            value={password}
-          />
+      {/* ── Right panel — form ── */}
+      <main className={authFormPanelClass}>
+        <div className={authFormInnerClass}>
+          <Link className={authBackClass} to="/welcome">
+            <ArrowLeft size={13} />
+            Back
+          </Link>
 
-          {error ? <p className="form-error">{error}</p> : null}
+          <div className={authFormHeaderClass}>
+            <p className={eyebrowClass}>Welcome back</p>
+            <h1 className={authFormTitleClass}>Sign in to Larity</h1>
+          </div>
 
-          <button
-            disabled={isSubmitting || Boolean(validationError)}
-            type="submit"
-          >
-            {isSubmitting ? "Signing in..." : "Sign In"}
-          </button>
-        </form>
+          <div className={ssoGroupClass}>
+            <button
+              className={ssoButtonClass}
+              disabled={isSubmitting}
+              onClick={handleGoogleSignIn}
+              type="button"
+            >
+              <GoogleIcon />
+              Continue with Google
+            </button>
+            <button
+              className={ssoButtonClass}
+              disabled={isSubmitting}
+              onClick={handleMicrosoftSignIn}
+              type="button"
+            >
+              <MicrosoftIcon />
+              Continue with Microsoft
+            </button>
+          </div>
 
-        <p className="hero-subtitle auth-switch">
-          Need an account? <Link to="/register">Create one</Link>
-        </p>
-      </section>
-    </main>
+          <div className={dividerClass}>
+            <span className={dividerLabelClass}>or continue with email</span>
+          </div>
+
+          <form className={formClass} onSubmit={onSubmit}>
+            <div className={formGroupClass}>
+              <label className={labelClass} htmlFor="login-email">
+                Email
+              </label>
+              <input
+                autoComplete="email"
+                className={cx(inputClass, error && errorInputClass)}
+                id="login-email"
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                }}
+                type="email"
+                value={email}
+              />
+            </div>
+
+            <div className={formGroupClass}>
+              <label className={labelClass} htmlFor="login-password">
+                Password
+              </label>
+              <input
+                autoComplete="current-password"
+                className={cx(inputClass, error && errorInputClass)}
+                id="login-password"
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                }}
+                type="password"
+                value={password}
+              />
+            </div>
+
+            {error ? <p className={formErrorClass}>{error}</p> : null}
+
+            <button
+              className={buttonClass({ block: true })}
+              disabled={
+                isSubmitting ||
+                (email !== "" && password !== "" && Boolean(validationError))
+              }
+              type="submit"
+            >
+              {isSubmitting ? "Signing in…" : "Sign In"}
+            </button>
+          </form>
+
+          <p className={authSwitchClass}>
+            Need an account? <Link to="/register">Create one</Link>
+          </p>
+        </div>
+      </main>
+    </div>
   );
 }

@@ -58,7 +58,7 @@ The desktop app has **five window types**:
 
 #### `/onboarding` (3 steps, single window, progress dots)
 1. **Permissions check:** request mic + system audio loopback / screen capture + notifications. Show real status per permission. Block "Continue" until the machine can either host dual-channel capture or explicitly run as participant-only.
-2. **Calendar connect:** Google / Microsoft / "Skip for now". On connect, list next 7 days of meetings as a preview.
+2. **Calendar connect:** Google / Microsoft / "Skip for now". On connect, list next 7 days of meetings as a preview. **→ SKIPPED in current implementation (shows "Coming soon" placeholder with skip action).**
 3. **Voice baseline:** 10-second mic check (used only for local VAD calibration — *not* a voice profile, no audio leaves device). Plain copy: *"This calibrates your microphone. We do not store voice samples."*
 
 End state: lands on `/home` with a "First meeting" hint card.

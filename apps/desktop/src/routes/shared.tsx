@@ -2,6 +2,15 @@ import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthSession } from "../features/auth/use-session";
 import { signOut } from "../lib/auth-client";
+import {
+  buttonClass,
+  desktopShellClass,
+  eyebrowClass,
+  headerActionsClass,
+  heroCardClass,
+  heroSubtitleClass,
+  heroTitleClass,
+} from "../lib/ui";
 
 export function AppShell({
   title,
@@ -16,19 +25,20 @@ export function AppShell({
   const session = useAuthSession();
 
   return (
-    <main className="desktop-shell desktop-app-shell">
-      <header className="hero-card app-header">
+    <main className={desktopShellClass}>
+      <header className={heroCardClass}>
         <div>
-          <p className="eyebrow">Larity Desktop</p>
-          <h1>{title}</h1>
-          {subtitle ? <p className="hero-subtitle">{subtitle}</p> : null}
+          <p className={eyebrowClass}>Larity Desktop</p>
+          <h1 className={heroTitleClass}>{title}</h1>
+          {subtitle ? <p className={heroSubtitleClass}>{subtitle}</p> : null}
         </div>
-        <div className="header-actions">
-          <Link className="ghost-link" to="/dashboard">
+        <div className={headerActionsClass}>
+          <Link className={buttonClass({ variant: "ghost" })} to="/dashboard">
             Dashboard
           </Link>
           {session.user ? (
             <button
+              className={buttonClass()}
               onClick={async () => {
                 await signOut();
                 navigate("/login");
