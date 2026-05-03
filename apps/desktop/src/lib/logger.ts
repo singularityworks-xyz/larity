@@ -23,16 +23,20 @@ export function createLogger(name: string): Logger {
 
   return {
     info: (msg: string, data?: unknown) => {
-      logger.info(data ?? {}, msg);
+      const obj = data !== null && typeof data === "object" ? data : { data };
+      logger.info(obj, msg);
     },
     warn: (msg: string, data?: unknown) => {
-      logger.warn(data ?? {}, msg);
+      const obj = data !== null && typeof data === "object" ? data : { data };
+      logger.warn(obj, msg);
     },
     error: (msg: string, data?: unknown) => {
-      logger.error(data ?? {}, msg);
+      const obj = data !== null && typeof data === "object" ? data : { data };
+      logger.error(obj, msg);
     },
     debug: (msg: string, data?: unknown) => {
-      logger.debug(data ?? {}, msg);
+      const obj = data !== null && typeof data === "object" ? data : { data };
+      logger.debug(obj, msg);
     },
   };
 }
