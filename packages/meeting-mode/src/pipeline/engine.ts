@@ -1,12 +1,30 @@
 import type { Alert } from "../alerts/types";
 import type { Commitment } from "../commitment/types";
-import type { Constraint, PreloadedContextPayload } from "../constraint/types";
+import type { PreloadedContextPayload } from "../constraint/types";
+import { CostManager } from "../cost/manager";
+import { GEMINI_TIER2_MODEL, GEMINI_TIER4_MODEL } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import type { TopicState } from "../topic/types";
 import type { Utterance } from "../utterance/types";
+import {
+  pipelineDroppedTotal,
+  pipelineGateDuration,
+  pipelinePrefilterDuration,
+  pipelineSessionCostDollars,
+  pipelineTier1Duration,
+  pipelineTier2CacheHitsTotal,
+  pipelineTier2CacheMissesTotal,
+  pipelineTier2Duration,
+  pipelineTier3Duration,
+  pipelineTier4Duration,
+  pipelineTier4InvokedTotal,
+  pipelineTier4SuppressedTotal,
+  pipelineTotalDuration,
+} from "./metrics";
 import { PreFilter } from "./pre-filter";
 import { Tier1StructuralDetector } from "./tier1";
 import { Tier2Classifier } from "./tier2";
+import { Tier2SemanticCache } from "./tier2-cache";
 import { Tier3SearchEngine } from "./tier3";
 import type { Tier4DeepReasoner } from "./tier4";
 import { buildAlertFromTier4Response } from "./tier4-alert";
@@ -106,6 +124,8 @@ export interface PipelineEngineDependencies {
   tier2?: Tier2Classifier;
   tier4?: Tier4DeepReasoner;
   tier4Alerts?: Tier4AlertsPublisher;
+  tier2Cache?: Tier2SemanticCache;
+  costManager?: CostManager;
 }
 
 export interface Tier4EvaluationSummary {
@@ -126,6 +146,8 @@ export interface PipelineEvaluationResult {
   tier4Response?: Tier4Response | null;
   tier4Outcome?: Tier4EvaluationSummary;
   runTier4: boolean;
+  tier2CacheHit?: boolean;
+  sessionCost?: number;
   latencies: {
     preFilterMs: number;
     tier1Ms?: number;
@@ -156,6 +178,8 @@ export class MeetingPipelineEngine {
   >;
   private readonly tier4?: Tier4DeepReasoner;
   private readonly tier4Alerts?: Tier4AlertsPublisher;
+  private readonly tier2Cache: Tier2SemanticCache;
+  private readonly costManager: CostManager;
 
   constructor(deps: PipelineEngineDependencies) {
     this.preFilter = deps.preFilter ?? new PreFilter();
@@ -170,6 +194,8 @@ export class MeetingPipelineEngine {
       deps.getCurrentTopicLabel ?? (async () => undefined);
     this.tier4 = deps.tier4;
     this.tier4Alerts = deps.tier4Alerts;
+    this.tier2Cache = deps.tier2Cache ?? new Tier2SemanticCache();
+    this.costManager = deps.costManager ?? new CostManager();
   }
 
   async evaluateUtterance(
@@ -182,7 +208,14 @@ export class MeetingPipelineEngine {
     const decision = this.preFilter.evaluate(utterance);
     const preFilterMs = PERF.now() - preFilterStart;
 
+    pipelinePrefilterDuration.observe(preFilterMs);
+
     if (decision.dropped) {
+      pipelineDroppedTotal.inc({ reason: decision.reason ?? "unknown" });
+      pipelineTotalDuration.observe(
+        { session_id: utterance.sessionId },
+        PERF.now() - start
+      );
       return {
         dropped: true,
         dropReason: decision.reason,
@@ -206,6 +239,7 @@ export class MeetingPipelineEngine {
       utterance.sessionId,
       10
     );
+    const tier3Start = PERF.now();
     const tier3Task = this.tier3.evaluate(
       utterance,
       payload,
@@ -218,8 +252,18 @@ export class MeetingPipelineEngine {
       tier2Task,
       tier3Task,
     ]);
-    const tier1Ms = PERF.now() - tier1Start;
     const tier2Ms = PERF.now() - tier2Start;
+    const tier1Ms = PERF.now() - tier1Start;
+
+    pipelineTier1Duration.observe(tier1Ms);
+    pipelineTier2Duration.observe(tier2Ms);
+    pipelineTier3Duration.observe(PERF.now() - tier3Start);
+
+    if (tier2.tier2CacheHit) {
+      pipelineTier2CacheHitsTotal.inc();
+    } else {
+      pipelineTier2CacheMissesTotal.inc();
+    }
 
     try {
       await this.constraintManager.processUtterance(utterance);
@@ -242,9 +286,53 @@ export class MeetingPipelineEngine {
     // Respect Tier 2 "low-value / filler" gate for the whole Tier 4 call: Tier 3
     // ledger/memory hits can otherwise force Tier 4 on every greeting when embeddings
     // loosely match hydrated commitments — wasteful and breaks the tiered design.
-    const runTier4 =
+    let runTier4 =
       !tier2.shouldStopForDeepReasoning && (highSignal || tier3.forceTier4);
+
+    // --- Cost cap gates ---
+    const sessionCost = await this.costManager.getSessionCost(
+      utterance.sessionId
+    );
+
+    let tier4SuppressReason: string | undefined;
+
+    if (this.costManager.isHardCapReached(sessionCost)) {
+      runTier4 = false;
+      tier4SuppressReason = "cost_hard_cap";
+      log.info(
+        {
+          sessionId: utterance.sessionId,
+          sessionCost,
+          limit: 2.0,
+        },
+        "Cost hard cap reached — Tier 4 disabled"
+      );
+    } else if (
+      this.costManager.isWarningMode(sessionCost) &&
+      runTier4 &&
+      !tier1.blocklistHit &&
+      !tier1.technicalHit &&
+      tier2.classification.riskSignals.length === 0
+    ) {
+      // At 80% cost: raise the threshold — only surface if at least one risk signal
+      runTier4 = false;
+      tier4SuppressReason = "cost_warning";
+      log.info(
+        {
+          sessionId: utterance.sessionId,
+          sessionCost,
+          threshold: 1.6,
+        },
+        "Cost warning mode — Tier 4 suppressed (no risk signals)"
+      );
+    }
+
     const gateMs = PERF.now() - gateStart;
+    pipelineGateDuration.observe(gateMs);
+
+    if (!runTier4 && tier4SuppressReason) {
+      pipelineTier4SuppressedTotal.inc({ reason: tier4SuppressReason });
+    }
 
     const { tier4Response, tier4Outcome, tier4Ms } =
       await this.evaluateTier4AfterGate({
@@ -256,6 +344,24 @@ export class MeetingPipelineEngine {
         payload,
       });
 
+    if (runTier4) {
+      pipelineTier4Duration.observe(
+        { session_id: utterance.sessionId },
+        tier4Ms ?? 0
+      );
+      pipelineTier4InvokedTotal.inc({
+        surfaced: tier4Outcome?.surfaced ? "true" : "false",
+      });
+    }
+
+    const totalMs = PERF.now() - start;
+    pipelineTotalDuration.observe({ session_id: utterance.sessionId }, totalMs);
+
+    pipelineSessionCostDollars.set(
+      { session_id: utterance.sessionId },
+      sessionCost
+    );
+
     return {
       dropped: false,
       tier1,
@@ -265,13 +371,15 @@ export class MeetingPipelineEngine {
       tier4Response,
       tier4Outcome,
       runTier4,
+      tier2CacheHit: tier2.tier2CacheHit,
+      sessionCost,
       latencies: {
         preFilterMs,
         tier1Ms,
         tier2Ms,
         gateMs,
         tier4Ms,
-        pipelineBudgetMs: PERF.now() - start,
+        pipelineBudgetMs: totalMs,
       },
     };
   }
@@ -340,8 +448,24 @@ export class MeetingPipelineEngine {
       });
 
       const tier4WallStart = PERF.now();
-      tier4Response = await tier4.reason(tier4Ctx);
+      const tier4Result = await tier4.reason(tier4Ctx);
       tier4Ms = PERF.now() - tier4WallStart;
+      tier4Response = tier4Result.response;
+
+      if (tier4Result.tokenCount > 0) {
+        this.costManager
+          .recordCost(
+            utterance.sessionId,
+            tier4Result.tokenCount,
+            GEMINI_TIER4_MODEL
+          )
+          .catch((err) =>
+            log.warn(
+              { err, utteranceId: utterance.utteranceId },
+              "Tier4 cost recording failed"
+            )
+          );
+      }
     } catch (error) {
       log.warn(
         { err: error, utteranceId: utterance.utteranceId },
@@ -391,33 +515,61 @@ export class MeetingPipelineEngine {
   closeSession(sessionId: string): void {
     this.preFilter.closeSession(sessionId);
     this.tier1.closeSession(sessionId);
+    this.tier2Cache.closeSession(sessionId);
     this.sessions.delete(sessionId);
   }
 
   closeAll(): void {
     this.preFilter.closeAll();
     this.tier1.closeAll();
+    this.tier2Cache.closeAll();
     this.sessions.clear();
   }
 
   private async runTier2(utterance: Utterance): Promise<{
     classification: Tier2Classification;
     shouldStopForDeepReasoning: boolean;
+    tier2CacheHit?: boolean;
   }> {
+    const { embedding, sessionId, text } = utterance;
+
+    // Check semantic cache before LLM
+    if (embedding && embedding.length > 0) {
+      const cached = this.tier2Cache.get(sessionId, embedding, text);
+      if (cached) {
+        log.info(
+          { sessionId, utteranceId: utterance.utteranceId },
+          "Tier2 cache hit — skipping LLM invocation"
+        );
+        if (cached.topicDelta && utterance.topicId) {
+          await this.finalizer.applyTier2TopicDelta(
+            sessionId,
+            utterance.topicId,
+            cached.topicDelta
+          );
+        }
+        return {
+          classification: cached,
+          shouldStopForDeepReasoning: false,
+          tier2CacheHit: true,
+        };
+      }
+    }
+
     const recentSameSpeaker = this.finalizer.getRecentSameSpeakerText(
-      utterance.sessionId,
+      sessionId,
       utterance.speaker.speakerId,
       utterance.utteranceId,
       3
     );
 
     const topicLabel = await this.getCurrentTopicLabel(
-      utterance.sessionId,
+      sessionId,
       utterance.topicId
     );
 
     const input: Tier2Input = {
-      utterance: utterance.text,
+      utterance: text,
       speaker: utterance.speaker,
       recentSameSpeaker,
       topicLabel,
@@ -425,51 +577,78 @@ export class MeetingPipelineEngine {
 
     const tier2 = await this.tier2.classify(input);
 
+    // Record Tier2 cost
+    if (tier2.tokenCount && tier2.tokenCount > 0) {
+      this.costManager
+        .recordCost(sessionId, tier2.tokenCount, GEMINI_TIER2_MODEL)
+        .catch((err) =>
+          log.warn(
+            { err, utteranceId: utterance.utteranceId },
+            "Tier2 cost recording failed"
+          )
+        );
+    }
+
+    // Store in cache
+    if (embedding && embedding.length > 0) {
+      this.tier2Cache.set(sessionId, embedding, text, tier2.classification);
+    }
+
     if (tier2.classification.topicDelta && utterance.topicId) {
       await this.finalizer.applyTier2TopicDelta(
-        utterance.sessionId,
+        sessionId,
         utterance.topicId,
         tier2.classification.topicDelta
       );
     }
 
-    if (
-      tier2.classification.intent === "commitment" ||
-      tier2.classification.intent === "decision"
-    ) {
-      const type =
-        tier2.classification.commitmentType ??
-        (tier2.classification.intent === "decision" ? "scope" : "general");
+    await this.maybeWriteCommitment(utterance, embedding, tier2);
 
-      try {
-        await this.commitmentManager.addCommitment(utterance.sessionId, {
-          statement: utterance.text,
-          normalizedStatement: utterance.text,
-          speaker: utterance.speaker,
-          topicId: utterance.topicId ?? "general",
-          type,
-          timestamp: utterance.timestamp,
-          utteranceId: utterance.utteranceId,
-          embedding: utterance.embedding ?? [0],
-          extractedData: {
-            deadline: tier2.classification.extractedData.deadline,
-            quantity: tier2.classification.extractedData.quantity,
-            scope: tier2.classification.extractedData.scope
-              ? [tier2.classification.extractedData.scope]
-              : undefined,
-            amount: tier2.classification.extractedData.amount,
-            currency: tier2.classification.extractedData.currency,
-          },
-        });
-      } catch (error) {
-        log.warn(
-          { err: error, utteranceId: utterance.utteranceId },
-          "Commitment write failed in tier2"
-        );
-      }
+    return { ...tier2, tier2CacheHit: false };
+  }
+
+  private async maybeWriteCommitment(
+    utterance: Utterance,
+    embedding: number[] | undefined,
+    tier2: { classification: Tier2Classification }
+  ): Promise<void> {
+    if (
+      tier2.classification.intent !== "commitment" &&
+      tier2.classification.intent !== "decision"
+    ) {
+      return;
     }
 
-    return tier2;
+    const type =
+      tier2.classification.commitmentType ??
+      (tier2.classification.intent === "decision" ? "scope" : "general");
+
+    try {
+      await this.commitmentManager.addCommitment(utterance.sessionId, {
+        statement: utterance.text,
+        normalizedStatement: utterance.text,
+        speaker: utterance.speaker,
+        topicId: utterance.topicId ?? "general",
+        type,
+        timestamp: utterance.timestamp,
+        utteranceId: utterance.utteranceId,
+        embedding: embedding ?? [0],
+        extractedData: {
+          deadline: tier2.classification.extractedData.deadline,
+          quantity: tier2.classification.extractedData.quantity,
+          scope: tier2.classification.extractedData.scope
+            ? [tier2.classification.extractedData.scope]
+            : undefined,
+          amount: tier2.classification.extractedData.amount,
+          currency: tier2.classification.extractedData.currency,
+        },
+      });
+    } catch (error) {
+      log.warn(
+        { err: error, utteranceId: utterance.utteranceId },
+        "Commitment write failed in tier2"
+      );
+    }
   }
 
   private async ensureSessionHydrated(sessionId: string): Promise<void> {
