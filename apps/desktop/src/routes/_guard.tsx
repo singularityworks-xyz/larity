@@ -46,7 +46,7 @@ export async function authGateLoader({
   }
 
   if (isGuestPath(pathname) || pathname === "/onboarding") {
-    throw redirect("/dashboard");
+    throw redirect("/home");
   }
 
   return null;
@@ -62,7 +62,7 @@ export async function rootIndexLoader(): Promise<never> {
     throw redirect("/onboarding");
   }
 
-  throw redirect("/dashboard");
+  throw redirect("/home");
 }
 
 export async function guestOnlyLoader({
@@ -82,7 +82,7 @@ export async function guestOnlyLoader({
   }
 
   if (isGuestPath(pathname)) {
-    throw redirect("/dashboard");
+    throw redirect("/home");
   }
 
   return null;
@@ -101,7 +101,7 @@ export async function onboardingLoader({
   }
 
   if (user.orgId) {
-    throw redirect("/dashboard");
+    throw redirect("/home");
   }
 
   if (!isOnboardingPath(pathname)) {

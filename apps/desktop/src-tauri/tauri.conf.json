@@ -13,8 +13,10 @@
     "windows": [
       {
         "title": "Larity",
-        "width": 380,
-        "height": 520,
+        "width": 1200,
+        "height": 750,
+        "minWidth": 640,
+        "minHeight": 480,
         "center": true,
         "resizable": true,
         "decorations": false

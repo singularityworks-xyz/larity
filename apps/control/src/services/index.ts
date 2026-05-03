@@ -6,6 +6,7 @@ export { ClientMemberService } from "./client-member.service";
 export { DecisionService } from "./decision.service";
 // Documents & reminders
 export { DocumentService } from "./document.service";
+export { HomeService } from "./home.service";
 export { ImportantPointService } from "./important-point.service";
 // Meeting domain
 export { MeetingService } from "./meeting.service";
