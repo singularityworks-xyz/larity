@@ -35,10 +35,13 @@ export function useHealth(): HealthState {
     async function checkAudio() {
       try {
         const { invoke } = await import("@tauri-apps/api/core");
-        const status = await invoke<{ active: boolean }>(
-          "audio_capture_status"
-        );
-        setState((prev) => ({ ...prev, audioDeviceAvailable: status.active }));
+        const devices = await invoke<
+          { name: string; deviceId: string; isLoopback: boolean }[]
+        >("audio_capture_list_devices");
+        setState((prev) => ({
+          ...prev,
+          audioDeviceAvailable: devices.length > 0,
+        }));
       } catch {
         setState((prev) => ({ ...prev, audioDeviceAvailable: false }));
       }
