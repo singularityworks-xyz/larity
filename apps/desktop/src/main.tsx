@@ -18,12 +18,31 @@ import { LoginPage } from "./routes/login";
 import { MeetingPage } from "./routes/meeting/$session-id";
 import { JoinMeetingPage } from "./routes/meetings/join";
 import { StartMeetingPage } from "./routes/meetings/start";
-import { OnboardingHomePage } from "./routes/onboarding";
-import { OnboardingCreateOrgPage } from "./routes/onboarding/create-org";
-import { OnboardingJoinOrgPage } from "./routes/onboarding/join-org";
+import { OnboardingPage } from "./routes/onboarding";
 import { RegisterPage } from "./routes/register";
+import { WelcomePage } from "./routes/welcome";
 
 const router = createBrowserRouter([
+  {
+    path: "/welcome",
+    loader: guestOnlyLoader,
+    element: <WelcomePage />,
+  },
+  {
+    path: "/login",
+    loader: guestOnlyLoader,
+    element: <LoginPage />,
+  },
+  {
+    path: "/register",
+    loader: guestOnlyLoader,
+    element: <RegisterPage />,
+  },
+  {
+    path: "/onboarding",
+    loader: onboardingLoader,
+    element: <OnboardingPage />,
+  },
   {
     path: "/",
     element: <App />,
@@ -31,34 +50,6 @@ const router = createBrowserRouter([
       {
         index: true,
         loader: rootIndexLoader,
-      },
-      {
-        path: "login",
-        loader: guestOnlyLoader,
-        element: <LoginPage />,
-      },
-      {
-        path: "register",
-        loader: guestOnlyLoader,
-        element: <RegisterPage />,
-      },
-      {
-        path: "onboarding",
-        loader: onboardingLoader,
-        children: [
-          {
-            index: true,
-            element: <OnboardingHomePage />,
-          },
-          {
-            path: "create-org",
-            element: <OnboardingCreateOrgPage />,
-          },
-          {
-            path: "join-org",
-            element: <OnboardingJoinOrgPage />,
-          },
-        ],
       },
       {
         path: "dashboard",

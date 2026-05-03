@@ -64,10 +64,10 @@ describe("route guards", () => {
     getSessionMock.mockReset();
   });
 
-  it("root index redirects unauthenticated users to login", async () => {
+  it("root index redirects unauthenticated users to welcome", async () => {
     getSessionMock.mockResolvedValue({ data: null });
 
-    await expectRedirect(rootIndexLoader(), "/login");
+    await expectRedirect(rootIndexLoader(), "/welcome");
   });
 
   it("root index redirects org-less users to onboarding", async () => {
@@ -82,12 +82,12 @@ describe("route guards", () => {
     await expectRedirect(rootIndexLoader(), "/dashboard");
   });
 
-  it("auth gate redirects unauthenticated users", async () => {
+  it("auth gate redirects unauthenticated users to welcome", async () => {
     getSessionMock.mockResolvedValue({ data: null });
 
     await expectRedirect(
       authGateLoader({ request: new Request("http://local/dashboard") }),
-      "/login"
+      "/welcome"
     );
   });
 
@@ -119,12 +119,12 @@ describe("route guards", () => {
     );
   });
 
-  it("onboarding loader redirects unauthenticated users to login", async () => {
+  it("onboarding loader redirects unauthenticated users to welcome", async () => {
     getSessionMock.mockResolvedValue({ data: null });
 
     await expectRedirect(
       onboardingLoader({ request: new Request("http://local/onboarding") }),
-      "/login"
+      "/welcome"
     );
   });
 

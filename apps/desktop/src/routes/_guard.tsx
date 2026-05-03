@@ -10,7 +10,9 @@ function isOnboardingPath(pathname: string): boolean {
 }
 
 function isGuestPath(pathname: string): boolean {
-  return pathname === "/login" || pathname === "/register";
+  return (
+    pathname === "/welcome" || pathname === "/login" || pathname === "/register"
+  );
 }
 
 async function getSessionUser(): Promise<SessionUser | null> {
@@ -33,7 +35,7 @@ export async function authGateLoader({
     if (isGuestPath(pathname)) {
       return null;
     }
-    throw redirect("/login");
+    throw redirect("/welcome");
   }
 
   if (!user.orgId) {
@@ -53,7 +55,7 @@ export async function authGateLoader({
 export async function rootIndexLoader(): Promise<never> {
   const user = await getSessionUser();
   if (!user) {
-    throw redirect("/login");
+    throw redirect("/welcome");
   }
 
   if (!user.orgId) {
@@ -79,7 +81,7 @@ export async function guestOnlyLoader({
     throw redirect("/onboarding");
   }
 
-  if (pathname === "/login" || pathname === "/register") {
+  if (isGuestPath(pathname)) {
     throw redirect("/dashboard");
   }
 
@@ -95,7 +97,7 @@ export async function onboardingLoader({
   const user = await getSessionUser();
 
   if (!user) {
-    throw redirect("/login");
+    throw redirect("/welcome");
   }
 
   if (user.orgId) {
