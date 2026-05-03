@@ -35,6 +35,7 @@ import {
   labelClass,
   segmentButtonActiveClass,
   segmentButtonClass,
+  segmentButtonIdleClass,
   segmentControlClass,
   ssoButtonClass,
   ssoGroupClass,
@@ -343,9 +344,12 @@ export function RegisterPage() {
 
             <div className={segmentControlClass}>
               <button
+                aria-pressed={orgMode === "create"}
                 className={cx(
                   segmentButtonClass,
-                  orgMode === "create" && segmentButtonActiveClass
+                  orgMode === "create"
+                    ? segmentButtonActiveClass
+                    : segmentButtonIdleClass
                 )}
                 onClick={(e) => {
                   e.preventDefault();
@@ -356,10 +360,13 @@ export function RegisterPage() {
                 Create new
               </button>
               <button
+                aria-pressed={orgMode === "join"}
                 className={cx(
                   segmentButtonClass,
                   "border-border border-l",
-                  orgMode === "join" && segmentButtonActiveClass
+                  orgMode === "join"
+                    ? segmentButtonActiveClass
+                    : segmentButtonIdleClass
                 )}
                 onClick={(e) => {
                   e.preventDefault();

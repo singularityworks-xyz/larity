@@ -143,13 +143,29 @@ export const dividerLabelClass =
 export const authSwitchClass =
   "mt-4 text-center text-xs font-medium leading-normal text-fg-muted [&_a]:font-medium [&_a]:text-accent [&_a]:no-underline hover:[&_a]:underline";
 
-export const segmentControlClass =
-  "inline-flex overflow-hidden rounded-[var(--radius-1)] border border-border";
+/** Full-width horizontal row for segment buttons. */
+export const segmentControlLayoutClass = "flex w-full min-w-0";
 
+/** Border, radius, and clipping for paired segment buttons. */
+export const segmentControlChromeClass =
+  "overflow-hidden rounded-[var(--radius-1)] border border-border";
+
+export const segmentControlClass = cx(
+  segmentControlLayoutClass,
+  segmentControlChromeClass
+);
+
+/** Shared frame for segment toggles (pair with idle or active appearance). */
 export const segmentButtonClass =
-  "h-7 cursor-pointer rounded-none border-0 bg-transparent px-3 font-sans text-xs font-medium text-fg-muted transition-colors duration-150 hover:not-disabled:bg-bg-subtle hover:not-disabled:text-fg";
+  "h-7 min-w-0 flex-1 cursor-pointer rounded-none border-0 px-3 font-sans text-xs font-medium transition-[background-color,color,box-shadow] duration-150 ease-out";
 
-export const segmentButtonActiveClass = "bg-bg-emphasis text-fg";
+/** Unselected segment: muted label, light hover wash. */
+export const segmentButtonIdleClass =
+  "bg-transparent text-fg-muted hover:not-disabled:bg-bg-subtle/50 hover:not-disabled:text-fg";
+
+/** Selected segment: lifted surface and inset edge. */
+export const segmentButtonActiveClass =
+  "bg-bg-subtle text-fg font-medium shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07)] hover:not-disabled:bg-bg-emphasis";
 
 export const permissionStatusClass =
   "flex items-center justify-between gap-3 rounded-[var(--radius-0)] border border-border-subtle bg-bg-subtle px-3 py-2.5 transition-colors duration-150";
