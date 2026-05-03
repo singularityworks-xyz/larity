@@ -16,8 +16,8 @@ describe("constraint/manager", () => {
     });
   });
 
-  afterEach(() => {
-    redis.quit();
+  afterEach(async () => {
+    await redis.quit();
   });
 
   it("hydrates constraints from preloaded context payload", async () => {
