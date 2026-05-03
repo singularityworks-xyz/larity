@@ -192,13 +192,11 @@ describe("Day 28 — Semantic Cache, Cost Caps, Topic Refinement", () => {
 
     // Use a CostManager with a pre-seeded Redis (mock-level) or use
     // the real cost logic via the engine. We'll simulate by pre-populating.
-    const costKey = `meeting:cost:${sessionId}`;
     const costManager = new CostManager();
 
     // Prime the cost to just above the 80% warning threshold
-    // via direct Redis, then verify the gate logic in engine
-    const redis = (costManager as any).redis;
-    await redis.set(costKey, "1.65");
+    // using the in-memory fallback (works without Redis in CI)
+    costManager._seedCost(sessionId, 1.65);
     const seededCost = await costManager.getSessionCost(sessionId);
     expect(seededCost).toBeGreaterThanOrEqual(1.6);
 
@@ -279,7 +277,7 @@ describe("Day 28 — Semantic Cache, Cost Caps, Topic Refinement", () => {
     expect(result1.tier4Outcome?.invoked).toBe(false);
 
     // Now push cost over the hard cap ($2.00) even with risk signals
-    await redis.set(costKey, "2.05");
+    costManager._seedCost(sessionId, 2.05);
     const hardCapCost = await costManager.getSessionCost(sessionId);
     expect(hardCapCost).toBeGreaterThanOrEqual(2.0);
 
