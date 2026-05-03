@@ -1,6 +1,6 @@
+import { describe, expect, it, vi } from "bun:test";
 import type { Redis as RedisClient } from "ioredis";
 import Redis from "ioredis-mock";
-import { describe, expect, it, vi } from "vitest";
 import { ConstraintManager } from "../../src/constraint/manager";
 import type { UtterancePublisher } from "../../src/utterance/finalizer";
 import { UtteranceFinalizer } from "../../src/utterance/finalizer";

@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { redisKeys } from "@larity/infra/redis/keys";
 import { TTL } from "@larity/infra/redis/ttl";
-import { AlertQueueManager } from "../../src/alerts/queue";
+import { AlertQueueManager, type TimeProvider } from "../../src/alerts/queue";
 import {
   resolveAlertRouting,
   resolveFullRouting,
@@ -15,6 +15,42 @@ import {
   sharedAlertChannel,
 } from "../../src/channels";
 import { createExternalSpeaker, createTeamSpeaker } from "../helpers";
+
+class MockTimeProvider implements TimeProvider {
+  private currentTime = 0;
+  private timers: { id: number; cb: () => void; triggerTime: number }[] = [];
+  private nextTimerId = 1;
+
+  now() {
+    return this.currentTime;
+  }
+
+  setTimeout(cb: () => void, ms: number) {
+    const id = this.nextTimerId++;
+    this.timers.push({ id, cb, triggerTime: this.currentTime + ms });
+    return id;
+  }
+
+  clearTimeout(id: unknown) {
+    this.timers = this.timers.filter((t) => t.id !== id);
+  }
+
+  advanceTime(ms: number) {
+    this.currentTime += ms;
+    while (true) {
+      const ready = this.timers.filter(
+        (t) => t.triggerTime <= this.currentTime
+      );
+      if (ready.length === 0) {
+        break;
+      }
+      this.timers = this.timers.filter((t) => t.triggerTime > this.currentTime);
+      for (const t of ready) {
+        t.cb();
+      }
+    }
+  }
+}
 
 const publishedMessages: Array<{ channel: string; message: string }> = [];
 
@@ -104,9 +140,10 @@ describe("Alert Routing Integration", () => {
   let redis: ReturnType<typeof createMockRedis>;
   let publisher: IntegrationAlertPublisher;
   let queue: AlertQueueManager;
+  let timeProvider: MockTimeProvider;
 
   beforeEach(() => {
-    vi.useFakeTimers();
+    timeProvider = new MockTimeProvider();
     publishedMessages.length = 0;
     redis = createMockRedis();
     publisher = new IntegrationAlertPublisher(redis, sessionId);
@@ -114,13 +151,12 @@ describe("Alert Routing Integration", () => {
       maxVisible: 2,
       debounceWindow: 5000,
       recentlyShownWindow: 60_000,
+      timeProvider,
     });
   });
 
   afterEach(() => {
     queue.clear();
-    vi.clearAllTimers();
-    vi.useRealTimers();
   });
 
   describe("Router → Publisher → Queue (shared alerts)", () => {

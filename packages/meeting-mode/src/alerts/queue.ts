@@ -11,6 +11,18 @@ interface QueuedAlert {
   enqueuedAt: number;
 }
 
+export interface TimeProvider {
+  now(): number;
+  setTimeout(callback: () => void, ms: number): unknown;
+  clearTimeout(timer: unknown): void;
+}
+
+const defaultTimeProvider: TimeProvider = {
+  now: () => Date.now(),
+  setTimeout: (cb, ms) => setTimeout(cb, ms),
+  clearTimeout: (timer) => clearTimeout(timer as number | NodeJS.Timeout),
+};
+
 export class AlertQueueManager {
   private activeAlerts: QueuedAlert[] = [];
   private pendingQueue: QueuedAlert[] = [];
@@ -18,19 +30,21 @@ export class AlertQueueManager {
   private readonly maxVisible: number;
   private readonly debounceWindow: number;
   private readonly recentlyShownWindow: number;
-  private readonly expiryTimers: Map<string, ReturnType<typeof setTimeout>> =
-    new Map();
+  private readonly timeProvider: TimeProvider;
+  private readonly expiryTimers: Map<string, unknown> = new Map();
 
   constructor(config?: {
     maxVisible?: number;
     debounceWindow?: number;
     recentlyShownWindow?: number;
+    timeProvider?: TimeProvider;
   }) {
     this.maxVisible = config?.maxVisible ?? ALERT_UX_RULES.maxVisibleAlerts;
     this.debounceWindow =
       config?.debounceWindow ?? ALERT_UX_RULES.debounceWindow;
     this.recentlyShownWindow =
       config?.recentlyShownWindow ?? ALERT_UX_RULES.recentlyShownWindow;
+    this.timeProvider = config?.timeProvider ?? defaultTimeProvider;
   }
 
   enqueue(alert: Alert): {
@@ -42,11 +56,14 @@ export class AlertQueueManager {
 
     const dedupeKey = this.dedupeKey(alert);
     const lastShown = this.recentlyShown.get(dedupeKey);
-    if (lastShown && Date.now() - lastShown < this.debounceWindow) {
+    if (
+      lastShown !== undefined &&
+      this.timeProvider.now() - lastShown < this.debounceWindow
+    ) {
       return { displayed: false, deduplicated: true };
     }
 
-    const queued: QueuedAlert = { alert, enqueuedAt: Date.now() };
+    const queued: QueuedAlert = { alert, enqueuedAt: this.timeProvider.now() };
 
     if (this.activeAlerts.length < this.maxVisible) {
       this.addToActive(queued);
@@ -123,7 +140,7 @@ export class AlertQueueManager {
 
   clear(): void {
     for (const timer of this.expiryTimers.values()) {
-      clearTimeout(timer);
+      this.timeProvider.clearTimeout(timer);
     }
     this.expiryTimers.clear();
     this.activeAlerts = [];
@@ -148,9 +165,9 @@ export class AlertQueueManager {
   private addToActive(queued: QueuedAlert): void {
     this.activeAlerts.push(queued);
     queued.alert.status = "shown";
-    queued.alert.shownAt = Date.now();
+    queued.alert.shownAt = this.timeProvider.now();
     queued.alert.expiresAt =
-      Date.now() + this.getExpiryMs(queued.alert.severity);
+      this.timeProvider.now() + this.getExpiryMs(queued.alert.severity);
 
     this.markRecentlyShown(queued.alert);
     this.scheduleExpiry(queued.alert);
@@ -159,7 +176,7 @@ export class AlertQueueManager {
   private scheduleExpiry(alert: Alert): void {
     const expiryMs = this.getExpiryMs(alert.severity);
 
-    const timer = setTimeout(() => {
+    const timer = this.timeProvider.setTimeout(() => {
       this.expireAlert(alert.id);
     }, expiryMs);
 
@@ -185,7 +202,7 @@ export class AlertQueueManager {
   private clearExpiryTimer(alertId: string): void {
     const timer = this.expiryTimers.get(alertId);
     if (timer) {
-      clearTimeout(timer);
+      this.timeProvider.clearTimeout(timer);
       this.expiryTimers.delete(alertId);
     }
   }
@@ -255,11 +272,11 @@ export class AlertQueueManager {
 
   private markRecentlyShown(alert: Alert): void {
     const key = this.dedupeKey(alert);
-    this.recentlyShown.set(key, Date.now());
+    this.recentlyShown.set(key, this.timeProvider.now());
   }
 
   private cleanupRecentlyShown(): void {
-    const now = Date.now();
+    const now = this.timeProvider.now();
     for (const [key, timestamp] of this.recentlyShown) {
       if (now - timestamp > this.recentlyShownWindow) {
         this.recentlyShown.delete(key);
