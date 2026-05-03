@@ -261,3 +261,25 @@ export const codeClass =
 
 export const warningBannerClass =
   "rounded-[var(--radius-0)] border border-warning-fg bg-warning-bg p-3 text-xs font-medium text-warning-fg";
+
+// Home screen
+export const startMeetingModeClass =
+  "rounded-[var(--radius-0)] border border-border bg-bg-elevated p-4 transition-all duration-150 ease-out";
+
+export const homeGridClass = "grid gap-3 md:grid-cols-[1fr_1.2fr]";
+
+export const healthStripClass =
+  "flex items-center gap-2 rounded-[var(--radius-0)] border border-border-subtle bg-bg-subtle px-3.5 py-2";
+
+export function metricChipClass(
+  variant: "success" | "warning" | "muted" = "muted"
+): string {
+  const base =
+    "inline-flex items-center rounded-[5px] border px-1.5 py-px text-[10px] font-medium leading-snug";
+  const variants: Record<string, string> = {
+    success: `${base} border-[rgba(63,185,80,0.25)] bg-[#3FB9501A] text-success-fg`,
+    warning: `${base} border-[rgba(210,153,34,0.25)] bg-[#D299221A] text-warning-fg`,
+    muted: `${base} border-border-subtle bg-bg-subtle text-fg-muted`,
+  };
+  return variants[variant] ?? variants.muted;
+}
