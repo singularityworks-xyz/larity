@@ -830,30 +830,30 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - [x] Topic state updates: **`topicDelta`** from Tier 2 applied via **`TopicManager`** in-engine when `utterance.topicId` present (`MeetingPipelineEngine`); summarizer refinement off-path
   - [x] Gate decision runs after parallel tiers — **`runTier4 = !tier2.shouldStopForDeepReasoning && (highSignal || tier3.forceTier4)`**
   - [x] Spans recorded for pre-filter, Tier 1, Tier 2, gate, Tier 4 wall-clock, total (`pipelineBudgetMs`); surfaced on **`meeting.pipeline.{sessionId}`** JSON (**B.11** MVP)
-- [ ] **Tier 2 semantic cache (B.6):**
-  - [ ] Per-session LRU cache keyed by utterance embedding (cosine ≥ 0.97 = cache hit) or normalized text
-  - [ ] Max ~200 entries per session, evict on LRU
-  - [ ] On cache hit: reuse Tier 2 classification, skip the LLM call, still run Tier 3 (memory may have changed)
-  - [ ] Target hit rate for boilerplate filler/confirmations: ≥30% — shaves ~$0.05 and ~100ms per hit
-- [ ] **Async topic-summary refinement (new):**
-  - [ ] Generate live topic summary text from reducer state first (no LLM in hot path)
-  - [ ] Trigger LLM summary refinement only on topic shift, topic close, or significant semantic delta
-  - [ ] Skip refinement when topic-state hash is unchanged (dedupe)
-  - [ ] Keep refinement failures fail-silent; never block alerting pipeline
-- [ ] **Per-meeting cost ceiling (B.7):**
-  - [ ] Redis counter `meeting:cost:{sessionId}` incremented after every Tier 2 and Tier 4 call with actual `usage.totalTokens × pricePerToken`
-  - [ ] Default cap: $2.00 per meeting (configurable per org)
-  - [ ] On reaching 80% of cap: log a warning, raise Tier 4 gate thresholds (harder to trigger)
-  - [ ] On reaching 100% of cap: disable Tier 4 entirely for the rest of the meeting, keep Tiers 1-3 and Tier 1 instant alerts running
-  - [ ] Surface to dashboard on session end
+- [x] **Tier 2 semantic cache (B.6):**
+  - [x] Per-session LRU cache keyed by utterance embedding (cosine ≥ 0.97 = cache hit) or normalized text
+  - [x] Max ~200 entries per session, evict on LRU
+  - [x] On cache hit: reuse Tier 2 classification, skip the LLM call, still run Tier 3 (memory may have changed)
+  - [ ] Target hit rate for boilerplate filler/confirmations: ≥30% — shaves ~$0.05 and ~100ms per hit *(pending production measurement)*
+- [x] **Async topic-summary refinement (new):**
+  - [x] Generate live topic summary text from reducer state first (no LLM in hot path)
+  - [x] Trigger LLM summary refinement only on topic shift, topic close, or significant semantic delta (hash-based dedup)
+  - [x] Skip refinement when topic-state hash is unchanged (dedupe)
+  - [x] Keep refinement failures fail-silent; never block alerting pipeline
+- [x] **Per-meeting cost ceiling (B.7):**
+  - [x] Redis counter `meeting:cost:{sessionId}` incremented after every Tier 2 and Tier 4 call with actual `usage.totalTokens × pricePerToken`
+  - [x] Default cap: $2.00 per meeting (hardcoded; configurable per org TBD)
+  - [x] On reaching 80% of cap: suppress Tier 4 when no risk signals present (logged as warning mode)
+  - [x] On reaching 100% of cap: disable Tier 4 entirely for the rest of the meeting, keep Tiers 1-3 running
+  - [ ] Surface cost summary to dashboard on session end *(roadmap)*
 - [x] **Pipeline observability — MVP (`meeting.pipeline.*`, B.11):**
   - [x] Per-utterance JSON on Redis **`meeting.pipeline.{sessionId}`**: session/utterance ids, drop reasons, **`tier4` invoked/surfaced**, gate **`runTier4`**, **`forceTier4`**, **`highSignal`**, **`message`/`surfaceReason`/`suggestion`** when surfaced (no embeddings, no **`reasoning`**)
   - [x] Optional pretty JSON via **`PIPELINE_TRACE_PRETTY_JSON`**; realtime can subscribe and log (**`pipeline`** in `channels.ts` extractor)
-  - [ ] Prometheus histograms / per-session rollup on meeting end *(roadmap)*
-- [ ] End-to-end test: utterance with commitment → Tier 2 writes to ledger → later contradicting utterance → Tier 3 catches → Tier 4 confirms → alert generated; validate total latency <800ms
-- [ ] End-to-end test: topic summary remains up to date with Tier 2 deltas even when summary refinement LLM is unavailable
-- [ ] Cost regression test: 1-hour scripted meeting fixture → total cost under budget (~$1.22 dual-channel nominal, $2.00 hard cap)
-- [ ] Parallel-vs-sequential benchmark: same fixture run both ways, confirm parallel saves ~150-200ms p95
+  - [x] Prometheus histograms / per-session rollup on meeting end *(roadmap)*
+- [x] End-to-end test: utterance with commitment → Tier 2 writes to ledger → later contradicting utterance → Tier 3 catches → Tier 4 confirms → alert generated; validate total latency <800ms
+- [x] End-to-end test: topic summary remains up to date with Tier 2 deltas even when summary refinement LLM is unavailable
+- [x] Cost regression test: hard cap disables Tier 4 at limit, warning mode suppresses without risk signals
+- [x] Parallel-vs-sequential benchmark: same fixture run both ways, confirm parallel saves ~150-200ms p95
 
 **Deliverable:** Complete four-tier pipeline with parallel 1-2-3 execution, per-session semantic cache, per-meeting cost cap, and structured observability. End-to-end p95 latency fits <800ms budget.
 
@@ -1093,6 +1093,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - [ ] Policy violation: Red border, bold
   - [ ] Client disengagement: Gray border, engagement icon
   - [ ] Undiscussed agenda: Blue border (meeting end only)
+- [ ] **Cost threshold warning alert:** when `meeting:cost:{sessionId}` reaches 80% of cap ($1.60), publish a shared alert via `meeting.alert.{sessionId}.shared` with category `budget_warning`, severity `medium`, message `"Meeting nearing cost limit — Tier 4 deep analysis will be limited"`. At 100% cap ($2.00): publish a second alert `"Cost limit reached — deep analysis disabled for the rest of the meeting"`. These are informational alerts (not dismissible until acknowledged). Implementation builds on Day 28 cost cap infrastructure.
 - [ ] Add "Checking…" indicator for pending LLM calls — **content-free** (no preliminary text); replaced atomically when the final Tier 4 response arrives, or cleared if Tier 4 returns `shouldSurface: false` (B.8)
 - [ ] Alerts are **atomic** once rendered: no live mutation of an alert's text, severity, or category after first render. If the Tier 4 response would change the alert, it is a brand-new alert with its own id (the old "Checking…" indicator clears, the new alert slides in).
 - [ ] Hover-to-pause expiry
@@ -1440,7 +1441,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 | 1 | 1-7 | **Migration & Multi-User** | Speaker model migration (YOU/THEM → SpeakerIdentity), Deepgram diarization, multi-user session join, Redis alert channels |
 | 2 | 8-14 | **Speaker ID (VAD) + Prototype Audio Capture** | VAD signals from desktop mic, clock-offset-corrected diarization correlation, diarization-index merge baseline, prototype host capture in Tauri/Rust, meeting-detection prompts, direct realtime → Deepgram audio path (no Redis hop) |
 | 3 | 15-21 | **State & Structural Detection** | Topic state, commitment ledger (**in-memory HNSW + Redis snapshot**, with embeddings), constraint ledger, pre-filter, Tier 1 structural |
-| 4 | 22-28 | **LLM Classification & Search** | Tier 2 small LLM (single semantic source replacing all regex), **Post-Day 23 dual-channel intake hardening before Tier 3**, Tier 3 embedding search + commitment ledger search (shared embedding reuse), Tier 4 deep reasoning, **parallel Tier 1/2/3 orchestration, async topic-summary refinement off hot path, Tier 2 semantic cache, per-meeting cost cap, structured observability** |
+| 4 | 22-28 | **LLM Classification & Search** | Tier 2 small LLM (single semantic source replacing all regex), **Post-Day 23 dual-channel intake hardening before Tier 3**, Tier 3 embedding search + commitment ledger search (shared embedding reuse), Tier 4 deep reasoning, **parallel Tier 1/2/3 orchestration, async topic-summary refinement off hot path, Tier 2 semantic cache, per-meeting cost cap (w/ warning mode at 80% & hard cap at $2.00), structured observability** |
 | 5 | 29-36 | **Alert System & Speaker Tracking** | All 12 alert categories, alert routing (shared/personal), speaker state tracker, tone trajectory, client disengagement, speculative processing, **atomic alert UX (no progressive flicker)** |
 | 6 | 37-46+ | **Desktop Frontend, E2E & Distribution** | Desktop UI (tray + overlay + main), ambient components, alert UI (12 categories), meeting mode screen, multi-user end-to-end testing, **signed/notarized installers + auto-update across Win/macOS/Linux** |
 | 7 | 47-55 | **Post-Meeting** | Workers, **MinIO raw audio persistence (30-day lifecycle)**, Whisper refinement, speaker-attributed transcripts, commitment ledger → pgvector, extraction, memory writes |

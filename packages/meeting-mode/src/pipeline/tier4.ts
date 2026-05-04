@@ -19,11 +19,11 @@ export interface Tier4DeepReasonerOptions {
 const CATEGORY_PROMPT_BLOCK = `
 Choose exactly ONE alertType:
 - none: no actionable meeting risk, ambiguous evidence, filler, audibility check, greeting, acknowledgement, duplicated statement, or harmless STT artifact.
-- self_contradiction: the same TEAM speaker conflicts with their own earlier commitment/decision. If EXTERNAL backtracks, use client_backtrack.
-- team_inconsistency: one TEAM member conflicts with a different TEAM member on timeline, scope, price, capability, resource, or decision.
+- self_contradiction: the current TEAM speaker conflicts with their OWN earlier commitment/decision found in matchedCommitments. If EXTERNAL backtracks, use client_backtrack.
+- team_inconsistency: the current TEAM speaker conflicts with a DIFFERENT TEAM member's earlier commitment/decision found in matchedCommitments (e.g., timeline, scope, price).
 - risky_commitment: TEAM speaker makes a risky promise: unconditional guarantee, unverified timeline/price/resource/capability, open-ended scope, discount/approval without authority, or "easy/simple/no problem" underestimation.
 - scope_creep: EXTERNAL speaker expands scope beyond agreement or assumes extra work is included.
-- client_backtrack: EXTERNAL speaker changes a previous commitment, timeline, scope, price, or decision.
+- client_backtrack: EXTERNAL speaker changes a previous EXTERNAL commitment found in matchedCommitments.
 - missing_clarity: only when a substantive topic lacks owner, deadline, next action, or mutual confirmation. Do NOT use for one-off malformed STT fragments.
 - information_risk: confidential client names, internal financials, credentials/secrets, unreleased features, roadmap/strategy, or third-party confidential details may be exposed.
 - tone_warning: TEAM tone is defensive/aggressive/reactive/excessively apologetic enough to affect the meeting.
@@ -33,15 +33,16 @@ Choose exactly ONE alertType:
 - undiscussed_agenda: meeting-end only; do not emit mid-meeting unless context explicitly says agenda closeout.
 
 Decision discipline:
-- A Tier 3 memory/ledger match is only a clue. Surface only if the current utterance truly conflicts with, changes, or risks something in context.
+- A Tier 3 memory/ledger match is only a clue. Surface only if the current utterance truly conflicts with, changes, or risks something in context. For self_contradiction and team_inconsistency, explicitly compare the speaker.userId of the trigger utterance against the speaker.userId of the matched commitments.
 - Prefer alertType none when evidence is weak, duplicated, already obvious, purely conversational, or not actionable in the next 10 seconds.
 - shouldSurface=true only when confidence is high enough for message, surfaceReason, and suggestion that help immediately in the overlay.
 - Calibrate confidence: 0.9+ clear direct evidence, 0.75-0.89 likely but context dependent, <0.75 should usually not surface.
 
 Routing:
-- personal: self_contradiction/risky_commitment/tone_warning for the current TEAM speaker when only private coaching is needed. Set targetUserId if known.
+- personal: self_contradiction/risky_commitment/tone_warning for the current TEAM speaker when only private coaching is needed. Set targetUserId to the current speaker.userId.
 - shared: team_inconsistency, scope_creep, client_backtrack, missing_clarity, pressure_detected, client_disengagement, undiscussed_agenda, or another TEAM member's self/risk/tone issue.
 - both: information_risk or policy_violation when both team coordination and speaker-specific caution matter.
+
 
 Output requirements:
 - severity: low|medium|high|critical based on business impact, not wording intensity.
@@ -158,6 +159,8 @@ function geminiTier4StructuredSchema(): {
 export class Tier4DeepReasoner {
   private readonly ai: GoogleGenAI;
   private readonly timeoutMs: number;
+  private lastPromptTokens = 0;
+  private lastCompletionTokens = 0;
   private readonly invoke: (
     prompt: string,
     timeoutMs: number
@@ -175,7 +178,12 @@ export class Tier4DeepReasoner {
    * Returns parsed Tier 4 structured JSON or **null** on timeout / malformed / schema violation.
    * Callers MUST still enforce surfacing thresholds (confidence, shouldSurface).
    */
-  async reason(context: Tier4Context): Promise<Tier4Response | null> {
+  async reason(context: Tier4Context): Promise<{
+    response: Tier4Response | null;
+    promptTokens: number;
+    completionTokens: number;
+    tokenCount: number;
+  }> {
     const prompt = buildTier4Prompt(context);
 
     try {
@@ -187,12 +195,30 @@ export class Tier4DeepReasoner {
           { issues: validation.error.issues.map((issue) => issue.message) },
           "Tier4 returned invalid schema"
         );
-        return null;
+        return {
+          response: null,
+          promptTokens: this.lastPromptTokens || 0,
+          completionTokens: this.lastCompletionTokens || 0,
+          tokenCount:
+            (this.lastPromptTokens || 0) + (this.lastCompletionTokens || 0),
+        };
       }
-      return validation.data;
+      return {
+        response: validation.data,
+        promptTokens: this.lastPromptTokens || 0,
+        completionTokens: this.lastCompletionTokens || 0,
+        tokenCount:
+          (this.lastPromptTokens || 0) + (this.lastCompletionTokens || 0),
+      };
     } catch (error) {
       log.warn({ err: error }, "Tier4 reasoning failed silently");
-      return null;
+      return {
+        response: null,
+        promptTokens: this.lastPromptTokens || 0,
+        completionTokens: this.lastCompletionTokens || 0,
+        tokenCount:
+          (this.lastPromptTokens || 0) + (this.lastCompletionTokens || 0),
+      };
     }
   }
 
@@ -222,6 +248,10 @@ export class Tier4DeepReasoner {
       if (!response.text) {
         throw new Error("Gemini tier4 returned empty content");
       }
+
+      this.lastPromptTokens = response.usageMetadata?.promptTokenCount ?? 0;
+      this.lastCompletionTokens =
+        response.usageMetadata?.candidatesTokenCount ?? 0;
 
       return response.text;
     } catch (error) {

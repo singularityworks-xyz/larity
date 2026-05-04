@@ -22,10 +22,12 @@
   },
   "dependencies": {
     "@elysiajs/opentelemetry": "^1.4.10",
-    "@larity/stt": "workspace:*",
     "@larity/logger": "workspace:*",
+    "@larity/stt": "workspace:*",
     "@larity/telemetry": "workspace:*",
     "elysia": "^1.4.25",
-    "ioredis": "^5.9.0"
+    "ioredis": "^5.9.0",
+    "meeting-mode": "workspace:*",
+    "prom-client": "^15.1.3"
   }
 }

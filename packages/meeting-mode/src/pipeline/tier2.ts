@@ -16,6 +16,8 @@ export interface Tier2ClassifierOptions {
 export class Tier2Classifier {
   private readonly ai: GoogleGenAI;
   private readonly timeoutMs: number;
+  private lastPromptTokens = 0;
+  private lastCompletionTokens = 0;
   private readonly invoke: (
     input: Tier2Input,
     timeoutMs: number
@@ -42,6 +44,8 @@ export class Tier2Classifier {
         return {
           classification: fallbackClassification(),
           shouldStopForDeepReasoning: false,
+          promptTokens: this.lastPromptTokens || 0,
+          completionTokens: this.lastCompletionTokens || 0,
         };
       }
 
@@ -49,12 +53,16 @@ export class Tier2Classifier {
       return {
         classification,
         shouldStopForDeepReasoning: shouldStopAtTier2(classification),
+        promptTokens: this.lastPromptTokens || 0,
+        completionTokens: this.lastCompletionTokens || 0,
       };
     } catch (error) {
       log.warn({ err: error }, "Tier2 classification failed silently");
       return {
         classification: fallbackClassification(),
         shouldStopForDeepReasoning: false,
+        promptTokens: this.lastPromptTokens || 0,
+        completionTokens: this.lastCompletionTokens || 0,
       };
     }
   }
@@ -85,6 +93,10 @@ export class Tier2Classifier {
     if (!response.text) {
       throw new Error("Gemini tier2 returned empty content");
     }
+
+    this.lastPromptTokens = response.usageMetadata?.promptTokenCount ?? 0;
+    this.lastCompletionTokens =
+      response.usageMetadata?.candidatesTokenCount ?? 0;
 
     return response.text;
   }

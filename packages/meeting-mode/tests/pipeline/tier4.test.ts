@@ -73,9 +73,9 @@ describe("pipeline/tier4", () => {
     });
 
     const result = await reasoner.reason(minimalContext());
-    expect(result).not.toBeNull();
-    expect(result?.alertType).toBe("risky_commitment");
-    expect(result?.confidence).toBeGreaterThanOrEqual(
+    expect(result.response).not.toBeNull();
+    expect(result.response?.alertType).toBe("risky_commitment");
+    expect(result.response?.confidence).toBeGreaterThanOrEqual(
       MIN_TIER4_SURFACING_CONFIDENCE
     );
   });
@@ -84,7 +84,9 @@ describe("pipeline/tier4", () => {
     const reasoner = new Tier4DeepReasoner({
       invoke: async () => "not-json",
     });
-    await expect(reasoner.reason(minimalContext())).resolves.toBeNull();
+    const result = await reasoner.reason(minimalContext());
+    expect(result.response).toBeNull();
+    expect(result.tokenCount).toBe(0);
   });
 
   it("fails silently when schema rejects model output", async () => {
@@ -102,7 +104,9 @@ describe("pipeline/tier4", () => {
         }),
     });
 
-    await expect(reasoner.reason(minimalContext())).resolves.toBeNull();
+    const result2 = await reasoner.reason(minimalContext());
+    expect(result2.response).toBeNull();
+    expect(result2.tokenCount).toBe(0);
   });
 
   it("times out invoking Gemini layer", async () => {
@@ -116,7 +120,9 @@ describe("pipeline/tier4", () => {
       },
     });
 
-    await expect(reasoner.reason(minimalContext())).resolves.toBeNull();
+    const result3 = await reasoner.reason(minimalContext());
+    expect(result3.response).toBeNull();
+    expect(result3.tokenCount).toBe(0);
   });
 });
 
