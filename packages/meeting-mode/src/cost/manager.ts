@@ -5,10 +5,11 @@ const log = createMeetingModeLogger("cost-manager");
 
 const COST_KEY_PREFIX = "meeting:cost:";
 
-const MODEL_PRICING: Record<string, { inputRate: number; outputRate: number }> = {
-  "gemini-3.1-flash-lite-preview": { inputRate: 0.25, outputRate: 1.50 },
-  "gemini-pro": { inputRate: 1.25, outputRate: 1.25 },
-};
+const MODEL_PRICING: Record<string, { inputRate: number; outputRate: number }> =
+  {
+    "gemini-3.1-flash-lite-preview": { inputRate: 0.25, outputRate: 1.5 },
+    "gemini-pro": { inputRate: 1.25, outputRate: 1.25 },
+  };
 
 const SESSION_COST_LIMIT = 2.0;
 const WARNING_THRESHOLD = 1.6;
@@ -52,8 +53,12 @@ export class CostManager {
     }
 
     const flashLitePricing = MODEL_PRICING["gemini-3.1-flash-lite-preview"];
-    const pricing = MODEL_PRICING[model] ?? flashLitePricing ?? { inputRate: 0.075, outputRate: 0.075 };
-    const cost = (promptTokens * pricing.inputRate + completionTokens * pricing.outputRate) / 1_000_000;
+    const pricing = MODEL_PRICING[model] ??
+      flashLitePricing ?? { inputRate: 0.075, outputRate: 0.075 };
+    const cost =
+      (promptTokens * pricing.inputRate +
+        completionTokens * pricing.outputRate) /
+      1_000_000;
 
     // Check if Redis is disabled for this session
     const redisDisabled = this.sessionRedisDisabled.get(sessionId) ?? false;
@@ -65,7 +70,14 @@ export class CostManager {
           cost
         );
         log.info(
-          { sessionId, promptTokens, completionTokens, model, cost, totalCost: Number(total) },
+          {
+            sessionId,
+            promptTokens,
+            completionTokens,
+            model,
+            cost,
+            totalCost: Number(total),
+          },
           "Cost recorded"
         );
         return Number(total);
@@ -93,8 +105,8 @@ export class CostManager {
         if (val === null) {
           return 0;
         }
-        const parsed = parseFloat(val);
-        if (!isFinite(parsed)) {
+        const parsed = Number.parseFloat(val);
+        if (!Number.isFinite(parsed)) {
           log.warn(
             { sessionId, rawValue: val },
             "Redis returned non-numeric cost value, falling back to 0"

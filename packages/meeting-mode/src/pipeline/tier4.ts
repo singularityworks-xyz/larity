@@ -182,6 +182,7 @@ export class Tier4DeepReasoner {
     response: Tier4Response | null;
     promptTokens: number;
     completionTokens: number;
+    tokenCount: number;
   }> {
     const prompt = buildTier4Prompt(context);
 
@@ -197,20 +198,26 @@ export class Tier4DeepReasoner {
         return {
           response: null,
           promptTokens: this.lastPromptTokens || 0,
-          completionTokens: this.lastCompletionTokens || 0
+          completionTokens: this.lastCompletionTokens || 0,
+          tokenCount:
+            (this.lastPromptTokens || 0) + (this.lastCompletionTokens || 0),
         };
       }
       return {
         response: validation.data,
         promptTokens: this.lastPromptTokens || 0,
         completionTokens: this.lastCompletionTokens || 0,
+        tokenCount:
+          (this.lastPromptTokens || 0) + (this.lastCompletionTokens || 0),
       };
     } catch (error) {
       log.warn({ err: error }, "Tier4 reasoning failed silently");
       return {
         response: null,
         promptTokens: this.lastPromptTokens || 0,
-        completionTokens: this.lastCompletionTokens || 0
+        completionTokens: this.lastCompletionTokens || 0,
+        tokenCount:
+          (this.lastPromptTokens || 0) + (this.lastCompletionTokens || 0),
       };
     }
   }
@@ -243,7 +250,8 @@ export class Tier4DeepReasoner {
       }
 
       this.lastPromptTokens = response.usageMetadata?.promptTokenCount ?? 0;
-      this.lastCompletionTokens = response.usageMetadata?.candidatesTokenCount ?? 0;
+      this.lastCompletionTokens =
+        response.usageMetadata?.candidatesTokenCount ?? 0;
 
       return response.text;
     } catch (error) {

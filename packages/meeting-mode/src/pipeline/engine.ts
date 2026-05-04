@@ -1,10 +1,7 @@
 import type { Alert } from "../alerts/types";
 import { createAlert } from "../alerts/types";
 import type { Commitment } from "../commitment/types";
-import type {
-  Constraint,
-  PreloadedContextPayload,
-} from "../constraint/types";
+import type { Constraint, PreloadedContextPayload } from "../constraint/types";
 import { CostManager } from "../cost/manager";
 import { GEMINI_TIER2_MODEL, GEMINI_TIER4_MODEL } from "../env";
 import { createMeetingModeLogger } from "../logger";
@@ -640,9 +637,17 @@ export class MeetingPipelineEngine {
     const tier2 = await this.tier2.classify(input);
 
     // Record Tier2 cost
-    if ((tier2.promptTokens && tier2.promptTokens > 0) || (tier2.completionTokens && tier2.completionTokens > 0)) {
+    if (
+      (tier2.promptTokens && tier2.promptTokens > 0) ||
+      (tier2.completionTokens && tier2.completionTokens > 0)
+    ) {
       this.costManager
-        .recordCost(sessionId, tier2.promptTokens || 0, tier2.completionTokens || 0, GEMINI_TIER2_MODEL)
+        .recordCost(
+          sessionId,
+          tier2.promptTokens || 0,
+          tier2.completionTokens || 0,
+          GEMINI_TIER2_MODEL
+        )
         .catch((err) =>
           log.warn(
             { err, utteranceId: utterance.utteranceId },
@@ -703,7 +708,7 @@ export class MeetingPipelineEngine {
         type,
         timestamp: utterance.timestamp,
         utteranceId: utterance.utteranceId,
-        embedding: embedding,
+        embedding,
         extractedData: {
           deadline: tier2.classification.extractedData.deadline,
           quantity: tier2.classification.extractedData.quantity,

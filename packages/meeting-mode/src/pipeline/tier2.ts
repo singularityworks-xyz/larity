@@ -95,7 +95,8 @@ export class Tier2Classifier {
     }
 
     this.lastPromptTokens = response.usageMetadata?.promptTokenCount ?? 0;
-    this.lastCompletionTokens = response.usageMetadata?.candidatesTokenCount ?? 0;
+    this.lastCompletionTokens =
+      response.usageMetadata?.candidatesTokenCount ?? 0;
 
     return response.text;
   }
