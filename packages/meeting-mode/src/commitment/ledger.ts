@@ -149,6 +149,11 @@ export class CommitmentLedger {
     const limit = options.k ?? DEFAULT_SEARCH_LIMIT;
     const minSimilarity = options.minSimilarity ?? Number.NEGATIVE_INFINITY;
 
+    // Skip similarity queries for empty embeddings to avoid false matches
+    if (!queryEmbedding || queryEmbedding.length === 0) {
+      return [];
+    }
+
     if (this.commitments.size === 0 || limit <= 0) {
       return [];
     }

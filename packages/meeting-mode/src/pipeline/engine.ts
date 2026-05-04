@@ -1,6 +1,9 @@
 import type { Alert } from "../alerts/types";
 import type { Commitment } from "../commitment/types";
-import type { PreloadedContextPayload } from "../constraint/types";
+import type {
+  Constraint,
+  PreloadedContextPayload,
+} from "../constraint/types";
 import { CostManager } from "../cost/manager";
 import { GEMINI_TIER2_MODEL, GEMINI_TIER4_MODEL } from "../env";
 import { createMeetingModeLogger } from "../logger";
@@ -212,10 +215,7 @@ export class MeetingPipelineEngine {
 
     if (decision.dropped) {
       pipelineDroppedTotal.inc({ reason: decision.reason ?? "unknown" });
-      pipelineTotalDuration.observe(
-        { session_id: utterance.sessionId },
-        PERF.now() - start
-      );
+      pipelineTotalDuration.observe(PERF.now() - start);
       return {
         dropped: true,
         dropReason: decision.reason,
@@ -345,17 +345,14 @@ export class MeetingPipelineEngine {
       });
 
     if (runTier4) {
-      pipelineTier4Duration.observe(
-        { session_id: utterance.sessionId },
-        tier4Ms ?? 0
-      );
+      pipelineTier4Duration.observe(tier4Ms ?? 0);
       pipelineTier4InvokedTotal.inc({
         surfaced: tier4Outcome?.surfaced ? "true" : "false",
       });
     }
 
     const totalMs = PERF.now() - start;
-    pipelineTotalDuration.observe({ session_id: utterance.sessionId }, totalMs);
+    pipelineTotalDuration.observe(totalMs);
 
     pipelineSessionCostDollars.set(
       { session_id: utterance.sessionId },
@@ -517,6 +514,8 @@ export class MeetingPipelineEngine {
     this.tier1.closeSession(sessionId);
     this.tier2Cache.closeSession(sessionId);
     this.sessions.delete(sessionId);
+    // Clean up per-session Prometheus gauge to prevent unbounded memory growth
+    pipelineSessionCostDollars.remove({ session_id: sessionId });
   }
 
   closeAll(): void {
@@ -619,6 +618,15 @@ export class MeetingPipelineEngine {
       return;
     }
 
+    // Skip persisting commitments without embeddings to avoid false similarity matches
+    if (!embedding || embedding.length === 0) {
+      log.debug(
+        { utteranceId: utterance.utteranceId },
+        "Skipping commitment write: no embedding available"
+      );
+      return;
+    }
+
     const type =
       tier2.classification.commitmentType ??
       (tier2.classification.intent === "decision" ? "scope" : "general");
@@ -632,7 +640,7 @@ export class MeetingPipelineEngine {
         type,
         timestamp: utterance.timestamp,
         utteranceId: utterance.utteranceId,
-        embedding: embedding ?? [0],
+        embedding: embedding,
         extractedData: {
           deadline: tier2.classification.extractedData.deadline,
           quantity: tier2.classification.extractedData.quantity,
