@@ -1,6 +1,9 @@
 import type { Alert } from "../alerts/types";
 import type { Commitment } from "../commitment/types";
-import type { PreloadedContextPayload } from "../constraint/types";
+import type {
+  Constraint,
+  PreloadedContextPayload,
+} from "../constraint/types";
 import { CostManager } from "../cost/manager";
 import { GEMINI_TIER2_MODEL, GEMINI_TIER4_MODEL } from "../env";
 import { createMeetingModeLogger } from "../logger";
@@ -23,7 +26,7 @@ import {
 } from "./metrics";
 import { PreFilter } from "./pre-filter";
 import { Tier1StructuralDetector } from "./tier1";
-import { Tier2Classifier } from "./tier2";
+import { Tier2Classifier, shouldStopAtTier2 } from "./tier2";
 import { Tier2SemanticCache } from "./tier2-cache";
 import { Tier3SearchEngine } from "./tier3";
 import type { Tier4DeepReasoner } from "./tier4";
@@ -212,10 +215,7 @@ export class MeetingPipelineEngine {
 
     if (decision.dropped) {
       pipelineDroppedTotal.inc({ reason: decision.reason ?? "unknown" });
-      pipelineTotalDuration.observe(
-        { session_id: utterance.sessionId },
-        PERF.now() - start
-      );
+      pipelineTotalDuration.observe(PERF.now() - start);
       return {
         dropped: true,
         dropReason: decision.reason,
@@ -345,17 +345,14 @@ export class MeetingPipelineEngine {
       });
 
     if (runTier4) {
-      pipelineTier4Duration.observe(
-        { session_id: utterance.sessionId },
-        tier4Ms ?? 0
-      );
+      pipelineTier4Duration.observe(tier4Ms ?? 0);
       pipelineTier4InvokedTotal.inc({
         surfaced: tier4Outcome?.surfaced ? "true" : "false",
       });
     }
 
     const totalMs = PERF.now() - start;
-    pipelineTotalDuration.observe({ session_id: utterance.sessionId }, totalMs);
+    pipelineTotalDuration.observe(totalMs);
 
     pipelineSessionCostDollars.set(
       { session_id: utterance.sessionId },
@@ -452,11 +449,12 @@ export class MeetingPipelineEngine {
       tier4Ms = PERF.now() - tier4WallStart;
       tier4Response = tier4Result.response;
 
-      if (tier4Result.tokenCount > 0) {
+      if (tier4Result.promptTokens > 0 || tier4Result.completionTokens > 0) {
         this.costManager
           .recordCost(
             utterance.sessionId,
-            tier4Result.tokenCount,
+            tier4Result.promptTokens,
+            tier4Result.completionTokens,
             GEMINI_TIER4_MODEL
           )
           .catch((err) =>
@@ -517,6 +515,8 @@ export class MeetingPipelineEngine {
     this.tier1.closeSession(sessionId);
     this.tier2Cache.closeSession(sessionId);
     this.sessions.delete(sessionId);
+    // Clean up per-session Prometheus gauge to prevent unbounded memory growth
+    pipelineSessionCostDollars.remove({ session_id: sessionId });
   }
 
   closeAll(): void {
@@ -548,9 +548,10 @@ export class MeetingPipelineEngine {
             cached.topicDelta
           );
         }
+        const shouldStopForDeepReasoning = shouldStopAtTier2(cached);
         return {
           classification: cached,
-          shouldStopForDeepReasoning: false,
+          shouldStopForDeepReasoning,
           tier2CacheHit: true,
         };
       }
@@ -578,9 +579,9 @@ export class MeetingPipelineEngine {
     const tier2 = await this.tier2.classify(input);
 
     // Record Tier2 cost
-    if (tier2.tokenCount && tier2.tokenCount > 0) {
+    if ((tier2.promptTokens && tier2.promptTokens > 0) || (tier2.completionTokens && tier2.completionTokens > 0)) {
       this.costManager
-        .recordCost(sessionId, tier2.tokenCount, GEMINI_TIER2_MODEL)
+        .recordCost(sessionId, tier2.promptTokens || 0, tier2.completionTokens || 0, GEMINI_TIER2_MODEL)
         .catch((err) =>
           log.warn(
             { err, utteranceId: utterance.utteranceId },
@@ -619,6 +620,15 @@ export class MeetingPipelineEngine {
       return;
     }
 
+    // Skip persisting commitments without embeddings to avoid false similarity matches
+    if (!embedding || embedding.length === 0) {
+      log.debug(
+        { utteranceId: utterance.utteranceId },
+        "Skipping commitment write: no embedding available"
+      );
+      return;
+    }
+
     const type =
       tier2.classification.commitmentType ??
       (tier2.classification.intent === "decision" ? "scope" : "general");
@@ -632,7 +642,7 @@ export class MeetingPipelineEngine {
         type,
         timestamp: utterance.timestamp,
         utteranceId: utterance.utteranceId,
-        embedding: embedding ?? [0],
+        embedding: embedding,
         extractedData: {
           deadline: tier2.classification.extractedData.deadline,
           quantity: tier2.classification.extractedData.quantity,

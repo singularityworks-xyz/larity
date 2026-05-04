@@ -16,7 +16,8 @@ export interface Tier2ClassifierOptions {
 export class Tier2Classifier {
   private readonly ai: GoogleGenAI;
   private readonly timeoutMs: number;
-  private lastTokenCount = 0;
+  private lastPromptTokens = 0;
+  private lastCompletionTokens = 0;
   private readonly invoke: (
     input: Tier2Input,
     timeoutMs: number
@@ -43,7 +44,8 @@ export class Tier2Classifier {
         return {
           classification: fallbackClassification(),
           shouldStopForDeepReasoning: false,
-          tokenCount: this.lastTokenCount || 0,
+          promptTokens: this.lastPromptTokens || 0,
+          completionTokens: this.lastCompletionTokens || 0,
         };
       }
 
@@ -51,14 +53,16 @@ export class Tier2Classifier {
       return {
         classification,
         shouldStopForDeepReasoning: shouldStopAtTier2(classification),
-        tokenCount: this.lastTokenCount || 0,
+        promptTokens: this.lastPromptTokens || 0,
+        completionTokens: this.lastCompletionTokens || 0,
       };
     } catch (error) {
       log.warn({ err: error }, "Tier2 classification failed silently");
       return {
         classification: fallbackClassification(),
         shouldStopForDeepReasoning: false,
-        tokenCount: this.lastTokenCount || 0,
+        promptTokens: this.lastPromptTokens || 0,
+        completionTokens: this.lastCompletionTokens || 0,
       };
     }
   }
@@ -90,7 +94,8 @@ export class Tier2Classifier {
       throw new Error("Gemini tier2 returned empty content");
     }
 
-    this.lastTokenCount = response.usageMetadata?.totalTokenCount ?? 0;
+    this.lastPromptTokens = response.usageMetadata?.promptTokenCount ?? 0;
+    this.lastCompletionTokens = response.usageMetadata?.candidatesTokenCount ?? 0;
 
     return response.text;
   }
@@ -107,7 +112,9 @@ function fallbackClassification(): Tier2Classification {
   };
 }
 
-function shouldStopAtTier2(classification: Tier2Classification): boolean {
+export function shouldStopAtTier2(
+  classification: Tier2Classification
+): boolean {
   const lowSignalIntent =
     classification.intent === "filler" || classification.intent === "general";
 
