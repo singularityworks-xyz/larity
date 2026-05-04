@@ -112,7 +112,9 @@ function fallbackClassification(): Tier2Classification {
   };
 }
 
-function shouldStopAtTier2(classification: Tier2Classification): boolean {
+export function shouldStopAtTier2(
+  classification: Tier2Classification
+): boolean {
   const lowSignalIntent =
     classification.intent === "filler" || classification.intent === "general";
 

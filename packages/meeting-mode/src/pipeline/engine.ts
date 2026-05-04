@@ -26,7 +26,7 @@ import {
 } from "./metrics";
 import { PreFilter } from "./pre-filter";
 import { Tier1StructuralDetector } from "./tier1";
-import { Tier2Classifier } from "./tier2";
+import { Tier2Classifier, shouldStopAtTier2 } from "./tier2";
 import { Tier2SemanticCache } from "./tier2-cache";
 import { Tier3SearchEngine } from "./tier3";
 import type { Tier4DeepReasoner } from "./tier4";
@@ -548,9 +548,10 @@ export class MeetingPipelineEngine {
             cached.topicDelta
           );
         }
+        const shouldStopForDeepReasoning = shouldStopAtTier2(cached);
         return {
           classification: cached,
-          shouldStopForDeepReasoning: false,
+          shouldStopForDeepReasoning,
           tier2CacheHit: true,
         };
       }
