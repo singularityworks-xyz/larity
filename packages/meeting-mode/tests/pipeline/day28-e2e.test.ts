@@ -12,6 +12,29 @@ import { Tier4DeepReasoner } from "../../src/pipeline/tier4";
 import { TopicManager } from "../../src/topic/manager";
 import { createTeamSpeaker, createTestUtterance } from "../helpers";
 
+// Stub out the Gemini-backed embedder so tests that instantiate TopicManager
+// directly never make real network calls (no GEMINI_API_KEY required in CI).
+mock.module("../../src/topic/embedder", () => {
+  return {
+    GoogleGenAIEmbedder: class {
+      embed(_text: string) {
+        return Promise.resolve([0.1, 0.2, 0.3]);
+      }
+    },
+  };
+});
+
+// Stub out the Gemini-backed summarizer for the same reason.
+mock.module("../../src/topic/summarizer", () => {
+  return {
+    TopicSummarizer: class {
+      summarize() {
+        return Promise.reject(new Error("Summarizer stub — no LLM in tests"));
+      }
+    },
+  };
+});
+
 async function asyncNoop(): Promise<void> {
   await Promise.resolve();
 }
