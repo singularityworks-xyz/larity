@@ -960,7 +960,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [ ] Implement `SpeakerState` tracker:
+- [x] Implement `SpeakerState` tracker:
   ```ts
   interface SpeakerState {
     speakerId: string
@@ -973,22 +973,22 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
     engagementLevel: "active" | "passive" | "disengaged"
   }
   ```
-- [ ] Track rolling tone scores per speaker (from Tier 2 classifications)
-- [ ] **Gradual tone shift detection:**
-  - [ ] Alert when delta exceeds threshold over time window (~15 min)
-  - [ ] Even if no single utterance is alarming
-- [ ] **Client disengagement detection:**
-  - [ ] Track response length ratio (TEAM vs EXTERNAL)
-  - [ ] Flag when EXTERNAL gives only brief responses (1-3 words) for extended period
-  - [ ] Flag when EXTERNAL response frequency drops significantly
-- [ ] **Missing clarity detection:**
-  - [ ] On topic shift, evaluate outgoing topic completeness (owner, deadline, actions, confirmation)
-  - [ ] Skip trivial topics
-  - [ ] Always shared alert
-- [ ] **Undiscussed agenda detection:**
-  - [ ] Compare discussed topics against preloaded calendar agenda
-  - [ ] Fire at meeting end only
-  - [ ] Always shared alert
+- [x] Track rolling tone scores per speaker (from Tier 2 classifications)
+- [x] **Gradual tone shift detection:**
+  - [x] Alert when delta exceeds threshold over time window (~15 min)
+  - [x] Even if no single utterance is alarming
+- [x] **Client disengagement detection:**
+  - [x] Track response length ratio (TEAM vs EXTERNAL)
+  - [x] Flag when EXTERNAL gives only brief responses (1-3 words) for extended period
+  - [x] Flag when EXTERNAL response frequency drops significantly
+- [x] **Missing clarity detection:**
+  - [x] On topic shift, evaluate outgoing topic completeness (owner, deadline, actions, confirmation)
+  - [x] Skip trivial topics
+  - [x] Always shared alert
+- [x] **Undiscussed agenda detection:**
+  - [x] Compare discussed topics against preloaded calendar agenda
+  - [x] Fire at meeting end only
+  - [x] Always shared alert
 
 **Deliverable:** Speaker behavioral tracking and engagement-based alerts working.
 
