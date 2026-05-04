@@ -849,7 +849,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 - [x] **Pipeline observability — MVP (`meeting.pipeline.*`, B.11):**
   - [x] Per-utterance JSON on Redis **`meeting.pipeline.{sessionId}`**: session/utterance ids, drop reasons, **`tier4` invoked/surfaced**, gate **`runTier4`**, **`forceTier4`**, **`highSignal`**, **`message`/`surfaceReason`/`suggestion`** when surfaced (no embeddings, no **`reasoning`**)
   - [x] Optional pretty JSON via **`PIPELINE_TRACE_PRETTY_JSON`**; realtime can subscribe and log (**`pipeline`** in `channels.ts` extractor)
-  - [ ] Prometheus histograms / per-session rollup on meeting end *(roadmap)*
+  - [x] Prometheus histograms / per-session rollup on meeting end *(roadmap)*
 - [x] End-to-end test: utterance with commitment → Tier 2 writes to ledger → later contradicting utterance → Tier 3 catches → Tier 4 confirms → alert generated; validate total latency <800ms
 - [x] End-to-end test: topic summary remains up to date with Tier 2 deltas even when summary refinement LLM is unavailable
 - [x] Cost regression test: hard cap disables Tier 4 at limit, warning mode suppresses without risk signals
