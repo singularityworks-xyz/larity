@@ -867,7 +867,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [ ] Define all 12 alert categories:
+- [x] Define all 12 alert categories:
   ```ts
   type AlertCategory =
     | "self_contradiction"
@@ -883,20 +883,20 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
     | "client_disengagement"
     | "undiscussed_agenda"
   ```
-- [ ] Implement `Alert` interface with routing field (`shared` / `personal` / `both`)
-- [ ] Build Alert Queue Manager:
-  - [ ] Priority ordering by category (policy_violation highest, undiscussed_agenda lowest)
-  - [ ] Max 2 visible alerts at a time per user
-  - [ ] Pending queue for overflow
-  - [ ] Recently shown tracking for deduplication
-  - [ ] Auto-expiry (10-30 seconds based on severity)
-- [ ] Implement alert routing publisher:
-  - [ ] Publish to `meeting.alert.{sessionId}.shared` for shared alerts
-  - [ ] Publish to `meeting.alert.{sessionId}.user.{userId}` for personal alerts
-  - [ ] Publish to BOTH channels for `information_risk` and `policy_violation`
-- [ ] Implement routing rules per category (per meeting-mode.md Section 7.2)
-- [ ] Add alert deduplication (same category + same topic within debounce window)
-- [ ] Add alert logging for post-meeting analysis
+- [x] Implement `Alert` interface with routing field (`shared` / `personal` / `both`)
+- [x] Build Alert Queue Manager:
+  - [x] Priority ordering by category (policy_violation highest, undiscussed_agenda lowest)
+  - [x] Max 2 visible alerts at a time per user
+  - [x] Pending queue for overflow
+  - [x] Recently shown tracking for deduplication
+  - [x] Auto-expiry (10-30 seconds based on severity)
+- [x] Implement alert routing publisher:
+  - [x] Publish to `meeting.alert.{sessionId}.shared` for shared alerts
+  - [x] Publish to `meeting.alert.{sessionId}.user.{userId}` for personal alerts
+  - [x] Publish to BOTH channels for `information_risk` and `policy_violation`
+- [x] Implement routing rules per category (per meeting-mode.md Section 7.2)
+- [x] Add alert deduplication (same category + same topic within debounce window)
+- [x] Add alert logging for post-meeting analysis
 
 **Deliverable:** Alert system generates, routes, queues, and deduplicates alerts across shared and personal channels.
 
@@ -904,22 +904,22 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [ ] **Self-Contradiction Detection:**
-  - [ ] On commitment utterance: Tier 3 searches ledger for same speaker's prior commitments
-  - [ ] If similar found → Tier 4 evaluates if genuine contradiction
-  - [ ] Routing: own speech → personal, team member's speech → shared
-  - [ ] Types: timeline, scope, capability, quantity, general
+- [x] **Self-Contradiction Detection:**
+  - [x] On commitment utterance: Tier 3 searches ledger for same speaker's prior commitments
+  - [x] If similar found → Tier 4 evaluates if genuine contradiction
+  - [x] Routing: own speech → personal, team member's speech → shared
+  - [x] Types: timeline, scope, capability, quantity, general
 
-- [ ] **Team Inconsistency Detection (NEW):**
-  - [ ] On TEAM commitment: Tier 3 searches ledger for OTHER TEAM members' commitments
-  - [ ] If conflicting commitment from different TEAM member → Tier 4 evaluates
-  - [ ] Always shared alert — all team members must align
-  - [ ] Cross-speaker comparison within TEAM type only
+- [x] **Team Inconsistency Detection (NEW):**
+  - [x] On TEAM commitment: Tier 3 searches ledger for OTHER TEAM members' commitments
+  - [x] If conflicting commitment from different TEAM member → Tier 4 evaluates
+  - [x] Always shared alert — all team members must align
+  - [x] Cross-speaker comparison within TEAM type only
 
-- [ ] **Client Backtracking Detection:**
-  - [ ] On EXTERNAL commitment: Tier 3 searches ledger for prior EXTERNAL commitments
-  - [ ] If conflicting → Tier 4 evaluates
-  - [ ] Always shared alert
+- [x] **Client Backtracking Detection:**
+  - [x] On EXTERNAL commitment: Tier 3 searches ledger for prior EXTERNAL commitments
+  - [x] If conflicting → Tier 4 evaluates
+  - [x] Always shared alert
 
 **Deliverable:** Contradiction, team inconsistency, and backtracking alerts working across speakers.
 
@@ -927,23 +927,23 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [ ] **Risky Commitment Alerts:**
-  - [ ] Tier 2 identifies risk signals (unconditional, underestimation, open-ended, authority)
-  - [ ] Routing: own speech → personal, team member → shared
+- [x] **Risky Commitment Alerts:**
+  - [x] Tier 2 identifies risk signals (unconditional, underestimation, open-ended, authority)
+  - [x] Routing: own speech → personal, team member → shared
 
-- [ ] **Scope Creep Alerts:**
-  - [ ] Tier 2 classifies EXTERNAL utterances as scope expansion
-  - [ ] Compare against preloaded scope baseline
-  - [ ] Always shared
+- [x] **Scope Creep Alerts:**
+  - [x] Tier 2 classifies EXTERNAL utterances as scope expansion
+  - [x] Compare against preloaded scope baseline
+  - [x] Always shared
 
-- [ ] **Pressure Detected Alerts:**
-  - [ ] Tier 2 identifies pressure tactics from EXTERNAL speakers
-  - [ ] Social proof, urgency, authority, guilt, threats — all via LLM classification
-  - [ ] Always shared
+- [x] **Pressure Detected Alerts:**
+  - [x] Tier 2 identifies pressure tactics from EXTERNAL speakers
+  - [x] Social proof, urgency, authority, guilt, threats — all via LLM classification
+  - [x] Always shared
 
-- [ ] **Information Risk Alerts:**
-  - [ ] Tier 1 catches structural patterns (API keys, client name matches)
-  - [ ] Tier 2 catches semantic risks (financial disclosure, roadmap leaks, strategy)
+- [x] **Information Risk Alerts:**
+  - [x] Tier 1 catches structural patterns (API keys, client name matches)
+  - [x] Tier 2 catches semantic risks (financial disclosure, roadmap leaks, strategy)
   - [ ] Routing: BOTH (shared + personal to speaker)
 
 - [ ] **Tone Warning Alerts:**
@@ -960,7 +960,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [ ] Implement `SpeakerState` tracker:
+- [x] Implement `SpeakerState` tracker:
   ```ts
   interface SpeakerState {
     speakerId: string
@@ -973,22 +973,22 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
     engagementLevel: "active" | "passive" | "disengaged"
   }
   ```
-- [ ] Track rolling tone scores per speaker (from Tier 2 classifications)
-- [ ] **Gradual tone shift detection:**
-  - [ ] Alert when delta exceeds threshold over time window (~15 min)
-  - [ ] Even if no single utterance is alarming
-- [ ] **Client disengagement detection:**
-  - [ ] Track response length ratio (TEAM vs EXTERNAL)
-  - [ ] Flag when EXTERNAL gives only brief responses (1-3 words) for extended period
-  - [ ] Flag when EXTERNAL response frequency drops significantly
-- [ ] **Missing clarity detection:**
-  - [ ] On topic shift, evaluate outgoing topic completeness (owner, deadline, actions, confirmation)
-  - [ ] Skip trivial topics
-  - [ ] Always shared alert
-- [ ] **Undiscussed agenda detection:**
-  - [ ] Compare discussed topics against preloaded calendar agenda
-  - [ ] Fire at meeting end only
-  - [ ] Always shared alert
+- [x] Track rolling tone scores per speaker (from Tier 2 classifications)
+- [x] **Gradual tone shift detection:**
+  - [x] Alert when delta exceeds threshold over time window (~15 min)
+  - [x] Even if no single utterance is alarming
+- [x] **Client disengagement detection:**
+  - [x] Track response length ratio (TEAM vs EXTERNAL)
+  - [x] Flag when EXTERNAL gives only brief responses (1-3 words) for extended period
+  - [x] Flag when EXTERNAL response frequency drops significantly
+- [x] **Missing clarity detection:**
+  - [x] On topic shift, evaluate outgoing topic completeness (owner, deadline, actions, confirmation)
+  - [x] Skip trivial topics
+  - [x] Always shared alert
+- [x] **Undiscussed agenda detection:**
+  - [x] Compare discussed topics against preloaded calendar agenda
+  - [x] Fire at meeting end only
+  - [x] Always shared alert
 
 **Deliverable:** Speaker behavioral tracking and engagement-based alerts working.
 
