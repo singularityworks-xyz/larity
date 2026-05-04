@@ -1,9 +1,12 @@
 import type { Alert } from "../alerts/types";
+import { createAlert } from "../alerts/types";
 import type { Commitment } from "../commitment/types";
 import type { PreloadedContextPayload } from "../constraint/types";
 import { CostManager } from "../cost/manager";
 import { GEMINI_TIER2_MODEL, GEMINI_TIER4_MODEL } from "../env";
 import { createMeetingModeLogger } from "../logger";
+import { SpeakerStateTracker } from "../speaker-state/tracker";
+import type { SpeakerStateAlert } from "../speaker-state/types";
 import type { TopicState } from "../topic/types";
 import type { Utterance } from "../utterance/types";
 import {
@@ -119,6 +122,8 @@ export interface PipelineEngineDependencies {
     sessionId: string,
     topicId: string | undefined
   ) => Promise<string | undefined>;
+  getTopics?: (sessionId: string) => TopicState[];
+  getAgendaItems?: (sessionId: string) => string[];
   preFilter?: PreFilter;
   tier1?: Tier1StructuralDetector;
   tier2?: Tier2Classifier;
@@ -126,6 +131,7 @@ export interface PipelineEngineDependencies {
   tier4Alerts?: Tier4AlertsPublisher;
   tier2Cache?: Tier2SemanticCache;
   costManager?: CostManager;
+  speakerStateTracker?: SpeakerStateTracker;
 }
 
 export interface Tier4EvaluationSummary {
@@ -180,6 +186,13 @@ export class MeetingPipelineEngine {
   private readonly tier4Alerts?: Tier4AlertsPublisher;
   private readonly tier2Cache: Tier2SemanticCache;
   private readonly costManager: CostManager;
+  private readonly speakerStateTracker: SpeakerStateTracker;
+  private readonly getTopics: NonNullable<
+    PipelineEngineDependencies["getTopics"]
+  >;
+  private readonly getAgendaItems: NonNullable<
+    PipelineEngineDependencies["getAgendaItems"]
+  >;
 
   constructor(deps: PipelineEngineDependencies) {
     this.preFilter = deps.preFilter ?? new PreFilter();
@@ -196,6 +209,10 @@ export class MeetingPipelineEngine {
     this.tier4Alerts = deps.tier4Alerts;
     this.tier2Cache = deps.tier2Cache ?? new Tier2SemanticCache();
     this.costManager = deps.costManager ?? new CostManager();
+    this.speakerStateTracker =
+      deps.speakerStateTracker ?? new SpeakerStateTracker();
+    this.getTopics = deps.getTopics ?? (() => []);
+    this.getAgendaItems = deps.getAgendaItems ?? (() => []);
   }
 
   async evaluateUtterance(
@@ -273,6 +290,14 @@ export class MeetingPipelineEngine {
         "Constraint processing failed in pipeline"
       );
     }
+
+    this.speakerStateTracker.ingest(
+      utterance.sessionId,
+      utterance,
+      tier2.classification
+    );
+
+    await this.publishSpeakerStateAlerts(utterance, tier2.classification);
 
     const gateStart = PERF.now();
     const highSignal =
@@ -384,6 +409,38 @@ export class MeetingPipelineEngine {
     };
   }
 
+  private async publishSpeakerStateAlerts(
+    utterance: Utterance,
+    tier2Classification: Tier2Classification
+  ): Promise<void> {
+    const alerts = this.speakerStateTracker.checkAlerts(
+      utterance.sessionId,
+      utterance,
+      tier2Classification,
+      this.getTopics(utterance.sessionId),
+      this.getAgendaItems(utterance.sessionId),
+      false
+    );
+
+    if (alerts.length === 0 || !this.tier4Alerts) {
+      return;
+    }
+
+    for (const ssAlert of alerts) {
+      try {
+        await this.tier4Alerts.publish(
+          utterance.sessionId,
+          speakerStateAlertToAlert(ssAlert, utterance)
+        );
+      } catch (error) {
+        log.warn(
+          { err: error, utteranceId: utterance.utteranceId },
+          "Speaker state alert publishing failed"
+        );
+      }
+    }
+  }
+
   private async evaluateTier4AfterGate(params: {
     utterance: Utterance;
     runTier4: boolean;
@@ -445,6 +502,9 @@ export class MeetingPipelineEngine {
         recentUtterances,
         allCommitments: this.commitmentManager.getAll(utterance.sessionId),
         allConstraints: this.constraintManager.getAll(utterance.sessionId),
+        speakerStates: this.speakerStateTracker.getSummaries(
+          utterance.sessionId
+        ),
       });
 
       const tier4WallStart = PERF.now();
@@ -516,6 +576,7 @@ export class MeetingPipelineEngine {
     this.preFilter.closeSession(sessionId);
     this.tier1.closeSession(sessionId);
     this.tier2Cache.closeSession(sessionId);
+    this.speakerStateTracker.closeSession(sessionId);
     this.sessions.delete(sessionId);
   }
 
@@ -523,6 +584,7 @@ export class MeetingPipelineEngine {
     this.preFilter.closeAll();
     this.tier1.closeAll();
     this.tier2Cache.closeAll();
+    this.speakerStateTracker.closeAll();
     this.sessions.clear();
   }
 
@@ -677,4 +739,23 @@ export function getTopicLabelById(
   }
 
   return topics.find((topic) => topic.topicId === topicId)?.label;
+}
+
+function speakerStateAlertToAlert(
+  ssAlert: SpeakerStateAlert,
+  utterance: Utterance
+): Alert {
+  return createAlert({
+    category: ssAlert.category,
+    severity: ssAlert.severity,
+    speaker: utterance.speaker,
+    triggerUtteranceId: utterance.utteranceId,
+    topicId: ssAlert.topicId ?? utterance.topicId ?? "",
+    title: ssAlert.message,
+    message: ssAlert.surfaceReason,
+    suggestion: ssAlert.suggestion,
+    routing: "shared",
+    confidence: ssAlert.confidence,
+    triggerTier: 2,
+  });
 }
