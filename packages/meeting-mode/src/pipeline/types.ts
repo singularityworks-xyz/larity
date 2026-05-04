@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Commitment } from "../commitment/types";
 import type { Constraint } from "../constraint/types";
+import type { SpeakerStateSummary } from "../speaker-state/types";
 import type { SpeakerIdentity, Utterance } from "../utterance/types";
 
 export const tier2IntentSchema = z.enum([
@@ -134,6 +135,7 @@ export interface Tier4Context {
   matchedHistoricalItems: Tier4HistoricalMatch[];
   matchedCommitments: Tier4CommitmentMatch[];
   relevantConstraints: Constraint[];
+  speakerStates?: SpeakerStateSummary[];
 }
 
 export const tier4AlertTypeLiterals = [

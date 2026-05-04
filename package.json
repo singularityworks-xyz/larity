@@ -15,7 +15,7 @@
     "lint:root": "biome check --log-level=info --diagnostic-level=warn .",
     "lint:fix": "turbo run lint:fix && bun run lint:root --write",
     "format": "turbo run format && biome format --write .",
-    "format:check": "turbo run format:check && biome format --check .",
+    "format:check": "turbo run format:check && biome format .",
     "check": "ultracite check",
     "test": "find packages apps -name '*.test.ts' ! -name '*.integration.test.ts' -not -path '*/node_modules/*' -type f | xargs bun test",
     "test:integration": "find packages apps -name '*.integration.test.ts' -not -path '*/node_modules/*' -type f | xargs bun test",

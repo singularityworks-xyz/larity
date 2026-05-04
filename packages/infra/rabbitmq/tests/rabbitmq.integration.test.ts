@@ -44,9 +44,23 @@ class RabbitMQTestContainer {
       "rabbitmq:3-management-alpine",
     ];
 
-    const result = execSync(cmd.join(" "));
-    this.containerId = result.toString().trim();
-    console.log(`Container started with ID: ${this.containerId}`);
+    try {
+      const result = execSync(cmd.join(" "));
+      this.containerId = result.toString().trim();
+      console.log(`Container started with ID: ${this.containerId}`);
+    } catch (e: any) {
+      if (
+        e.stderr &&
+        (e.stderr.toString().includes("port is already allocated") ||
+          e.stderr.toString().includes("address already in use"))
+      ) {
+        console.log(
+          "RabbitMQ port already in use, assuming dev container is running."
+        );
+      } else {
+        throw e;
+      }
+    }
   }
 
   async waitForReady(maxRetries = 60): Promise<void> {

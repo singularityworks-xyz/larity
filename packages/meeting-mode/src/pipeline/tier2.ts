@@ -95,7 +95,8 @@ export class Tier2Classifier {
     }
 
     this.lastPromptTokens = response.usageMetadata?.promptTokenCount ?? 0;
-    this.lastCompletionTokens = response.usageMetadata?.candidatesTokenCount ?? 0;
+    this.lastCompletionTokens =
+      response.usageMetadata?.candidatesTokenCount ?? 0;
 
     return response.text;
   }
@@ -112,9 +113,7 @@ function fallbackClassification(): Tier2Classification {
   };
 }
 
-export function shouldStopAtTier2(
-  classification: Tier2Classification
-): boolean {
+function shouldStopAtTier2(classification: Tier2Classification): boolean {
   const lowSignalIntent =
     classification.intent === "filler" || classification.intent === "general";
 
