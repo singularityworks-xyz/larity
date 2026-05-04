@@ -159,7 +159,8 @@ function geminiTier4StructuredSchema(): {
 export class Tier4DeepReasoner {
   private readonly ai: GoogleGenAI;
   private readonly timeoutMs: number;
-  private lastTokenCount = 0;
+  private lastPromptTokens = 0;
+  private lastCompletionTokens = 0;
   private readonly invoke: (
     prompt: string,
     timeoutMs: number
@@ -179,7 +180,8 @@ export class Tier4DeepReasoner {
    */
   async reason(context: Tier4Context): Promise<{
     response: Tier4Response | null;
-    tokenCount: number;
+    promptTokens: number;
+    completionTokens: number;
   }> {
     const prompt = buildTier4Prompt(context);
 
@@ -192,15 +194,24 @@ export class Tier4DeepReasoner {
           { issues: validation.error.issues.map((issue) => issue.message) },
           "Tier4 returned invalid schema"
         );
-        return { response: null, tokenCount: this.lastTokenCount || 0 };
+        return {
+          response: null,
+          promptTokens: this.lastPromptTokens || 0,
+          completionTokens: this.lastCompletionTokens || 0
+        };
       }
       return {
         response: validation.data,
-        tokenCount: this.lastTokenCount || 0,
+        promptTokens: this.lastPromptTokens || 0,
+        completionTokens: this.lastCompletionTokens || 0,
       };
     } catch (error) {
       log.warn({ err: error }, "Tier4 reasoning failed silently");
-      return { response: null, tokenCount: this.lastTokenCount || 0 };
+      return {
+        response: null,
+        promptTokens: this.lastPromptTokens || 0,
+        completionTokens: this.lastCompletionTokens || 0
+      };
     }
   }
 
@@ -231,7 +242,8 @@ export class Tier4DeepReasoner {
         throw new Error("Gemini tier4 returned empty content");
       }
 
-      this.lastTokenCount = response.usageMetadata?.totalTokenCount ?? 0;
+      this.lastPromptTokens = response.usageMetadata?.promptTokenCount ?? 0;
+      this.lastCompletionTokens = response.usageMetadata?.candidatesTokenCount ?? 0;
 
       return response.text;
     } catch (error) {

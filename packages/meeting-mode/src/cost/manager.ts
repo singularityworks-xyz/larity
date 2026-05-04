@@ -5,9 +5,9 @@ const log = createMeetingModeLogger("cost-manager");
 
 const COST_KEY_PREFIX = "meeting:cost:";
 
-const MODEL_PRICING: Record<string, number> = {
-  "gemini-3.1-flash-lite-preview": 0.075,
-  "gemini-pro": 1.25,
+const MODEL_PRICING: Record<string, { inputRate: number; outputRate: number }> = {
+  "gemini-3.1-flash-lite-preview": { inputRate: 0.25, outputRate: 1.50 },
+  "gemini-pro": { inputRate: 1.25, outputRate: 1.25 },
 };
 
 const SESSION_COST_LIMIT = 2.0;
@@ -16,6 +16,7 @@ const WARNING_THRESHOLD = 1.6;
 export class CostManager {
   private readonly redis: Redis | null;
   private readonly costs = new Map<string, number>();
+  private readonly sessionRedisDisabled = new Map<string, boolean>();
 
   constructor(redis?: Redis) {
     this.redis = redis ?? null;
@@ -42,31 +43,37 @@ export class CostManager {
 
   async recordCost(
     sessionId: string,
-    tokens: number,
+    promptTokens: number,
+    completionTokens: number,
     model: string
   ): Promise<number> {
-    if (tokens <= 0) {
+    if (promptTokens <= 0 && completionTokens <= 0) {
       return this.getSessionCost(sessionId);
     }
 
-    const flashLitePrice = MODEL_PRICING["gemini-3.1-flash-lite-preview"];
-    const pricePerToken =
-      (MODEL_PRICING[model] ?? flashLitePrice ?? 0.075) / 1_000_000;
-    const cost = tokens * pricePerToken;
+    const flashLitePricing = MODEL_PRICING["gemini-3.1-flash-lite-preview"];
+    const pricing = MODEL_PRICING[model] ?? flashLitePricing ?? { inputRate: 0.075, outputRate: 0.075 };
+    const cost = (promptTokens * pricing.inputRate + completionTokens * pricing.outputRate) / 1_000_000;
 
-    if (this.redis) {
+    // Check if Redis is disabled for this session
+    const redisDisabled = this.sessionRedisDisabled.get(sessionId) ?? false;
+
+    if (this.redis && !redisDisabled) {
       try {
         const total = await this.redis.incrbyfloat(
           `${COST_KEY_PREFIX}${sessionId}`,
           cost
         );
         log.info(
-          { sessionId, tokens, model, cost, totalCost: Number(total) },
+          { sessionId, promptTokens, completionTokens, model, cost, totalCost: Number(total) },
           "Cost recorded"
         );
         return Number(total);
       } catch (error) {
         log.error({ err: error, sessionId }, "Failed to record cost to Redis");
+        // Mark Redis as disabled for this session
+        this.sessionRedisDisabled.set(sessionId, true);
+        // Fall through to in-memory tracking
       }
     }
 
@@ -77,15 +84,32 @@ export class CostManager {
   }
 
   async getSessionCost(sessionId: string): Promise<number> {
-    if (this.redis) {
+    // Check if Redis is disabled for this session
+    const redisDisabled = this.sessionRedisDisabled.get(sessionId) ?? false;
+
+    if (this.redis && !redisDisabled) {
       try {
         const val = await this.redis.get(`${COST_KEY_PREFIX}${sessionId}`);
-        return Number(val ?? 0);
+        if (val === null) {
+          return 0;
+        }
+        const parsed = parseFloat(val);
+        if (!isFinite(parsed)) {
+          log.warn(
+            { sessionId, rawValue: val },
+            "Redis returned non-numeric cost value, falling back to 0"
+          );
+          return 0;
+        }
+        return parsed;
       } catch (error) {
         log.error(
           { err: error, sessionId },
           "Failed to get session cost from Redis"
         );
+        // Mark Redis as disabled for this session
+        this.sessionRedisDisabled.set(sessionId, true);
+        // Fall through to in-memory tracking
       }
     }
 
@@ -109,5 +133,6 @@ export class CostManager {
       }
     }
     this.costs.delete(sessionId);
+    this.sessionRedisDisabled.delete(sessionId);
   }
 }

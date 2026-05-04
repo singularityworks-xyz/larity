@@ -509,11 +509,12 @@ export class MeetingPipelineEngine {
       tier4Ms = PERF.now() - tier4WallStart;
       tier4Response = tier4Result.response;
 
-      if (tier4Result.tokenCount > 0) {
+      if (tier4Result.promptTokens > 0 || tier4Result.completionTokens > 0) {
         this.costManager
           .recordCost(
             utterance.sessionId,
-            tier4Result.tokenCount,
+            tier4Result.promptTokens,
+            tier4Result.completionTokens,
             GEMINI_TIER4_MODEL
           )
           .catch((err) =>
@@ -639,9 +640,9 @@ export class MeetingPipelineEngine {
     const tier2 = await this.tier2.classify(input);
 
     // Record Tier2 cost
-    if (tier2.tokenCount && tier2.tokenCount > 0) {
+    if ((tier2.promptTokens && tier2.promptTokens > 0) || (tier2.completionTokens && tier2.completionTokens > 0)) {
       this.costManager
-        .recordCost(sessionId, tier2.tokenCount, GEMINI_TIER2_MODEL)
+        .recordCost(sessionId, tier2.promptTokens || 0, tier2.completionTokens || 0, GEMINI_TIER2_MODEL)
         .catch((err) =>
           log.warn(
             { err, utteranceId: utterance.utteranceId },
