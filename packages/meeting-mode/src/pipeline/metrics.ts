@@ -37,7 +37,6 @@ export const pipelineTier3Duration = new Histogram({
 export const pipelineTier4Duration = new Histogram({
   name: `${METRICS_PREFIX}_tier4_duration_ms`,
   help: "Tier 4 deep reasoning wall-clock duration in milliseconds",
-  labelNames: LABEL_NAMES,
   buckets: [50, 100, 200, 400, 800, 1500, 3000],
 });
 
@@ -50,7 +49,6 @@ export const pipelineGateDuration = new Histogram({
 export const pipelineTotalDuration = new Histogram({
   name: `${METRICS_PREFIX}_total_duration_ms`,
   help: "Total pipeline budget wall-clock duration in milliseconds",
-  labelNames: LABEL_NAMES,
   buckets: [10, 25, 50, 100, 200, 400, 800, 1500],
 });
 
