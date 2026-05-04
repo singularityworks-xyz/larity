@@ -25,10 +25,6 @@ mock.module("@larity/stt", () => ({
   },
 }));
 
-mock.module("../src/handlers/validate-session", () => ({
-  validateSession: async () => true,
-}));
-
 mock.module("../src/redis/publisher", () => ({
   publishSessionStart: async () => undefined,
   publishSessionEnd: async () => undefined,

@@ -44,6 +44,14 @@ class RedisTestContainer {
         if (code === 0) {
           console.log("Redis container started successfully");
           resolve();
+        } else if (
+          stderr.includes("port is already allocated") ||
+          stderr.includes("address already in use")
+        ) {
+          console.log(
+            "Redis port already in use, assuming dev container is running."
+          );
+          resolve();
         } else {
           console.error("Failed to start Redis container:", stderr);
           reject(

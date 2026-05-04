@@ -154,6 +154,7 @@ describe("pipeline/engine integration", () => {
       speaker: createTeamSpeaker("user-alice", "Alice", {
         speakerId: "spk_alice",
       }),
+      embedding: [0.1, 0.2, 0.3],
     });
 
     const first = await engine.evaluateUtterance(utterance);
