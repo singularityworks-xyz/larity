@@ -3,6 +3,7 @@ import { opentelemetry } from "@elysiajs/opentelemetry";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { Elysia } from "elysia";
+import { getMetricsText, startDefaultMetrics } from "meeting-mode";
 import { env } from "./env";
 import { createControlLogger } from "./logger";
 import { requireAuth } from "./middleware/auth";
@@ -30,6 +31,8 @@ const log = createControlLogger("server");
 const traceExporter = new OTLPTraceExporter({
   url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4317",
 });
+
+startDefaultMetrics();
 
 export const app = new Elysia()
   // Request logging/tracing
@@ -78,6 +81,13 @@ export const app = new Elysia()
   })
   // Health check
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
+  // Prometheus metrics
+  .get("/metrics", async () => {
+    const metrics = await getMetricsText();
+    return new Response(metrics, {
+      headers: { "Content-Type": "text/plain; version=0.0.4" },
+    });
+  })
   // Auth routes
   .use(authRoutes)
   // Internal server-to-server routes (no user auth required)

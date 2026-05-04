@@ -94,6 +94,7 @@ export interface Tier1Result {
 export interface Tier2Outcome {
   classification: Tier2Classification;
   shouldStopForDeepReasoning: boolean;
+  tokenCount?: number;
 }
 
 export interface Tier3Result {

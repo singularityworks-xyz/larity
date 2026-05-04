@@ -158,6 +158,7 @@ function geminiTier4StructuredSchema(): {
 export class Tier4DeepReasoner {
   private readonly ai: GoogleGenAI;
   private readonly timeoutMs: number;
+  private lastTokenCount = 0;
   private readonly invoke: (
     prompt: string,
     timeoutMs: number
@@ -175,7 +176,10 @@ export class Tier4DeepReasoner {
    * Returns parsed Tier 4 structured JSON or **null** on timeout / malformed / schema violation.
    * Callers MUST still enforce surfacing thresholds (confidence, shouldSurface).
    */
-  async reason(context: Tier4Context): Promise<Tier4Response | null> {
+  async reason(context: Tier4Context): Promise<{
+    response: Tier4Response | null;
+    tokenCount: number;
+  }> {
     const prompt = buildTier4Prompt(context);
 
     try {
@@ -187,12 +191,15 @@ export class Tier4DeepReasoner {
           { issues: validation.error.issues.map((issue) => issue.message) },
           "Tier4 returned invalid schema"
         );
-        return null;
+        return { response: null, tokenCount: this.lastTokenCount || 0 };
       }
-      return validation.data;
+      return {
+        response: validation.data,
+        tokenCount: this.lastTokenCount || 0,
+      };
     } catch (error) {
       log.warn({ err: error }, "Tier4 reasoning failed silently");
-      return null;
+      return { response: null, tokenCount: this.lastTokenCount || 0 };
     }
   }
 
@@ -222,6 +229,8 @@ export class Tier4DeepReasoner {
       if (!response.text) {
         throw new Error("Gemini tier4 returned empty content");
       }
+
+      this.lastTokenCount = response.usageMetadata?.totalTokenCount ?? 0;
 
       return response.text;
     } catch (error) {
