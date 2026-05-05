@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Constraint, PreloadedContextPayload } from "../constraint/types";
 import { createMeetingModeLogger } from "../logger";
 
@@ -223,7 +224,7 @@ function buildAgendaConstraints(
     }
 
     const constraint: Constraint = {
-      id: `agenda-${Buffer.from(item).toString("base64").slice(0, 12)}`,
+      id: `agenda-${createHash("sha256").update(item).digest("hex")}`,
       type: "dependency",
       value: item,
       source: "preloaded",
