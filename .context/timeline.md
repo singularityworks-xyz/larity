@@ -992,26 +992,36 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Deliverable:** Speaker behavioral tracking and engagement-based alerts working.
 
-### Day 36: Speculative Processing & Optimizations
+### Day 36: Speculative Processing & Optimizations ✓ COMPLETED
 
 **packages/meeting-mode**
 
-- [ ] Implement speculative processing on partial utterances (confidence > 0.7):
-  - [ ] Start Tier 2 classification speculatively
-  - [ ] Identify likely topic from partial text
-  - [ ] Pre-fetch relevant constraints
-  - [ ] Pre-warm LLM connection for high-signal keywords
-- [ ] Build speculative cache with validation on final utterance
-- [ ] Implement speculative discard logic (text mismatch > 30%)
-- [ ] Add predictive constraint loading:
-  - [ ] Agenda parsing from calendar
-  - [ ] Topic prediction from meeting title/agenda
-  - [ ] Hot cache for topic → constraint mappings
-- [ ] Implement speaker-aware processing priority:
-  - [ ] Current user's speech: parallel tiers, lower threshold (0.7), priority LLM queue
-  - [ ] Other TEAM speech: standard processing
-  - [ ] EXTERNAL speech: sequential, higher threshold (0.85)
-- [ ] Add confidence threshold tuning per alert category (Silent Collaborator thresholds)
+- [x] Implement speculative processing on partial utterances (confidence > 0.7):
+  - [x] Start Tier 2 classification speculatively
+  - [x] Identify likely topic from partial text (keyword-based predictTopics)
+  - [x] Pre-fetch relevant constraints
+  - [x] Pre-warm LLM connection for high-signal keywords
+- [x] Build speculative cache with Levenshtein validation on final utterance
+- [x] Implement speculative discard logic (text mismatch > 30% / SPECULATIVE_MISMATCH_THRESHOLD = 0.3)
+- [x] Add predictive constraint loading:
+  - [x] Agenda parsing from calendar
+  - [x] Topic prediction from meeting title/agenda
+  - [x] Hot cache for topic → constraint mappings
+- [x] Implement speaker-aware processing priority:
+  - [x] Current user's speech (`high`): parallel tiers, lower threshold (0.7), priority LLM queue
+  - [x] Other TEAM speech (`standard`): standard processing
+  - [x] EXTERNAL speech (`low`): sequential, higher threshold (0.85)
+- [x] Add confidence threshold tuning per alert category (Silent Collaborator thresholds)
+
+**Post-implementation fixes (May 2026):**
+
+- [x] Extract `applyTier2SideEffects` helper so commitment persistence, topic delta application, and cache priming run on speculative hits too, not only on real LLM calls
+- [x] Await session hydration before speculative partial processing so Tier 1 sees seeded context and predictive preloader has session constraints available
+- [x] Record speculative Tier 2 LLM token costs via `costManager` so `applyCostGates` and `pipelineSessionCostDollars` are accurate
+- [x] Replace reference equality (`===`) with structural `JSON.stringify` comparison in speculative cache dedup — was dead code, never matched
+- [x] Remove dead `topicToConstraints` field from predictive preloader (written but never read, leaked memory)
+- [x] Use SHA-256 content hash for agenda constraint IDs instead of brittle base64 slice(0,12) which collided on shared-prefix items
+- [x] Correct deprecated JSDoc in `MIN_TIER4_SURFACING_CONFIDENCE` to reference `getCategoryThreshold` instead of non-existent `shouldTier4RespondForCategory`
 
 **Deliverable:** Latency optimizations and processing priority working. ~200-300ms saved via speculation.
 
