@@ -5,7 +5,7 @@ import type { SpeakerIdentity } from "../utterance/types";
 import type { Tier4Response } from "./types";
 
 /**
- * @deprecated Use {@link shouldTier4RespondForCategory} or {@link SILENT_COLLABORATOR_THRESHOLDS} instead.
+ * @deprecated Use {@link getCategoryThreshold} or {@link SILENT_COLLABORATOR_THRESHOLDS} instead.
  * Kept for backward compatibility with code that needs a global floor.
  */
 export const MIN_TIER4_SURFACING_CONFIDENCE = 0.45;
