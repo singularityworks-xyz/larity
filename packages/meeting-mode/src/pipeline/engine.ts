@@ -340,6 +340,15 @@ export class MeetingPipelineEngine {
       tier2Task,
       tier3Task,
     ]);
+    // --- Apply Tier 2 side effects that runTier2 would normally handle,
+    //     when the classification came from a speculative cache hit ---
+    if (speculativeHit && speculativeMatch.result) {
+      await this.applyTier2SideEffects(
+        utterance,
+        speculativeMatch.result.classification
+      );
+    }
+
     const tier2Ms = PERF.now() - tier2Start;
     const tier1Ms = PERF.now() - tier1Start;
 
@@ -730,6 +739,27 @@ export class MeetingPipelineEngine {
     this.sessions.clear();
   }
 
+  private async applyTier2SideEffects(
+    utterance: Utterance,
+    classification: Tier2Classification
+  ): Promise<void> {
+    const { sessionId, text, embedding, topicId } = utterance;
+
+    if (embedding && embedding.length > 0) {
+      this.tier2Cache.set(sessionId, embedding, text, classification);
+    }
+
+    if (classification.topicDelta && topicId) {
+      await this.finalizer.applyTier2TopicDelta(
+        sessionId,
+        topicId,
+        classification.topicDelta
+      );
+    }
+
+    await this.maybeWriteCommitment(utterance, embedding, { classification });
+  }
+
   private async runTier2(utterance: Utterance): Promise<{
     classification: Tier2Classification;
     shouldStopForDeepReasoning: boolean;
@@ -801,20 +831,7 @@ export class MeetingPipelineEngine {
         );
     }
 
-    // Store in cache
-    if (embedding && embedding.length > 0) {
-      this.tier2Cache.set(sessionId, embedding, text, tier2.classification);
-    }
-
-    if (tier2.classification.topicDelta && utterance.topicId) {
-      await this.finalizer.applyTier2TopicDelta(
-        sessionId,
-        utterance.topicId,
-        tier2.classification.topicDelta
-      );
-    }
-
-    await this.maybeWriteCommitment(utterance, embedding, tier2);
+    await this.applyTier2SideEffects(utterance, tier2.classification);
 
     return { ...tier2, tier2CacheHit: false };
   }
