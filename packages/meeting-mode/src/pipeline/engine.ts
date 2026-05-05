@@ -544,7 +544,9 @@ export class MeetingPipelineEngine {
     return { runTier4, suppressReason: undefined };
   }
 
-  evaluatePartial(partial: PartialUtterance): void {
+  async evaluatePartial(partial: PartialUtterance): Promise<void> {
+    await this.ensureSessionHydrated(partial.sessionId);
+
     this.speculativeProcessor.processPartial(partial);
 
     const topics = this.predictivePreloader.predictTopics(partial.text);

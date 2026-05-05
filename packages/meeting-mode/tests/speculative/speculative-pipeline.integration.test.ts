@@ -134,7 +134,7 @@ describe("Speculative Processing Integration", () => {
       timestamp: Date.now(),
     };
 
-    engine.evaluatePartial(partial);
+    await engine.evaluatePartial(partial);
 
     await new Promise((r) => setTimeout(r, 100));
 
@@ -169,7 +169,7 @@ describe("Speculative Processing Integration", () => {
       timestamp: Date.now(),
     };
 
-    engine.evaluatePartial(partial);
+    await engine.evaluatePartial(partial);
 
     await new Promise((r) => setTimeout(r, 50));
 
