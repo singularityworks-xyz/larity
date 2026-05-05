@@ -35,7 +35,7 @@
     "ultracite": "7.1.4"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^6"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.2.0",
