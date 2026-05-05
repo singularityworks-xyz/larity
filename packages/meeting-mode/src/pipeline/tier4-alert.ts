@@ -1,9 +1,13 @@
 import type { Alert, AlertCategory } from "../alerts/types";
 import { createAlert } from "../alerts/types";
+import { SILENT_COLLABORATOR_THRESHOLDS } from "../speculative/types";
 import type { SpeakerIdentity } from "../utterance/types";
 import type { Tier4Response } from "./types";
 
-/** Minimum calibrated confidence — below this Tier 4 should not emit */
+/**
+ * @deprecated Use {@link shouldTier4RespondForCategory} or {@link SILENT_COLLABORATOR_THRESHOLDS} instead.
+ * Kept for backward compatibility with code that needs a global floor.
+ */
 export const MIN_TIER4_SURFACING_CONFIDENCE = 0.45;
 
 /** Human-readable titles keyed by canonical alert categories */
@@ -47,13 +51,15 @@ export function coerceTier4RoutingForPublication(params: {
 
 /**
  * Decide whether Tier 4 wishes to abstain despite schema validity.
+ * Uses per-category confidence thresholds from SILENT_COLLABORATOR_THRESHOLDS.
  */
 export function shouldTier4Respond(response: Tier4Response): boolean {
-  if (
-    response.alertType === "none" ||
-    !response.shouldSurface ||
-    response.confidence < MIN_TIER4_SURFACING_CONFIDENCE
-  ) {
+  if (response.alertType === "none" || !response.shouldSurface) {
+    return false;
+  }
+
+  const threshold = getCategoryThreshold(response.alertType as AlertCategory);
+  if (response.confidence < threshold) {
     return false;
   }
 
@@ -74,6 +80,16 @@ export function shouldTier4Respond(response: Tier4Response): boolean {
   }
 
   return true;
+}
+
+/**
+ * Per-category confidence floor for Tier 4 alert surfacing.
+ * Falls back to MIN_TIER4_SURFACING_CONFIDENCE for unknown categories.
+ */
+export function getCategoryThreshold(category: AlertCategory): number {
+  return (
+    SILENT_COLLABORATOR_THRESHOLDS[category] ?? MIN_TIER4_SURFACING_CONFIDENCE
+  );
 }
 
 export function buildAlertFromTier4Response(params: {

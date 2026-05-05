@@ -944,15 +944,15 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 - [x] **Information Risk Alerts:**
   - [x] Tier 1 catches structural patterns (API keys, client name matches)
   - [x] Tier 2 catches semantic risks (financial disclosure, roadmap leaks, strategy)
-  - [ ] Routing: BOTH (shared + personal to speaker)
+  - [x] Routing: BOTH (shared + personal to speaker)
 
-- [ ] **Tone Warning Alerts:**
-  - [ ] Tier 2's `tone` field identifies defensive/aggressive/reactive
-  - [ ] Routing: own speech → personal, team member → shared
+- [x] **Tone Warning Alerts:**
+  - [x] Tier 2's `tone` field identifies defensive/aggressive/reactive
+  - [x] Routing: own speech → personal, team member → shared
 
-- [ ] **Policy Violation Alerts:**
-  - [ ] Tier 1 blocklist matches + Tier 2 semantic detection
-  - [ ] Routing: BOTH (shared + personal to speaker)
+- [x] **Policy Violation Alerts:**
+  - [x] Tier 1 blocklist matches + Tier 2 semantic detection
+  - [x] Routing: BOTH (shared + personal to speaker)
 
 **Deliverable:** All risk and behavioral alert categories operational with correct routing.
 
