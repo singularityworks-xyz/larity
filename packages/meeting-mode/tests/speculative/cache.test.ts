@@ -100,16 +100,16 @@ describe("SpeculativeCache", () => {
   it("evicts oldest entries when max size reached", () => {
     const cache = new SpeculativeCache();
     const longPrefixes = Array.from(
-      { length: 55 },
+      { length: 105 },
       (_, i) =>
         `session${i} exclusive content about project alpha bravo charlie delta echo foxtrot golf hotel`
     );
-    for (let i = 0; i < 55; i++) {
+    for (let i = 0; i < 105; i++) {
       const prefix = longPrefixes[i];
       cache.set("session-1", "spk_0", createResult(prefix ?? ""));
     }
 
-    const lastPrefix = longPrefixes[54];
+    const lastPrefix = longPrefixes[104];
     const recentMatch = cache.match("session-1", lastPrefix ?? "");
     expect(recentMatch.matched).toBe(true);
   });
