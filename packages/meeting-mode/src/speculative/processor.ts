@@ -1,3 +1,5 @@
+import type { CostManager } from "../cost/manager";
+import { GEMINI_TIER2_MODEL } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import type { Tier1StructuralDetector } from "../pipeline/tier1";
 import type { Tier2Classifier } from "../pipeline/tier2";
@@ -45,6 +47,7 @@ export interface SpeculativeProcessorDeps {
   tier1: Tier1StructuralDetector;
   tier2: Tier2Classifier;
   cache?: SpeculativeCache;
+  costManager?: CostManager;
   getRecentSameSpeakerText?: (
     sessionId: string,
     speakerId: string,
@@ -60,6 +63,7 @@ export class SpeculativeProcessor {
   private readonly tier1: Tier1StructuralDetector;
   private readonly tier2: Tier2Classifier;
   private readonly cache: SpeculativeCache;
+  private readonly costManager: CostManager | undefined;
   private readonly getRecentSameSpeakerText: NonNullable<
     SpeculativeProcessorDeps["getRecentSameSpeakerText"]
   >;
@@ -71,6 +75,7 @@ export class SpeculativeProcessor {
     this.tier1 = deps.tier1;
     this.tier2 = deps.tier2;
     this.cache = deps.cache ?? new SpeculativeCache();
+    this.costManager = deps.costManager;
     this.getRecentSameSpeakerText = deps.getRecentSameSpeakerText ?? (() => []);
     this.getCurrentTopicLabel =
       deps.getCurrentTopicLabel ?? (async () => undefined);
@@ -133,6 +138,26 @@ export class SpeculativeProcessor {
     };
 
     const tier2Outcome = await this.tier2.classify(input);
+
+    if (
+      this.costManager &&
+      ((tier2Outcome.promptTokens ?? 0) > 0 ||
+        (tier2Outcome.completionTokens ?? 0) > 0)
+    ) {
+      this.costManager
+        .recordCost(
+          partial.sessionId,
+          tier2Outcome.promptTokens ?? 0,
+          tier2Outcome.completionTokens ?? 0,
+          GEMINI_TIER2_MODEL
+        )
+        .catch((err) =>
+          log.warn(
+            { err, sessionId: partial.sessionId },
+            "Speculative Tier2 cost recording failed"
+          )
+        );
+    }
 
     this.cache.set(partial.sessionId, partial.speaker.speakerId, {
       partialText: partial.text,

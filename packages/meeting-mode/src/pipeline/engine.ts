@@ -234,6 +234,7 @@ export class MeetingPipelineEngine {
       new SpeculativeProcessor({
         tier1: this.tier1,
         tier2: this.tier2,
+        costManager: this.costManager,
         getRecentSameSpeakerText: (sid, spkId, limit) =>
           this.finalizer.getRecentSameSpeakerText(sid, spkId, undefined, limit),
         getCurrentTopicLabel: (sid, topicId) =>
