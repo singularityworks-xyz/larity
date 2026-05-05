@@ -2,7 +2,11 @@ import { describe, expect, it } from "bun:test";
 import { SpeculativeCache } from "../../src/speculative/cache";
 import type { SpeculativeResult } from "../../src/speculative/types";
 
-function createResult(partialText: string, age = 0): SpeculativeResult {
+function createResult(
+  partialText: string,
+  age = 0,
+  extra?: Partial<SpeculativeResult["classification"]>
+): SpeculativeResult {
   return {
     partialText,
     classification: {
@@ -12,6 +16,7 @@ function createResult(partialText: string, age = 0): SpeculativeResult {
       riskSignals: [],
       extractedData: {},
       confidence: 0.8,
+      ...extra,
     },
     tier1Result: {
       detections: [],
@@ -68,9 +73,21 @@ describe("SpeculativeCache", () => {
 
   it("finds best match among multiple candidates", () => {
     const cache = new SpeculativeCache();
-    cache.set("session-1", "spk_0", createResult("The budget is tight"));
-    cache.set("session-1", "spk_0", createResult("We can deliver by Friday"));
-    cache.set("session-1", "spk_0", createResult("The timeline is short"));
+    cache.set(
+      "session-1",
+      "spk_0",
+      createResult("The budget is tight", 0, { confidence: 0.7 })
+    );
+    cache.set(
+      "session-1",
+      "spk_0",
+      createResult("We can deliver by Friday", 0, { confidence: 0.8 })
+    );
+    cache.set(
+      "session-1",
+      "spk_0",
+      createResult("The timeline is short", 0, { confidence: 0.9 })
+    );
 
     const match = cache.match(
       "session-1",

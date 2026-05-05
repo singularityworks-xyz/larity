@@ -2,12 +2,20 @@ import {
   levenshteinDistance,
   normalizeAlphaNumeric,
 } from "../pipeline/text-utils";
+import type { Tier2Classification } from "../pipeline/types";
 import type { SpeculativeMatch, SpeculativeResult } from "./types";
 import {
   SPECULATIVE_MAX_ENTRIES_PER_SESSION,
   SPECULATIVE_MISMATCH_THRESHOLD,
   SPECULATIVE_TTL_MS,
 } from "./types";
+
+function structuredEquiv(
+  a: Tier2Classification,
+  b: Tier2Classification
+): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
 
 interface SessionEntry {
   results: SpeculativeResult[];
@@ -23,12 +31,11 @@ export class SpeculativeCache {
       this.sessions.set(sessionId, entry);
     }
 
-    const existing = entry.results.find(
-      (r) => r.classification === result.classification
+    const existingIdx = entry.results.findIndex((r) =>
+      structuredEquiv(r.classification, result.classification)
     );
-    if (existing) {
-      const idx = entry.results.indexOf(existing);
-      entry.results.splice(idx, 1);
+    if (existingIdx !== -1) {
+      entry.results.splice(existingIdx, 1);
       entry.results.push(result);
       return;
     }
