@@ -63,18 +63,12 @@ interface HotCacheEntry {
 
 export class PredictivePreloader {
   private readonly hotCache = new Map<string, Map<string, HotCacheEntry>>();
-  private readonly topicToConstraints = new Map<
-    string,
-    Map<string, Constraint[]>
-  >();
 
   seedFromContext(sessionId: string, payload: PreloadedContextPayload): void {
     const sessionCache = this.getOrCreateSessionCache(sessionId);
 
     const policyConstraints = buildPolicyConstraints(payload);
     for (const [topic, constraints] of policyConstraints) {
-      const topicCache = this.getOrCreateTopicMap(topic);
-      topicCache.set(sessionId, constraints);
       sessionCache.set(topic, {
         constraints,
         lastAccessed: Date.now(),
@@ -173,14 +167,10 @@ export class PredictivePreloader {
 
   closeSession(sessionId: string): void {
     this.hotCache.delete(sessionId);
-    for (const topicMap of this.topicToConstraints.values()) {
-      topicMap.delete(sessionId);
-    }
   }
 
   closeAll(): void {
     this.hotCache.clear();
-    this.topicToConstraints.clear();
   }
 
   private getOrCreateSessionCache(
@@ -192,15 +182,6 @@ export class PredictivePreloader {
       this.hotCache.set(sessionId, cache);
     }
     return cache;
-  }
-
-  private getOrCreateTopicMap(topic: string): Map<string, Constraint[]> {
-    let map = this.topicToConstraints.get(topic);
-    if (!map) {
-      map = new Map();
-      this.topicToConstraints.set(topic, map);
-    }
-    return map;
   }
 }
 
