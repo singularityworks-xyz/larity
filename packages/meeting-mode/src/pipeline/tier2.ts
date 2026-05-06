@@ -175,6 +175,7 @@ Intent rubric:
 Risk signal rules:
 - riskSignals must be concise semantic labels, max 3, and only when the utterance has business risk.
 - Include risks for unconditional promises, underestimation, open-ended scope, vague ownership/deadlines, pressure tactics, tone escalation, information disclosure, policy/legal/compliance concerns, scope creep, backtracking, or risky pricing/resource/capability claims.
+- If the utterance mentions a specific price, dollar amount, currency value, or pricing decision, always include "pricing_discussed" as a riskSignal — even if the overall intent is filler or general. Pricing commitments must never be silently dropped.
 - Do NOT add riskSignals for greetings, "am I audible", thanks, "sounds good", filler, or STT artifacts unless they clearly contain business risk.
 
 Extraction rules:
@@ -184,7 +185,54 @@ Extraction rules:
 - topicDelta is optional. Emit only high-value reducer updates: canonical decision, commitment, openQuestion, risk, owner, deadline, or short labelHint. Omit vague/low-signal deltas.
 - Work for English, Hindi, Hinglish, and code-switched speech.
 - Treat broken STT punctuation/fragments conservatively; lower confidence rather than inventing facts.
-- If uncertain, lower confidence and avoid hallucinating.`.trim(),
+- If uncertain, lower confidence and avoid hallucinating.
+
+Calibration examples — use these to align your judgment:
+
+"Let's skip $400 the minimum price that we'll go for"
+→ intent:commitment, commitmentType:price, tone:confident, riskSignals:["pricing_discussed"], extractedData:{amount:400,currency:"USD"}, confidence:0.9
+
+"$300 works fine to us. Right?"
+→ intent:commitment, commitmentType:price, tone:confident, riskSignals:["pricing_discussed"], extractedData:{amount:300,currency:"USD"}, confidence:0.85
+
+"Hum char sau dollar minimum rakhenge"
+→ intent:commitment, commitmentType:price, tone:confident, riskSignals:["pricing_discussed"], confidence:0.85
+
+"I'll deliver the prototype by Friday end of day"
+→ intent:commitment, commitmentType:timeline, tone:confident, riskSignals:["vague_deadline"], extractedData:{deadline:"Friday end of day"}, confidence:0.85
+
+"We can handle the design work as part of this engagement"
+→ intent:commitment, commitmentType:scope, tone:confident, riskSignals:["scope_creep_risk"], extractedData:{scope:"design work"}, confidence:0.8
+
+"Yes that approach works for us let's proceed"
+→ intent:decision, commitmentType:scope, tone:confident, riskSignals:[], confidence:0.9
+
+"Okay we'll go with React for the frontend"
+→ intent:decision, commitmentType:capability, tone:confident, riskSignals:[], confidence:0.9
+
+"Let's finalize that. We'll go with one hundred dollars"
+→ intent:decision, commitmentType:price, tone:confident, riskSignals:["pricing_discussed"], extractedData:{amount:100,currency:"USD"}, confidence:0.95
+
+"Is that timeline realistic with our current team"
+→ intent:concern, commitmentType:timeline, tone:hesitant, riskSignals:["timeline_risk"], confidence:0.85
+
+"I'm worried the scope will creep without defined deliverables"
+→ intent:concern, commitmentType:scope, tone:hesitant, riskSignals:["scope_creep_risk"], confidence:0.85
+
+"I think that approach makes sense overall"
+→ intent:general, commitmentType:null, tone:neutral, riskSignals:[], confidence:0.9
+
+"Let's discuss the agenda for today"
+→ intent:general, commitmentType:null, tone:neutral, riskSignals:[], confidence:0.9
+
+"Toh meeting shuru karte hain"
+→ intent:general, commitmentType:null, tone:neutral, riskSignals:[], confidence:0.9
+
+"Okay sounds good"
+→ intent:filler, commitmentType:null, tone:neutral, riskSignals:[], confidence:0.95
+
+"Am I audible right now"
+→ intent:filler, commitmentType:null, tone:neutral, riskSignals:[], confidence:0.95`.trim(),
     `utterance: ${input.utterance}`,
     `speaker: ${JSON.stringify(speakerInfo)}`,
     `recentSameSpeaker:\n${recentBlock}`,
