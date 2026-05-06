@@ -17,6 +17,10 @@ const CURRENCY_REGEX =
   /(?:[$€£₹]\s?\d+(?:[.,]\d+)?|\b\d+(?:[.,]\d+)?\s?(?:usd|inr|eur|gbp|rs|rupees?)\b)/gi;
 const QUANTITY_REGEX =
   /\b\d+\s?(?:hours?|days?|weeks?|months?|people|developers|engineers|tickets?)\b/gi;
+/** Lightweight currency indicator check without the `g` flag — avoids sticky
+ *  lastIndex issues when called inside `.some()` across multiple detect() calls. */
+const PRICING_HINT_RE =
+  /[$€£₹]|\b(?:usd|inr|eur|gbp|rs|rupees?|dollars?|cents?)\b/i;
 const TECHNICAL_PATTERN_REGEXES: ReadonlyArray<{
   type: string;
   regex: RegExp;
@@ -115,6 +119,9 @@ export class Tier1StructuralDetector {
     }
 
     const deduped = dedupeDetections(detections);
+    const pricingHit = deduped.some(
+      (d) => d.type === "number" && PRICING_HINT_RE.test(d.value)
+    );
 
     return {
       detections: deduped,
@@ -123,6 +130,7 @@ export class Tier1StructuralDetector {
         (item) =>
           item.type === "blocklist_keyword" || item.type === "client_name"
       ),
+      pricingHit,
     };
   }
 
