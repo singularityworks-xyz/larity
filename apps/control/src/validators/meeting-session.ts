@@ -45,6 +45,9 @@ export const startAdhocSessionSchema = z.object({
     .min(1, "Title must not be empty")
     .max(255, "Title must be less than 255 characters")
     .optional(),
+  description: z.string().max(10_000).optional(),
+  agenda: z.string().max(10_000).optional(),
+  scheduledAt: z.coerce.date().optional(),
   metadata: startSessionSchema.shape.metadata,
 });
 

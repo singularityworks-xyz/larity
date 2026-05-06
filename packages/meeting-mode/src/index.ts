@@ -188,7 +188,9 @@ async function main(): Promise<void> {
   rootLogger.info("============================================");
 }
 
-main().catch((error) => {
-  rootLogger.fatal({ err: error }, "Unhandled error");
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error) => {
+    rootLogger.fatal({ err: error }, "Unhandled error");
+    process.exit(1);
+  });
+}
