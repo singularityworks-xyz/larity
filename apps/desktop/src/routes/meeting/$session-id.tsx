@@ -16,6 +16,7 @@ import { TranscriptStream } from "../../features/meeting-live/transcript-stream"
 import type {
   LiveCommitment,
   LiveParticipant,
+  LivePendingUtterance,
   LiveTopic,
   LiveUtterance,
 } from "../../features/meeting-live/types";
@@ -69,6 +70,19 @@ function getWsBaseUrl(websocketUrl: string | undefined): string {
   }
 }
 
+function pendingOverlapsSttRange(
+  p: LivePendingUtterance,
+  utteranceStartOffset: number,
+  utteranceDuration: number,
+  slackSec = 0.5
+): boolean {
+  const u0 = utteranceStartOffset - slackSec;
+  const u1 = utteranceStartOffset + utteranceDuration + slackSec;
+  const p0 = p.startSec - slackSec;
+  const p1 = p.startSec + p.durationSec + slackSec;
+  return p0 < u1 && p1 > u0;
+}
+
 export function MeetingPage() {
   const navigate = useNavigate();
   const { sessionId = "" } = useParams();
@@ -98,6 +112,14 @@ export function MeetingPage() {
 
   const [topics, setTopics] = useState<LiveTopic[]>([]);
   const [utterances, setUtterances] = useState<LiveUtterance[]>([]);
+  const [pendingFinals, setPendingFinals] = useState<LivePendingUtterance[]>(
+    []
+  );
+  const [livePartial, setLivePartial] = useState<{
+    text: string;
+    ts: number;
+    channel: number;
+  } | null>(null);
   const [participants, setParticipants] = useState<LiveParticipant[]>([]);
   const [commitments, setCommitments] = useState<LiveCommitment[]>([]);
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
@@ -228,6 +250,13 @@ export function MeetingPage() {
 
   useEffect(() => {
     const unsubUtterance = streamingClient.subscribe("utterance", (data) => {
+      const timing = data as unknown as {
+        startOffset?: number;
+        duration?: number;
+      };
+      const startOffset = timing.startOffset;
+      const duration = timing.duration;
+
       const utterance = mapBackendUtteranceToLive(
         data as unknown as Parameters<typeof mapBackendUtteranceToLive>[0]
       );
@@ -237,6 +266,11 @@ export function MeetingPage() {
         }
         return [...prev, utterance];
       });
+      if (typeof startOffset === "number" && typeof duration === "number") {
+        setPendingFinals((prev) =>
+          prev.filter((p) => !pendingOverlapsSttRange(p, startOffset, duration))
+        );
+      }
       setParticipants((prev) => {
         const raw = data as unknown as { speaker?: Record<string, unknown> };
         if (!raw.speaker) {
@@ -297,10 +331,51 @@ export function MeetingPage() {
       );
     });
 
+    const unsubSttPartial = streamingClient.subscribe("stt_partial", (data) => {
+      const transcript =
+        typeof data.transcript === "string" ? data.transcript.trim() : "";
+      if (!transcript) {
+        return;
+      }
+      const ts = typeof data.ts === "number" ? data.ts : Date.now();
+      const channel = typeof data.channel === "number" ? data.channel : 0;
+      setLivePartial({ text: transcript, ts, channel });
+    });
+
+    const unsubSttFinal = streamingClient.subscribe("stt_final", (data) => {
+      setLivePartial(null);
+      const transcript =
+        typeof data.transcript === "string" ? data.transcript.trim() : "";
+      if (!transcript) {
+        return;
+      }
+      const channel = typeof data.channel === "number" ? data.channel : 0;
+      const startSec = typeof data.start === "number" ? data.start : 0;
+      const durationSec = typeof data.duration === "number" ? data.duration : 0;
+      const ts = typeof data.ts === "number" ? data.ts : Date.now();
+      const key = `${channel}:${startSec.toFixed(3)}`;
+      setPendingFinals((prev) => {
+        const withoutSameKey = prev.filter((p) => p.key !== key);
+        return [
+          ...withoutSameKey,
+          {
+            key,
+            text: transcript,
+            channel,
+            startSec,
+            durationSec,
+            ts,
+          },
+        ];
+      });
+    });
+
     return () => {
       unsubUtterance();
       unsubTopic();
       unsubLedger();
+      unsubSttPartial();
+      unsubSttFinal();
     };
   }, [streamingClient]);
 
@@ -449,8 +524,10 @@ export function MeetingPage() {
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <TranscriptStream
+          livePartial={livePartial}
           meetingStartedAtMs={meetingStartedAtMs}
           onConsumedScrollTarget={clearScrollTarget}
+          pendingFinals={pendingFinals}
           scrollTargetId={scrollTargetId}
           utterances={utterances}
         />
