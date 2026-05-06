@@ -1,12 +1,13 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import { GEMINI_API_KEY, GEMINI_TIER2_MODEL } from "../env";
+import Groq from "groq-sdk";
+import { GROQ_API_KEY, GROQ_TIER2_MODEL } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import type { Tier2Classification, Tier2Input, Tier2Outcome } from "./types";
 import { tier2ClassificationSchema } from "./types";
 
 const log = createMeetingModeLogger("tier2-classifier");
 
-const TIER2_TIMEOUT_MS = 3000;
+const TIER2_TIMEOUT_MS = 1500;
+const TIER2_MAX_COMPLETION_TOKENS = 400;
 
 export interface Tier2ClassifierOptions {
   timeoutMs?: number;
@@ -14,7 +15,7 @@ export interface Tier2ClassifierOptions {
 }
 
 export class Tier2Classifier {
-  private readonly ai: GoogleGenAI;
+  private readonly groq: Groq | undefined;
   private readonly timeoutMs: number;
   private lastPromptTokens = 0;
   private lastCompletionTokens = 0;
@@ -24,11 +25,15 @@ export class Tier2Classifier {
   ) => Promise<string>;
 
   constructor(options: Tier2ClassifierOptions = {}) {
-    this.ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
     this.timeoutMs = options.timeoutMs ?? TIER2_TIMEOUT_MS;
-    this.invoke =
-      options.invoke ??
-      ((input, timeoutMs) => this.invokeGeminiTier2(input, timeoutMs));
+    if (options.invoke) {
+      this.groq = undefined;
+      this.invoke = options.invoke;
+    } else {
+      this.groq = new Groq({ apiKey: GROQ_API_KEY, maxRetries: 0 });
+      this.invoke = (input, timeoutMs) =>
+        this.invokeGroqTier2(input, timeoutMs);
+    }
   }
 
   async classify(input: Tier2Input): Promise<Tier2Outcome> {
@@ -67,39 +72,113 @@ export class Tier2Classifier {
     }
   }
 
-  private async invokeGeminiTier2(
+  private async invokeGroqTier2(
     input: Tier2Input,
     timeoutMs: number
   ): Promise<string> {
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      const timeoutHandle = setTimeout(() => {
-        clearTimeout(timeoutHandle);
-        reject(new Error("Tier2 Gemini timeout"));
-      }, timeoutMs);
-    });
-
-    const call = this.ai.models.generateContent({
-      model: GEMINI_TIER2_MODEL,
-      contents: buildPrompt(input),
-      config: {
-        temperature: 0,
-        responseMimeType: "application/json",
-        responseSchema: getTier2ResponseSchema(),
-      },
-    });
-
-    const response = await Promise.race([call, timeoutPromise]);
-
-    if (!response.text) {
-      throw new Error("Gemini tier2 returned empty content");
+    if (!this.groq) {
+      throw new Error("Tier2 Groq client not initialized");
     }
 
-    this.lastPromptTokens = response.usageMetadata?.promptTokenCount ?? 0;
-    this.lastCompletionTokens =
-      response.usageMetadata?.candidatesTokenCount ?? 0;
+    const completion = await this.groq.chat.completions.create(
+      {
+        model: GROQ_TIER2_MODEL,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: buildUserMessage(input) },
+        ],
+        temperature: 0,
+        max_tokens: TIER2_MAX_COMPLETION_TOKENS,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "Tier2Classification",
+            strict: true,
+            schema: getTier2JsonSchema(),
+          },
+        },
+      },
+      { timeout: timeoutMs }
+    );
 
-    return response.text;
+    const text = completion.choices[0]?.message?.content;
+    if (!text?.trim()) {
+      throw new Error("Groq tier2 returned empty content");
+    }
+
+    this.lastPromptTokens = completion.usage?.prompt_tokens ?? 0;
+    this.lastCompletionTokens = completion.usage?.completion_tokens ?? 0;
+
+    return text;
   }
+}
+
+/** Built once — rubric + compact calibration (system role). */
+const SYSTEM_PROMPT = [
+  `You are Tier 2: fast semantic classifier for live multilingual business meetings.
+Output must match the JSON schema only (intent, commitmentType, tone, riskSignals, extractedData, confidence, optional topicDelta).
+
+Classify the CURRENT utterance; use recentSameSpeaker only as short local context.
+
+Intent rubric:
+- commitment: obligation, promise, estimate, ownership, deadline, price, scope, resource, capability, or approval.
+- decision: resolved choice or agreement to remember.
+- question: asks info, approval, clarification, confirmation, or decision.
+- concern: risk, objection, uncertainty, legal/commercial concern, discomfort.
+- filler: greetings, backchannels, audibility, polite closers, noise.
+- general: substantive but not above.
+
+Risk signals (max 3, business risk only): unconditional promises, underestimation, open scope, vague deadlines/ownership, pressure, escalation, disclosure, compliance, scope creep, backtracking, risky pricing/capability.
+Always include "pricing_discussed" if any specific price/amount/currency/pricing decision appears — never drop pricing.
+Skip riskSignals for pure filler/STT noise unless business risk is clear.
+
+Fields:
+- commitmentType: timeline|scope|resource|price|capability|null
+- tone: neutral|defensive|aggressive|hesitant|confident
+- extractedData: only explicit deadline, quantity, scope, amount, currency — schema requires every key present (use null when unused)
+- topicDelta: null if low-signal; else object with every key present (labelHint, decision, commitment, openQuestion, risk, owner, deadline) — use null for unused keys (Groq strict JSON schema)
+
+English, Hindi, Hinglish, code-switching. Broken STT → lower confidence; never invent facts.
+
+Calibration (→ expected JSON shape):
+"Let's skip $400 the minimum price" → {intent:commitment,commitmentType:price,tone:confident,riskSignals:["pricing_discussed"],extractedData:{amount:400,currency:"USD"},confidence:0.9}
+"$300 works fine to us. Right?" → {intent:commitment,commitmentType:price,tone:confident,riskSignals:["pricing_discussed"],extractedData:{amount:300,currency:"USD"},confidence:0.85}
+"Hum char sau dollar minimum rakhenge" → {intent:commitment,commitmentType:price,tone:confident,riskSignals:["pricing_discussed"],confidence:0.85}
+"I'll deliver the prototype by Friday end of day" → {intent:commitment,commitmentType:timeline,tone:confident,riskSignals:["vague_deadline"],extractedData:{deadline:"Friday end of day"},confidence:0.85}
+"We can handle the design work as part of this engagement" → {intent:commitment,commitmentType:scope,tone:confident,riskSignals:["scope_creep_risk"],extractedData:{scope:"design work"},confidence:0.8}
+"Yes that approach works for us let's proceed" → {intent:decision,commitmentType:scope,tone:confident,riskSignals:[],confidence:0.9}
+"Okay we'll go with React for the frontend" → {intent:decision,commitmentType:capability,tone:confident,riskSignals:[],confidence:0.9}
+"Let's finalize that. We'll go with one hundred dollars" → {intent:decision,commitmentType:price,tone:confident,riskSignals:["pricing_discussed"],extractedData:{amount:100,currency:"USD"},confidence:0.95}
+"Is that timeline realistic with our current team" → {intent:concern,commitmentType:timeline,tone:hesitant,riskSignals:["timeline_risk"],confidence:0.85}
+"I'm worried the scope will creep without defined deliverables" → {intent:concern,commitmentType:scope,tone:hesitant,riskSignals:["scope_creep_risk"],confidence:0.85}
+"I think that approach makes sense overall" → {intent:general,commitmentType:null,tone:neutral,riskSignals:[],confidence:0.9}
+"Let's discuss the agenda for today" → {intent:general,commitmentType:null,tone:neutral,riskSignals:[],confidence:0.9}
+"Toh meeting shuru karte hain" → {intent:general,commitmentType:null,tone:neutral,riskSignals:[],confidence:0.9}
+"Okay sounds good" → {intent:filler,commitmentType:null,tone:neutral,riskSignals:[],confidence:0.95}
+"Am I audible right now" → {intent:filler,commitmentType:null,tone:neutral,riskSignals:[],confidence:0.95}`,
+].join("\n");
+
+function buildUserMessage(input: Tier2Input): string {
+  const recentBlock = input.recentSameSpeaker.length
+    ? input.recentSameSpeaker
+        .map((utterance, index) => `${index + 1}. ${utterance}`)
+        .join("\n")
+    : "None";
+
+  const speakerInfo = {
+    speakerId: input.speaker.speakerId,
+    type: input.speaker.type,
+    name: input.speaker.name,
+    isCurrentUser: input.speaker.isCurrentUser,
+  };
+
+  return [
+    `utterance: ${input.utterance}`,
+    `speaker: ${JSON.stringify(speakerInfo)}`,
+    `recentSameSpeaker:\n${recentBlock}`,
+    `topicLabel: ${input.topicLabel ?? "unknown"}`,
+    "Return only JSON.",
+  ].join("\n\n");
 }
 
 function fallbackClassification(): Tier2Classification {
@@ -130,123 +209,49 @@ function parseTier2Response(raw: string): unknown {
     throw new Error("Tier2 returned empty response");
   }
 
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const firstBrace = trimmed.indexOf("{");
-    const lastBrace = trimmed.lastIndexOf("}");
-    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
-      throw new Error("Tier2 response did not contain JSON");
-    }
-
-    const jsonChunk = trimmed.slice(firstBrace, lastBrace + 1);
-    return JSON.parse(jsonChunk);
-  }
+  return JSON.parse(trimmed);
 }
 
-function buildPrompt(input: Tier2Input): string {
-  const recentBlock = input.recentSameSpeaker.length
-    ? input.recentSameSpeaker
-        .map((utterance, index) => `${index + 1}. ${utterance}`)
-        .join("\n")
-    : "None";
+/** Groq strict JSON Schema: every key under `properties` must appear in `required`; use null for unused fields. */
+function nullableString(): { anyOf: [{ type: "string" }, { type: "null" }] } {
+  return { anyOf: [{ type: "string" }, { type: "null" }] };
+}
 
-  const speakerInfo = {
-    speakerId: input.speaker.speakerId,
-    type: input.speaker.type,
-    name: input.speaker.name,
-    isCurrentUser: input.speaker.isCurrentUser,
+function nullableNumber(): { anyOf: [{ type: "number" }, { type: "null" }] } {
+  return { anyOf: [{ type: "number" }, { type: "null" }] };
+}
+
+/** JSON Schema for Groq `response_format.json_schema` (strict). */
+function getTier2JsonSchema(): Record<string, unknown> {
+  const topicDeltaObject = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      labelHint: nullableString(),
+      decision: nullableString(),
+      commitment: nullableString(),
+      openQuestion: nullableString(),
+      risk: nullableString(),
+      owner: nullableString(),
+      deadline: nullableString(),
+    },
+    required: [
+      "labelHint",
+      "decision",
+      "commitment",
+      "openQuestion",
+      "risk",
+      "owner",
+      "deadline",
+    ],
   };
 
-  return [
-    `You are Tier 2, the fast semantic source of truth for live multilingual business meetings.
-Return strict JSON only with fields: intent, commitmentType, tone, riskSignals, extractedData, confidence, topicDelta.
-
-Classify the CURRENT utterance, using recentSameSpeaker only as short local context.
-
-Intent rubric:
-- commitment: speaker creates/changes an obligation, promise, estimate, ownership, deadline, price, scope, resource, capability, or approval.
-- decision: speaker states a resolved choice or agreement that should be remembered.
-- question: speaker asks for information, approval, clarification, confirmation, or a decision.
-- concern: speaker expresses risk, objection, uncertainty, legal/commercial concern, or customer/team discomfort.
-- filler: greetings, acknowledgements, audibility checks, backchannels, polite closers, repeated fragments, or transcript noise.
-- general: substantive but not a commitment/decision/question/concern.
-
-Risk signal rules:
-- riskSignals must be concise semantic labels, max 3, and only when the utterance has business risk.
-- Include risks for unconditional promises, underestimation, open-ended scope, vague ownership/deadlines, pressure tactics, tone escalation, information disclosure, policy/legal/compliance concerns, scope creep, backtracking, or risky pricing/resource/capability claims.
-- If the utterance mentions a specific price, dollar amount, currency value, or pricing decision, always include "pricing_discussed" as a riskSignal — even if the overall intent is filler or general. Pricing commitments must never be silently dropped.
-- Do NOT add riskSignals for greetings, "am I audible", thanks, "sounds good", filler, or STT artifacts unless they clearly contain business risk.
-
-Extraction rules:
-- commitmentType: timeline|scope|resource|price|capability|null.
-- tone: neutral|defensive|aggressive|hesitant|confident.
-- extractedData: deadline, quantity, scope, amount, currency when explicitly present.
-- topicDelta is optional. Emit only high-value reducer updates: canonical decision, commitment, openQuestion, risk, owner, deadline, or short labelHint. Omit vague/low-signal deltas.
-- Work for English, Hindi, Hinglish, and code-switched speech.
-- Treat broken STT punctuation/fragments conservatively; lower confidence rather than inventing facts.
-- If uncertain, lower confidence and avoid hallucinating.
-
-Calibration examples — use these to align your judgment:
-
-"Let's skip $400 the minimum price that we'll go for"
-→ intent:commitment, commitmentType:price, tone:confident, riskSignals:["pricing_discussed"], extractedData:{amount:400,currency:"USD"}, confidence:0.9
-
-"$300 works fine to us. Right?"
-→ intent:commitment, commitmentType:price, tone:confident, riskSignals:["pricing_discussed"], extractedData:{amount:300,currency:"USD"}, confidence:0.85
-
-"Hum char sau dollar minimum rakhenge"
-→ intent:commitment, commitmentType:price, tone:confident, riskSignals:["pricing_discussed"], confidence:0.85
-
-"I'll deliver the prototype by Friday end of day"
-→ intent:commitment, commitmentType:timeline, tone:confident, riskSignals:["vague_deadline"], extractedData:{deadline:"Friday end of day"}, confidence:0.85
-
-"We can handle the design work as part of this engagement"
-→ intent:commitment, commitmentType:scope, tone:confident, riskSignals:["scope_creep_risk"], extractedData:{scope:"design work"}, confidence:0.8
-
-"Yes that approach works for us let's proceed"
-→ intent:decision, commitmentType:scope, tone:confident, riskSignals:[], confidence:0.9
-
-"Okay we'll go with React for the frontend"
-→ intent:decision, commitmentType:capability, tone:confident, riskSignals:[], confidence:0.9
-
-"Let's finalize that. We'll go with one hundred dollars"
-→ intent:decision, commitmentType:price, tone:confident, riskSignals:["pricing_discussed"], extractedData:{amount:100,currency:"USD"}, confidence:0.95
-
-"Is that timeline realistic with our current team"
-→ intent:concern, commitmentType:timeline, tone:hesitant, riskSignals:["timeline_risk"], confidence:0.85
-
-"I'm worried the scope will creep without defined deliverables"
-→ intent:concern, commitmentType:scope, tone:hesitant, riskSignals:["scope_creep_risk"], confidence:0.85
-
-"I think that approach makes sense overall"
-→ intent:general, commitmentType:null, tone:neutral, riskSignals:[], confidence:0.9
-
-"Let's discuss the agenda for today"
-→ intent:general, commitmentType:null, tone:neutral, riskSignals:[], confidence:0.9
-
-"Toh meeting shuru karte hain"
-→ intent:general, commitmentType:null, tone:neutral, riskSignals:[], confidence:0.9
-
-"Okay sounds good"
-→ intent:filler, commitmentType:null, tone:neutral, riskSignals:[], confidence:0.95
-
-"Am I audible right now"
-→ intent:filler, commitmentType:null, tone:neutral, riskSignals:[], confidence:0.95`.trim(),
-    `utterance: ${input.utterance}`,
-    `speaker: ${JSON.stringify(speakerInfo)}`,
-    `recentSameSpeaker:\n${recentBlock}`,
-    `topicLabel: ${input.topicLabel ?? "unknown"}`,
-    "Return only JSON.",
-  ].join("\n\n");
-}
-
-function getTier2ResponseSchema() {
   return {
-    type: Type.OBJECT,
+    type: "object",
+    additionalProperties: false,
     properties: {
       intent: {
-        type: Type.STRING,
+        type: "string",
         enum: [
           "commitment",
           "decision",
@@ -257,45 +262,37 @@ function getTier2ResponseSchema() {
         ],
       },
       commitmentType: {
-        type: Type.STRING,
-        nullable: true,
-        enum: ["timeline", "scope", "resource", "price", "capability"],
+        anyOf: [
+          { type: "null" },
+          {
+            type: "string",
+            enum: ["timeline", "scope", "resource", "price", "capability"],
+          },
+        ],
       },
       tone: {
-        type: Type.STRING,
+        type: "string",
         enum: ["neutral", "defensive", "aggressive", "hesitant", "confident"],
       },
       riskSignals: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.STRING,
-        },
+        type: "array",
+        items: { type: "string" },
       },
       extractedData: {
-        type: Type.OBJECT,
+        type: "object",
+        additionalProperties: false,
         properties: {
-          deadline: { type: Type.STRING },
-          quantity: { type: Type.NUMBER },
-          scope: { type: Type.STRING },
-          amount: { type: Type.NUMBER },
-          currency: { type: Type.STRING },
+          deadline: nullableString(),
+          quantity: nullableNumber(),
+          scope: nullableString(),
+          amount: nullableNumber(),
+          currency: nullableString(),
         },
+        required: ["deadline", "quantity", "scope", "amount", "currency"],
       },
-      confidence: {
-        type: Type.NUMBER,
-      },
+      confidence: { type: "number" },
       topicDelta: {
-        type: Type.OBJECT,
-        nullable: true,
-        properties: {
-          labelHint: { type: Type.STRING },
-          decision: { type: Type.STRING },
-          commitment: { type: Type.STRING },
-          openQuestion: { type: Type.STRING },
-          risk: { type: Type.STRING },
-          owner: { type: Type.STRING },
-          deadline: { type: Type.STRING },
-        },
+        anyOf: [{ type: "null" }, topicDeltaObject],
       },
     },
     required: [
@@ -305,6 +302,7 @@ function getTier2ResponseSchema() {
       "riskSignals",
       "extractedData",
       "confidence",
+      "topicDelta",
     ],
   };
 }
