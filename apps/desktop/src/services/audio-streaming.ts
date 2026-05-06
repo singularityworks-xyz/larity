@@ -30,6 +30,16 @@ export interface AudioStreamingOptions {
   maxPendingFrames?: number;
 }
 
+export type IncomingMessageType =
+  | "utterance"
+  | "topic"
+  | "ledger"
+  | "alert"
+  | "participant_event"
+  | "unknown";
+
+export type IncomingMessageHandler = (data: Record<string, unknown>) => void;
+
 interface SendResult {
   sent: boolean;
   dropped: boolean;
@@ -97,6 +107,10 @@ export class AudioStreamingClient {
   private readonly maxPendingFrames: number;
   private readonly pendingFrames: Uint8Array[] = [];
   private readonly log = createLogger("audio-streaming");
+  private readonly messageHandlers = new Map<
+    IncomingMessageType | "*",
+    Set<IncomingMessageHandler>
+  >();
 
   private readonly metrics: AudioStreamingMetrics = {
     framesSent: 0,
@@ -174,6 +188,34 @@ export class AudioStreamingClient {
         "Realtime connection error. Audio may not be streaming to server.";
     };
 
+    ws.onmessage = (event) => {
+      if (typeof event.data !== "string") {
+        return;
+      }
+
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(event.data) as Record<string, unknown>;
+      } catch {
+        return;
+      }
+
+      const type = detectIncomingMessageType(data);
+      const handlers = this.messageHandlers.get(type);
+      if (handlers) {
+        for (const handler of handlers) {
+          handler(data);
+        }
+      }
+
+      const allHandlers = this.messageHandlers.get("*");
+      if (allHandlers) {
+        for (const handler of allHandlers) {
+          handler(data);
+        }
+      }
+    };
+
     this.socket = ws;
   }
 
@@ -200,6 +242,21 @@ export class AudioStreamingClient {
 
   clearWarning(): void {
     this.warning = "";
+  }
+
+  subscribe(
+    type: IncomingMessageType | "*",
+    handler: IncomingMessageHandler
+  ): () => void {
+    let handlers = this.messageHandlers.get(type);
+    if (!handlers) {
+      handlers = new Set();
+      this.messageHandlers.set(type, handlers);
+    }
+    handlers.add(handler);
+    return () => {
+      handlers.delete(handler);
+    };
   }
 
   handleAudioFrame(event: AudioFrameEvent): SendResult {
@@ -301,6 +358,35 @@ export class AudioStreamingClient {
       })
     );
   }
+}
+
+function detectIncomingMessageType(
+  data: Record<string, unknown>
+): IncomingMessageType {
+  const dataType = data.type;
+  if (
+    typeof dataType === "string" &&
+    (dataType === "insert" || dataType === "status_change")
+  ) {
+    return "ledger";
+  }
+  if (typeof data.utteranceId === "string") {
+    return "utterance";
+  }
+  if (typeof data.topicId === "string") {
+    return "topic";
+  }
+  if (typeof data.alertType === "string" || typeof data.level === "string") {
+    return "alert";
+  }
+  if (
+    dataType === "participant_joined" ||
+    dataType === "participant_left" ||
+    dataType === "participant_list"
+  ) {
+    return "participant_event";
+  }
+  return "unknown";
 }
 
 function sanitizeUserId(userId: string | undefined): string {
