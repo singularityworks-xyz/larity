@@ -9,20 +9,24 @@ const log = createMeetingModeLogger("tier2-classifier");
 /** Groq strict `json_schema` can spend many tokens before a valid doc; 400 was too low (intermittent `max completion tokens reached`). */
 const TIER2_MAX_COMPLETION_TOKENS = 1024;
 
+export interface Tier2InvokeResult {
+  text: string;
+  promptTokens: number;
+  completionTokens: number;
+}
+
 export interface Tier2ClassifierOptions {
   timeoutMs?: number;
-  invoke?: (input: Tier2Input, timeoutMs: number) => Promise<string>;
+  invoke?: (input: Tier2Input, timeoutMs: number) => Promise<Tier2InvokeResult>;
 }
 
 export class Tier2Classifier {
   private readonly groq: Groq | undefined;
   private readonly timeoutMs: number;
-  private lastPromptTokens = 0;
-  private lastCompletionTokens = 0;
   private readonly invoke: (
     input: Tier2Input,
     timeoutMs: number
-  ) => Promise<string>;
+  ) => Promise<Tier2InvokeResult>;
 
   constructor(options: Tier2ClassifierOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? GROQ_TIER2_TIMEOUT_MS;
@@ -38,8 +42,11 @@ export class Tier2Classifier {
 
   async classify(input: Tier2Input): Promise<Tier2Outcome> {
     try {
-      const raw = await this.invoke(input, this.timeoutMs);
-      const parsed = parseTier2Response(raw);
+      const { text, promptTokens, completionTokens } = await this.invoke(
+        input,
+        this.timeoutMs
+      );
+      const parsed = parseTier2Response(text);
       const validation = tier2ClassificationSchema.safeParse(parsed);
       if (!validation.success) {
         log.warn(
@@ -49,8 +56,8 @@ export class Tier2Classifier {
         return {
           classification: fallbackClassification(),
           shouldStopForDeepReasoning: false,
-          promptTokens: this.lastPromptTokens || 0,
-          completionTokens: this.lastCompletionTokens || 0,
+          promptTokens: promptTokens || 0,
+          completionTokens: completionTokens || 0,
         };
       }
 
@@ -58,16 +65,16 @@ export class Tier2Classifier {
       return {
         classification,
         shouldStopForDeepReasoning: shouldStopAtTier2(classification),
-        promptTokens: this.lastPromptTokens || 0,
-        completionTokens: this.lastCompletionTokens || 0,
+        promptTokens: promptTokens || 0,
+        completionTokens: completionTokens || 0,
       };
     } catch (error) {
       log.warn({ err: error }, "Tier2 classification failed silently");
       return {
         classification: fallbackClassification(),
         shouldStopForDeepReasoning: false,
-        promptTokens: this.lastPromptTokens || 0,
-        completionTokens: this.lastCompletionTokens || 0,
+        promptTokens: 0,
+        completionTokens: 0,
       };
     }
   }
@@ -75,7 +82,7 @@ export class Tier2Classifier {
   private async invokeGroqTier2(
     input: Tier2Input,
     timeoutMs: number
-  ): Promise<string> {
+  ): Promise<Tier2InvokeResult> {
     if (!this.groq) {
       throw new Error("Tier2 Groq client not initialized");
     }
@@ -106,10 +113,11 @@ export class Tier2Classifier {
       throw new Error("Groq tier2 returned empty content");
     }
 
-    this.lastPromptTokens = completion.usage?.prompt_tokens ?? 0;
-    this.lastCompletionTokens = completion.usage?.completion_tokens ?? 0;
-
-    return text;
+    return {
+      text,
+      promptTokens: completion.usage?.prompt_tokens ?? 0,
+      completionTokens: completion.usage?.completion_tokens ?? 0,
+    };
   }
 }
 
@@ -168,6 +176,7 @@ function buildUserMessage(input: Tier2Input): string {
     `speaker: ${JSON.stringify(speakerInfo)}`,
     `recentSameSpeaker:\n${recentBlock}`,
     `topicLabel: ${input.topicLabel ?? "unknown"}`,
+    input.structuralPricingCue ? "pricingCue: true" : "pricingCue: false",
     "Return only JSON.",
   ].join("\n\n");
 }

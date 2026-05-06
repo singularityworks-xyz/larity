@@ -88,17 +88,18 @@ describe("Day 28 — Semantic Cache, Cost Caps, Topic Refinement", () => {
       preFilter: new PreFilter(),
       tier1: new Tier1StructuralDetector(),
       tier2: new Tier2Classifier({
-        invoke: (_input, _timeout) =>
-          Promise.resolve(
-            JSON.stringify({
-              intent: "commitment",
-              commitmentType: "timeline",
-              tone: "confident",
-              riskSignals: ["backtracking"],
-              extractedData: { deadline: "Friday" },
-              confidence: 0.91,
-            })
-          ),
+        invoke: async () => ({
+          text: JSON.stringify({
+            intent: "commitment",
+            commitmentType: "timeline",
+            tone: "confident",
+            riskSignals: ["backtracking"],
+            extractedData: { deadline: "Friday" },
+            confidence: 0.91,
+          }),
+          promptTokens: 50,
+          completionTokens: 30,
+        }),
       }),
       tier4: new Tier4DeepReasoner({
         invoke: (_prompt, _timeout) =>
@@ -224,17 +225,18 @@ describe("Day 28 — Semantic Cache, Cost Caps, Topic Refinement", () => {
       preFilter: new PreFilter(),
       tier1: new Tier1StructuralDetector(),
       tier2: new Tier2Classifier({
-        invoke: (_input, _timeout) =>
-          Promise.resolve(
-            JSON.stringify({
-              intent: "commitment",
-              commitmentType: null,
-              tone: "neutral",
-              riskSignals: [],
-              extractedData: {},
-              confidence: 0.9,
-            })
-          ),
+        invoke: async () => ({
+          text: JSON.stringify({
+            intent: "commitment",
+            commitmentType: null,
+            tone: "neutral",
+            riskSignals: [],
+            extractedData: {},
+            confidence: 0.9,
+          }),
+          promptTokens: 50,
+          completionTokens: 30,
+        }),
       }),
       tier4: new Tier4DeepReasoner({
         invoke: () =>
@@ -329,16 +331,18 @@ describe("Day 28 — Semantic Cache, Cost Caps, Topic Refinement", () => {
       tier2: new Tier2Classifier({
         invoke: (_input, _timeout) => {
           invokeCount++;
-          return Promise.resolve(
-            JSON.stringify({
+          return {
+            text: JSON.stringify({
               intent: "commitment",
               commitmentType: "timeline",
               tone: "confident",
               riskSignals: [],
               extractedData: { deadline: "Friday" },
               confidence: 0.9,
-            })
-          );
+            }),
+            promptTokens: 50,
+            completionTokens: 30,
+          };
         },
       }),
     });
@@ -405,14 +409,18 @@ describe("Day 28 — Semantic Cache, Cost Caps, Topic Refinement", () => {
       tier2: new Tier2Classifier({
         invoke: async (_input, _timeout) => {
           await new Promise((r) => setTimeout(r, 50));
-          return JSON.stringify({
-            intent: "commitment",
-            commitmentType: "timeline",
-            tone: "confident",
-            riskSignals: [],
-            extractedData: {},
-            confidence: 0.88,
-          });
+          return {
+            text: JSON.stringify({
+              intent: "commitment",
+              commitmentType: "timeline",
+              tone: "confident",
+              riskSignals: [],
+              extractedData: {},
+              confidence: 0.88,
+            }),
+            promptTokens: 50,
+            completionTokens: 30,
+          };
         },
       }),
     });
