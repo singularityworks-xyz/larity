@@ -63,8 +63,23 @@ export class TopicManager {
   async assignTopic(utterance: Utterance): Promise<string> {
     const { sessionId, text } = utterance;
 
-    // 1. Embed utterance (use pre-computed if available)
-    const newVector = utterance.embedding ?? (await this.embedder.embed(text));
+    // 1. Embed utterance (pre-computed, in-flight promise, or embed here)
+    let newVector: number[];
+    if (utterance.embedding && utterance.embedding.length > 0) {
+      newVector = utterance.embedding;
+    } else if (utterance.embeddingPromise) {
+      try {
+        const resolved = await utterance.embeddingPromise;
+        newVector =
+          resolved && resolved.length > 0
+            ? resolved
+            : await this.embedder.embed(text);
+      } catch {
+        newVector = await this.embedder.embed(text);
+      }
+    } else {
+      newVector = await this.embedder.embed(text);
+    }
     utterance.embedding = newVector;
 
     // 2. Find best match

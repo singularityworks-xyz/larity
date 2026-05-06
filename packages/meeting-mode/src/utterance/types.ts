@@ -49,6 +49,8 @@ export interface Utterance {
   mergedCount: number;
   topicId?: string;
   embedding?: number[];
+  /** In-flight embedding for topic assignment; never serialized over Redis */
+  embeddingPromise?: Promise<number[] | undefined>;
 }
 
 export interface FinalizeResult {
