@@ -10,6 +10,7 @@ import type { Alert } from "./alerts/types";
 import { CommitmentManager } from "./commitment/manager";
 import { ConstraintManager } from "./constraint/manager";
 import type { PreloadedContextPayload } from "./constraint/types";
+import { CostManager } from "./cost/manager";
 import { validateEnv } from "./env";
 import { rootLogger } from "./logger";
 import { MeetingPipelineEngine } from "./pipeline/engine";
@@ -49,6 +50,10 @@ let speakerManager: SpeakerManager | null = null;
 let commitmentManager: CommitmentManager | null = null;
 let constraintManager: ConstraintManager | null = null;
 let pipelineEngine: MeetingPipelineEngine | null = null;
+let costManager: CostManager | null = null;
+
+/** One AlertPublisher per session — avoids construction overhead per Tier alert */
+const alertPublisherCache = new Map<string, AlertPublisher>();
 
 //graceful shutdown handler
 async function shutdown(signal: string): Promise<void> {
@@ -60,12 +65,14 @@ async function shutdown(signal: string): Promise<void> {
     }
 
     if (commitmentManager) {
-      commitmentManager.closeAll();
+      await commitmentManager.closeAll();
     }
 
     if (constraintManager) {
-      constraintManager.closeAll();
+      await constraintManager.closeAll();
     }
+
+    alertPublisherCache.clear();
 
     if (pipelineEngine) {
       pipelineEngine.closeAll();
@@ -115,6 +122,8 @@ async function main(): Promise<void> {
   constraintManager = new ConstraintManager(
     redisClient as unknown as ConstructorParameters<typeof ConstraintManager>[0]
   );
+  costManager = new CostManager(redisClient as Redis);
+
   finalizer = new UtteranceFinalizer(
     {
       publish: (channel, message) => redisClient.publish(channel, message),
@@ -131,16 +140,26 @@ async function main(): Promise<void> {
     finalizer,
     constraintManager,
     commitmentManager,
+    costManager,
     preFilter: new PreFilter(),
     tier1: new Tier1StructuralDetector(),
     tier2: new Tier2Classifier(),
     tier4: new Tier4DeepReasoner(),
     tier4Alerts: {
-      publish: async (sessionId: string, alert: Alert) =>
-        new AlertPublisher({
-          redis: redisClient as Redis,
-          sessionId,
-        }).publish(alert),
+      publish: async (sessionId: string, alert: Alert) => {
+        let pub = alertPublisherCache.get(sessionId);
+        if (!pub) {
+          pub = new AlertPublisher({
+            redis: redisClient as Redis,
+            sessionId,
+          });
+          alertPublisherCache.set(sessionId, pub);
+        }
+        await pub.publish(alert);
+      },
+    },
+    onPipelineSessionClosed: (sessionId) => {
+      alertPublisherCache.delete(sessionId);
     },
     getContextPayload: async (sessionId) => {
       const payload = await redisClient.get(
@@ -161,13 +180,17 @@ async function main(): Promise<void> {
       finalizer?.getTopicLabel(sessionId, topicId),
   });
 
-  finalizer.onUtterancePublished(async (utterance) => {
+  finalizer.onUtterancePublished((utterance) => {
     if (!pipelineEngine) {
       return;
     }
 
-    const evaluation = await pipelineEngine.evaluateUtterance(utterance);
-    await publishPipelineEvaluationTrace(redisClient, utterance, evaluation);
+    pipelineEngine.evaluateUtteranceQueued(
+      utterance,
+      async (utt, evaluation) => {
+        await publishPipelineEvaluationTrace(redisClient, utt, evaluation);
+      }
+    );
   });
 
   await startSubscriber(

@@ -57,9 +57,13 @@ async function handleSessionEnd(message: string): Promise<void> {
 
     pipelineEngineRef?.closeSession(event.sessionId);
 
-    commitmentManagerRef?.closeSession(event.sessionId);
+    if (commitmentManagerRef) {
+      await commitmentManagerRef.closeSessionAwaitSnapshots(event.sessionId);
+    }
 
-    constraintManagerRef?.closeSession(event.sessionId);
+    if (constraintManagerRef) {
+      await constraintManagerRef.closeSessionAwaitSnapshots(event.sessionId);
+    }
 
     if (!finalizerRef) {
       log.error("No finalizer registered!");
