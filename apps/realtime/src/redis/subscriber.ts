@@ -45,12 +45,14 @@ export async function startSubscriber(): Promise<void> {
   // Pattern: meeting.alert.{sessionId}.shared
   // Pattern: meeting.alert.{sessionId}.user.{userId}
   // Pattern: meeting.pipeline.{sessionId} — tier / gate trace (logged only, no WS relay)
+  // Pattern: meeting.stt.* — raw Deepgram partials + finals (forwarded to WS for live transcript)
   await subscriber.psubscribe(
     "meeting.utterance.*",
     "meeting.topic.*",
     "meeting.alert.*",
     "meeting.ledger.*",
-    "meeting.pipeline.*"
+    "meeting.pipeline.*",
+    "meeting.stt.*"
   );
 
   subscriber.on("pmessage", (pattern, channel, message) => {
@@ -75,6 +77,10 @@ function handleMessage(
       return;
     }
 
+    if (handleSttChannel(channel, message)) {
+      return;
+    }
+
     if (handleBroadcastSessionChannel(channel, message)) {
       return;
     }
@@ -85,6 +91,48 @@ function handleMessage(
   } catch (error) {
     log.error({ err: error, channel }, "Failed to handle Redis message");
   }
+}
+
+/**
+ * Forward raw STT (Deepgram) partials/finals to WebSocket clients before meeting-mode enrichment.
+ * Channel shapes: `meeting.stt.{sessionId}` (final), `meeting.stt.partial.{sessionId}` (partial).
+ */
+function handleSttChannel(channel: string, message: string): boolean {
+  if (!channel.startsWith("meeting.stt.")) {
+    return false;
+  }
+
+  const parts = channel.split(".");
+  if (parts[0] !== "meeting" || parts[1] !== "stt") {
+    return true;
+  }
+
+  let sessionId: string;
+  let envelopeType: "stt_partial" | "stt_final";
+
+  if (parts[2] === "partial" && parts.length >= 4) {
+    envelopeType = "stt_partial";
+    sessionId = parts.slice(3).join(".");
+  } else if (parts.length >= 3) {
+    envelopeType = "stt_final";
+    sessionId = parts.slice(2).join(".");
+  } else {
+    return true;
+  }
+
+  if (!sessionId) {
+    return true;
+  }
+
+  try {
+    const payload = JSON.parse(message) as Record<string, unknown>;
+    const wrapped = JSON.stringify({ ...payload, type: envelopeType });
+    broadcast(sessionId, wrapped);
+  } catch (error) {
+    log.warn({ err: error, channel }, "Invalid STT JSON from Redis");
+  }
+
+  return true;
 }
 
 function handleBroadcastSessionChannel(
@@ -167,6 +215,7 @@ function handlePipelineTraceMessage(message: string): void {
 export const __test_only_handleBroadcastSessionChannel =
   handleBroadcastSessionChannel;
 export const __test_only_handleAlertChannel = handleAlertChannel;
+export const __test_only_handleSttChannel = handleSttChannel;
 
 /**
  * Stop the Redis subscriber
