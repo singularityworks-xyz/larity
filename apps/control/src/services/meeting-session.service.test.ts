@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import { redisKeys } from "@larity/packages/infra/redis/keys";
+import { redisKeys } from "@larity/infra/redis/keys";
 import { meetingSessionService } from "./meeting-session.service";
 
 // Mock dependencies
@@ -49,7 +49,7 @@ const mockPrisma = {
 };
 
 // Mock modules
-mock.module("@larity/packages/infra/redis", () => ({
+mock.module("@larity/infra/redis", () => ({
   redis: mockRedis,
 }));
 

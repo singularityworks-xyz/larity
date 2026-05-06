@@ -1,4 +1,5 @@
 import pino, { type LoggerOptions } from "pino";
+import pretty from "pino-pretty";
 
 export type { Logger } from "pino";
 
@@ -37,6 +38,17 @@ export function createRootLogger(options: CreateLoggerOptions) {
           }
         : undefined,
   };
+
+  if (isDev && isBun) {
+    return pino(
+      pinoOptions,
+      pretty({
+        colorize: true,
+        translateTime: "SYS:standard",
+        ignore: "pid,hostname",
+      })
+    );
+  }
 
   return pino(pinoOptions);
 }

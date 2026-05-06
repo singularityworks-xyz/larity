@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { redis } from "@larity/packages/infra/redis";
-import { redisKeys } from "@larity/packages/infra/redis/keys";
-import { TTL } from "@larity/packages/infra/redis/ttl";
+import { redis } from "@larity/infra/redis";
+import { redisKeys } from "@larity/infra/redis/keys";
+import { TTL } from "@larity/infra/redis/ttl";
 import { prisma } from "../lib/prisma";
 import type {
   ActiveSession,
