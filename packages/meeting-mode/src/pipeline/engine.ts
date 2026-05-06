@@ -3,7 +3,7 @@ import { createAlert } from "../alerts/types";
 import type { Commitment } from "../commitment/types";
 import type { Constraint, PreloadedContextPayload } from "../constraint/types";
 import { CostManager } from "../cost/manager";
-import { GEMINI_TIER2_MODEL, GEMINI_TIER4_MODEL } from "../env";
+import { GEMINI_TIER4_MODEL, GROQ_TIER2_MODEL } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import { SpeakerStateTracker } from "../speaker-state/tracker";
 import type { SpeakerStateAlert } from "../speaker-state/types";
@@ -17,6 +17,8 @@ import {
 import type { TopicState } from "../topic/types";
 import type { Utterance } from "../utterance/types";
 import {
+  pipelineContextPayloadCacheHitsTotal,
+  pipelineContextPayloadCacheMissesTotal,
   pipelineDroppedTotal,
   pipelineGateDuration,
   pipelinePrefilterDuration,
@@ -34,7 +36,7 @@ import {
   pipelineTotalDuration,
 } from "./metrics";
 import { PreFilter } from "./pre-filter";
-import { Tier1StructuralDetector } from "./tier1";
+import { Tier1StructuralDetector, textMatchesTier1PricingPath } from "./tier1";
 import { Tier2Classifier } from "./tier2";
 import { Tier2SemanticCache } from "./tier2-cache";
 import { Tier3SearchEngine } from "./tier3";
@@ -115,8 +117,8 @@ interface CommitmentManagerAdapter {
   search(
     sessionId: string,
     embedding: number[],
-    options?: { limit?: number; threshold?: number }
-  ): Array<{ id: string; score: number }>;
+    options?: { k?: number; minSimilarity?: number }
+  ): Array<{ commitment: { id: string }; similarity: number }>;
   getAll(sessionId: string): Commitment[];
 }
 
@@ -143,6 +145,8 @@ export interface PipelineEngineDependencies {
   speakerStateTracker?: SpeakerStateTracker;
   speculativeProcessor?: SpeculativeProcessor;
   predictivePreloader?: PredictivePreloader;
+  /** Hook after pipeline session teardown (e.g. clear session-scoped alert publishers) */
+  onPipelineSessionClosed?: (sessionId: string) => void;
 }
 
 export interface Tier4EvaluationSummary {
@@ -180,6 +184,7 @@ export interface PipelineEvaluationResult {
 
 interface SessionPipelineState {
   hydrated: boolean;
+  contextPayload: PreloadedContextPayload | null;
 }
 
 export class MeetingPipelineEngine {
@@ -209,6 +214,8 @@ export class MeetingPipelineEngine {
   >;
   private readonly speculativeProcessor: SpeculativeProcessor;
   private readonly predictivePreloader: PredictivePreloader;
+  private readonly onPipelineSessionClosed?: (sessionId: string) => void;
+  private readonly evaluationChains = new Map<string, Promise<unknown>>();
 
   constructor(deps: PipelineEngineDependencies) {
     this.preFilter = deps.preFilter ?? new PreFilter();
@@ -242,6 +249,35 @@ export class MeetingPipelineEngine {
       });
     this.predictivePreloader =
       deps.predictivePreloader ?? new PredictivePreloader();
+    this.onPipelineSessionClosed = deps.onPipelineSessionClosed;
+  }
+
+  /**
+   * Queue pipeline evaluation per session so callers (e.g. utterance publish) are not
+   * blocked on LLM latency, while keeping strict FIFO ordering within a session.
+   */
+  evaluateUtteranceQueued(
+    utterance: Utterance,
+    afterEvaluate?: (
+      utterance: Utterance,
+      result: PipelineEvaluationResult
+    ) => Promise<void>
+  ): void {
+    const sessionId = utterance.sessionId;
+    const previous = this.evaluationChains.get(sessionId) ?? Promise.resolve();
+    const evaluated = previous.then(() => this.evaluateUtterance(utterance));
+    const next = afterEvaluate
+      ? evaluated.then((result) => afterEvaluate(utterance, result))
+      : evaluated;
+
+    const recovered = next.catch((error) => {
+      log.warn(
+        { err: error, utteranceId: utterance.utteranceId, sessionId },
+        "Queued pipeline evaluation failed"
+      );
+    });
+
+    this.evaluationChains.set(sessionId, recovered);
   }
 
   async evaluateUtterance(
@@ -249,6 +285,11 @@ export class MeetingPipelineEngine {
   ): Promise<PipelineEvaluationResult> {
     const start = PERF.now();
     await this.ensureSessionHydrated(utterance.sessionId);
+    await this.ensureUtteranceEmbedding(utterance);
+
+    pipelineContextPayloadCacheHitsTotal.inc();
+    const payload =
+      this.sessions.get(utterance.sessionId)?.contextPayload ?? null;
 
     const speakerPriority = getSpeakerProcessingPriority(utterance.speaker);
 
@@ -323,7 +364,6 @@ export class MeetingPipelineEngine {
             speculativeHit: false,
           }));
 
-    const payload = await this.getContextPayload(utterance.sessionId);
     const recentEmbeddings = this.finalizer.getRecentEmbeddings(
       utterance.sessionId,
       10
@@ -336,10 +376,21 @@ export class MeetingPipelineEngine {
       recentEmbeddings
     );
 
-    const [tier1, tier2, tier3] = await Promise.all([
+    const constraintTask = this.constraintManager
+      .processUtterance(utterance)
+      .catch((error) => {
+        log.warn(
+          { err: error, utteranceId: utterance.utteranceId },
+          "Constraint processing failed in pipeline"
+        );
+        return undefined;
+      });
+
+    const [tier1, tier2, tier3, _constraintOutcome] = await Promise.all([
       tier1Task,
       tier2Task,
       tier3Task,
+      constraintTask,
     ]);
     // --- Apply Tier 2 side effects that runTier2 would normally handle,
     //     when the classification came from a speculative cache hit ---
@@ -361,15 +412,6 @@ export class MeetingPipelineEngine {
       pipelineTier2CacheHitsTotal.inc();
     } else if (!speculativeHit) {
       pipelineTier2CacheMissesTotal.inc();
-    }
-
-    try {
-      await this.constraintManager.processUtterance(utterance);
-    } catch (error) {
-      log.warn(
-        { err: error, utteranceId: utterance.utteranceId },
-        "Constraint processing failed in pipeline"
-      );
     }
 
     this.speakerStateTracker.ingest(
@@ -476,6 +518,7 @@ export class MeetingPipelineEngine {
     return (
       tier1.blocklistHit ||
       tier1.technicalHit ||
+      tier1.pricingHit ||
       tier2Classification.intent === "commitment" ||
       tier2Classification.intent === "decision" ||
       tier2Classification.intent === "concern" ||
@@ -533,6 +576,7 @@ export class MeetingPipelineEngine {
       runTier4 &&
       !tier1.blocklistHit &&
       !tier1.technicalHit &&
+      !tier1.pricingHit &&
       tier2Classification.riskSignals.length === 0
     ) {
       log.info(
@@ -573,19 +617,23 @@ export class MeetingPipelineEngine {
       return;
     }
 
-    for (const ssAlert of alerts) {
-      try {
-        await this.tier4Alerts.publish(
-          utterance.sessionId,
-          speakerStateAlertToAlert(ssAlert, utterance)
-        );
-      } catch (error) {
-        log.warn(
-          { err: error, utteranceId: utterance.utteranceId },
-          "Speaker state alert publishing failed"
-        );
-      }
-    }
+    const publisher = this.tier4Alerts;
+
+    await Promise.all(
+      alerts.map(async (ssAlert) => {
+        try {
+          await publisher.publish(
+            utterance.sessionId,
+            speakerStateAlertToAlert(ssAlert, utterance)
+          );
+        } catch (error) {
+          log.warn(
+            { err: error, utteranceId: utterance.utteranceId },
+            "Speaker state alert publishing failed"
+          );
+        }
+      })
+    );
   }
 
   private async evaluateTier4AfterGate(params: {
@@ -725,11 +773,13 @@ export class MeetingPipelineEngine {
     this.tier1.closeSession(sessionId);
     this.tier2Cache.closeSession(sessionId);
     this.speakerStateTracker.closeSession(sessionId);
+    this.evaluationChains.delete(sessionId);
     this.speculativeProcessor.closeSession(sessionId);
     this.predictivePreloader.closeSession(sessionId);
     this.sessions.delete(sessionId);
     // Clean up per-session Prometheus gauge to prevent unbounded memory growth
     pipelineSessionCostDollars.remove({ session_id: sessionId });
+    this.onPipelineSessionClosed?.(sessionId);
   }
 
   closeAll(): void {
@@ -737,6 +787,7 @@ export class MeetingPipelineEngine {
     this.tier1.closeAll();
     this.tier2Cache.closeAll();
     this.speakerStateTracker.closeAll();
+    this.evaluationChains.clear();
     this.speculativeProcessor.closeAll();
     this.predictivePreloader.closeAll();
     this.sessions.clear();
@@ -810,6 +861,7 @@ export class MeetingPipelineEngine {
       speaker: utterance.speaker,
       recentSameSpeaker,
       topicLabel,
+      structuralPricingCue: textMatchesTier1PricingPath(text),
     };
 
     const tier2 = await this.tier2.classify(input);
@@ -824,7 +876,7 @@ export class MeetingPipelineEngine {
           sessionId,
           tier2.promptTokens || 0,
           tier2.completionTokens || 0,
-          GEMINI_TIER2_MODEL
+          GROQ_TIER2_MODEL
         )
         .catch((err) =>
           log.warn(
@@ -901,15 +953,41 @@ export class MeetingPipelineEngine {
     await this.constraintManager.ensureHydrated(sessionId);
     await this.commitmentManager.hydrateSession(sessionId);
 
+    pipelineContextPayloadCacheMissesTotal.inc();
     const payload = await this.getContextPayload(sessionId);
     this.tier1.seedContext(sessionId, payload);
+
+    await this.costManager.primeSessionCost(sessionId);
 
     if (payload) {
       this.predictivePreloader.seedFromContext(sessionId, payload);
     }
 
-    this.sessions.set(sessionId, { hydrated: true });
+    this.sessions.set(sessionId, {
+      hydrated: true,
+      contextPayload: payload,
+    });
     log.info({ sessionId }, "Pipeline session hydrated");
+  }
+
+  private async ensureUtteranceEmbedding(utterance: Utterance): Promise<void> {
+    if (utterance.embedding && utterance.embedding.length > 0) {
+      return;
+    }
+    if (!utterance.embeddingPromise) {
+      return;
+    }
+
+    try {
+      const resolved = await utterance.embeddingPromise;
+      if (resolved && resolved.length > 0) {
+        utterance.embedding = resolved;
+      }
+    } catch {
+      /* tiers tolerate missing embeddings */
+    } finally {
+      utterance.embeddingPromise = undefined;
+    }
   }
 }
 

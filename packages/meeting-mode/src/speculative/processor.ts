@@ -1,7 +1,10 @@
 import type { CostManager } from "../cost/manager";
-import { GEMINI_TIER2_MODEL } from "../env";
+import { GROQ_TIER2_MODEL } from "../env";
 import { createMeetingModeLogger } from "../logger";
-import type { Tier1StructuralDetector } from "../pipeline/tier1";
+import {
+  type Tier1StructuralDetector,
+  textMatchesTier1PricingPath,
+} from "../pipeline/tier1";
 import type { Tier2Classifier } from "../pipeline/tier2";
 import type { Tier2Classification, Tier2Input } from "../pipeline/types";
 import type { Utterance } from "../utterance/types";
@@ -135,6 +138,7 @@ export class SpeculativeProcessor {
       speaker: partial.speaker,
       recentSameSpeaker,
       topicLabel,
+      structuralPricingCue: textMatchesTier1PricingPath(partial.text),
     };
 
     const tier2Outcome = await this.tier2.classify(input);
@@ -149,7 +153,7 @@ export class SpeculativeProcessor {
           partial.sessionId,
           tier2Outcome.promptTokens ?? 0,
           tier2Outcome.completionTokens ?? 0,
-          GEMINI_TIER2_MODEL
+          GROQ_TIER2_MODEL
         )
         .catch((err) =>
           log.warn(

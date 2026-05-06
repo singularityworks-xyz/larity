@@ -1,6 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import type { PreloadedContextPayload } from "../../src/constraint/types";
-import { Tier1StructuralDetector } from "../../src/pipeline/tier1";
+import {
+  Tier1StructuralDetector,
+  textMatchesTier1PricingPath,
+} from "../../src/pipeline/tier1";
 import { createTestUtterance } from "../helpers";
 
 const sessionId = "tier1-session";
@@ -71,5 +74,14 @@ describe("pipeline/tier1", () => {
     expect(result.detections.some((d) => d.type === "technical_pattern")).toBe(
       true
     );
+  });
+
+  it("textMatchesTier1PricingPath matches Tier1 pricingHit for currency text", () => {
+    const detector = new Tier1StructuralDetector();
+    const text = "Let's log the price at $2,500 for the first phase.";
+    expect(textMatchesTier1PricingPath(text)).toBe(true);
+    expect(
+      detector.detect(createTestUtterance({ sessionId, text })).pricingHit
+    ).toBe(true);
   });
 });

@@ -1,11 +1,11 @@
-import { MERGE_GAP_MS } from "../env";
+import { MERGE_GROUPING_MS } from "../env";
 import type { Utterance } from "./types";
 
 export class UtteranceMerger {
   private readonly gapThreshold: number;
   private pending: Utterance | null = null;
 
-  constructor(gapThreshold: number = MERGE_GAP_MS) {
+  constructor(gapThreshold: number = MERGE_GROUPING_MS) {
     this.gapThreshold = gapThreshold;
   }
 

@@ -127,8 +127,18 @@ describe("TopicManager", () => {
       });
       const topicId = await manager.assignTopic(u1);
 
-      // Pending utterance should not have triggered a publish yet (debounce is 5s)
-      expect(publisher.calls).toHaveLength(0);
+      // New topics are published immediately (fire-and-forget, need a tick)
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(publisher.calls).toHaveLength(1);
+      expect(publisher.hsetCalls).toHaveLength(1);
+
+      const initialJson = JSON.parse(publisher.calls[0]?.message ?? "{}");
+      expect(initialJson.topicId).toBe(topicId);
+      expect(initialJson.label).toBe("sports are great");
+
+      // Clear call log before testing session close
+      publisher.calls.length = 0;
+      publisher.hsetCalls.length = 0;
 
       // Close session should flush pending utterances
       await manager.closeSession("s-1");

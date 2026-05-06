@@ -57,9 +57,12 @@ async function handleSessionEnd(message: string): Promise<void> {
 
     pipelineEngineRef?.closeSession(event.sessionId);
 
-    commitmentManagerRef?.closeSession(event.sessionId);
-
-    constraintManagerRef?.closeSession(event.sessionId);
+    const closeResults = await Promise.allSettled(
+      [
+        commitmentManagerRef?.closeSessionAwaitSnapshots(event.sessionId),
+        constraintManagerRef?.closeSessionAwaitSnapshots(event.sessionId),
+      ].filter(Boolean) as Promise<void>[]
+    );
 
     if (!finalizerRef) {
       log.error("No finalizer registered!");
@@ -67,6 +70,15 @@ async function handleSessionEnd(message: string): Promise<void> {
     }
 
     await finalizerRef.closeSession(event.sessionId);
+
+    for (const result of closeResults) {
+      if (result.status === "rejected") {
+        log.error(
+          { err: result.reason },
+          "Ledger close failed during session end"
+        );
+      }
+    }
   } catch (error) {
     log.error({ err: error }, "Error handling session end");
   }

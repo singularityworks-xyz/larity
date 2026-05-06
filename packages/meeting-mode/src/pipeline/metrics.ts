@@ -8,7 +8,37 @@ import {
 
 const METRICS_PREFIX = "larity_pipeline";
 
+const FINALIZER_METRICS_PREFIX = "larity_finalizer";
+
 const LABEL_NAMES = ["session_id"] as const;
+
+export const finalizerEmbedDurationMs = new Histogram({
+  name: `${FINALIZER_METRICS_PREFIX}_embed_duration_ms`,
+  help: "Gemini embedding wall-clock duration in milliseconds (finalizer)",
+  buckets: [5, 25, 50, 100, 200, 400, 800, 1500],
+});
+
+export const finalizerPublishWaitMs = new Histogram({
+  name: `${FINALIZER_METRICS_PREFIX}_publish_wait_ms`,
+  help: "Wall-clock from finalize start until Redis utterance publish",
+  buckets: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
+});
+
+export const pipelineContextPayloadCacheHitsTotal = new Counter({
+  name: `${METRICS_PREFIX}_context_payload_cache_hits_total`,
+  help: "Pipeline reused cached meeting context payload per session",
+});
+
+export const pipelineContextPayloadCacheMissesTotal = new Counter({
+  name: `${METRICS_PREFIX}_context_payload_cache_misses_total`,
+  help: "Pipeline fetched meeting context payload from getter",
+});
+
+export const ledgerSnapshotFlushesTotal = new Counter({
+  name: `${METRICS_PREFIX}_ledger_snapshot_flushes_total`,
+  help: "Ledger snapshots flushed to Redis (after debounce or immediate)",
+  labelNames: ["kind"],
+});
 
 export const pipelinePrefilterDuration = new Histogram({
   name: `${METRICS_PREFIX}_prefilter_duration_ms`,

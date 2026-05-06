@@ -3,7 +3,9 @@ import { redisKeys } from "@larity/infra/redis/keys";
 import { TTL } from "@larity/infra/redis/ttl";
 import type { Redis } from "ioredis";
 import { ledgerChannel } from "../channels";
+import { LEDGER_SNAPSHOT_DEBOUNCE_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
+import { ledgerSnapshotFlushesTotal } from "../pipeline/metrics";
 import { packEmbeddingToBase64, unpackEmbeddingFromBase64 } from "./encoding";
 import type {
   Commitment,
@@ -51,6 +53,8 @@ export interface CommitmentLedgerOptions {
   index?: CommitmentVectorIndex;
   now?: () => number;
   idFactory?: () => string;
+  /** 0 = write Redis snapshot synchronously on each change */
+  snapshotDebounceMs?: number;
 }
 
 export class CommitmentLedger {
@@ -61,6 +65,8 @@ export class CommitmentLedger {
   private readonly index: CommitmentVectorIndex;
   private readonly now: () => number;
   private readonly idFactory: () => string;
+  private readonly snapshotDebounceMs: number;
+  private snapshotFlushTimer: ReturnType<typeof setTimeout> | undefined;
 
   private readonly commitments = new Map<string, Commitment>();
   private readonly commitmentToVectorId = new Map<string, number>();
@@ -79,6 +85,8 @@ export class CommitmentLedger {
     this.index = options.index ?? new BruteForceCommitmentVectorIndex();
     this.now = options.now ?? Date.now;
     this.idFactory = options.idFactory ?? randomUUID;
+    this.snapshotDebounceMs =
+      options.snapshotDebounceMs ?? LEDGER_SNAPSHOT_DEBOUNCE_MS;
   }
 
   async insert(input: CommitmentInsertInput): Promise<Commitment> {
@@ -102,8 +110,8 @@ export class CommitmentLedger {
     };
 
     this.addToInMemoryIndex(commitment);
-    await this.writeSnapshot();
     await this.publishLedgerEvent("insert", commitment);
+    await this.persistSnapshotAfterMutation();
 
     return commitment;
   }
@@ -136,8 +144,8 @@ export class CommitmentLedger {
       commitment.supersedes = update.supersedes;
     }
 
-    await this.writeSnapshot();
     await this.publishLedgerEvent("status_change", commitment);
+    await this.persistSnapshotAfterMutation();
 
     return commitment;
   }
@@ -259,6 +267,7 @@ export class CommitmentLedger {
   }
 
   async deleteSnapshot(): Promise<void> {
+    this.cancelSnapshotFlush();
     await this.redis.del(this.snapshotKey);
   }
 
@@ -269,7 +278,17 @@ export class CommitmentLedger {
     return drained;
   }
 
+  /** Persist any debounced snapshot before dropping memory */
+  async flushPendingSnapshot(): Promise<void> {
+    this.cancelSnapshotFlush();
+    if (this.commitments.size === 0) {
+      return;
+    }
+    await this.flushSnapshotNow();
+  }
+
   closeInMemory(): void {
+    this.cancelSnapshotFlush();
     this.clearInMemoryState();
   }
 
@@ -283,7 +302,39 @@ export class CommitmentLedger {
     this.vectorToCommitmentId.set(vectorId, commitment.id);
   }
 
-  private async writeSnapshot(): Promise<void> {
+  private cancelSnapshotFlush(): void {
+    if (this.snapshotFlushTimer !== undefined) {
+      clearTimeout(this.snapshotFlushTimer);
+      this.snapshotFlushTimer = undefined;
+    }
+  }
+
+  private async persistSnapshotAfterMutation(): Promise<void> {
+    if (this.snapshotDebounceMs <= 0) {
+      await this.flushSnapshotNow();
+      return;
+    }
+    if (this.snapshotFlushTimer !== undefined) {
+      return;
+    }
+    this.snapshotFlushTimer = setTimeout(() => {
+      this.snapshotFlushTimer = undefined;
+      this.flushSnapshotNow().catch((error) => {
+        log.error(
+          { err: error, sessionId: this.sessionId },
+          "Commitment ledger snapshot flush failed"
+        );
+      });
+    }, this.snapshotDebounceMs);
+  }
+
+  private async flushSnapshotNow(): Promise<void> {
+    if (this.commitments.size === 0) {
+      return;
+    }
+
+    ledgerSnapshotFlushesTotal.inc({ kind: "commitment" });
+
     const snapshot: LedgerSnapshot = {
       version: SNAPSHOT_VERSION,
       sessionId: this.sessionId,
@@ -324,6 +375,7 @@ export class CommitmentLedger {
   }
 
   private clearInMemoryState(): void {
+    this.cancelSnapshotFlush();
     this.index.clear();
     this.commitments.clear();
     this.commitmentToVectorId.clear();

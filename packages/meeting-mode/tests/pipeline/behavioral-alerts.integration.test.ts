@@ -31,6 +31,7 @@ function createMockContext(
       ],
       blocklistHit: false,
       technicalHit: false,
+      pricingHit: false,
     },
     tier2Classification: {
       intent: "directive",

@@ -3,7 +3,7 @@ import { setupTelemetry } from "@larity/telemetry";
 // Initialize telemetry before other imports
 setupTelemetry("realtime");
 
-import { connectRedis } from "@larity/packages/infra/redis";
+import { connectRedis } from "@larity/infra/redis";
 import {
   sessionManager,
   env as sttEnv,

@@ -768,11 +768,11 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Status — ✓ implemented (verification: `cd packages/meeting-mode && bun test`; repo root `bun x ultracite check packages/meeting-mode`).**
 
-**Related (utterance UX / latency):** Same-speaker merge + **`MERGE_GAP_MS`** timed flush prevents “lag one utterance” before tiers run ([meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing), B.14).
+**Related (utterance UX / latency):** **`MERGE_GROUPING_MS`** (legacy **`MERGE_GAP_MS`**) for same-speaker merge plus **`MERGE_PUBLISH_GAP_MS`** publish flush; non-blocking **`onUtterancePublished`** + **`evaluateUtteranceQueued`** (see [meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing), **`architecture_decisions.md`** B.14–B.15).
 
 **Related (gate):** Tier 4 runs only when **`runTier4 = !shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)`**; Tier 3’s **`forceTier4`** alone does **not** beat Tier 2’s filler/general stop (B.13).
 
-**Wire-up:** `packages/meeting-mode/src/pipeline/tier4.ts` (`Tier4DeepReasoner`), `types.ts` (Zod + `Tier4Context`), `tier4-context.ts` (preload hydrate + assemble), `tier4-alert.ts` (routing/coercion → `Alert`), `engine.ts` (gate → single publish), `index.ts` (Redis `AlertPublisher`), `env.ts` (`GEMINI_TIER4_MODEL`, `GEMINI_TIER4_TIMEOUT_MS`, `MERGE_GAP_MS`, `PIPELINE_TRACE_PRETTY_JSON`).
+**Wire-up:** `packages/meeting-mode/src/pipeline/tier4.ts` (`Tier4DeepReasoner`), `types.ts` (Zod + **`Tier2Classification`** / **`Tier4Context`**), `tier2.ts` (**Groq** JSON Schema), `tier4-context.ts` (preload hydrate + assemble), `tier4-alert.ts` (routing/coercion → `Alert`), `engine.ts` (gate → **queued** evaluate + **parallel** tiers/constraints), `index.ts` (**cached** Redis **`AlertPublisher`** per session), `env.ts` (`GEMINI_TIER4_MODEL`, `GEMINI_TIER4_TIMEOUT_MS`, **`MERGE_GROUPING_MS`**, **`MERGE_PUBLISH_GAP_MS`**, **`LEDGER_SNAPSHOT_DEBOUNCE_MS`**, **`COST_CAP_CACHE_TTL_MS`**, **`GROQ_TIER2_MODEL`**, `PIPELINE_TRACE_PRETTY_JSON`).
 
 - [x] Set up large LLM integration (Gemini Pro–class via `GEMINI_TIER4_MODEL`, `@google/genai`)
 - [x] Define Tier 4 context assembly:

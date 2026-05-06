@@ -1,7 +1,11 @@
 import type { SttResult } from "../../../stt/src/types";
 import { utteranceChannel } from "../channels";
-import { MERGE_GAP_MS } from "../env";
+import { MERGE_GROUPING_MS, MERGE_PUBLISH_GAP_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
+import {
+  finalizerEmbedDurationMs,
+  finalizerPublishWaitMs,
+} from "../pipeline/metrics";
 import type { Tier2TopicDelta } from "../pipeline/types";
 import type { SpeakerIdentifier } from "../speaker/identifier";
 import { GoogleGenAIEmbedder } from "../topic/embedder";
@@ -17,6 +21,10 @@ import { createUnidentifiedSpeaker, type Utterance } from "./types";
 
 const log = createMeetingModeLogger("utterance-finalizer");
 
+const PERF = {
+  now: () => performance.now(),
+};
+
 export interface UtterancePublisher extends TopicPublisher {
   publish(channel: string, message: string): Promise<number>;
   hset(key: string, field: string, value: string): Promise<number>;
@@ -30,7 +38,8 @@ export type RetroactiveUpdateHandler = (
 export type UtterancePublishedHandler = (utterance: Utterance) => Promise<void>;
 
 export class UtteranceFinalizer {
-  private readonly mergerGapMs: number;
+  private readonly mergerGroupingMs: number;
+  private readonly mergerPublishGapMs: number;
   private readonly buffer = new Map<string, PartialBuffer>();
   private readonly mergers = new Map<string, UtteranceMerger>();
   private readonly sequences = new Map<string, number>();
@@ -46,16 +55,32 @@ export class UtteranceFinalizer {
     ReturnType<typeof setTimeout>
   >();
 
+  /** In-flight `onUtterancePublished` handlers per session (drained on close). */
+  private readonly publishedHandlerInflight = new Map<
+    string,
+    Set<Promise<unknown>>
+  >();
+
   constructor(
     publisher: UtterancePublisher,
     options: {
       topicManager?: TopicManagerOptions;
-      /** Same-window merge threshold and post-utterance flush delay; defaults to `MERGE_GAP_MS`. */
+      /** Same-speaker merge window (ms between segment ends). */
+      mergerGroupingMs?: number;
+      /** Flush pending publish after audio end + this gap (ms). */
+      mergerPublishGapMs?: number;
+      /**
+       * @deprecated Sets both grouping and publish gap when the split env vars are unused.
+       */
       mergerGapMs?: number;
     } = {}
   ) {
     this.publisher = publisher;
-    this.mergerGapMs = options.mergerGapMs ?? MERGE_GAP_MS;
+    const legacyBoth = options.mergerGapMs;
+    this.mergerGroupingMs =
+      options.mergerGroupingMs ?? legacyBoth ?? MERGE_GROUPING_MS;
+    this.mergerPublishGapMs =
+      options.mergerPublishGapMs ?? legacyBoth ?? MERGE_PUBLISH_GAP_MS;
     this.topicManager = new TopicManager(publisher, options.topicManager);
     this.embedder = new GoogleGenAIEmbedder();
   }
@@ -146,6 +171,8 @@ export class UtteranceFinalizer {
 
     const wordCount = countWords(normalizedText);
 
+    const finalizeStart = PERF.now();
+
     const utterance: Utterance = {
       utteranceId: this.generateUtteranceId(sessionId),
       sessionId,
@@ -163,24 +190,29 @@ export class UtteranceFinalizer {
       mergedCount: 1,
     };
 
-    try {
-      utterance.embedding = await this.embedder.embed(utterance.text);
-    } catch (error) {
-      log.warn(
-        { err: error, utteranceId: utterance.utteranceId },
-        "Failed to generate embedding for utterance"
-      );
-    }
+    const embedWallStart = PERF.now();
+    utterance.embeddingPromise = this.embedder
+      .embed(utterance.text)
+      .catch((error) => {
+        log.warn(
+          { err: error, utteranceId: utterance.utteranceId },
+          "Failed to generate embedding for utterance"
+        );
+        return undefined;
+      });
 
-    // Assign topic
+    // Assign topic (awaits in-flight embedding via TopicManager)
     const topicId = await this.topicManager.assignTopic(utterance);
     utterance.topicId = topicId;
+
+    finalizerEmbedDurationMs.observe(PERF.now() - embedWallStart);
+    utterance.embeddingPromise = undefined;
 
     const merger = this.getOrCreateMerger(sessionId);
     const toPublish = merger.push(utterance);
 
     if (toPublish) {
-      await this.publishUtterance(toPublish);
+      await this.publishUtterance(toPublish, finalizeStart);
     }
 
     if (merger.hasPending()) {
@@ -306,6 +338,8 @@ export class UtteranceFinalizer {
       }
     }
 
+    await this.awaitPublishedHandlersForSession(sessionId);
+
     this.buffer.delete(sessionId);
     this.mergers.delete(sessionId);
     this.sequences.delete(sessionId);
@@ -338,7 +372,7 @@ export class UtteranceFinalizer {
   private getOrCreateMerger(sessionId: string): UtteranceMerger {
     let merger = this.mergers.get(sessionId);
     if (!merger) {
-      merger = new UtteranceMerger(this.mergerGapMs);
+      merger = new UtteranceMerger(this.mergerGroupingMs);
       this.mergers.set(sessionId, merger);
     }
     return merger;
@@ -354,7 +388,7 @@ export class UtteranceFinalizer {
 
   /**
    * When the merger holds a line waiting for a possible same-speaker sibling, still publish
-   * past the pending audio end plus `mergerGapMs` if no new final arrives — otherwise
+   * past the pending audio end plus `mergerPublishGapMs` if no new final arrives — otherwise
    * pipeline and alerts lag one utterance behind realtime speech.
    */
   private scheduleMergerGapFlush(sessionId: string): void {
@@ -365,7 +399,7 @@ export class UtteranceFinalizer {
     }
 
     const pendingEndMs = pending.timestamp + pending.duration * 1000;
-    const fireAt = pendingEndMs + this.mergerGapMs;
+    const fireAt = pendingEndMs + this.mergerPublishGapMs;
     const delayMs = Math.max(0, Math.ceil(fireAt - Date.now()));
 
     this.clearMergerFlushTimer(sessionId);
@@ -410,22 +444,58 @@ export class UtteranceFinalizer {
     return createUnidentifiedSpeaker(diarizationIndex);
   }
 
-  private async publishUtterance(utterance: Utterance): Promise<void> {
+  private trackPublishedHandler(
+    sessionId: string,
+    promise: Promise<unknown>
+  ): void {
+    let bucket = this.publishedHandlerInflight.get(sessionId);
+    if (!bucket) {
+      bucket = new Set();
+      this.publishedHandlerInflight.set(sessionId, bucket);
+    }
+    bucket.add(promise);
+    promise.finally(() => {
+      bucket?.delete(promise);
+      if (bucket && bucket.size === 0) {
+        this.publishedHandlerInflight.delete(sessionId);
+      }
+    });
+  }
+
+  private async awaitPublishedHandlersForSession(
+    sessionId: string
+  ): Promise<void> {
+    const bucket = this.publishedHandlerInflight.get(sessionId);
+    if (!bucket || bucket.size === 0) {
+      return;
+    }
+    await Promise.allSettled([...bucket]);
+  }
+
+  private async publishUtterance(
+    utterance: Utterance,
+    finalizeStartMs?: number
+  ): Promise<void> {
     const channel = utteranceChannel(utterance.sessionId);
-    const message = JSON.stringify(utterance);
+    const message = JSON.stringify(utterance, (key, value) =>
+      key === "embeddingPromise" ? undefined : value
+    );
 
     try {
       await this.publisher.publish(channel, message);
 
+      if (finalizeStartMs !== undefined) {
+        finalizerPublishWaitMs.observe(PERF.now() - finalizeStartMs);
+      }
+
       for (const handler of this.publishedHandlers) {
-        try {
-          await handler(utterance);
-        } catch (error) {
+        const inflight = Promise.resolve(handler(utterance)).catch((error) => {
           log.error(
             { err: error, utteranceId: utterance.utteranceId },
             "Utterance published handler failed"
           );
-        }
+        });
+        this.trackPublishedHandler(utterance.sessionId, inflight);
       }
 
       log.info(

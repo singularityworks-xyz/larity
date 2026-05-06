@@ -11,6 +11,7 @@
   "dependencies": {
     "@elysiajs/cors": "^1.3.1",
     "@elysiajs/opentelemetry": "^1.4.10",
+    "@larity/infra": "workspace:*",
     "@larity/logger": "workspace:*",
     "@larity/telemetry": "workspace:*",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.212.0",

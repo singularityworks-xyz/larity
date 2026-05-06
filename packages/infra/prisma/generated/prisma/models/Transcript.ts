@@ -210,7 +210,7 @@ export type TranscriptGroupByOutputType = {
   _max: TranscriptMaxAggregateOutputType | null
 }
 
-type GetTranscriptGroupByPayload<T extends TranscriptGroupByArgs> = Prisma.PrismaPromise<
+export type GetTranscriptGroupByPayload<T extends TranscriptGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<TranscriptGroupByOutputType, T['by']> &
       {
@@ -1198,6 +1198,11 @@ export type TranscriptFindManyArgs<ExtArgs extends runtime.Types.Extensions.Inte
    * Skip the first `n` Transcripts.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Transcripts.
+   */
   distinct?: Prisma.TranscriptScalarFieldEnum | Prisma.TranscriptScalarFieldEnum[]
 }
 
