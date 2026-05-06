@@ -76,6 +76,7 @@ describe("Tier3 Pipeline Integration (Embed Once)", () => {
           detections: [],
           technicalHit: false,
           blocklistHit: false,
+          pricingHit: false,
         })),
         closeSession: mock(),
         closeAll: mock(),

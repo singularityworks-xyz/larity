@@ -90,6 +90,9 @@ export interface Tier1Result {
   detections: Tier1Detection[];
   technicalHit: boolean;
   blocklistHit: boolean;
+  /** True when the utterance contains a currency/price mention (e.g. $400, 300 rupees, €50).
+   *  Drives the highSignal gate independently of Tier 2 classification quality. */
+  pricingHit: boolean;
 }
 
 export interface Tier2Outcome {
