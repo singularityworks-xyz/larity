@@ -451,7 +451,7 @@ Plain Redis has no native vector search, and calling pgvector for every Tier 3 i
 | Layer | What | Why |
 |-------|------|-----|
 | **Primary: in-memory HNSW index** | `hnswlib-node` (or equivalent), one index per session, keyed by `sessionId`, holding `{ id, embedding, commitment }` | Sub-millisecond top-K search, zero network cost, no serialization on the hot path |
-| **Secondary: Redis snapshot** | `meeting:ledger:{sessionId}` — JSON snapshot of all commitments (no embeddings, or quantized), refreshed every N inserts and on status change | Survives worker restart, readable by other services (post-meeting worker, observability), feeds Redis pub/sub on ledger updates |
+| **Secondary: Redis snapshot** | `meeting:ledger:{sessionId}` — JSON snapshot (vectors optional/base64); **debounced** writes (**`LEDGER_SNAPSHOT_DEBOUNCE_MS`**) + flush on session close; immediate write when debounce is 0 | Survives worker restart, readable by other services (post-meeting worker, observability); **`ledger_snapshot_flushes_total`** metric |
 | **Tertiary: PostgreSQL + pgvector** | Written at meeting end by the post-meeting worker | Becomes organizational memory for future meetings |
 
 **Why not keep it all in Redis:**
@@ -503,14 +503,14 @@ type CommitmentType =
 
 **Commitment Ledger Lifecycle:**
 
-1. **Written live during the meeting** by Tier 2 whenever it classifies a commitment or decision — insert into the session's in-memory HNSW index + append to the Redis snapshot.
+1. **Written live during the meeting** by Tier 2 whenever it classifies a commitment or decision — insert into the session's in-memory HNSW index + **debounced** Redis snapshot flush (**`LEDGER_SNAPSHOT_DEBOUNCE_MS`**; pub/sub insert event remains synchronous).
 2. **Stores embedding vectors** for each commitment in the HNSW index (for similarity search in Tier 3). The Redis snapshot can store vectors as base64-packed Float32 (optional — only needed if a replacement worker needs to avoid re-embedding on restart).
 3. **Status evolves during the meeting:**
    - `tentative` → initial state when commitment is made
    - `confirmed` → when the other party agrees or the speaker reaffirms
    - `contradicted` → when a conflicting commitment is detected
    - `superseded` → when the speaker explicitly revises (not a contradiction — an intentional update)
-   - Status changes write-through to the Redis snapshot and fan out on the `meeting.ledger.{sessionId}` pub/sub channel for any observer (dashboard, post-meeting worker).
+   - Status changes update in-memory state immediately; **debounced** Redis snapshot flush + fan-out on `meeting.ledger.{sessionId}` pub/sub (same pattern as inserts).
 4. **Searched by Tier 3** on every commitment/decision utterance via in-memory HNSW top-K (sub-ms).
 5. **At meeting end:** Handed off to post-meeting pipeline → written to PostgreSQL + pgvector → becomes organizational memory for future meetings. The in-memory index is dropped; Redis snapshot is deleted after successful persistence.
 
@@ -550,14 +550,22 @@ interface Constraint {
 
 ### 5.5.1 Utterance merger and publish timing
 
-After a **STT final**, meeting-mode builds one `Utterance`, embeds, assigns a topic, then passes it through **`UtteranceMerger`** before Redis publish and the tiered pipeline:
+After a **STT final**, meeting-mode builds one `Utterance`, **starts** a Gemini **`embeddingPromise`** (embed runs concurrently with work ahead of publish), **`TopicManager.assignTopic`** awaits that promise so topic centroids always see a vector, then **`UtteranceMerger`** decides what to publish to **`meeting.utterance.*`** before the tiered pipeline runs.
 
-- **Same-speaker, short gap:** If the next final is from the **same `speakerId`** and starts within **`MERGE_GAP_MS`** after the previous segment’s audio end (`timestamp + duration`), the merger **combines text** into a single utterance (one publish, one pipeline pass).
-- **Otherwise:** The previous pending segment is **published** first; the new segment becomes pending.
+**Two independent knobs** (`packages/meeting-mode/src/env.ts`; tests may override `mergerGroupingMs` / `mergerPublishGapMs` / legacy `mergerGapMs` on **`UtteranceFinalizer`**):
 
-**Important — avoid one-utterance lag:** The merger traditionally held the **first** segment as `pending` until a **second** final arrived, which deferred the pipeline (and Tier 4) by one line. **Current behavior:** if a segment stays pending with no sibling merge, **`UtteranceFinalizer` schedules a flush** at **`pending audio end + MERGE_GAP_MS`**. Incoming finals **clear and reschedule** that timer; **`closeSession`** cancels it and **`flush()`** publishes any remainder.
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| **`MERGE_GROUPING_MS`** | Maximum silence between same-speaker finals for **in-memory text merge** (same `speakerId`, gap measured from previous segment **audio end**). Legacy alias: **`MERGE_GAP_MS`** when `MERGE_GROUPING_MS` is unset. | 5000 ms |
+| **`MERGE_PUBLISH_GAP_MS`** | After the pending segment’s **audio end**, if no merge sibling arrives, **flush Redis publish** after this delay so transcripts/alerts are **not** held for the full grouping window. | ~700 ms |
 
-Configurable via **`MERGE_GAP_MS`** in env (default 5000). Tests may pass a shorter `mergerGapMs` on `UtteranceFinalizer`; production merges use the env default.
+- **Same-speaker merge:** Next final same **`speakerId`** within **`MERGE_GROUPING_MS`** after prior audio end → **single merged** utterance (one publish).
+- **Otherwise:** Pending text publishes first (subject to **`MERGE_PUBLISH_GAP_MS`** timer); new segment becomes pending.
+- **Timers:** Pending flush schedules **`pendingEndMs + MERGE_PUBLISH_GAP_MS`**; each new final **clears and reschedules**. **`closeSession`** cancels the timer, **`flush()`** publishes any remainder, then **awaits in-flight `onUtterancePublished` handlers** so constraint snapshots / pipeline side-effects finish before topic teardown.
+
+**Throughput:** `publishUtterance` does **not** await handlers between finals (failures logged). **`MeetingPipelineEngine.evaluateUtteranceQueued`** chains evaluation **per `sessionId`** (FIFO) so bursts do not block the next finalize behind Tier 2/Tier 4 latency.
+
+Prometheus: **`finalizer_embed_duration_ms`**, **`finalizer_publish_wait_ms`** (finalize → Redis utterance publish).
 
 ---
 
@@ -567,12 +575,15 @@ This is the core intelligence pipeline. For each finalized utterance, it runs th
 
 **Key design points:**
 - Tier 1 is purely structural/language-agnostic.
-- Tier 2 uses a small LLM for classification (replacing all regex pattern libraries).
+- Tier 2 uses **Groq** (`GROQ_TIER2_MODEL`) with **`response_format: json_schema`** (`strict: true`) — **not** Gemini on the hot path (Gemini remains embeddings + Tier 4). Provider rules require **every property key** in **`extractedData`** and in a non-null **`topicDelta`** object to be present; unused slots are **`null`** (Zod strips nulls after parse).
 - Tier 2 is the **single per-utterance semantic source of truth** (alerts + topic deltas).
-- Tier 3 runs on every post-filter utterance as a safety net.
+- Tier 3 runs on every post-filter utterance as a safety net (short-circuits pgvector when preload context is absent **and** the commitment ledger search is empty).
 - Tier 4 is deep reasoning, gated by Tier 2/Tier 3 output.
 - Topic-summary LLM calls are **off the hot path** and only used for asynchronous refinement.
-- **Tiers 1, 2, and 3 run in parallel, not sequentially** — they are fully independent (structural checks, LLM classification, embedding search). Sequential execution of independent work is pure latency waste. Tier 4 is the only stage that consumes upstream output, so it runs after Tiers 2 and 3 resolve. See §5.6.1 for the exact orchestration.
+- **Tier 1, Tier 2, Tier 3, and constraint extraction run together** — **`constraintManager.processUtterance`** shares the same `Promise.all` as tiers (regex on raw text; independent of tier outputs). Tier 4 runs **after** they resolve. See §5.6.1.
+- **Session caches:** Meeting **context payload** is fetched once in **`ensureSessionHydrated`** and reused from **`SessionPipelineState`**; **`CostManager`** serves **`getSessionCost`** from a short-TTL **hot cache** plus **`primeSessionCost`** on hydrate (**`COST_CAP_CACHE_TTL_MS`**).
+- **Ledger snapshots:** Redis **`SET`** for commitment + constraint ledgers is **debounced** (**`LEDGER_SNAPSHOT_DEBOUNCE_MS`**); forced flush on session close. Small ledger events still publish on **`meeting.ledger.*` / `meeting.constraint.*`** as today.
+- **Speaker-state alerts** publish via **`Promise.all`**; **`AlertPublisher`** is **cached per `sessionId`** in **`index.ts`** for Tier 4 / behavioral publishes.
 
 #### Pre-filter (Local, Free, <10ms)
 
@@ -614,7 +625,9 @@ All semantic understanding is now in Tier 2 (small LLM).
 
 #### Tier 2: Semantic Classification via Small LLM (~$0.002/call, <200ms)
 
-**Single call to Gemini flash-lite (`gemini-3.1-flash-lite-preview`)** per utterance that passes the pre-filter. This is the primary classification layer that replaces ALL the old regex pattern libraries.
+**Single call via Groq** (`GROQ_TIER2_MODEL`, default `openai/gpt-oss-120b`) per utterance that passes the pre-filter, using **`json_schema`** structured outputs (`Tier2Classification`, **`strict: true`**). This is the primary classification layer that replaces ALL the old regex pattern libraries.
+
+**Schema constraint:** Groq rejects schemas where an `object` lists `properties` without a `required` array covering **every** key — hence **`extractedData`** and non-null **`topicDelta`** are modeled as **all keys required** with **`string | null`** / **`number | null`**; the app strips **`null`** after validation so downstream code keeps optional-field ergonomics.
 
 **Input to the LLM:**
 
@@ -686,7 +699,7 @@ interface Tier2Classification {
 
 **Runs on EVERY utterance that passed the pre-filter** — not just commitments. This is a safety net. Even if Tier 2 misclassified something as filler, Tier 3's embedding search can catch it.
 
-Three parallel checks:
+Three logical checks (implementation runs memory pgvector lookups **in parallel** via `Promise.all`; novelty + ledger search are coordinated inside **`Tier3SearchEngine.evaluate`**):
 
 **a) Novelty check:**
 - Is this utterance semantically new within the current meeting?
@@ -807,7 +820,7 @@ Deepgram STT (1 channel):    60 min × ~$0.0077/min        = ~$0.46
 Dual-channel STT delta:      +60 channel-min × ~$0.0077   = +~$0.46
 Pre-filter kills:            ~48 of 120 utterances (40%)
 Tier 1 (structural):         ~72 utterances × $0          = FREE
-Tier 2 (small LLM):          ~72 utterances × $0.002      = ~$0.14
+Tier 2 (Groq Tier 2):        ~72 utterances × $0.002      = ~$0.14
 Tier 3 (embeddings):         ~72 utterances × $0.00002    = ~$0.002
 Tier 4 (large LLM):          ~8 utterances × $0.02        = ~$0.16
 
@@ -817,13 +830,16 @@ TOTAL (dual-channel default):    ~$1.22 per meeting
 
 #### 5.6.1 Pipeline Orchestration — Parallel Tier Execution
 
-Tiers 1, 2, and 3 read the same utterance and do not depend on each other's output. The realtime worker fires them concurrently:
+Tiers 1, 2, 3 and **constraint extraction** read the same utterance and do not depend on each other's output. **`MeetingPipelineEngine`** runs them concurrently:
 
 ```ts
-const [tier1, tier2, tier3] = await Promise.all([
-  runTier1Structural(utterance),        // <50ms,  free
-  runTier2Classification(utterance),    // <200ms, ~$0.002
-  runTier3EmbeddingSearch(utterance),   // <100ms, ~$0.00002
+const constraintTask = constraintManager.processUtterance(utterance)
+
+const [tier1, tier2, tier3, _constraints] = await Promise.all([
+  runTier1Structural(utterance),       // <50ms,  free
+  runTier2Classification(utterance),   // Groq + schema, ~$0.002
+  runTier3EmbeddingSearch(utterance),    // novelty ∥ ledger ∥ memory (memory queries parallel)
+  constraintTask,
 ])
 
 applyTopicDelta(tier2.topicDelta)       // deterministic reducer update, same tick
@@ -842,7 +858,7 @@ if (gate.runTier4) {
 }
 ```
 
-**Gate logic (runs in process after Tiers 1-3 resolve):**
+**Gate logic (runs in process after the parallel tier + constraint batch resolve):**
 
 ```
 shouldStopForDeepReasoning =
@@ -865,7 +881,7 @@ runTier4 = ¬shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)
 
 ```
 Pre-filter              <10ms
-Tier 1 ∥ Tier 2 ∥ Tier 3 max(50, 200, 100) = 200ms
+Tier 1 ∥ Tier 2 ∥ Tier 3 ∥ constraints ≈ max(50, 200, 100, …) = ~200ms tier-side (Tier 3 memory DB round-trips run in parallel)
 Gate decision           <5ms
 Tier 4 (when needed)    bounded by GEMINI_TIER4_TIMEOUT_MS (default 1500ms; fail-silent on timeout)
 -----------------------------------
@@ -877,8 +893,9 @@ This fits the <800ms end-to-end budget from speech-final to alert delivery (Deep
 
 **Side-effects during parallel execution:**
 - Tier 2, on `intent ∈ {"commitment", "decision"}`, writes to the in-session commitment index (§5.4.2) **after** its own promise resolves but **before** `Promise.all` returns — the write is awaited inside the Tier 2 task. Tier 3's ledger search therefore sees prior commitments but not the current one (correct: you don't want to match an utterance against itself).
+- **Constraint extraction** runs inside the same `Promise.all`; constraint ledger inserts share the **debounced** Redis snapshot behavior as commitments.
 - Tier 1 blocklist/technical hits are dispatched as "instant" alerts without waiting for Tier 4. These go out on the shared channel immediately.
-- Topic summary LLM refinement is explicitly off the hot path. It triggers only on topic shift/topic close/significant delta and never blocks the Tier 1/2/3 → gate → Tier 4 flow.
+- Topic summary LLM refinement is explicitly off the hot path. It triggers only on topic shift/topic close/significant delta and never blocks the parallel tiers → gate → Tier 4 flow.
 
 #### 5.6.2 Pipeline traces (`meeting.pipeline.{sessionId}`)
 
@@ -891,13 +908,15 @@ For manual QA and dev observability, meeting-mode publishes a **versioned JSON**
 
 Prometheus/session rollups in B.11 remain roadmap; **this channel is the current MVP for structured tier visibility.**
 
+**Prometheus (meeting-mode):** tier duration histograms, **`pipeline_context_payload_cache_hits_total` / `_misses_total`**, **`ledger_snapshot_flushes_total`**, finalizer embed/publish-wait histograms (see `packages/meeting-mode/src/pipeline/metrics.ts`).
+
 #### Three Model Tiers
 
 | Model | Purpose | Cost per call | Example |
 |-------|---------|---------------|---------|
-| **Embedding model** | Search, similarity, novelty | ~$0.00002 | text-embedding-004 (Gemini via @google/genai) |
-| **Small LLM** | Classification, extraction | ~$0.002 | gemini-3.1-flash-lite-preview |
-| **Large LLM** | Deep reasoning, contradiction analysis | ~$0.02 | gemini-2.5-pro |
+| **Embedding model** | Search, similarity, novelty | ~$0.00002 | Gemini embed (`@google/genai`) |
+| **Small LLM** | Classification, extraction | ~$0.002 | Groq chat completions + JSON schema (`GROQ_TIER2_MODEL`) |
+| **Large LLM** | Deep reasoning, contradiction analysis | ~$0.02 | Gemini Tier 4 (`GEMINI_TIER4_MODEL`) |
 
 **Embedding reuse rule (no duplicate work):**
 - Generate one utterance embedding and reuse it for Tier 3 checks, Tier 2 semantic-cache similarity, topic centroid assignment, and commitment-ledger writes.

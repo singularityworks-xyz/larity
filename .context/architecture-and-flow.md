@@ -228,7 +228,7 @@ interface SpeakerIdentity {
       "ts": 1730000004
     }
     ```
-* **Constraint:** Only these normalized objects move forward (after **same-speaker merge** within `MERGE_GAP_MS`; see [meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing))
+* **Constraint:** Only these normalized objects move forward (after **same-speaker merge** within **`MERGE_GROUPING_MS`** and **publish flush** by **`MERGE_PUBLISH_GAP_MS`** on pending lines; see [meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing))
 * **Broadcast:** Every final utterance pushed to ALL connected team members
 
 ### 9. Processing Pipeline (Tiered, Cost-Optimized)
@@ -237,7 +237,9 @@ interface SpeakerIdentity {
 
 The pipeline replaces the old regex-heavy approach with LLM-based classification. **No English-only pattern libraries.** Works in any language.
 
-**Execution model:** After pre-filter, Tiers 1, 2, and 3 run **in parallel** (independent reads of the same utterance). Tier 4 runs **after** they resolve and is gated by **`runTier4 = ¬shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)`**, where **`shouldStopForDeepReasoning`** is Tier 2’s high-confidence filler/general with no risks, **`highSignal`** is Tier 1 instant hits plus commitment/decision/concern or any risk signals, and **`forceTier4`** comes from Tier 3 memory or ledger similarity hits. **`forceTier4` does not override** the filler/general stop — this avoids Tier 4 on low-value lines when embeddings spuriously match the ledger.
+**Execution model:** After pre-filter, **Tier 1, Tier 2, Tier 3, and constraint extraction** run **in parallel** (independent reads of the same utterance). Internally, Tier 3 issues **parallel** pgvector queries for org/client memory when preload context exists. Tier 4 runs **after** they resolve and is gated by **`runTier4 = ¬shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)`**, where **`shouldStopForDeepReasoning`** is Tier 2’s high-confidence filler/general with no risks, **`highSignal`** is Tier 1 instant hits plus commitment/decision/concern or any risk signals, and **`forceTier4`** comes from Tier 3 memory or ledger similarity hits. **`forceTier4` does not override** the filler/general stop — this avoids Tier 4 on low-value lines when embeddings spuriously match the ledger.
+
+**Hot path throughput:** Finalizer **`embeddingPromise`** starts before topic assignment; **`onUtterancePublished`** does not await the full pipeline between finals — **`evaluateUtteranceQueued`** serializes work **per session** while transcripts publish on **`MERGE_PUBLISH_GAP_MS`**. Meeting context + cost reads avoid redundant Redis GETs via session caches (**§B.16** in `architecture_decisions.md`).
 
 **Observability (MVP):** Versioned structured traces publish to **`meeting.pipeline.{sessionId}`** (Redis pub/sub): tier summaries, gate flags, latency slices; when Tier 4 surfaces, **`message` / `surfaceReason` / `suggestion`** appear in the trace (no embeddings, no internal `reasoning`). See [meeting-mode.md §5.6.2](./meeting-mode.md#562-pipeline-traces-meetingpipelinesessionid).
 
@@ -252,7 +254,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 * **Accelerator, NOT a gate** — fires instant alerts but everything passes through to Tier 2
 
 #### Tier 2: Small LLM Classification (~$0.002/call, <200ms)
-* **Single call to Gemini flash-lite** per utterance
+* **Groq** structured outputs (**`GROQ_TIER2_MODEL`**) — JSON Schema **`strict`**; optional slots expressed as **`null`** keys per provider rules (see `architecture_decisions.md` **B.18**)
 * Input: utterance + speaker identity + last 2-3 utterances from same speaker (cross-utterance context)
 * **Replaces ALL old regex pattern libraries** (risky language, pressure tactics, tone, scope creep, backtracking, vague language)
 * Returns: intent, commitmentType, tone, riskSignals, extractedData, confidence, and `topicDelta` fields
@@ -263,7 +265,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 #### Tier 3: Embedding Search + Novelty Check (~$0.00002/call, <100ms)
 * Runs on **EVERY utterance** (safety net — catches what Tier 2 might miss)
 * Uses a **shared utterance embedding** reused by topic assignment, Tier 2 cache similarity, and commitment-ledger writes
-* Three parallel checks:
+* Three parallel checks (memory search uses **parallel** DB queries):
     * **Novelty check**: semantic deduplication within meeting
     * **Memory search**: pgvector search for past decisions, commitments, policies (client-scoped + org-wide)
     * **Commitment ledger search**: compare against ALL commitments from THIS meeting (catches contradictions from 40 min ago)
@@ -282,7 +284,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 | Model | Purpose | Cost/call | Example |
 |-------|---------|-----------|---------|
 | **Embedding** | Search, similarity, novelty | ~$0.00002 | text-embedding-004 (Gemini via @google/genai) |
-| **Small LLM** | Classification, extraction | ~$0.002 | gemini-3.1-flash-lite-preview |
+| **Small LLM** | Classification, extraction | ~$0.002 | Groq (`GROQ_TIER2_MODEL`) |
 | **Large LLM** | Deep reasoning | ~$0.02 | gemini-2.5-pro |
 
 **Total cost per 1-hour meeting:** ~$0.76 in single-channel fallback, ~$1.22 in dual-channel default (includes Deepgram channel-minute cost; LLM/embedding tiers remain ~$0.30).
@@ -315,7 +317,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 * **Speaker State Tracker:** Rolling tone scores per speaker, engagement metrics, response patterns
     * Detects gradual tone shifts (escalation over 15 min)
     * Detects client disengagement (brief responses, declining frequency)
-* **State Persistence:** All ledgers in Redis per session, accessible to all participants
+* **State Persistence:** Ledgers backed by Redis snapshots (**debounced** writes — **`LEDGER_SNAPSHOT_DEBOUNCE_MS`**) per session, accessible to all participants
 
 ### 12. Live LLM Invocation (Read-Only, Atomic Alerts)
 * **LLM Characteristics:**
