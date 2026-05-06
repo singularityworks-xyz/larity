@@ -88,6 +88,8 @@ export interface Tier2Input {
   speaker: SpeakerIdentity;
   recentSameSpeaker: string[];
   topicLabel?: string;
+  /** Structural price/currency cue (aligned with Tier1 `pricingHit`) for Tier2 user message. */
+  structuralPricingCue?: boolean;
 }
 
 export type Tier2Intent = z.infer<typeof tier2IntentSchema>;

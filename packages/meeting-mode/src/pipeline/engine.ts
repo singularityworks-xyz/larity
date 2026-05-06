@@ -27,7 +27,7 @@ import {
   pipelineTotalDuration,
 } from "./metrics";
 import { PreFilter } from "./pre-filter";
-import { Tier1StructuralDetector } from "./tier1";
+import { Tier1StructuralDetector, textMatchesTier1PricingPath } from "./tier1";
 import { Tier2Classifier } from "./tier2";
 import { Tier2SemanticCache } from "./tier2-cache";
 import { Tier3SearchEngine } from "./tier3";
@@ -682,6 +682,7 @@ export class MeetingPipelineEngine {
       speaker: utterance.speaker,
       recentSameSpeaker,
       topicLabel,
+      structuralPricingCue: textMatchesTier1PricingPath(text),
     };
 
     const tier2 = await this.tier2.classify(input);

@@ -197,3 +197,32 @@ function dedupeDetections(detections: Tier1Detection[]): Tier1Detection[] {
 
   return deduped;
 }
+
+const TIER1_PRICING_SCAN_REGEXES = [
+  PERCENT_REGEX,
+  CURRENCY_REGEX,
+  QUANTITY_REGEX,
+] as const;
+
+/**
+ * Same pricing signal as `Tier1Result.pricingHit` (numeric detections + currency hint).
+ * Exposed so Tier 2 can receive a hint while Tier 1 runs in parallel with Tier 2.
+ */
+export function textMatchesTier1PricingPath(text: string): boolean {
+  const raw: Tier1Detection[] = [];
+  for (const regex of TIER1_PRICING_SCAN_REGEXES) {
+    const scoped = new RegExp(regex.source, regex.flags);
+    for (const match of text.matchAll(scoped)) {
+      const hit = match[0];
+      if (hit) {
+        raw.push({ type: "number", value: hit });
+      }
+    }
+  }
+
+  const deduped = dedupeDetections(raw);
+  return deduped.some(
+    (detection) =>
+      detection.type === "number" && PRICING_HINT_RE.test(detection.value)
+  );
+}
