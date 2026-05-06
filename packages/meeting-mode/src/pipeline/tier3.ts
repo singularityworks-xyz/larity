@@ -13,8 +13,12 @@ export interface CommitmentLedgerSearchAdapter {
   search(
     sessionId: string,
     embedding: number[],
-    options?: { limit?: number; threshold?: number }
-  ): Array<{ id: string; score: number }>;
+    options?: { k?: number; minSimilarity?: number }
+  ): Array<
+    | { commitment: { id: string }; similarity: number }
+    /** @deprecated tests / legacy mocks */
+    | { id: string; score: number }
+  >;
 }
 
 export class Tier3SearchEngine {
@@ -40,6 +44,26 @@ export class Tier3SearchEngine {
         memoryMatches: [],
         ledgerMatches: [],
       };
+    }
+
+    // No org/client memory and no commitments → skip pgvector + ledger search work
+    if (!payload) {
+      const ledgerProbe = commitmentManager.search(sessionId, embedding, {
+        k: 1,
+        minSimilarity: this.LEDGER_THRESHOLD,
+      });
+      if (ledgerProbe.length === 0) {
+        const noveltyScore = await this.checkNovelty(
+          embedding,
+          recentEmbeddings
+        );
+        return {
+          forceTier4: false,
+          noveltyScore,
+          memoryMatches: [],
+          ledgerMatches: [],
+        };
+      }
     }
 
     const tasks = [
@@ -87,11 +111,11 @@ export class Tier3SearchEngine {
   ): Promise<Array<{ id: string; score: number }>> {
     try {
       const matches = commitmentManager.search(sessionId, embedding, {
-        limit: 3,
-        threshold: this.LEDGER_THRESHOLD,
+        k: 3,
+        minSimilarity: this.LEDGER_THRESHOLD,
       });
       return Promise.resolve(
-        matches.map((m) => ({ id: m.id, score: m.score }))
+        matches.map((m) => normalizeLedgerSearchRow(m)).filter((row) => row.id)
       );
     } catch (error) {
       log.error(
@@ -114,36 +138,37 @@ export class Tier3SearchEngine {
     const matches: Array<{ type: string; id: string; score: number }> = [];
 
     try {
-      // Prisma pgvector raw queries
       const vectorStr = `[${embedding.join(",")}]`;
 
-      // 1. Past Decisions (client-scoped)
-      const decisions = await prisma.$queryRaw<
-        Array<{ id: string; similarity: number }>
-      >`
-        SELECT id, 1 - (embedding <=> ${vectorStr}::vector) as similarity
-        FROM decisions
-        WHERE "clientId" = ${clientId} AND embedding IS NOT NULL
-        ORDER BY embedding <=> ${vectorStr}::vector
-        LIMIT 2;
-      `;
+      const [decisions, policies, points] = await Promise.all([
+        prisma.$queryRaw<Array<{ id: string; similarity: number }>>`
+          SELECT id, 1 - (embedding <=> ${vectorStr}::vector) as similarity
+          FROM decisions
+          WHERE "clientId" = ${clientId} AND embedding IS NOT NULL
+          ORDER BY embedding <=> ${vectorStr}::vector
+          LIMIT 2;
+        `,
+        prisma.$queryRaw<Array<{ id: string; similarity: number }>>`
+          SELECT id, 1 - (embedding <=> ${vectorStr}::vector) as similarity
+          FROM policy_guardrails
+          WHERE "orgId" = ${orgId} AND embedding IS NOT NULL
+          ORDER BY embedding <=> ${vectorStr}::vector
+          LIMIT 2;
+        `,
+        prisma.$queryRaw<Array<{ id: string; similarity: number }>>`
+          SELECT id, 1 - (embedding <=> ${vectorStr}::vector) as similarity
+          FROM important_points
+          WHERE "clientId" = ${clientId} AND embedding IS NOT NULL
+          ORDER BY embedding <=> ${vectorStr}::vector
+          LIMIT 2;
+        `,
+      ]);
 
       for (const d of decisions) {
         if (d.similarity >= this.MEMORY_THRESHOLD) {
           matches.push({ type: "decision", id: d.id, score: d.similarity });
         }
       }
-
-      // 2. Policy Guardrails (org-scoped)
-      const policies = await prisma.$queryRaw<
-        Array<{ id: string; similarity: number }>
-      >`
-        SELECT id, 1 - (embedding <=> ${vectorStr}::vector) as similarity
-        FROM policy_guardrails
-        WHERE "orgId" = ${orgId} AND embedding IS NOT NULL
-        ORDER BY embedding <=> ${vectorStr}::vector
-        LIMIT 2;
-      `;
 
       for (const p of policies) {
         if (p.similarity >= this.MEMORY_THRESHOLD) {
@@ -154,17 +179,6 @@ export class Tier3SearchEngine {
           });
         }
       }
-
-      // 3. Important Points (client-scoped)
-      const points = await prisma.$queryRaw<
-        Array<{ id: string; similarity: number }>
-      >`
-        SELECT id, 1 - (embedding <=> ${vectorStr}::vector) as similarity
-        FROM important_points
-        WHERE "clientId" = ${clientId} AND embedding IS NOT NULL
-        ORDER BY embedding <=> ${vectorStr}::vector
-        LIMIT 2;
-      `;
 
       for (const p of points) {
         if (p.similarity >= this.MEMORY_THRESHOLD) {
@@ -184,4 +198,31 @@ export class Tier3SearchEngine {
 
     return matches.sort((a, b) => b.score - a.score);
   }
+}
+
+function normalizeLedgerSearchRow(m: unknown): {
+  id: string;
+  score: number;
+} {
+  if (typeof m !== "object" || m === null) {
+    return { id: "", score: 0 };
+  }
+
+  const row = m as {
+    commitment?: { id?: string };
+    similarity?: number;
+    id?: string;
+    score?: number;
+  };
+
+  const id = row.commitment?.id ?? row.id ?? "";
+
+  let score = 0;
+  if (typeof row.similarity === "number") {
+    score = row.similarity;
+  } else if (typeof row.score === "number") {
+    score = row.score;
+  }
+
+  return { id, score };
 }
