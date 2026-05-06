@@ -287,12 +287,17 @@ export const meetingSessionService = {
       );
     }
 
+    const trimmedDescription = input.description?.trim();
+    const trimmedAgenda = input.agenda?.trim();
+
     const meeting = await prisma.meeting.create({
       data: {
         clientId: input.clientId,
         title: input.title?.trim() || "Untitled meeting",
+        ...(trimmedDescription ? { description: trimmedDescription } : {}),
+        ...(trimmedAgenda ? { agenda: trimmedAgenda } : {}),
         status: "SCHEDULED",
-        scheduledAt: new Date(),
+        scheduledAt: input.scheduledAt ?? new Date(),
       },
       select: { id: true },
     });

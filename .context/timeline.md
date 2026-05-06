@@ -1039,15 +1039,15 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 - [ ] Set up React Router with app shell (tray/overlay window + optional main window)
 - [ ] Create navigation structure (Home, Active Meeting, Settings, Onboarding)
-- [ ] Build WebSocket connection manager (to **remote** realtime server)
+- [x] Build WebSocket connection manager (to **remote** realtime server)
 - [ ] Implement session state in React context
-- [ ] Wire the Rust audio-capture commands (`audio_capture_start/stop/status` from Day 12-13) to the React UI
-- [ ] Build audio streaming controls around Rust-native WebSocket transport — React starts/stops capture and shows status; PCM frames do not cross the React runtime in production
+- [x] Wire the Rust audio-capture commands (`audio_capture_start/stop/status` from Day 12-13) to the React UI
+- [x] Build audio streaming controls around Rust-native WebSocket transport — React starts/stops capture and shows status; PCM frames do not cross the React runtime in production
 - [ ] Add connection status indicator + audio-capture heartbeat
-- [ ] Onboarding screen:
-  - [ ] Sign in to org, join/select clients
-  - [ ] Request OS permissions for mic (for local VAD) and system audio (screen recording on macOS)
-  - [ ] **No voiceprint recording** — speaker ID is VAD-correlation based
+- [x] Onboarding screen:
+  - [x] Sign in to org, join/select clients
+  - [x] Request OS permissions for mic (for local VAD) and system audio (screen recording on macOS)
+  - [x] **No voiceprint recording** — speaker ID is VAD-correlation based
 - [ ] Build a minimal always-on-top overlay window (tray-style) for ambient UI during meetings — main window optional
 
 **Deliverable:** Desktop app can capture OS-level audio (host) and stream to remote server. No conferencing-platform-specific code in the app.

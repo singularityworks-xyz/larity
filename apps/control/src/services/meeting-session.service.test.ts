@@ -355,12 +355,12 @@ describe("MeetingSessionService", () => {
 
       expect(result.meetingId).toBe(meetingId);
       expect(mockPrisma.meeting.create).toHaveBeenCalledWith({
-        data: {
+        data: expect.objectContaining({
           clientId,
           title: "Discovery Call",
           status: "SCHEDULED",
           scheduledAt: expect.any(Date),
-        },
+        }),
         select: { id: true },
       });
       expect(mockPrisma.meetingParticipant.upsert).toHaveBeenCalledWith({
