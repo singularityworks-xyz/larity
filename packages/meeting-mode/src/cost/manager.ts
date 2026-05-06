@@ -23,10 +23,14 @@ export interface CostManagerOptions {
   hotCacheTtlMs?: number;
 }
 
+const REDIS_ERROR_THRESHOLD = 3;
+const REDIS_COOLDOWN_MS = 30_000;
+
 export class CostManager {
   private readonly redis: Redis | null;
   private readonly costs = new Map<string, number>();
-  private readonly sessionRedisDisabled = new Map<string, boolean>();
+  private readonly sessionRedisDisabled = new Map<string, number | true>();
+  private readonly sessionRedisErrors = new Map<string, number>();
   private readonly hotCacheTtlMs: number;
   private readonly hotCostReads = new Map<
     string,
@@ -63,12 +67,45 @@ export class CostManager {
     this.hotCostReads.set(sessionId, { value, readAt: Date.now() });
   }
 
-  private async readSessionCostUncached(sessionId: string): Promise<number> {
-    const redisDisabled = this.sessionRedisDisabled.get(sessionId) ?? false;
+  private redisAvailableForSession(sessionId: string): boolean {
+    if (!this.redis) {
+      return false;
+    }
+    if (this.sessionRedisDisabled.get(sessionId)) {
+      const disabledUntil = this.sessionRedisDisabled.get(sessionId);
+      if (typeof disabledUntil === "number" && Date.now() < disabledUntil) {
+        return false;
+      }
+      if (typeof disabledUntil === "boolean") {
+        return false;
+      }
+    }
+    return true;
+  }
 
-    if (this.redis && !redisDisabled) {
+  private recordRedisError(sessionId: string): void {
+    const count = (this.sessionRedisErrors.get(sessionId) ?? 0) + 1;
+    this.sessionRedisErrors.set(sessionId, count);
+    if (count >= REDIS_ERROR_THRESHOLD) {
+      this.sessionRedisDisabled.set(sessionId, Date.now() + REDIS_COOLDOWN_MS);
+      this.sessionRedisErrors.delete(sessionId);
+      log.warn(
+        { sessionId, errorCount: count, cooldownMs: REDIS_COOLDOWN_MS },
+        "Redis errors exceeded threshold, disabling Redis for session until cooldown expires"
+      );
+    } else {
+      log.warn(
+        { sessionId, errorCount: count, threshold: REDIS_ERROR_THRESHOLD },
+        "Redis error, will retry"
+      );
+    }
+  }
+
+  private async readSessionCostUncached(sessionId: string): Promise<number> {
+    const redis = this.redis;
+    if (redis && this.redisAvailableForSession(sessionId)) {
       try {
-        const val = await this.redis.get(`${COST_KEY_PREFIX}${sessionId}`);
+        const val = await redis.get(`${COST_KEY_PREFIX}${sessionId}`);
         if (val === null) {
           return 0;
         }
@@ -86,7 +123,7 @@ export class CostManager {
           { err: error, sessionId },
           "Failed to get session cost from Redis"
         );
-        this.sessionRedisDisabled.set(sessionId, true);
+        this.recordRedisError(sessionId);
       }
     }
 
@@ -131,12 +168,10 @@ export class CostManager {
         completionTokens * pricing.outputRate) /
       1_000_000;
 
-    // Check if Redis is disabled for this session
-    const redisDisabled = this.sessionRedisDisabled.get(sessionId) ?? false;
-
-    if (this.redis && !redisDisabled) {
+    const redis = this.redis;
+    if (redis && this.redisAvailableForSession(sessionId)) {
       try {
-        const total = await this.redis.incrbyfloat(
+        const total = await redis.incrbyfloat(
           `${COST_KEY_PREFIX}${sessionId}`,
           cost
         );
@@ -157,9 +192,7 @@ export class CostManager {
         return numTotal;
       } catch (error) {
         log.error({ err: error, sessionId }, "Failed to record cost to Redis");
-        // Mark Redis as disabled for this session
-        this.sessionRedisDisabled.set(sessionId, true);
-        // Fall through to in-memory tracking
+        this.recordRedisError(sessionId);
       }
     }
 
@@ -199,6 +232,7 @@ export class CostManager {
     }
     this.costs.delete(sessionId);
     this.sessionRedisDisabled.delete(sessionId);
+    this.sessionRedisErrors.delete(sessionId);
     this.hotCostReads.delete(sessionId);
   }
 }
