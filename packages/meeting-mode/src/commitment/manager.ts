@@ -126,9 +126,17 @@ export class CommitmentManager {
       return;
     }
 
-    await ledger.flushPendingSnapshot();
-    ledger.closeInMemory();
-    this.ledgers.delete(sessionId);
+    try {
+      await ledger.flushPendingSnapshot();
+    } catch (err) {
+      log.error(
+        { err, sessionId },
+        "Commitment ledger snapshot flush failed on await-close"
+      );
+    } finally {
+      ledger.closeInMemory();
+      this.ledgers.delete(sessionId);
+    }
   }
 
   async endSessionAndDeleteSnapshot(sessionId: string): Promise<Commitment[]> {

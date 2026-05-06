@@ -161,10 +161,18 @@ export class ConstraintManager {
       return;
     }
 
-    await ledger.flushPendingSnapshot();
-    ledger.closeInMemory();
-    this.ledgers.delete(sessionId);
-    this.hydratedSessions.delete(sessionId);
+    try {
+      await ledger.flushPendingSnapshot();
+    } catch (err) {
+      log.error(
+        { err, sessionId },
+        "Constraint ledger snapshot flush failed on await-close"
+      );
+    } finally {
+      ledger.closeInMemory();
+      this.ledgers.delete(sessionId);
+      this.hydratedSessions.delete(sessionId);
+    }
   }
 
   async closeAll(): Promise<void> {
