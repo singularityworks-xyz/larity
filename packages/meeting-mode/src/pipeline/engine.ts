@@ -270,13 +270,14 @@ export class MeetingPipelineEngine {
       ? evaluated.then((result) => afterEvaluate(utterance, result))
       : evaluated;
 
-    this.evaluationChains.set(sessionId, next);
-    next.catch((error) => {
+    const recovered = next.catch((error) => {
       log.warn(
         { err: error, utteranceId: utterance.utteranceId, sessionId },
         "Queued pipeline evaluation failed"
       );
     });
+
+    this.evaluationChains.set(sessionId, recovered);
   }
 
   async evaluateUtterance(
