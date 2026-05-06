@@ -300,6 +300,7 @@ export class MeetingPipelineEngine {
     const highSignal =
       tier1.blocklistHit ||
       tier1.technicalHit ||
+      tier1.pricingHit ||
       tier2.classification.intent === "commitment" ||
       tier2.classification.intent === "decision" ||
       tier2.classification.intent === "concern" ||
@@ -334,6 +335,7 @@ export class MeetingPipelineEngine {
       runTier4 &&
       !tier1.blocklistHit &&
       !tier1.technicalHit &&
+      !tier1.pricingHit &&
       tier2.classification.riskSignals.length === 0
     ) {
       // At 80% cost: raise the threshold — only surface if at least one risk signal
