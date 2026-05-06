@@ -161,7 +161,7 @@ export type OrgGroupByOutputType = {
   _max: OrgMaxAggregateOutputType | null
 }
 
-type GetOrgGroupByPayload<T extends OrgGroupByArgs> = Prisma.PrismaPromise<
+export type GetOrgGroupByPayload<T extends OrgGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<OrgGroupByOutputType, T['by']> &
       {
@@ -1435,6 +1435,11 @@ export type OrgFindManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
    * Skip the first `n` Orgs.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Orgs.
+   */
   distinct?: Prisma.OrgScalarFieldEnum | Prisma.OrgScalarFieldEnum[]
 }
 

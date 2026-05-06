@@ -179,7 +179,7 @@ export type ImportantPointGroupByOutputType = {
   _max: ImportantPointMaxAggregateOutputType | null
 }
 
-type GetImportantPointGroupByPayload<T extends ImportantPointGroupByArgs> = Prisma.PrismaPromise<
+export type GetImportantPointGroupByPayload<T extends ImportantPointGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<ImportantPointGroupByOutputType, T['by']> &
       {
@@ -1507,6 +1507,11 @@ export type ImportantPointFindManyArgs<ExtArgs extends runtime.Types.Extensions.
    * Skip the first `n` ImportantPoints.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of ImportantPoints.
+   */
   distinct?: Prisma.ImportantPointScalarFieldEnum | Prisma.ImportantPointScalarFieldEnum[]
 }
 
