@@ -946,13 +946,13 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - [x] Tier 2 catches semantic risks (financial disclosure, roadmap leaks, strategy)
   - [ ] Routing: BOTH (shared + personal to speaker)
 
-- [ ] **Tone Warning Alerts:**
-  - [ ] Tier 2's `tone` field identifies defensive/aggressive/reactive
-  - [ ] Routing: own speech → personal, team member → shared
+- [x] **Tone Warning Alerts:**
+  - [x] Tier 2's `tone` field identifies defensive/aggressive/reactive
+  - [x] Routing: own speech → personal, team member → shared
 
-- [ ] **Policy Violation Alerts:**
-  - [ ] Tier 1 blocklist matches + Tier 2 semantic detection
-  - [ ] Routing: BOTH (shared + personal to speaker)
+- [x] **Policy Violation Alerts:**
+  - [x] Tier 1 blocklist matches + Tier 2 semantic detection
+  - [x] Routing: BOTH (shared + personal to speaker)
 
 **Deliverable:** All risk and behavioral alert categories operational with correct routing.
 
@@ -992,26 +992,26 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Deliverable:** Speaker behavioral tracking and engagement-based alerts working.
 
-### Day 36: Speculative Processing & Optimizations
+### Day 36: Speculative Processing & Optimizations ✓ COMPLETED
 
 **packages/meeting-mode**
 
-- [ ] Implement speculative processing on partial utterances (confidence > 0.7):
-  - [ ] Start Tier 2 classification speculatively
-  - [ ] Identify likely topic from partial text
-  - [ ] Pre-fetch relevant constraints
-  - [ ] Pre-warm LLM connection for high-signal keywords
-- [ ] Build speculative cache with validation on final utterance
-- [ ] Implement speculative discard logic (text mismatch > 30%)
-- [ ] Add predictive constraint loading:
-  - [ ] Agenda parsing from calendar
-  - [ ] Topic prediction from meeting title/agenda
-  - [ ] Hot cache for topic → constraint mappings
-- [ ] Implement speaker-aware processing priority:
-  - [ ] Current user's speech: parallel tiers, lower threshold (0.7), priority LLM queue
-  - [ ] Other TEAM speech: standard processing
-  - [ ] EXTERNAL speech: sequential, higher threshold (0.85)
-- [ ] Add confidence threshold tuning per alert category (Silent Collaborator thresholds)
+- [x] Implement speculative processing on partial utterances (confidence > 0.7):
+  - [x] Start Tier 2 classification speculatively
+  - [x] Identify likely topic from partial text
+  - [x] Pre-fetch relevant constraints
+  - [x] Pre-warm LLM connection for high-signal keywords
+- [x] Build speculative cache with validation on final utterance
+- [x] Implement speculative discard logic (text mismatch > 30%)
+- [x] Add predictive constraint loading:
+  - [x] Agenda parsing from calendar
+  - [x] Topic prediction from meeting title/agenda
+  - [x] Hot cache for topic → constraint mappings
+- [x] Implement speaker-aware processing priority:
+  - [x] Current user's speech: parallel tiers, lower threshold (0.7), priority LLM queue
+  - [x] Other TEAM speech: standard processing
+  - [x] EXTERNAL speech: sequential, higher threshold (0.85)
+- [x] Add confidence threshold tuning per alert category (Silent Collaborator thresholds)
 
 **Deliverable:** Latency optimizations and processing priority working. ~200-300ms saved via speculation.
 
@@ -1029,15 +1029,15 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 - [ ] Set up React Router with app shell (tray/overlay window + optional main window)
 - [ ] Create navigation structure (Home, Active Meeting, Settings, Onboarding)
-- [ ] Build WebSocket connection manager (to **remote** realtime server)
+- [x] Build WebSocket connection manager (to **remote** realtime server)
 - [ ] Implement session state in React context
-- [ ] Wire the Rust audio-capture commands (`audio_capture_start/stop/status` from Day 12-13) to the React UI
-- [ ] Build audio streaming controls around Rust-native WebSocket transport — React starts/stops capture and shows status; PCM frames do not cross the React runtime in production
+- [x] Wire the Rust audio-capture commands (`audio_capture_start/stop/status` from Day 12-13) to the React UI
+- [x] Build audio streaming controls around Rust-native WebSocket transport — React starts/stops capture and shows status; PCM frames do not cross the React runtime in production
 - [ ] Add connection status indicator + audio-capture heartbeat
-- [ ] Onboarding screen:
-  - [ ] Sign in to org, join/select clients
-  - [ ] Request OS permissions for mic (for local VAD) and system audio (screen recording on macOS)
-  - [ ] **No voiceprint recording** — speaker ID is VAD-correlation based
+- [x] Onboarding screen:
+  - [x] Sign in to org, join/select clients
+  - [x] Request OS permissions for mic (for local VAD) and system audio (screen recording on macOS)
+  - [x] **No voiceprint recording** — speaker ID is VAD-correlation based
 - [ ] Build a minimal always-on-top overlay window (tray-style) for ambient UI during meetings — main window optional
 
 **Deliverable:** Desktop app can capture OS-level audio (host) and stream to remote server. No conferencing-platform-specific code in the app.
