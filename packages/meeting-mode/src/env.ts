@@ -67,6 +67,17 @@ export const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 export const GROQ_TIER2_MODEL =
   process.env.GROQ_TIER2_MODEL || "openai/gpt-oss-120b";
 
+const tier2TimeoutParsed = Number.parseInt(
+  process.env.GROQ_TIER2_TIMEOUT_MS || "3000",
+  10
+);
+
+/** Groq Tier 2 request timeout (`tier2.ts`). Override via `GROQ_TIER2_TIMEOUT_MS`. Default 3000ms (raised from 1500ms when Tier2 `max_tokens` was increased to 1024). */
+export const GROQ_TIER2_TIMEOUT_MS =
+  Number.isFinite(tier2TimeoutParsed) && tier2TimeoutParsed > 0
+    ? tier2TimeoutParsed
+    : 3000;
+
 export const GEMINI_TIER4_MODEL =
   process.env.GEMINI_TIER4_MODEL || "gemini-3.1-flash-lite-preview";
 

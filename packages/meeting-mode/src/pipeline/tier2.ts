@@ -1,13 +1,13 @@
 import Groq from "groq-sdk";
-import { GROQ_API_KEY, GROQ_TIER2_MODEL } from "../env";
+import { GROQ_API_KEY, GROQ_TIER2_MODEL, GROQ_TIER2_TIMEOUT_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import type { Tier2Classification, Tier2Input, Tier2Outcome } from "./types";
 import { tier2ClassificationSchema } from "./types";
 
 const log = createMeetingModeLogger("tier2-classifier");
 
-const TIER2_TIMEOUT_MS = 1500;
-const TIER2_MAX_COMPLETION_TOKENS = 400;
+/** Groq strict `json_schema` can spend many tokens before a valid doc; 400 was too low (intermittent `max completion tokens reached`). */
+const TIER2_MAX_COMPLETION_TOKENS = 1024;
 
 export interface Tier2ClassifierOptions {
   timeoutMs?: number;
@@ -25,7 +25,7 @@ export class Tier2Classifier {
   ) => Promise<string>;
 
   constructor(options: Tier2ClassifierOptions = {}) {
-    this.timeoutMs = options.timeoutMs ?? TIER2_TIMEOUT_MS;
+    this.timeoutMs = options.timeoutMs ?? GROQ_TIER2_TIMEOUT_MS;
     if (options.invoke) {
       this.groq = undefined;
       this.invoke = options.invoke;
@@ -116,46 +116,37 @@ export class Tier2Classifier {
 /** Built once — rubric + compact calibration (system role). */
 const SYSTEM_PROMPT = [
   `You are Tier 2: fast semantic classifier for live multilingual business meetings.
-Output must match the JSON schema only (intent, commitmentType, tone, riskSignals, extractedData, confidence, optional topicDelta).
+Output must match the JSON schema only. All seven top-level keys are required; all five extractedData keys are required (null when unused); topicDelta is null or a full object with all seven keys.
 
 Classify the CURRENT utterance; use recentSameSpeaker only as short local context.
 
-Intent rubric:
-- commitment: obligation, promise, estimate, ownership, deadline, price, scope, resource, capability, or approval.
-- decision: resolved choice or agreement to remember.
-- question: asks info, approval, clarification, confirmation, or decision.
-- concern: risk, objection, uncertainty, legal/commercial concern, discomfort.
-- filler: greetings, backchannels, audibility, polite closers, noise.
-- general: substantive but not above.
+Intent rubric — pick the FIRST that fits:
+- commitment: any statement that binds a person, team, or process to a future action, deadline, price, scope, or capability — regardless of grammatical person or phrasing. Covers: "I'll do X", "X will be done by Y", "we can handle Z", "I promise", "guaranteed", passive voice future plans, spoken-number prices. If a deadline or price is mentioned alongside a deliverable, it is always commitment.
+- decision: a choice already resolved and agreed by the group that does NOT bind future action ("we're going with React", "that's finalized", "we decided to drop feature X").
+- question: asks for info, approval, confirmation, or a decision.
+- concern: expresses risk, objection, uncertainty, hesitation, or legal/commercial worry.
+- filler: greeting, backchannel ("yeah", "okay", "mm-hmm"), audibility check, polite closer, noise.
+- general: substantive but none of the above — analysis, context, explanation with no binding or decision.
 
-Risk signals (max 3, business risk only): unconditional promises, underestimation, open scope, vague deadlines/ownership, pressure, escalation, disclosure, compliance, scope creep, backtracking, risky pricing/capability.
-Always include "pricing_discussed" if any specific price/amount/currency/pricing decision appears — never drop pricing.
-Skip riskSignals for pure filler/STT noise unless business risk is clear.
+commitmentType — set when intent is commitment or decision (else null):
+- timeline: binds a deadline or delivery date
+- price: mentions a specific amount, currency, or pricing decision
+- scope: defines what is or is not included
+- resource: assigns people or capacity
+- capability: claims ability to do something
 
-Fields:
-- commitmentType: timeline|scope|resource|price|capability|null
-- tone: neutral|defensive|aggressive|hesitant|confident
-- extractedData: only explicit deadline, quantity, scope, amount, currency — schema requires every key present (use null when unused)
-- topicDelta: null if low-signal; else object with every key present (labelHint, decision, commitment, openQuestion, risk, owner, deadline) — use null for unused keys (Groq strict JSON schema)
+Risk signals (max 3, business risk only): unconditional_promise, underestimation, open_scope, vague_deadline, pressure, escalation, disclosure, compliance, scope_creep, backtracking, pricing_discussed.
+Always include "pricing_discussed" when any specific price/amount/currency appears — never omit it.
+Skip riskSignals for pure filler or STT noise.
 
+extractedData: fill only from explicit speech; never infer. Use null for any key not present.
+topicDelta: null unless the utterance carries a clear topic signal; if set, include all seven keys (unused ones null).
 English, Hindi, Hinglish, code-switching. Broken STT → lower confidence; never invent facts.
 
-Calibration (→ expected JSON shape):
-"Let's skip $400 the minimum price" → {intent:commitment,commitmentType:price,tone:confident,riskSignals:["pricing_discussed"],extractedData:{amount:400,currency:"USD"},confidence:0.9}
-"$300 works fine to us. Right?" → {intent:commitment,commitmentType:price,tone:confident,riskSignals:["pricing_discussed"],extractedData:{amount:300,currency:"USD"},confidence:0.85}
-"Hum char sau dollar minimum rakhenge" → {intent:commitment,commitmentType:price,tone:confident,riskSignals:["pricing_discussed"],confidence:0.85}
-"I'll deliver the prototype by Friday end of day" → {intent:commitment,commitmentType:timeline,tone:confident,riskSignals:["vague_deadline"],extractedData:{deadline:"Friday end of day"},confidence:0.85}
-"We can handle the design work as part of this engagement" → {intent:commitment,commitmentType:scope,tone:confident,riskSignals:["scope_creep_risk"],extractedData:{scope:"design work"},confidence:0.8}
-"Yes that approach works for us let's proceed" → {intent:decision,commitmentType:scope,tone:confident,riskSignals:[],confidence:0.9}
-"Okay we'll go with React for the frontend" → {intent:decision,commitmentType:capability,tone:confident,riskSignals:[],confidence:0.9}
-"Let's finalize that. We'll go with one hundred dollars" → {intent:decision,commitmentType:price,tone:confident,riskSignals:["pricing_discussed"],extractedData:{amount:100,currency:"USD"},confidence:0.95}
-"Is that timeline realistic with our current team" → {intent:concern,commitmentType:timeline,tone:hesitant,riskSignals:["timeline_risk"],confidence:0.85}
-"I'm worried the scope will creep without defined deliverables" → {intent:concern,commitmentType:scope,tone:hesitant,riskSignals:["scope_creep_risk"],confidence:0.85}
-"I think that approach makes sense overall" → {intent:general,commitmentType:null,tone:neutral,riskSignals:[],confidence:0.9}
-"Let's discuss the agenda for today" → {intent:general,commitmentType:null,tone:neutral,riskSignals:[],confidence:0.9}
-"Toh meeting shuru karte hain" → {intent:general,commitmentType:null,tone:neutral,riskSignals:[],confidence:0.9}
-"Okay sounds good" → {intent:filler,commitmentType:null,tone:neutral,riskSignals:[],confidence:0.95}
-"Am I audible right now" → {intent:filler,commitmentType:null,tone:neutral,riskSignals:[],confidence:0.95}`,
+Schema shape (all keys required, swap values per rubric):
+{"intent":"commitment","commitmentType":"timeline","tone":"confident","riskSignals":["vague_deadline"],"extractedData":{"deadline":"end of this month","quantity":null,"scope":"integration","amount":null,"currency":null},"confidence":0.9,"topicDelta":null}
+{"intent":"commitment","commitmentType":"price","tone":"confident","riskSignals":["pricing_discussed"],"extractedData":{"deadline":null,"quantity":null,"scope":null,"amount":2500,"currency":"USD"},"confidence":0.9,"topicDelta":null}
+{"intent":"filler","commitmentType":null,"tone":"neutral","riskSignals":[],"extractedData":{"deadline":null,"quantity":null,"scope":null,"amount":null,"currency":null},"confidence":0.95,"topicDelta":null}`,
 ].join("\n");
 
 function buildUserMessage(input: Tier2Input): string {
