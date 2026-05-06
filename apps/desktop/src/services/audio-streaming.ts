@@ -320,7 +320,7 @@ export class AudioStreamingClient {
         if (!nextFrame) {
           break;
         }
-        this.socket.send(nextFrame);
+        this.socket.send(nextFrame as BufferSource);
         this.metrics.framesSent += 1;
         sent = true;
       }

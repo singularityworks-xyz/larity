@@ -43,6 +43,7 @@ export * from "./pipeline/tier4-context";
 export * from "./pipeline/types";
 export { SpeakerIdentifier } from "./speaker/identifier";
 export * from "./speaker/types";
+export * from "./speculative";
 export * from "./utterance/types";
 
 let finalizer: UtteranceFinalizer | null = null;

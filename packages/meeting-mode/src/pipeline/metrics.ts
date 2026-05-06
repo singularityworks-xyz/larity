@@ -116,6 +116,21 @@ export const pipelineSessionCostDollars = new Gauge({
   labelNames: LABEL_NAMES,
 });
 
+export const pipelineSpeculativeHitsTotal = new Counter({
+  name: `${METRICS_PREFIX}_speculative_hits_total`,
+  help: "Total number of speculative cache hits that saved a Tier 2 LLM call",
+});
+
+export const pipelineSpeculativeMissesTotal = new Counter({
+  name: `${METRICS_PREFIX}_speculative_misses_total`,
+  help: "Total number of speculative cache misses requiring full Tier 2 processing",
+});
+
+export const pipelineSpeculativeDiscardsTotal = new Counter({
+  name: `${METRICS_PREFIX}_speculative_discards_total`,
+  help: "Total number of speculative results discarded due to text mismatch",
+});
+
 let defaultMetricsRunning = false;
 
 export function startDefaultMetrics(): void {

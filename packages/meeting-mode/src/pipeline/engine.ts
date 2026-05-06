@@ -7,6 +7,13 @@ import { GEMINI_TIER4_MODEL, GROQ_TIER2_MODEL } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import { SpeakerStateTracker } from "../speaker-state/tracker";
 import type { SpeakerStateAlert } from "../speaker-state/types";
+import { PredictivePreloader } from "../speculative/predictive-preloader";
+import { SpeculativeProcessor } from "../speculative/processor";
+import type { PartialUtterance } from "../speculative/types";
+import {
+  getSpeakerProcessingPriority,
+  SPEAKER_AWARE_TIER4_CONFIDENCE,
+} from "../speculative/types";
 import type { TopicState } from "../topic/types";
 import type { Utterance } from "../utterance/types";
 import {
@@ -16,6 +23,8 @@ import {
   pipelineGateDuration,
   pipelinePrefilterDuration,
   pipelineSessionCostDollars,
+  pipelineSpeculativeDiscardsTotal,
+  pipelineSpeculativeHitsTotal,
   pipelineTier1Duration,
   pipelineTier2CacheHitsTotal,
   pipelineTier2CacheMissesTotal,
@@ -134,6 +143,8 @@ export interface PipelineEngineDependencies {
   tier2Cache?: Tier2SemanticCache;
   costManager?: CostManager;
   speakerStateTracker?: SpeakerStateTracker;
+  speculativeProcessor?: SpeculativeProcessor;
+  predictivePreloader?: PredictivePreloader;
   /** Hook after pipeline session teardown (e.g. clear session-scoped alert publishers) */
   onPipelineSessionClosed?: (sessionId: string) => void;
 }
@@ -157,6 +168,9 @@ export interface PipelineEvaluationResult {
   tier4Outcome?: Tier4EvaluationSummary;
   runTier4: boolean;
   tier2CacheHit?: boolean;
+  speculativeHit?: boolean;
+  speculativeMismatchRatio?: number;
+  speakerPriority?: "high" | "standard" | "low";
   sessionCost?: number;
   latencies: {
     preFilterMs: number;
@@ -198,6 +212,8 @@ export class MeetingPipelineEngine {
   private readonly getAgendaItems: NonNullable<
     PipelineEngineDependencies["getAgendaItems"]
   >;
+  private readonly speculativeProcessor: SpeculativeProcessor;
+  private readonly predictivePreloader: PredictivePreloader;
   private readonly onPipelineSessionClosed?: (sessionId: string) => void;
   private readonly evaluationChains = new Map<string, Promise<unknown>>();
 
@@ -220,6 +236,19 @@ export class MeetingPipelineEngine {
       deps.speakerStateTracker ?? new SpeakerStateTracker();
     this.getTopics = deps.getTopics ?? (() => []);
     this.getAgendaItems = deps.getAgendaItems ?? (() => []);
+    this.speculativeProcessor =
+      deps.speculativeProcessor ??
+      new SpeculativeProcessor({
+        tier1: this.tier1,
+        tier2: this.tier2,
+        costManager: this.costManager,
+        getRecentSameSpeakerText: (sid, spkId, limit) =>
+          this.finalizer.getRecentSameSpeakerText(sid, spkId, undefined, limit),
+        getCurrentTopicLabel: (sid, topicId) =>
+          this.getCurrentTopicLabel(sid, topicId),
+      });
+    this.predictivePreloader =
+      deps.predictivePreloader ?? new PredictivePreloader();
     this.onPipelineSessionClosed = deps.onPipelineSessionClosed;
   }
 
@@ -261,6 +290,8 @@ export class MeetingPipelineEngine {
     const payload =
       this.sessions.get(utterance.sessionId)?.contextPayload ?? null;
 
+    const speakerPriority = getSpeakerProcessingPriority(utterance.speaker);
+
     const preFilterStart = PERF.now();
     const decision = this.preFilter.evaluate(utterance);
     const preFilterMs = PERF.now() - preFilterStart;
@@ -275,6 +306,7 @@ export class MeetingPipelineEngine {
         dropReason: decision.reason,
         runTier4: false,
         tier4Outcome: { invoked: false },
+        speakerPriority,
         latencies: {
           preFilterMs,
           pipelineBudgetMs: PERF.now() - start,
@@ -282,11 +314,54 @@ export class MeetingPipelineEngine {
       };
     }
 
+    // --- Speculative cache lookup ---
+    const speculativeMatch = this.speculativeProcessor.matchSpeculation(
+      utterance.sessionId,
+      utterance.text
+    );
+    const speculativeHit = speculativeMatch.matched;
+    const speculativeMismatchRatio = speculativeMatch.mismatchRatio;
+
+    if (speculativeHit) {
+      pipelineSpeculativeHitsTotal.inc();
+      log.info(
+        {
+          sessionId: utterance.sessionId,
+          utteranceId: utterance.utteranceId,
+          mismatchRatio: speculativeMismatchRatio,
+        },
+        "Speculative cache hit — using pre-computed Tier 2 classification"
+      );
+    } else if (speculativeMismatchRatio < 1) {
+      pipelineSpeculativeDiscardsTotal.inc();
+    }
+
+    // --- Predictive constraint preloading ---
+    const predictedTopics = this.predictivePreloader.predictTopics(
+      utterance.text
+    );
+    if (predictedTopics.length > 0) {
+      this.predictivePreloader.prefetch(utterance.sessionId, predictedTopics);
+    }
+
+    // --- Run Tier 1 always (structural detection is free) ---
     const tier1Start = PERF.now();
     const tier1Task = Promise.resolve(this.tier1.detect(utterance));
 
+    // --- Tier 2: use speculative result if hit, otherwise run LLM ---
     const tier2Start = PERF.now();
-    const tier2Task = this.runTier2(utterance);
+    const tier2Task =
+      speculativeHit && speculativeMatch.result
+        ? Promise.resolve({
+            classification: speculativeMatch.result.classification,
+            shouldStopForDeepReasoning: false,
+            tier2CacheHit: false,
+            speculativeHit: true,
+          })
+        : this.runTier2(utterance).then((r) => ({
+            ...r,
+            speculativeHit: false,
+          }));
 
     const recentEmbeddings = this.finalizer.getRecentEmbeddings(
       utterance.sessionId,
@@ -316,6 +391,15 @@ export class MeetingPipelineEngine {
       tier3Task,
       constraintTask,
     ]);
+    // --- Apply Tier 2 side effects that runTier2 would normally handle,
+    //     when the classification came from a speculative cache hit ---
+    if (speculativeHit && speculativeMatch.result) {
+      await this.applyTier2SideEffects(
+        utterance,
+        speculativeMatch.result.classification
+      );
+    }
+
     const tier2Ms = PERF.now() - tier2Start;
     const tier1Ms = PERF.now() - tier1Start;
 
@@ -325,7 +409,7 @@ export class MeetingPipelineEngine {
 
     if (tier2.tier2CacheHit) {
       pipelineTier2CacheHitsTotal.inc();
-    } else {
+    } else if (!speculativeHit) {
       pipelineTier2CacheMissesTotal.inc();
     }
 
@@ -338,14 +422,7 @@ export class MeetingPipelineEngine {
     await this.publishSpeakerStateAlerts(utterance, tier2.classification);
 
     const gateStart = PERF.now();
-    const highSignal =
-      tier1.blocklistHit ||
-      tier1.technicalHit ||
-      tier1.pricingHit ||
-      tier2.classification.intent === "commitment" ||
-      tier2.classification.intent === "decision" ||
-      tier2.classification.intent === "concern" ||
-      tier2.classification.riskSignals.length > 0;
+    const highSignal = this.isHighSignal(tier1, tier2.classification);
 
     // Respect Tier 2 "low-value / filler" gate for the whole Tier 4 call: Tier 3
     // ledger/memory hits can otherwise force Tier 4 on every greeting when embeddings
@@ -353,44 +430,28 @@ export class MeetingPipelineEngine {
     let runTier4 =
       !tier2.shouldStopForDeepReasoning && (highSignal || tier3.forceTier4);
 
+    // --- Speaker-aware Tier 4 gate ---
+    runTier4 = this.applySpeakerAwareGate(
+      runTier4,
+      speakerPriority,
+      tier1,
+      tier2.classification
+    );
+
     // --- Cost cap gates ---
     const sessionCost = await this.costManager.getSessionCost(
       utterance.sessionId
     );
 
-    let tier4SuppressReason: string | undefined;
-
-    if (this.costManager.isHardCapReached(sessionCost)) {
-      runTier4 = false;
-      tier4SuppressReason = "cost_hard_cap";
-      log.info(
-        {
-          sessionId: utterance.sessionId,
-          sessionCost,
-          limit: 2.0,
-        },
-        "Cost hard cap reached — Tier 4 disabled"
+    const { runTier4: gatedTier4, suppressReason: tier4SuppressReason } =
+      this.applyCostGates(
+        runTier4,
+        utterance.sessionId,
+        sessionCost,
+        tier1,
+        tier2.classification
       );
-    } else if (
-      this.costManager.isWarningMode(sessionCost) &&
-      runTier4 &&
-      !tier1.blocklistHit &&
-      !tier1.technicalHit &&
-      !tier1.pricingHit &&
-      tier2.classification.riskSignals.length === 0
-    ) {
-      // At 80% cost: raise the threshold — only surface if at least one risk signal
-      runTier4 = false;
-      tier4SuppressReason = "cost_warning";
-      log.info(
-        {
-          sessionId: utterance.sessionId,
-          sessionCost,
-          threshold: 1.6,
-        },
-        "Cost warning mode — Tier 4 suppressed (no risk signals)"
-      );
-    }
+    runTier4 = gatedTier4;
 
     const gateMs = PERF.now() - gateStart;
     pipelineGateDuration.observe(gateMs);
@@ -434,6 +495,9 @@ export class MeetingPipelineEngine {
       tier4Outcome,
       runTier4,
       tier2CacheHit: tier2.tier2CacheHit,
+      speculativeHit,
+      speculativeMismatchRatio,
+      speakerPriority,
       sessionCost,
       latencies: {
         preFilterMs,
@@ -444,6 +508,95 @@ export class MeetingPipelineEngine {
         pipelineBudgetMs: totalMs,
       },
     };
+  }
+
+  private isHighSignal(
+    tier1: Tier1Result,
+    tier2Classification: Tier2Classification
+  ): boolean {
+    return (
+      tier1.blocklistHit ||
+      tier1.technicalHit ||
+      tier1.pricingHit ||
+      tier2Classification.intent === "commitment" ||
+      tier2Classification.intent === "decision" ||
+      tier2Classification.intent === "concern" ||
+      tier2Classification.riskSignals.length > 0
+    );
+  }
+
+  private applySpeakerAwareGate(
+    runTier4: boolean,
+    speakerPriority: "high" | "standard" | "low",
+    tier1: Tier1Result,
+    tier2Classification: Tier2Classification
+  ): boolean {
+    if (!runTier4 || speakerPriority !== "low") {
+      return runTier4;
+    }
+
+    if (tier1.blocklistHit || tier1.technicalHit) {
+      return true;
+    }
+
+    const threshold = SPEAKER_AWARE_TIER4_CONFIDENCE[speakerPriority];
+    if (tier2Classification.confidence < threshold) {
+      log.debug(
+        {
+          speakerPriority,
+          confidence: tier2Classification.confidence,
+          threshold,
+        },
+        "Speaker-aware gate: Tier 4 suppressed for low-priority speaker"
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  private applyCostGates(
+    runTier4: boolean,
+    sessionId: string,
+    sessionCost: number,
+    tier1: Tier1Result,
+    tier2Classification: Tier2Classification
+  ): { runTier4: boolean; suppressReason: string | undefined } {
+    if (this.costManager.isHardCapReached(sessionCost)) {
+      log.info(
+        { sessionId, sessionCost, limit: 2.0 },
+        "Cost hard cap reached — Tier 4 disabled"
+      );
+      return { runTier4: false, suppressReason: "cost_hard_cap" };
+    }
+
+    if (
+      this.costManager.isWarningMode(sessionCost) &&
+      runTier4 &&
+      !tier1.blocklistHit &&
+      !tier1.technicalHit &&
+      !tier1.pricingHit &&
+      tier2Classification.riskSignals.length === 0
+    ) {
+      log.info(
+        { sessionId, sessionCost, threshold: 1.6 },
+        "Cost warning mode — Tier 4 suppressed (no risk signals)"
+      );
+      return { runTier4: false, suppressReason: "cost_warning" };
+    }
+
+    return { runTier4, suppressReason: undefined };
+  }
+
+  async evaluatePartial(partial: PartialUtterance): Promise<void> {
+    await this.ensureSessionHydrated(partial.sessionId);
+
+    this.speculativeProcessor.processPartial(partial);
+
+    const topics = this.predictivePreloader.predictTopics(partial.text);
+    if (topics.length > 0) {
+      this.predictivePreloader.prefetch(partial.sessionId, topics);
+    }
   }
 
   private async publishSpeakerStateAlerts(
@@ -620,6 +773,8 @@ export class MeetingPipelineEngine {
     this.tier2Cache.closeSession(sessionId);
     this.speakerStateTracker.closeSession(sessionId);
     this.evaluationChains.delete(sessionId);
+    this.speculativeProcessor.closeSession(sessionId);
+    this.predictivePreloader.closeSession(sessionId);
     this.sessions.delete(sessionId);
     // Clean up per-session Prometheus gauge to prevent unbounded memory growth
     pipelineSessionCostDollars.remove({ session_id: sessionId });
@@ -632,7 +787,30 @@ export class MeetingPipelineEngine {
     this.tier2Cache.closeAll();
     this.speakerStateTracker.closeAll();
     this.evaluationChains.clear();
+    this.speculativeProcessor.closeAll();
+    this.predictivePreloader.closeAll();
     this.sessions.clear();
+  }
+
+  private async applyTier2SideEffects(
+    utterance: Utterance,
+    classification: Tier2Classification
+  ): Promise<void> {
+    const { sessionId, text, embedding, topicId } = utterance;
+
+    if (embedding && embedding.length > 0) {
+      this.tier2Cache.set(sessionId, embedding, text, classification);
+    }
+
+    if (classification.topicDelta && topicId) {
+      await this.finalizer.applyTier2TopicDelta(
+        sessionId,
+        topicId,
+        classification.topicDelta
+      );
+    }
+
+    await this.maybeWriteCommitment(utterance, embedding, { classification });
   }
 
   private async runTier2(utterance: Utterance): Promise<{
@@ -707,20 +885,7 @@ export class MeetingPipelineEngine {
         );
     }
 
-    // Store in cache
-    if (embedding && embedding.length > 0) {
-      this.tier2Cache.set(sessionId, embedding, text, tier2.classification);
-    }
-
-    if (tier2.classification.topicDelta && utterance.topicId) {
-      await this.finalizer.applyTier2TopicDelta(
-        sessionId,
-        utterance.topicId,
-        tier2.classification.topicDelta
-      );
-    }
-
-    await this.maybeWriteCommitment(utterance, embedding, tier2);
+    await this.applyTier2SideEffects(utterance, tier2.classification);
 
     return { ...tier2, tier2CacheHit: false };
   }
@@ -792,6 +957,10 @@ export class MeetingPipelineEngine {
     this.tier1.seedContext(sessionId, payload);
 
     await this.costManager.primeSessionCost(sessionId);
+
+    if (payload) {
+      this.predictivePreloader.seedFromContext(sessionId, payload);
+    }
 
     this.sessions.set(sessionId, {
       hydrated: true,

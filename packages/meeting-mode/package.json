@@ -13,11 +13,13 @@
     "@types/bun": "latest"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^6"
   },
   "dependencies": {
     "@google/genai": "^1.50.1",
+    "@larity/infra": "workspace:*",
     "@larity/logger": "workspace:*",
+    "dotenv": "^17.2.3",
     "groq-sdk": "^1.1.2",
     "ioredis": "^5.9.2",
     "prom-client": "^15.1.3",
