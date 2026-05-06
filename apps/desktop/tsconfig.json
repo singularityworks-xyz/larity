@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "ignoreDeprecations": "5.0",
     "target": "ES2020",
     "useDefineForClassFields": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
@@ -20,12 +19,17 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@larity/*": ["../../*"]
+      "@/*": ["./src/*"],
+      "@larity/*": ["./../../*"]
     }
   },
   "include": ["src"],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.integration.test.ts",
+    "src/**/*.e2e.test.ts"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
