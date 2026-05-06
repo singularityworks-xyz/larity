@@ -11,6 +11,7 @@ describe("commitment/manager integration", () => {
 
     const manager = new CommitmentManager(redis, {
       now: () => 1_700_000_001_000,
+      snapshotDebounceMs: 0,
     });
 
     const alice = createTeamSpeaker("user-alice", "Alice", {
@@ -80,7 +81,9 @@ describe("commitment/manager integration", () => {
     expect(updated?.status).toBe("contradicted");
     expect(updated?.contradicts).toBe("c-alice");
 
-    const recoveringManager = new CommitmentManager(redis);
+    const recoveringManager = new CommitmentManager(redis, {
+      snapshotDebounceMs: 0,
+    });
     const hydration = await recoveringManager.hydrateSession(sessionId);
     expect(hydration.loaded).toBe(3);
     expect(hydration.skipped).toBe(0);

@@ -73,7 +73,9 @@ describe("constraint pipeline integration", () => {
     };
 
     const finalizer = new UtteranceFinalizer(publisher);
-    const constraintManager = new ConstraintManager(redis);
+    const constraintManager = new ConstraintManager(redis, {
+      snapshotDebounceMs: 0,
+    });
 
     finalizer.onUtterancePublished(async (utterance) => {
       await constraintManager.processUtterance(utterance);

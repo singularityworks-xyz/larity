@@ -1,5 +1,6 @@
 import { redisKeys } from "@larity/infra/redis/keys";
 import type { Redis } from "ioredis";
+import { LEDGER_SNAPSHOT_DEBOUNCE_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import type { Utterance } from "../utterance/types";
 import { ConstraintLedger, type ConstraintLedgerOptions } from "./ledger";
@@ -33,17 +34,23 @@ export class ConstraintManager {
   private readonly ledgers = new Map<string, ConstraintLedger>();
   private readonly hydratedSessions = new Set<string>();
   private readonly ledgerOptions: ConstraintLedgerOptions;
+  private readonly snapshotDebounceMs: number;
 
   constructor(redis: Redis, options: ConstraintLedgerOptions = {}) {
     this.redis = redis;
     this.ledgerOptions = options;
+    this.snapshotDebounceMs =
+      options.snapshotDebounceMs ?? LEDGER_SNAPSHOT_DEBOUNCE_MS;
   }
 
   getLedger(sessionId: string): ConstraintLedger {
     let ledger = this.ledgers.get(sessionId);
 
     if (!ledger) {
-      ledger = new ConstraintLedger(this.redis, sessionId, this.ledgerOptions);
+      ledger = new ConstraintLedger(this.redis, sessionId, {
+        ...this.ledgerOptions,
+        snapshotDebounceMs: this.snapshotDebounceMs,
+      });
       this.ledgers.set(sessionId, ledger);
     }
 
@@ -133,16 +140,38 @@ export class ConstraintManager {
       return;
     }
 
+    ledger
+      .flushPendingSnapshot()
+      .catch((error) => {
+        log.error(
+          { err: error, sessionId },
+          "Constraint ledger snapshot flush failed on session close"
+        );
+      })
+      .finally(() => {
+        ledger.closeInMemory();
+        this.ledgers.delete(sessionId);
+        this.hydratedSessions.delete(sessionId);
+      });
+  }
+
+  async closeSessionAwaitSnapshots(sessionId: string): Promise<void> {
+    const ledger = this.ledgers.get(sessionId);
+    if (!ledger) {
+      return;
+    }
+
+    await ledger.flushPendingSnapshot();
     ledger.closeInMemory();
     this.ledgers.delete(sessionId);
     this.hydratedSessions.delete(sessionId);
   }
 
-  closeAll(): void {
+  async closeAll(): Promise<void> {
     const sessionIds = [...this.ledgers.keys()];
-    for (const sessionId of sessionIds) {
-      this.closeSession(sessionId);
-    }
+    await Promise.all(
+      sessionIds.map((sessionId) => this.closeSessionAwaitSnapshots(sessionId))
+    );
   }
 
   private async readContextPayload(
