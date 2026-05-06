@@ -12,7 +12,7 @@ import {
   segmentButtonClass,
   segmentControlClass,
 } from "../../lib/ui";
-import type { LiveUtterance } from "./types";
+import type { LivePendingUtterance, LiveUtterance } from "./types";
 
 function formatUtteranceClock(meetingStartMs: number, ts: number): string {
   const delta = Math.max(0, ts - meetingStartMs);
@@ -69,11 +69,17 @@ function SpeakerChip({
 
 type StreamMode = "full" | "commitments";
 
+function captureChannelLabel(channel: number): string {
+  return channel === 0 ? "Mic" : "System";
+}
+
 interface TranscriptStreamProps {
   meetingStartedAtMs: number;
   utterances: LiveUtterance[];
   scrollTargetId: string | null;
   onConsumedScrollTarget: () => void;
+  pendingFinals?: LivePendingUtterance[];
+  livePartial?: { text: string; ts: number; channel: number } | null;
 }
 
 export function TranscriptStream({
@@ -81,6 +87,8 @@ export function TranscriptStream({
   utterances,
   scrollTargetId,
   onConsumedScrollTarget,
+  pendingFinals = [],
+  livePartial = null,
 }: TranscriptStreamProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [pinnedToBottom, setPinnedToBottom] = useState(true);
@@ -90,6 +98,11 @@ export function TranscriptStream({
     mode === "commitments" ? u.isCommitment : true
   );
 
+  const showLiveTail =
+    mode === "full" &&
+    (pendingFinals.length > 0 || Boolean(livePartial?.text?.trim()));
+
+  const listIsEmpty = visible.length === 0 && !showLiveTail;
   const scrollToBottom = useCallback(() => {
     const el = rootRef.current;
     if (!el) {
@@ -129,9 +142,17 @@ export function TranscriptStream({
       return;
     }
     scrollToBottom();
-  }, [pinnedToBottom, scrollToBottom, utterances.length, visible.length, mode]);
+  }, [
+    pinnedToBottom,
+    scrollToBottom,
+    utterances.length,
+    visible.length,
+    mode,
+    pendingFinals.length,
+    livePartial?.text,
+  ]);
 
-  const showJump = !pinnedToBottom && visible.length > 0;
+  const showJump = !pinnedToBottom && (visible.length > 0 || showLiveTail);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-border border-r bg-bg">
@@ -170,55 +191,134 @@ export function TranscriptStream({
           ref={rootRef}
           role="log"
         >
-          {visible.length === 0 ? (
+          {listIsEmpty ? (
             <p className="px-2 py-8 text-center text-fg-muted text-xs">
               {mode === "commitments"
                 ? "No commitments classified in this meeting yet."
                 : "Transcript lines appear here as audio is processed."}
             </p>
           ) : (
-            visible.map((row) => (
-              <div
-                className="group flex gap-2 border-border-subtle border-b py-2 pr-2 last:border-b-0 hover:bg-bg-subtle/80"
-                id={`utterance-${row.id}`}
-                key={row.id}
-              >
+            <>
+              {visible.map((row) => (
                 <div
-                  aria-hidden
-                  className="flex w-2 shrink-0 flex-col items-center gap-1 pt-1"
+                  className="group flex gap-2 border-border-subtle border-b py-2 pr-2 last:border-b-0 hover:bg-bg-subtle/80"
+                  id={`utterance-${row.id}`}
+                  key={row.id}
                 >
-                  {row.hasMemory ? (
-                    <span
-                      className="h-1.5 w-1.5 bg-accent"
-                      title="Remember this"
-                    />
-                  ) : (
-                    <span className="h-1.5 w-1.5 opacity-0" />
-                  )}
-                  {row.hasAlert ? (
-                    <span className="h-1.5 w-1.5 bg-warning-fg" title="Alert" />
-                  ) : null}
-                </div>
-                <div className="grid min-w-0 flex-1 gap-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <SpeakerChip
-                      confidence={row.confidence}
-                      name={row.speakerName}
-                      speakerType={row.speakerType}
-                    />
-                    <time
-                      className="font-mono text-[11px] text-fg-subtle tabular-nums"
-                      dateTime={new Date(row.timestamp).toISOString()}
-                    >
-                      {formatUtteranceClock(meetingStartedAtMs, row.timestamp)}
-                    </time>
+                  <div
+                    aria-hidden
+                    className="flex w-2 shrink-0 flex-col items-center gap-1 pt-1"
+                  >
+                    {row.hasMemory ? (
+                      <span
+                        className="h-1.5 w-1.5 bg-accent"
+                        title="Remember this"
+                      />
+                    ) : (
+                      <span className="h-1.5 w-1.5 opacity-0" />
+                    )}
+                    {row.hasAlert ? (
+                      <span
+                        className="h-1.5 w-1.5 bg-warning-fg"
+                        title="Alert"
+                      />
+                    ) : null}
                   </div>
-                  <p className="m-0 font-mono text-[13px] text-fg leading-relaxed">
-                    {row.text}
-                  </p>
+                  <div className="grid min-w-0 flex-1 gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <SpeakerChip
+                        confidence={row.confidence}
+                        name={row.speakerName}
+                        speakerType={row.speakerType}
+                      />
+                      <time
+                        className="font-mono text-[11px] text-fg-subtle tabular-nums"
+                        dateTime={new Date(row.timestamp).toISOString()}
+                      >
+                        {formatUtteranceClock(
+                          meetingStartedAtMs,
+                          row.timestamp
+                        )}
+                      </time>
+                    </div>
+                    <p className="m-0 font-mono text-[13px] text-fg leading-relaxed">
+                      {row.text}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+              {mode === "full"
+                ? pendingFinals.map((row) => (
+                    <div
+                      className="group flex gap-2 border-border-subtle border-b py-2 pr-2 opacity-75 last:border-b-0"
+                      key={row.key}
+                    >
+                      <div
+                        aria-hidden
+                        className="flex w-2 shrink-0 flex-col items-center gap-1 pt-1"
+                      >
+                        <span className="h-1.5 w-1.5 opacity-0" />
+                      </div>
+                      <div className="grid min-w-0 flex-1 gap-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={cx(
+                              "inline-flex h-[18px] items-center gap-1 rounded-[2px] border border-border-strong border-dashed bg-transparent px-1.5 font-medium font-sans text-[11px] text-fg-muted leading-none"
+                            )}
+                            title="Awaiting speaker and topic enrichment"
+                          >
+                            <span className="inline-block h-1 w-1 shrink-0 rounded-[2px] bg-fg-subtle" />
+                            Live · {captureChannelLabel(row.channel)}
+                          </span>
+                          <time
+                            className="font-mono text-[11px] text-fg-subtle tabular-nums"
+                            dateTime={new Date(row.ts).toISOString()}
+                          >
+                            {formatUtteranceClock(meetingStartedAtMs, row.ts)}
+                          </time>
+                        </div>
+                        <p className="m-0 font-mono text-[13px] text-fg-muted leading-relaxed">
+                          {row.text}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                : null}
+              {mode === "full" && livePartial?.text?.trim() ? (
+                <div className="group flex gap-2 border-border-subtle border-b py-2 pr-2 opacity-90 last:border-b-0">
+                  <div
+                    aria-hidden
+                    className="flex w-2 shrink-0 flex-col items-center gap-1 pt-1"
+                  >
+                    <span className="h-1.5 w-1.5 opacity-0" />
+                  </div>
+                  <div className="grid min-w-0 flex-1 gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={cx(
+                          "inline-flex h-[18px] items-center gap-1 rounded-[2px] border border-border-strong border-dashed bg-transparent px-1.5 font-medium font-sans text-[11px] text-fg-muted leading-none"
+                        )}
+                      >
+                        <span className="inline-block h-1 w-1 shrink-0 animate-pulse rounded-[2px] bg-accent" />
+                        Speaking · {captureChannelLabel(livePartial.channel)}
+                      </span>
+                      <time
+                        className="font-mono text-[11px] text-fg-subtle tabular-nums"
+                        dateTime={new Date(livePartial.ts).toISOString()}
+                      >
+                        {formatUtteranceClock(
+                          meetingStartedAtMs,
+                          livePartial.ts
+                        )}
+                      </time>
+                    </div>
+                    <p className="m-0 font-mono text-[13px] text-fg-muted leading-relaxed after:ml-0.5 after:animate-pulse after:font-medium after:text-accent after:content-['▍']">
+                      {livePartial.text}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </>
           )}
         </div>
 
