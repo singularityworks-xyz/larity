@@ -36,6 +36,8 @@ export type IncomingMessageType =
   | "ledger"
   | "alert"
   | "participant_event"
+  | "stt_partial"
+  | "stt_final"
   | "unknown";
 
 export type IncomingMessageHandler = (data: Record<string, unknown>) => void;
@@ -364,6 +366,12 @@ function detectIncomingMessageType(
   data: Record<string, unknown>
 ): IncomingMessageType {
   const dataType = data.type;
+  if (dataType === "stt_partial") {
+    return "stt_partial";
+  }
+  if (dataType === "stt_final") {
+    return "stt_final";
+  }
   if (
     typeof dataType === "string" &&
     (dataType === "insert" || dataType === "status_change")

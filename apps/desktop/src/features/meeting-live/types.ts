@@ -8,6 +8,27 @@ export interface LiveTopic {
   startedAt: number;
 }
 
+/** Raw Deepgram partial line (before meeting-mode enrichment). */
+export interface LiveSttPartial {
+  sessionId: string;
+  transcript: string;
+  /** 0 = host mic, 1 = system / loopback */
+  channel: number;
+  /** Seconds from Deepgram (stream-relative). */
+  start: number;
+  ts: number;
+}
+
+/** STT final shown until processed utterance replaces it. */
+export interface LivePendingUtterance {
+  key: string;
+  text: string;
+  channel: number;
+  startSec: number;
+  durationSec: number;
+  ts: number;
+}
+
 export interface LiveUtterance {
   id: string;
   speakerId: string;
