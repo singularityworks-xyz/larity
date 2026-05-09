@@ -410,10 +410,6 @@ export function MeetingPage() {
       return;
     }
 
-    if (allowNameCustomization && configuredName === null) {
-      return;
-    }
-
     streamingClient.connect(sessionId);
     refreshStatus().catch(() => {
       // noop, warning handled in refreshStatus
