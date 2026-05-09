@@ -14,16 +14,38 @@ const log = createRealtimeLogger("on-message");
  */
 export function onMessage(
   ws: RealtimeSocket,
-  message: string | Buffer | Uint8Array
+  message: string | Buffer | Uint8Array | Record<string, unknown>
 ): void {
   const data = ws.data;
   const { sessionId, role, userId } = data;
   const ts = Date.now();
 
-  // If text, attempt to parse as JSON (e.g., VAD signals)
+  // Handle VAD signals (Elysia auto-parses JSON text frames into objects)
+  if (
+    typeof message === "object" &&
+    message !== null &&
+    !Buffer.isBuffer(message) &&
+    !(message instanceof Uint8Array)
+  ) {
+    const payload = message as Record<string, unknown>;
+    if (payload.type === "vad_speaking" || payload.type === "vad_silence") {
+      publishVadSignal({
+        type: payload.type as "vad_speaking" | "vad_silence",
+        userId,
+        sessionId,
+        clientSendTs:
+          (payload.clientSendTs as number) ?? (payload.ts as number) ?? ts,
+        serverReceiveTs: ts,
+      }).catch((err) => {
+        log.error({ err, sessionId }, "Failed to publish VAD signal");
+      });
+    }
+    return;
+  }
+
+  // If text (backward compat for non-Elysia or raw string frames)
   if (typeof message === "string") {
     try {
-      // The client might send 'ts' directly. Let's accept it as clientSendTs or map it.
       const payload = JSON.parse(message) as {
         type: string;
         clientSendTs?: number;

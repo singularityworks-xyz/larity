@@ -90,6 +90,40 @@ describe("UtteranceFinalizer with SpeakerIdentifier", () => {
     expect(published.speaker.name).toBe("Alice");
   });
 
+  it("should honor provisional speaker mapping created from partials", async () => {
+    const now = Date.now();
+    identifier.processVadSignal({
+      type: "vad_speaking",
+      userId: aliceId,
+      sessionId,
+      clientSendTs: now - 200,
+      serverReceiveTs: now - 200,
+    });
+    identifier.processSttPartial(9, now - 100);
+    identifier.processVadSignal({
+      type: "vad_silence",
+      userId: aliceId,
+      sessionId,
+      clientSendTs: now,
+      serverReceiveTs: now,
+    });
+
+    await finalizer.process(
+      createTestSttResult({
+        sessionId,
+        isFinal: true,
+        transcript: "Delayed final from Alice.",
+        diarizationIndex: 9,
+        ts: now + 3000,
+      })
+    );
+    await finalizer.closeSession(sessionId);
+
+    const published = JSON.parse(publisher.calls.at(-1)?.message ?? "{}");
+    expect(published.speaker.type).toBe("TEAM");
+    expect(published.speaker.userId).toBe(aliceId);
+  });
+
   it("should fall back to EXTERNAL when SpeakerIdentifier cannot identify", async () => {
     const result = createTestSttResult({
       sessionId,

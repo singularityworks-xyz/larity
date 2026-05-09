@@ -37,7 +37,7 @@ No ML, no enrollment, no Python.
          ▼                        ▼
     ┌──────────────────────────────────────────┐
     │           Redis Pub/Sub                  │
-    │  channel: meeting.vad.{sessionId}        │
+    │  channel: realtime.vad.{sessionId}       │
     └──────────────────────────────────────────┘
          │
          ▼
@@ -57,6 +57,16 @@ No ML, no enrollment, no Python.
     │   └─ on VAD (delayed) → retroactive fix  │
     └──────────────────────────────────────────┘
 ```
+
+## Hybrid Mapping Update
+
+Speaker attribution now uses a hybrid path:
+
+1. **Provisional mapping on STT partials**: when partial transcripts arrive, the server correlates diarization index against recent VAD intervals and stores a short-lived provisional candidate in memory.
+2. **Authoritative confirmation on STT finals**: when the final transcript arrives, the server first checks provisional candidate state, then falls back to direct VAD correlation.
+3. **Retroactive VAD repair**: if VAD still arrives too late, ring-buffered `EXTERNAL` utterances can still be corrected and re-published.
+
+This keeps attribution low-latency without blocking final utterance publish and improves resilience to variable final-segment timing.
 
 ---
 
@@ -403,6 +413,82 @@ Alice starts speaking on her desktop app:
 
 ---
 
+## Migrations & Bugfixes
+
+### Migration 1: Browser VAD → Rust-Native VAD (Desktop)
+
+The original VAD implementation used `@ricky0123/vad-web` which depends on `onnxruntime-web` (WASM). This was **fundamentally broken** on Linux Tauri (WebKitGTK) due to module-system incompatibilities between Emscripten-generated WASM wrappers and Vite's bundler.
+
+**Fix:** Replaced with the `voice_activity_detector` Rust crate (Silero VAD V5, native ONNX Runtime):
+
+```
+Desktop mic → AudioProcessor (16kHz mono i16) → VoiceActivityDetector::predict()
+    ├── prob ≥ 0.3 (with 16× gain, 3-frame debounce) → emit "vad-speech-start"
+    └── prob < 0.3 → emit "vad-speech-end"
+```
+
+| Aspect | Browser VAD (old) | Rust VAD (new) |
+|--------|-------------------|----------------|
+| Module | `@ricky0123/vad-web` | `voice_activity_detector` crate |
+| Model | Silero VAD (bundled WASM) | Silero VAD V5 (ONNX Runtime) |
+| Chunking | 512-sample windows (non-buffered) | Accumulates into 512-sample windows from 800-sample producer chunks |
+| Gain | None | 16× (+24dB) for quiet-mic compensation |
+| Debounce | None | 3 consecutive frames required to transition |
+| Events | N/A (was broken on Linux) | Tauri `app.emit("vad-speech-start"/"vad-speech-end")` |
+
+**Files involved:** `apps/desktop/src-tauri/src/audio/vad.rs`, `apps/desktop/src/services/vad.ts`, `apps/desktop/src/routes/settings.tsx`
+
+### Migration 2: `ts` (Processing Time) → `speechTimestamp` (Actual Speech Time)
+
+The original correlation used `SttResult.ts` = `Date.now()` (when Deepgram finished processing, 3–8s after speech). VAD intervals represent speech-event time (client send time adjusted by median clock offset). The discrepancy caused missed correlations for short utterances.
+
+**Fix:** Added `SttResult.speechTimestamp = connectionStartTime + (start × 1000)` where `start` is Deepgram's seconds-offset-from-stream-start:
+
+```
+Deepgram connection opens at T=0
+    → connectionStartTime = Date.now() (in DeepgramConnection)
+User speaks at T=5s
+    → Deepgram returns result.start = 5.0, result.ts = T+8 (processing finished)
+    → speechTimestamp = connectionStartTime + 5000  ← actual speech time (ms)
+    → SpeakerIdentifier compares against VAD intervals using speechTimestamp
+    → VAD interval [T+4.9, T+7.5] overlaps speechTimestamp ±250ms ✓ → TEAM
+```
+
+| Field | Used for | Source |
+|-------|----------|--------|
+| `SttResult.ts` | Processing-order metadata | `Date.now()` in handler (unchanged) |
+| `SttResult.speechTimestamp` | VAD correlation | `connectionStartTime + start×1000` (NEW) |
+
+**Files:** `packages/stt/src/types.ts`, `packages/stt/src/deepgram/connection.ts`, `packages/meeting-mode/src/utterance/finalizer.ts`, `packages/meeting-mode/src/subscriber.ts`
+
+### Bugfix: Elysia Auto-Parses JSON → Object (Realtime Server)
+
+The realtime server uses Elysia's WebSocket handler. Elysia automatically parses incoming stringified JSON messages into JavaScript objects **before** passing them to the `message()` callback. The original code checked `typeof message === "string"` and called `JSON.parse()` — but by the time the handler runs, `message` is already a parsed object:
+
+```typescript
+// BEFORE (broken):
+if (typeof message === "string") {
+    const payload = JSON.parse(message);  // Always fails — message is an object!
+    if (payload.type === "vad_speaking") { ... }
+}
+
+// AFTER (fixed):
+if (typeof message === "object" && message !== null && !Buffer.isBuffer(message) && !(message instanceof Uint8Array)) {
+    const payload = message as Record<string, unknown>;
+    if (payload.type === "vad_speaking") { ... }
+}
+```
+
+**Files:** `apps/realtime/src/handlers/on-message.ts`
+
+### Bugfix: Redis Channel Name Mismatch
+
+The realtime server published VAD signals to `meeting.vad.<sessionId>` but meeting-mode subscribed to `realtime.vad.*`. These never matched, so VAD signals were silently dropped in Redis.
+
+**Fix:** Changed `vadChannel()` in `apps/realtime/src/redis/channels.ts` from `meeting.vad.${sessionId}` to `realtime.vad.${sessionId}` to match meeting-mode's subscriber pattern.
+
+---
+
 ## Key Design Decisions
 
 | Decision | Rationale |
@@ -426,3 +512,10 @@ Alice starts speaking on her desktop app:
 | `packages/meeting-mode/src/utterance/finalizer.ts` | Utterance finalization + retroactive fix |
 | `packages/meeting-mode/src/utterance/ring-buffer.ts` | Ring buffer for retroactive lookups |
 | `packages/meeting-mode/src/subscriber.ts` | Redis subscriber wiring VAD → identifier |
+| `packages/stt/src/types.ts` | `SttResult` type with `speechTimestamp` |
+| `packages/stt/src/deepgram/connection.ts` | `DeepgramConnection` — records `connectionStartTime`, computes `speechTimestamp` |
+| `apps/realtime/src/handlers/on-message.ts` | WebSocket message handler — routes VAD signals (object type) |
+| `apps/realtime/src/redis/channels.ts` | Redis channel names (`realtime.vad.*`) |
+| `apps/desktop/src-tauri/src/audio/vad.rs` | Rust-native Silero VAD (Tauri backend) |
+| `apps/desktop/src/services/vad.ts` | Frontend VAD manager — Tauri event listeners |
+| `apps/desktop/src/services/audio-streaming.ts` | `sendVadSignal()` — sends VadSignal over WebSocket |

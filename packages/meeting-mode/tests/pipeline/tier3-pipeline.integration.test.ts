@@ -128,6 +128,7 @@ describe("Tier3 Pipeline Integration (Embed Once)", () => {
       start: 0,
       duration: 1,
       ts: Date.now(),
+      speechTimestamp: Date.now(),
     };
     await finalizer.process(sttResult);
 
@@ -142,6 +143,7 @@ describe("Tier3 Pipeline Integration (Embed Once)", () => {
       start: 10,
       duration: 1,
       ts: Date.now() + 10_000,
+      speechTimestamp: Date.now() + 10_000,
     });
 
     // We mock UtteranceFinalizer's ringBuffer publishing to directly pass to engine in real code,

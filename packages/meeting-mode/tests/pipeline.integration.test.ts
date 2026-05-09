@@ -67,9 +67,11 @@ describe("Pipeline Integration: STT → Finalizer → Merger → RingBuffer → 
       transcript: "Hello from speaker zero.",
       confidence: 0.92,
       diarizationIndex: 0,
+      channel: 0,
       start: 0,
       duration: 2.0,
       ts: Date.now(),
+      speechTimestamp: Date.now(),
     };
 
     await finalizer.process(sttResult);
@@ -100,9 +102,11 @@ describe("Pipeline Integration: STT → Finalizer → Merger → RingBuffer → 
       transcript: "Hello",
       confidence: 0.9,
       diarizationIndex: 0,
+      channel: 0,
       start: 0,
       duration: 1.0,
       ts: now,
+      speechTimestamp: now,
     });
 
     await finalizer.process({
@@ -111,9 +115,11 @@ describe("Pipeline Integration: STT → Finalizer → Merger → RingBuffer → 
       transcript: "world",
       confidence: 0.95,
       diarizationIndex: 0,
+      channel: 0,
       start: 1.0,
       duration: 0.5,
       ts: now + 1500,
+      speechTimestamp: now + 1000,
     });
 
     // Speaker 1 responds (triggers flush of merged speaker 0)
@@ -123,9 +129,11 @@ describe("Pipeline Integration: STT → Finalizer → Merger → RingBuffer → 
       transcript: "Hi there.",
       confidence: 0.88,
       diarizationIndex: 1,
+      channel: 0,
       start: 2.0,
       duration: 1.0,
       ts: now + 3000,
+      speechTimestamp: now + 2500,
     });
 
     expect(publisher.calls).toHaveLength(1);

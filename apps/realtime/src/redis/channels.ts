@@ -21,7 +21,7 @@ const PREFIX = "realtime";
  * Used for publishing VAD signals for a specific session
  */
 export function vadChannel(sessionId: string): string {
-  return `meeting.vad.${sessionId}`;
+  return `realtime.vad.${sessionId}`;
 }
 
 /**

@@ -131,6 +131,27 @@ export const pipelineSpeculativeDiscardsTotal = new Counter({
   help: "Total number of speculative results discarded due to text mismatch",
 });
 
+export const pipelineSpeakerProvisionalAttemptsTotal = new Counter({
+  name: `${METRICS_PREFIX}_speaker_provisional_attempts_total`,
+  help: "Total number of provisional speaker correlation attempts from partials",
+});
+
+export const pipelineSpeakerProvisionalHitsTotal = new Counter({
+  name: `${METRICS_PREFIX}_speaker_provisional_hits_total`,
+  help: "Total number of partial-based provisional speaker mapping hits",
+});
+
+export const pipelineSpeakerProvisionalDiscardsTotal = new Counter({
+  name: `${METRICS_PREFIX}_speaker_provisional_discards_total`,
+  help: "Total number of provisional attempts discarded due to ambiguity/no match",
+});
+
+export const pipelineSpeakerFinalSourceTotal = new Counter({
+  name: `${METRICS_PREFIX}_speaker_final_source_total`,
+  help: "Final speaker assignment source distribution",
+  labelNames: ["source"],
+});
+
 let defaultMetricsRunning = false;
 
 export function startDefaultMetrics(): void {

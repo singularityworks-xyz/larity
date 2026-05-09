@@ -91,13 +91,29 @@ function mapSpeakerTypeToSide(
   return "unknown";
 }
 
+function mapSpeakerTypeToTranscriptLabel(
+  type: "TEAM" | "EXTERNAL",
+  _isCurrentUser: boolean
+): string {
+  if (type === "TEAM") {
+    return "TEAM MEMBER";
+  }
+  if (type === "EXTERNAL") {
+    return "EXTERNAL";
+  }
+  return "UNKNOWN";
+}
+
 export function mapBackendUtteranceToLive(
   utterance: BackendUtterance
 ): LiveUtterance {
   return {
     id: utterance.utteranceId,
     speakerId: utterance.speaker.speakerId,
-    speakerName: utterance.speaker.name,
+    speakerName: mapSpeakerTypeToTranscriptLabel(
+      utterance.speaker.type,
+      utterance.speaker.isCurrentUser
+    ),
     speakerType: mapSpeakerTypeToSide(
       utterance.speaker.type,
       utterance.speaker.isCurrentUser

@@ -9,9 +9,11 @@ describe("SttResult", () => {
       transcript: "Hello world.",
       confidence: 0.95,
       diarizationIndex: 0,
+      channel: 0,
       start: 0,
       duration: 2.5,
       ts: Date.now(),
+      speechTimestamp: Date.now(),
     };
 
     expect(result.diarizationIndex).toBe(0);
@@ -25,9 +27,11 @@ describe("SttResult", () => {
       transcript: "Test.",
       confidence: 0.9,
       diarizationIndex: 3,
+      channel: 0,
       start: 5.0,
       duration: 1.2,
       ts: Date.now(),
+      speechTimestamp: Date.now(),
     };
 
     expect(result.diarizationIndex).toBe(3);
@@ -41,9 +45,11 @@ describe("SttResult", () => {
       transcript: "partial transcript",
       confidence: 0.8,
       diarizationIndex: 1,
+      channel: 1,
       start: 10.5,
       duration: 0.5,
       ts,
+      speechTimestamp: ts,
     };
 
     expect(result.sessionId).toBe("session-abc");

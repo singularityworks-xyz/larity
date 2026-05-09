@@ -23,7 +23,11 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; media-src 'self' blob: mediastream:; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; connect-src 'self' ws: wss: http: https:;",
+      "headers": {
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp"
+      }
     }
   },
   "bundle": {

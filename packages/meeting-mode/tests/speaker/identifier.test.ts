@@ -59,7 +59,7 @@ describe("SpeakerIdentifier", () => {
       expect(identifier.isSpeaking(aliceId)).toBe(false);
     });
 
-    it("should ignore VAD signals from unknown users", () => {
+    it("should auto-register unknown users from authenticated VAD signals", () => {
       identifier.processVadSignal({
         type: "vad_speaking",
         userId: "unknown-user",
@@ -68,7 +68,50 @@ describe("SpeakerIdentifier", () => {
         serverReceiveTs: Date.now(),
       });
 
-      expect(identifier.isSpeaking("unknown-user")).toBe(false);
+      expect(identifier.isSpeaking("unknown-user")).toBe(true);
+    });
+  });
+
+  describe("partial provisional mapping", () => {
+    it("creates provisional mapping from partial and confirms on final", () => {
+      const now = Date.now();
+      identifier.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: now - 100,
+        serverReceiveTs: now - 100,
+      });
+
+      identifier.processSttPartial(42, now);
+      const speaker = identifier.identifySpeakerForFinal(42, now + 50);
+      expect(speaker.type).toBe("TEAM");
+      expect(speaker.userId).toBe(aliceId);
+    });
+
+    it("expires stale provisional mapping via TTL", () => {
+      const custom = new SpeakerIdentifier(sessionId, {
+        provisionalTtlMs: 100,
+      });
+      custom.registerTeamMember(aliceId, "Alice");
+      const now = Date.now();
+      custom.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: now,
+        serverReceiveTs: now,
+      });
+      custom.processSttPartial(7, now);
+      custom.processVadSignal({
+        type: "vad_silence",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: now + 50,
+        serverReceiveTs: now + 50,
+      });
+      const speaker = custom.identifySpeakerForFinal(7, now + 500);
+      expect(speaker.type).toBe("EXTERNAL");
     });
   });
 
@@ -453,6 +496,27 @@ describe("SpeakerIdentifier", () => {
       expect(DEFAULT_SPEAKER_CONFIG.correlationWindowMs).toBe(250);
       expect(DEFAULT_SPEAKER_CONFIG.lateCorrelationWindowMs).toBe(2000);
       expect(DEFAULT_SPEAKER_CONFIG.minConfirmationSignals).toBe(1);
+    });
+
+    it("keeps hybrid correlation overhead bounded for hot path", () => {
+      const perfIdentifier = new SpeakerIdentifier(sessionId);
+      perfIdentifier.registerTeamMember(aliceId, "Alice");
+      const base = Date.now();
+      perfIdentifier.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: base,
+        serverReceiveTs: base,
+      });
+
+      const start = performance.now();
+      for (let i = 0; i < 10_000; i += 1) {
+        perfIdentifier.processSttPartial(i % 4, base + i);
+        perfIdentifier.identifySpeakerForFinal(i % 4, base + i + 10);
+      }
+      const elapsed = performance.now() - start;
+      expect(elapsed).toBeLessThan(250);
     });
   });
 });

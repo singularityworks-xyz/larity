@@ -86,9 +86,11 @@ export function createTestSttResult(
     transcript: "Hello world.",
     confidence: 0.95,
     diarizationIndex: 0,
+    channel: 0,
     start: 0,
     duration: 2.5,
     ts: Date.now(),
+    speechTimestamp: Date.now(),
     ...overrides,
   };
 }

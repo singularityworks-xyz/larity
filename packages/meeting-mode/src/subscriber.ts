@@ -4,6 +4,7 @@ import {
   PARTICIPANT_JOIN,
   SESSION_END,
   STT_FINAL_PATTERN,
+  STT_PARTIAL_PATTERN,
   VAD_PATTERN,
 } from "./channels";
 import type { CommitmentManager } from "./commitment/manager";
@@ -27,7 +28,8 @@ let _redisClientRef: Redis | null = null;
 
 async function handleSttResult(
   channel: string,
-  message: string
+  message: string,
+  isPartial = false
 ): Promise<void> {
   try {
     const result = JSON.parse(message) as SttResult;
@@ -40,6 +42,12 @@ async function handleSttResult(
     // Register identifier so finalizer can resolve speakers
     const identifier = speakerManagerRef.getIdentifier(result.sessionId);
     finalizerRef.registerSpeakerIdentifier(result.sessionId, identifier);
+    if (isPartial || !result.isFinal) {
+      identifier.processSttPartial(
+        result.diarizationIndex,
+        result.speechTimestamp
+      );
+    }
 
     await finalizerRef.process(result);
   } catch (error) {
@@ -181,6 +189,11 @@ export async function startSubscriber(
 
   await subscriber.psubscribe(STT_FINAL_PATTERN);
   log.info({ pattern: STT_FINAL_PATTERN }, "Pattern subscribed to STT results");
+  await subscriber.psubscribe(STT_PARTIAL_PATTERN);
+  log.info(
+    { pattern: STT_PARTIAL_PATTERN },
+    "Pattern subscribed to STT partial results"
+  );
 
   await subscriber.psubscribe(VAD_PATTERN);
   log.info({ pattern: VAD_PATTERN }, "Pattern subscribed to VAD signals");
@@ -196,7 +209,10 @@ export async function startSubscriber(
   subscriber.on("pmessage", async (_pattern, channel, message) => {
     try {
       if (_pattern === STT_FINAL_PATTERN) {
-        await handleSttResult(channel, message);
+        await handleSttResult(channel, message, false);
+      }
+      if (_pattern === STT_PARTIAL_PATTERN) {
+        await handleSttResult(channel, message, true);
       }
       if (_pattern === VAD_PATTERN) {
         await handleVadSignal(message);
