@@ -93,15 +93,15 @@ function mapSpeakerTypeToSide(
 
 function mapSpeakerTypeToTranscriptLabel(
   type: "TEAM" | "EXTERNAL",
-  _isCurrentUser: boolean
+  isCurrentUser: boolean
 ): string {
+  if (isCurrentUser && type === "TEAM") {
+    return "YOU";
+  }
   if (type === "TEAM") {
     return "TEAM MEMBER";
   }
-  if (type === "EXTERNAL") {
-    return "EXTERNAL";
-  }
-  return "UNKNOWN";
+  return "EXTERNAL";
 }
 
 export function mapBackendUtteranceToLive(

@@ -67,8 +67,9 @@ export function buildRealtimeSocketUrl(
   url.searchParams.set("sessionId", sessionId);
   url.searchParams.set("userId", userId);
   url.searchParams.set("role", role);
-  if (userName) {
-    url.searchParams.set("name", userName);
+  const normalizedName = userName?.trim();
+  if (normalizedName) {
+    url.searchParams.set("name", normalizedName);
   }
   return url.toString();
 }
@@ -131,7 +132,7 @@ export class AudioStreamingClient {
   constructor(options: AudioStreamingOptions = {}) {
     this.wsBaseUrl = options.wsBaseUrl ?? DEFAULT_WS_URL;
     this.userId = sanitizeUserId(options.userId);
-    this.userName = options.userName ?? "";
+    this.userName = options.userName?.trim() ?? "";
     this.role = options.role ?? "host";
     this.backpressureThresholdBytes =
       options.backpressureThresholdBytes ?? DEFAULT_BACKPRESSURE_THRESHOLD;

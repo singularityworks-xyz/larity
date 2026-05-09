@@ -375,7 +375,7 @@ Alice starts speaking on her desktop app:
 
   Her Larity app detects voice activity.
   → Emits VadSignal { userId: "alice", type: "vad_speaking" }
-  → Published to Redis: meeting.vad.{sessionId}
+  → Published to Redis: realtime.vad.{sessionId}
 
   50ms later: Server receives VAD signal.
   → SpeakerIdentifier.processVadSignal(signal)
@@ -421,7 +421,7 @@ The original VAD implementation used `@ricky0123/vad-web` which depends on `onnx
 
 **Fix:** Replaced with the `voice_activity_detector` Rust crate (Silero VAD V5, native ONNX Runtime):
 
-```
+```text
 Desktop mic → AudioProcessor (16kHz mono i16) → VoiceActivityDetector::predict()
     ├── prob ≥ 0.3 (with 16× gain, 3-frame debounce) → emit "vad-speech-start"
     └── prob < 0.3 → emit "vad-speech-end"
@@ -444,7 +444,7 @@ The original correlation used `SttResult.ts` = `Date.now()` (when Deepgram finis
 
 **Fix:** Added `SttResult.speechTimestamp = connectionStartTime + (start × 1000)` where `start` is Deepgram's seconds-offset-from-stream-start:
 
-```
+```text
 Deepgram connection opens at T=0
     → connectionStartTime = Date.now() (in DeepgramConnection)
 User speaks at T=5s

@@ -6,15 +6,18 @@ use voice_activity_detector::VoiceActivityDetector;
 const THRESHOLD: f32 = 0.3;
 const DEBOUNCE_FRAMES: usize = 3;
 const INPUT_GAIN: f32 = 16.0;
+const VAD_CHANNEL_CAPACITY: usize = 4;
 
 #[derive(Clone)]
 pub struct VadTx {
-    tx: mpsc::Sender<Vec<i16>>,
+    tx: mpsc::SyncSender<Vec<i16>>,
 }
 
 impl VadTx {
     pub fn send(&self, chunk: Vec<i16>) {
-        let _ = self.tx.send(chunk);
+        if self.tx.try_send(chunk).is_err() {
+            // channel full or disconnected — drop oldest frame silently
+        }
     }
 }
 
@@ -24,7 +27,7 @@ pub fn spawn_vad_task(app: AppHandle) -> Result<VadTx, voice_activity_detector::
         .chunk_size(512usize)
         .build()?;
 
-    let (tx, rx) = mpsc::channel::<Vec<i16>>();
+    let (tx, rx) = mpsc::sync_channel::<Vec<i16>>(VAD_CHANNEL_CAPACITY);
 
     thread::spawn(move || {
         run_vad_loop(detector, app, rx);

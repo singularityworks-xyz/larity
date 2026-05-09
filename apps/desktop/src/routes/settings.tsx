@@ -39,6 +39,9 @@ export function SettingsPage() {
 
   useEffect(() => {
     return () => {
+      invoke("audio_capture_stop").catch(() => {
+        // best effort
+      });
       vadManager.destroy();
     };
   }, [vadManager]);
@@ -88,8 +91,6 @@ export function SettingsPage() {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const audioInputs = devices.filter((d) => d.kind === "audioinput");
       setAudioDeviceCount(audioInputs.length);
-
-      await invoke("vad_start");
 
       // Start mic capture for VAD test (ignore if already capturing from meeting page)
       try {

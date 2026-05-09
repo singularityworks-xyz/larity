@@ -114,7 +114,7 @@ describe("UtteranceFinalizer with SpeakerIdentifier", () => {
         isFinal: true,
         transcript: "Delayed final from Alice.",
         diarizationIndex: 9,
-        ts: now + 3000,
+        speechTimestamp: now + 3000,
       })
     );
     await finalizer.closeSession(sessionId);

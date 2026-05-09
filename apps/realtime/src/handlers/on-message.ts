@@ -6,6 +6,69 @@ import type { RealtimeSocket } from "../types";
 
 const log = createRealtimeLogger("on-message");
 
+function extractClientSendTs(
+  payload: { clientSendTs?: number; ts?: number },
+  fallback: number
+): number {
+  if (
+    typeof payload.clientSendTs === "number" &&
+    Number.isFinite(payload.clientSendTs)
+  ) {
+    return payload.clientSendTs;
+  }
+  if (typeof payload.ts === "number" && Number.isFinite(payload.ts)) {
+    return payload.ts;
+  }
+  return fallback;
+}
+
+function handleVadMessage(
+  type: "vad_speaking" | "vad_silence",
+  clientSendTs: number,
+  userId: string,
+  sessionId: string,
+  serverReceiveTs: number
+): void {
+  publishVadSignal({
+    type,
+    userId,
+    sessionId,
+    clientSendTs,
+    serverReceiveTs,
+  }).catch((err) => {
+    log.error({ err, sessionId }, "Failed to publish VAD signal");
+  });
+}
+
+function handleParsedVadPayload(
+  payload: { type: string; clientSendTs?: number; ts?: number },
+  userId: string,
+  sessionId: string,
+  ts: number
+): void {
+  if (payload.type === "vad_speaking" || payload.type === "vad_silence") {
+    handleVadMessage(
+      payload.type,
+      extractClientSendTs(payload, ts),
+      userId,
+      sessionId,
+      ts
+    );
+  }
+}
+
+function handleBinaryFrame(
+  message: Buffer | Uint8Array,
+  sessionId: string,
+  ts: number
+): void {
+  updateLastFrameTs(sessionId, ts);
+  const frame = Buffer.isBuffer(message) ? message : Buffer.from(message);
+  sessionManager.sendAudio(sessionId, frame).catch((err) => {
+    log.error({ err, sessionId }, "Failed to relay frame to Deepgram");
+  });
+}
+
 /**
  * Handle incoming WebSocket message
  *
@@ -20,70 +83,37 @@ export function onMessage(
   const { sessionId, role, userId } = data;
   const ts = Date.now();
 
-  // Handle VAD signals (Elysia auto-parses JSON text frames into objects)
   if (
     typeof message === "object" &&
     message !== null &&
     !Buffer.isBuffer(message) &&
     !(message instanceof Uint8Array)
   ) {
-    const payload = message as Record<string, unknown>;
-    if (payload.type === "vad_speaking" || payload.type === "vad_silence") {
-      publishVadSignal({
-        type: payload.type as "vad_speaking" | "vad_silence",
-        userId,
-        sessionId,
-        clientSendTs:
-          (payload.clientSendTs as number) ?? (payload.ts as number) ?? ts,
-        serverReceiveTs: ts,
-      }).catch((err) => {
-        log.error({ err, sessionId }, "Failed to publish VAD signal");
-      });
-    }
+<<<<<<< Updated upstream
+    const payload = message as {
+      type: string;
+      clientSendTs?: number;
+      ts?: number;
+    };
+=======
+    const payload = message as { type: string; clientSendTs?: number; ts?: number };
+>>>>>>> Stashed changes
+    handleParsedVadPayload(payload, userId, sessionId, ts);
     return;
   }
 
-  // If text (backward compat for non-Elysia or raw string frames)
   if (typeof message === "string") {
     try {
-      const payload = JSON.parse(message) as {
-        type: string;
-        clientSendTs?: number;
-        ts?: number;
-      };
-      if (payload.type === "vad_speaking" || payload.type === "vad_silence") {
-        publishVadSignal({
-          type: payload.type,
-          userId,
-          sessionId,
-          clientSendTs: payload.clientSendTs ?? payload.ts ?? ts,
-          serverReceiveTs: ts,
-        }).catch((err) => {
-          log.error({ err, sessionId }, "Failed to publish VAD signal");
-        });
-      }
+      handleParsedVadPayload(JSON.parse(message), userId, sessionId, ts);
     } catch {
       log.warn("Received invalid text frame, ignoring");
     }
     return;
   }
 
-  // Only host can send audio
   if (role !== "host") {
-    // Ideally we'd log this, but let's avoid spam
     return;
   }
 
-  // Update session timestamp
-  updateLastFrameTs(sessionId, ts);
-
-  // Convert to Buffer for Redis if needed
-  const frame = Buffer.isBuffer(message) ? message : Buffer.from(message);
-
-  // Pipe frame directly to Deepgram session owned by this worker.
-  // Audio bytes must never be routed through Redis.
-  sessionManager.sendAudio(sessionId, frame).catch((err) => {
-    // Frame is dropped, log and continue
-    log.error({ err, sessionId }, "Failed to relay frame to Deepgram");
-  });
+  handleBinaryFrame(message, sessionId, ts);
 }

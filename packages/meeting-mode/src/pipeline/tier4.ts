@@ -179,10 +179,13 @@ function geminiTier4StructuredSchema(): {
       "alertType",
       "severity",
       "message",
+      "surfaceReason",
+      "suggestion",
       "confidence",
       "shouldSurface",
       "reasoning",
       "routing",
+      "targetUserId",
     ],
   };
 }

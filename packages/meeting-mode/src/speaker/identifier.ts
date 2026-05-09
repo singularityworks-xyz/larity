@@ -167,7 +167,7 @@ export class SpeakerIdentifier {
         provisional.userId,
         diarizationIndex,
         utteranceTimestamp,
-        "final_confirmed",
+        "partial_provisional",
         provisional.confidence
       );
       if (speaker.type !== "EXTERNAL") {

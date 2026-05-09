@@ -11,13 +11,21 @@ export class VadManager {
   private unlistenEnd: (() => void) | null = null;
 
   async start(callbacks: VadCallbacks): Promise<void> {
-    await invoke("vad_start");
     this.unlistenStart = await listen("vad-speech-start", () =>
       callbacks.onSpeechStart()
     );
     this.unlistenEnd = await listen("vad-speech-end", () =>
       callbacks.onSpeechEnd()
     );
+    try {
+      await invoke("vad_start");
+    } catch {
+      this.unlistenStart?.();
+      this.unlistenEnd?.();
+      this.unlistenStart = null;
+      this.unlistenEnd = null;
+      throw new Error("VAD start failed");
+    }
   }
 
   destroy(): void {

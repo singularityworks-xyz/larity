@@ -433,6 +433,7 @@ export const meetingSessionService = {
    */
   async updateActivity(sessionId: string): Promise<void> {
     const sessionKey = redisKeys.meetingSession(sessionId);
+    const configKey = redisKeys.sessionConfig(sessionId);
     const now = Date.now();
 
     await redis.hset(sessionKey, {
@@ -443,8 +444,9 @@ export const meetingSessionService = {
     // Increment utterance count
     await redis.hincrby(sessionKey, "utteranceCount", 1);
 
-    // Refresh TTL
+    // Refresh TTL on both session and config keys
     await redis.expire(sessionKey, SESSION_TTL);
+    await redis.expire(configKey, SESSION_TTL);
   },
 
   /**

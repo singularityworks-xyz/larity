@@ -43,10 +43,9 @@ async function handleSttResult(
     const identifier = speakerManagerRef.getIdentifier(result.sessionId);
     finalizerRef.registerSpeakerIdentifier(result.sessionId, identifier);
     if (isPartial || !result.isFinal) {
-      identifier.processSttPartial(
-        result.diarizationIndex,
-        result.speechTimestamp
-      );
+      const speechTimestamp = Number(result.speechTimestamp);
+      const safeTs = Number.isFinite(speechTimestamp) ? speechTimestamp : 0;
+      identifier.processSttPartial(result.diarizationIndex, safeTs);
     }
 
     await finalizerRef.process(result);

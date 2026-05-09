@@ -499,16 +499,20 @@ export function MeetingPage() {
     window.setTimeout(() => setRememberBanner(null), 8000);
   }
 
-  function handleToggleNameCustomization() {
+  async function handleToggleNameCustomization() {
     const next = !allowNameCustomization;
-    api
-      .post(`/meeting-session/${sessionId}/config`, {
+    try {
+      await api.post(`/meeting-session/${sessionId}/config`, {
         allowNameCustomization: next,
-      })
-      .then(() => setAllowNameCustomization(next))
-      .catch(() => {
-        // Revert on failure — handled via warning
       });
+      setAllowNameCustomization(next);
+    } catch (error) {
+      setWarning(
+        error instanceof Error
+          ? error.message
+          : "Failed to update name customization setting"
+      );
+    }
   }
 
   function handleNameConfirm(name: string) {
