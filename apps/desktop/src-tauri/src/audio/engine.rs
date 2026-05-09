@@ -3,7 +3,7 @@ use crate::audio::AudioDevice;
 use crate::audio::mixer::{AudioMixer, MixerMessage, SourceType};
 use crate::audio::VadState;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{Sample, Stream, SupportedStreamConfig};
+use cpal::{Sample, Stream};
 use tauri::{AppHandle, Manager};
 use std::sync::Arc;
 
@@ -27,15 +27,18 @@ pub fn list_devices() -> Result<Vec<AudioDevice>, String> {
     let devices = host.input_devices().map_err(|e| e.to_string())?;
 
     let mut result = Vec::new();
-    let default_in = host
+    let default_id = host
         .default_input_device()
-        .map(|d| d.name().unwrap_or_default());
+        .and_then(|d| d.id().ok())
+        .map(|id| id.to_string());
 
     for device in devices {
-        if let Ok(name) = device.name() {
-            let is_default = Some(&name) == default_in.as_ref();
+        if let (Ok(desc), Ok(dev_id)) = (device.description(), device.id()) {
+            let name = desc.name().to_string();
+            let id = dev_id.to_string();
+            let is_default = Some(&id) == default_id.as_ref();
             result.push(AudioDevice {
-                id: name.clone(),
+                id,
                 name,
                 is_default,
             });
@@ -60,14 +63,14 @@ pub fn start_capture(
     let mic_device = if let Some(id) = mic_device_id {
         host.input_devices()
             .map_err(|e| e.to_string())?
-            .find(|d| d.name().unwrap_or_default() == id)
+            .find(|d| d.id().map(|did| did.to_string()).unwrap_or_default() == id)
             .ok_or("Microphone device not found")?
     } else {
         host.default_input_device()
             .ok_or("No default input device available")?
     };
 
-    println!("Using Mic device: {}", mic_device.name().unwrap_or_default());
+    println!("Using Mic device: {}", mic_device.description().map(|d| d.name().to_string()).unwrap_or_default());
     let mic_config = mic_device.default_input_config().map_err(|e| e.to_string())?;
     
     let mic_format = mic_config.sample_format();
@@ -161,7 +164,7 @@ pub fn start_capture(
             // macOS / Windows fallback to loopback with cpal
             let sys_device = host.default_output_device()
                 .ok_or("No default output device available for loopback")?;
-            println!("Using Sys device: {}", sys_device.name().unwrap_or_default());
+            println!("Using Sys device: {}", sys_device.description().map(|d| d.name().to_string()).unwrap_or_default());
             
             let sys_config = sys_device.default_input_config()
                 .or_else(|_| sys_device.default_output_config())
