@@ -222,6 +222,11 @@ export const meetingSessionService = {
       // Add to active sessions set
       await redis.sadd(redisKeys.activeSessions(), sessionId);
 
+      // Initialize session config with defaults
+      const configKey = redisKeys.sessionConfig(sessionId);
+      await redis.hset(configKey, "allowNameCustomization", "true");
+      await redis.expire(configKey, SESSION_TTL);
+
       // Map meeting to session
       await redis.set(
         redisKeys.meetingToSession(meetingId),
@@ -248,6 +253,7 @@ export const meetingSessionService = {
         status: "initializing",
         websocketUrl,
         createdAt: now,
+        allowNameCustomization: true,
       };
     } finally {
       // Always release lock
@@ -556,7 +562,12 @@ export const meetingSessionService = {
     await redis.sadd(participantsKey, userId);
     await redis.expire(participantsKey, SESSION_TTL);
 
-    // 4. Return connection details
+    // 4. Read session config
+    const configKey = redisKeys.sessionConfig(sessionId);
+    const configData = await redis.hget(configKey, "allowNameCustomization");
+    const allowNameCustomization = configData !== "false";
+
+    // 5. Return connection details
     const websocketUrl = `${REALTIME_WS_URL}?sessionId=${sessionId}&userId=${userId}&role=participant`;
 
     return {
@@ -566,6 +577,7 @@ export const meetingSessionService = {
       role: "participant",
       websocketUrl,
       joinedAt: Date.now(),
+      allowNameCustomization,
     };
   },
 
@@ -632,6 +644,11 @@ export const meetingSessionService = {
           redisKeys.sessionParticipants(sessionId)
         );
 
+        const configData = await redis.hget(
+          redisKeys.sessionConfig(sessionId),
+          "allowNameCustomization"
+        );
+
         const host = meeting.participants[0];
 
         return {
@@ -644,12 +661,40 @@ export const meetingSessionService = {
           hostName: host?.user?.name ?? null,
           startedAt: meeting.startedAt ? meeting.startedAt.getTime() : null,
           participantCount: participantCount + 1,
+          allowNameCustomization: configData !== "false",
         } satisfies ActiveSession;
       })
     );
 
     return activeSessions.filter(
       (session): session is ActiveSession => session !== null
+    );
+  },
+
+  async updateConfig(
+    sessionId: string,
+    userId: string,
+    config: { allowNameCustomization: boolean }
+  ): Promise<void> {
+    const sessionKey = redisKeys.meetingSession(sessionId);
+    const sessionData = await redis.hgetall(sessionKey);
+
+    if (!sessionData || Object.keys(sessionData).length === 0) {
+      throw new MeetingSessionError("Session not found", "SESSION_NOT_FOUND");
+    }
+
+    if (sessionData.userId !== userId) {
+      throw new MeetingSessionError(
+        "Only the host can update session config",
+        "UNAUTHORIZED"
+      );
+    }
+
+    const configKey = redisKeys.sessionConfig(sessionId);
+    await redis.hset(
+      configKey,
+      "allowNameCustomization",
+      config.allowNameCustomization ? "true" : "false"
     );
   },
 

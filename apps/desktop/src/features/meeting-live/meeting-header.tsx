@@ -1,4 +1,4 @@
-import { Bell, BellOff, Bookmark, PhoneOff } from "lucide-react";
+import { Bell, BellOff, Bookmark, PhoneOff, UserCog } from "lucide-react";
 import { useEffect, useState } from "react";
 import { buttonClass, cx, eyebrowClass, heroTitleClass } from "../../lib/ui";
 
@@ -17,9 +17,11 @@ interface MeetingHeaderProps {
   isHost: boolean;
   alertsMuted: boolean;
   isEndingBusy: boolean;
+  allowNameCustomization: boolean;
   onMuteAlertsToggle: () => void;
   onRememberThis: () => void;
   onEndMeeting: () => void;
+  onToggleNameCustomization: () => void;
 }
 
 export function MeetingHeader({
@@ -29,9 +31,11 @@ export function MeetingHeader({
   isHost,
   alertsMuted,
   isEndingBusy,
+  allowNameCustomization,
   onMuteAlertsToggle,
   onRememberThis,
   onEndMeeting,
+  onToggleNameCustomization,
 }: MeetingHeaderProps) {
   const [elapsedMs, setElapsedMs] = useState(0);
 
@@ -66,6 +70,25 @@ export function MeetingHeader({
       </time>
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+        {isHost ? (
+          <button
+            aria-label={
+              allowNameCustomization
+                ? "Disable name customization"
+                : "Enable name customization"
+            }
+            className={buttonClass({ variant: "ghost", icon: true })}
+            onClick={onToggleNameCustomization}
+            title={
+              allowNameCustomization
+                ? "Name customization on"
+                : "Name customization off"
+            }
+            type="button"
+          >
+            <UserCog className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </button>
+        ) : null}
         <button
           aria-label="Remember this moment"
           className={buttonClass({ variant: "ghost", icon: true })}
