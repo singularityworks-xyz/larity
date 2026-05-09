@@ -179,10 +179,10 @@ export class UtteranceFinalizer {
       speaker: this.resolveSpeaker(
         sessionId,
         result.diarizationIndex,
-        finalized.timestamp
+        result.speechTimestamp
       ),
       text: normalizedText,
-      timestamp: finalized.timestamp,
+      timestamp: result.speechTimestamp,
       confidenceScore: finalized.confidence,
       startOffset: finalized.startOffset,
       duration: finalized.duration,
@@ -439,7 +439,7 @@ export class UtteranceFinalizer {
   ): Utterance["speaker"] {
     const identifier = this.speakerIdentifiers.get(sessionId);
     if (identifier) {
-      return identifier.identifySpeaker(diarizationIndex, timestamp);
+      return identifier.identifySpeakerForFinal(diarizationIndex, timestamp);
     }
     return createUnidentifiedSpeaker(diarizationIndex);
   }

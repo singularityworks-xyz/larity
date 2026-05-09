@@ -17,38 +17,69 @@ export interface Tier4DeepReasonerOptions {
 }
 
 const CATEGORY_PROMPT_BLOCK = `
-Choose exactly ONE alertType:
-- none: no actionable meeting risk, ambiguous evidence, filler, audibility check, greeting, acknowledgement, duplicated statement, or harmless STT artifact.
-- self_contradiction: the current TEAM speaker conflicts with their OWN earlier commitment/decision found in matchedCommitments. If EXTERNAL backtracks, use client_backtrack.
-- team_inconsistency: the current TEAM speaker conflicts with a DIFFERENT TEAM member's earlier commitment/decision found in matchedCommitments (e.g., timeline, scope, price).
-- risky_commitment: TEAM speaker makes a risky promise: unconditional guarantee, unverified timeline/price/resource/capability, open-ended scope, discount/approval without authority, or "easy/simple/no problem" underestimation.
-- scope_creep: EXTERNAL speaker expands scope beyond agreement or assumes extra work is included.
-- client_backtrack: EXTERNAL speaker changes a previous EXTERNAL commitment found in matchedCommitments.
-- missing_clarity: only when a substantive topic lacks owner, deadline, next action, or mutual confirmation. Do NOT use for one-off malformed STT fragments.
-- information_risk: confidential client names, internal financials, credentials/secrets, unreleased features, roadmap/strategy, or third-party confidential details may be exposed.
-- tone_warning: TEAM tone is defensive/aggressive/reactive/excessively apologetic enough to affect the meeting.
-- pressure_detected: EXTERNAL uses urgency, social proof, authority, guilt, or implicit threat pressure.
-- policy_violation: utterance conflicts with relevant constraints, policy guardrails, compliance, legal, or security requirements.
-- client_disengagement: EXTERNAL gives repeated minimal/passive responses after team-heavy explanation.
-- undiscussed_agenda: meeting-end only; do not emit mid-meeting unless context explicitly says agenda closeout.
+Evaluate the context and choose exactly ONE alertType based on the provided intent, riskSignals, Tier 1 hits, and matched commitments:
+
+1. risky_commitment (Routing: personal)
+   - Trigger: TEAM speaker over-promises. (Tier 2 intent: commitment + riskSignals: underestimation, vague_deadline, unconditional_promise, open_scope, scope_creep_risk, or pricingHit).
+   - Evidence: "no problem" underestimation, unconditional SLA/guarantee, unverified scope expansion, discount/approval without authority, or open-ended capability/scope guarantee.
+
+2. scope_creep (Routing: shared)
+   - Trigger: EXTERNAL (client) speaker expands scope. (Tier 2 intent: concern, question, or commitment + riskSignals: scope_creep_risk, underestimation).
+   - Evidence: Client assuming unconfirmed work is in scope, or casually requesting extra features.
+
+3. missing_clarity (Routing: shared)
+   - Trigger: Substantive topic without owner/deadline/action. (Tier 2 intent: concern, commitment, or general + riskSignals: vague_ownership, vague_deadline, or unresolved pricing).
+   - Evidence: Vague ownership ("Someone should..."), vague deadline ("at some point"), or unresolved pricing without a clear next step.
+
+4. information_risk (Routing: both)
+   - Trigger: Sensitive data disclosed in meeting. (Tier 1 technicalHit: api_key, password_assignment OR intent: general mentioning confidential strategy).
+   - Evidence: Exposing live API keys, database passwords, internal financials, unreleased strategy/M&A, or third-party confidential details.
+
+5. tone_warning (Routing: personal)
+   - Trigger: TEAM speaker's tone is damaging. (Tier 2 tone: aggressive/defensive, especially with pricingHit or client concerns).
+   - Evidence: Dismissive tone toward client, aggressive defense of pricing.
+
+6. pressure_detected (Routing: shared)
+   - Trigger: EXTERNAL speaker applies pressure. (Tier 2 intent: concern + riskSignals: pressure, timeline_risk).
+   - Evidence: Urgency from authority ("CEO needs this"), social proof ("competitor does this for free"), or ultimatums.
+
+7. self_contradiction (Routing: personal)
+   - Trigger: TEAM speaker contradicts their OWN earlier commitment.
+   - Evidence: Requires a Tier 3 ledger match from the SAME speaker + intent: commitment + riskSignals: backtracking / date / pricing hit.
+
+8. team_inconsistency (Routing: shared)
+   - Trigger: TEAM speaker gives conflicting info to a DIFFERENT team member's earlier commitment.
+   - Evidence: Requires a Tier 3 ledger match from a DIFFERENT team member (e.g., timeline, scope, price).
+
+9. client_backtrack (Routing: shared)
+   - Trigger: EXTERNAL speaker reverses their OWN commitment.
+   - Evidence: Requires a Tier 3 ledger match from the client + intent: concern/decision + riskSignals: backtracking / pricing hit.
+
+10. policy_violation (Routing: both)
+    - Trigger: Utterance conflicts with org constraints. (Tier 2 intent: commitment + riskSignals: disclosure, or commitmentType: scope for data/security).
+    - Evidence: Promising to share client data with third parties, storing PII unsafely, or other compliance breaches.
+
+11. client_disengagement (Routing: shared)
+    - Trigger: EXTERNAL gives repeated minimal/passive responses after team-heavy explanation.
+
+12. undiscussed_agenda (Routing: shared)
+    - Trigger: Meeting-end only; do not emit mid-meeting unless context explicitly says agenda closeout.
+
+- none: no actionable meeting risk, ambiguous evidence, filler, audibility check, greeting, duplicated statement, or harmless STT artifact.
 
 Decision discipline:
-- A Tier 3 memory/ledger match is only a clue. Surface only if the current utterance truly conflicts with, changes, or risks something in context. For self_contradiction and team_inconsistency, explicitly compare the speaker.userId of the trigger utterance against the speaker.userId of the matched commitments.
-- Prefer alertType none when evidence is weak, duplicated, already obvious, purely conversational, or not actionable in the next 10 seconds.
-- shouldSurface=true only when confidence is high enough for message, surfaceReason, and suggestion that help immediately in the overlay.
+- Tier 3 ledger matches are only clues. Surface only if the current utterance truly conflicts with, changes, or risks something in context. Explicitly verify speaker.userId against matched commitments.
+- Prefer 'none' when evidence is weak, purely conversational, or not actionable in the next 10 seconds.
+- shouldSurface=true only when confidence is high enough for a message, surfaceReason, and suggestion that help immediately in the overlay.
 - Calibrate confidence: 0.9+ clear direct evidence, 0.75-0.89 likely but context dependent, <0.75 should usually not surface.
-
-Routing:
-- personal: self_contradiction/risky_commitment/tone_warning for the current TEAM speaker when only private coaching is needed. Set targetUserId to the current speaker.userId.
-- shared: team_inconsistency, scope_creep, client_backtrack, missing_clarity, pressure_detected, client_disengagement, undiscussed_agenda, or another TEAM member's self/risk/tone issue.
-- both: information_risk or policy_violation when both team coordination and speaker-specific caution matter.
-
 
 Output requirements:
 - severity: low|medium|high|critical based on business impact, not wording intensity.
 - message: one short headline: what happened / what needs attention (no markdown; no chain-of-thought).
 - surfaceReason: when shouldSurface=true, exactly ONE short sentence the user reads as "why we flagged this" (plain language; cite minimal evidence).
-- suggestion: when shouldSurface=true, one or two short sentences: concrete next step to say or do in the meeting (defer to legal/manager/etc. only if warranted).
+- suggestion: when shouldSurface=true, one or two short sentences: concrete next step to say or do in the meeting.
+- routing: strictly match the routing listed for the chosen alertType (shared, personal, both).
+- targetUserId: for 'personal' routing, set to the current speaker.userId.
 - When shouldSurface=false or alertType=none: set surfaceReason and suggestion to null.
 - reasoning: internal audit-only evidence trace; longer ok; never user-facing alone.
 - Return strict JSON only with fields alertType severity message surfaceReason suggestion confidence shouldSurface reasoning routing targetUserId.
@@ -148,10 +179,13 @@ function geminiTier4StructuredSchema(): {
       "alertType",
       "severity",
       "message",
+      "surfaceReason",
+      "suggestion",
       "confidence",
       "shouldSurface",
       "reasoning",
       "routing",
+      "targetUserId",
     ],
   };
 }

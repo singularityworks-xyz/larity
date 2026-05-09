@@ -101,6 +101,7 @@ export function StartMeetingPage() {
           clientName: selectedClient?.name ?? "Client",
           meetingTitle: trimmedTitle || "Untitled meeting",
           startedAt: Date.now(),
+          allowNameCustomization: session.allowNameCustomization,
         },
       });
     } catch (requestError) {

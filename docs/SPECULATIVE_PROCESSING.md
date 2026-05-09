@@ -162,6 +162,15 @@ Exact string matching is useless for partial speech. The system uses normalized 
 
 Speaker identity is determined through VAD correlation (see [VAD.md](./VAD.md)), not voice embeddings. Because every team member runs the Larity desktop app, the server knows who is speaking without ML. This "free" speaker identity enables the entire speaker-aware cost gating system — external speakers don't trigger speculation, and their Tier 4 threshold is higher. Without VAD correlation, speculation would be blind to who is speaking and would waste LLM calls on client small talk.
 
+### 3.1 Hybrid Partial/Final Speaker Mapping
+
+Speaker attribution now resolves in two stages:
+
+- **Partial stage:** STT partial events create short-lived provisional diarization-to-user candidates using VAD interval overlap.
+- **Final stage:** STT final events confirm (or override) attribution, then publish canonical speaker identity.
+
+This reduces attribution drift when final segments are delayed (for example 3-8 seconds) while keeping speculative processing non-blocking. Tiering and cost gating continue to consume the final canonical speaker identity, with retroactive correction still available for late VAD arrival.
+
 ### 4. Side Effects Run Regardless of Source
 
 A critical design insight: commitment persistence, topic delta application, and semantic cache priming are **side effects** that must run whether the Tier 2 classification came from a speculative cache hit or a real LLM call. The `applyTier2SideEffects` method is extracted as a shared helper that both paths call. Without this, speculative cache hits would correctly return the classification but silently skip all downstream consequences — commitments wouldn't be recorded, topics wouldn't shift, and the semantic cache wouldn't be primed.

@@ -11,6 +11,7 @@ import {
 } from "../../features/meeting-live/mappers";
 import { MeetingHeader } from "../../features/meeting-live/meeting-header";
 import { MeetingSidebar } from "../../features/meeting-live/meeting-sidebar";
+import { NameConfigModal } from "../../features/meeting-live/name-config-modal";
 import { TopicsTimeline } from "../../features/meeting-live/topics-timeline";
 import { TranscriptStream } from "../../features/meeting-live/transcript-stream";
 import type {
@@ -46,6 +47,7 @@ interface MeetingLocationState {
   clientName?: string;
   meetingTitle?: string;
   startedAt?: number;
+  allowNameCustomization?: boolean;
 }
 
 interface AudioDevice {
@@ -83,6 +85,7 @@ function pendingOverlapsSttRange(
   return p0 < u1 && p1 > u0;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: pre-existing, refactor deferred
 export function MeetingPage() {
   const navigate = useNavigate();
   const { sessionId = "" } = useParams();
@@ -93,19 +96,30 @@ export function MeetingPage() {
   const role = state.role ?? "participant";
   const wsBaseUrl = getWsBaseUrl(state.websocketUrl);
   const userId = session.user?.id ?? FALLBACK_USER_ID;
+  const accountName = session.user?.name ?? "";
+  const initialAllowNameCustomization = state.allowNameCustomization ?? true;
 
   const clientDisplayName = state.clientName ?? "Client";
   const meetingDisplayTitle = state.meetingTitle ?? "Live meeting";
   const meetingStartedAtMs =
     typeof state.startedAt === "number" ? state.startedAt : Date.now();
 
+  const [configuredName, setConfiguredName] = useState<string | null>(
+    initialAllowNameCustomization ? null : accountName
+  );
+  const [allowNameCustomization, setAllowNameCustomization] = useState(
+    initialAllowNameCustomization
+  );
+  const displayName = configuredName ?? accountName;
+
   const streamingClient = useMemo(() => {
     return new AudioStreamingClient({
       wsBaseUrl,
       userId,
+      userName: displayName,
       role,
     });
-  }, [role, userId, wsBaseUrl]);
+  }, [role, userId, displayName, wsBaseUrl]);
 
   const vadManager = useMemo(() => new VadManager(), []);
   const isHost = role === "host";
@@ -222,8 +236,8 @@ export function MeetingPage() {
   }, []);
 
   useEffect(() => {
-    streamingClient.setIdentity(userId, role);
-  }, [role, streamingClient, userId]);
+    streamingClient.setIdentity(userId, role, displayName);
+  }, [role, streamingClient, userId, displayName]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -392,6 +406,10 @@ export function MeetingPage() {
       return;
     }
 
+    if (allowNameCustomization && configuredName === null) {
+      return;
+    }
+
     streamingClient.connect(sessionId);
     refreshStatus().catch(() => {
       // noop, warning handled in refreshStatus
@@ -442,6 +460,8 @@ export function MeetingPage() {
     stopCapture,
     streamingClient,
     isHost,
+    allowNameCustomization,
+    configuredName,
   ]);
 
   async function leaveMeeting() {
@@ -479,10 +499,45 @@ export function MeetingPage() {
     window.setTimeout(() => setRememberBanner(null), 8000);
   }
 
+  async function handleToggleNameCustomization() {
+    const next = !allowNameCustomization;
+    try {
+      await api.post(`/meeting-session/${sessionId}/config`, {
+        allowNameCustomization: next,
+      });
+      setAllowNameCustomization(next);
+    } catch (error) {
+      setWarning(
+        error instanceof Error
+          ? error.message
+          : "Failed to update name customization setting"
+      );
+    }
+  }
+
+  function handleNameConfirm(name: string) {
+    setConfiguredName(name);
+  }
+
+  function handleNameSkip() {
+    setConfiguredName(accountName);
+  }
+
+  if (allowNameCustomization && configuredName === null) {
+    return (
+      <NameConfigModal
+        defaultName={accountName}
+        onConfirm={handleNameConfirm}
+        onSkip={handleNameSkip}
+      />
+    );
+  }
+
   return (
     <main className="fixed inset-x-0 top-9 bottom-0 z-10 flex flex-col overflow-hidden bg-bg">
       <MeetingHeader
         alertsMuted={alertsMuted}
+        allowNameCustomization={allowNameCustomization}
         clientName={clientDisplayName}
         isEndingBusy={isBusy}
         isHost={isHost}
@@ -494,6 +549,7 @@ export function MeetingPage() {
         }}
         onMuteAlertsToggle={() => setAlertsMuted((previous) => !previous)}
         onRememberThis={handleRememberThis}
+        onToggleNameCustomization={handleToggleNameCustomization}
         startedAtMs={meetingStartedAtMs}
       />
 

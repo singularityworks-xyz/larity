@@ -10,6 +10,7 @@ export interface StartSessionResponse {
   status: "initializing" | "active" | "paused" | "ending";
   websocketUrl: string;
   createdAt: number;
+  allowNameCustomization: boolean;
 }
 
 export interface ActiveSession {
@@ -22,6 +23,7 @@ export interface ActiveSession {
   hostName: string | null;
   startedAt: number | null;
   participantCount: number;
+  allowNameCustomization: boolean;
 }
 
 export interface JoinSessionResponse {
@@ -31,4 +33,5 @@ export interface JoinSessionResponse {
   role: "participant";
   websocketUrl: string;
   joinedAt: number;
+  allowNameCustomization: boolean;
 }

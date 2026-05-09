@@ -41,7 +41,7 @@ This document tracks architectural decisions, technical tradeoffs, and implement
 
 ## Architectural Overhaul — Latency & Cost Hardening (pre-Week 4 review)
 
-The decisions below (B.1–B.18) were adopted after audits of the pipeline for latency, cost, and failure modes. All of them are reflected in `meeting-mode.md`, `architecture-and-flow.md`, and `timeline.md` — this section exists to make the reasoning easy to audit without diffing the long docs.
+The decisions below (B.1–B.19) were adopted after audits of the pipeline for latency, cost, and failure modes. All of them are reflected in `meeting-mode.md`, `architecture-and-flow.md`, and `timeline.md` — this section exists to make the reasoning easy to audit without diffing the long docs.
 
 ### B.1 Parallel Tier 1 / Tier 2 / Tier 3 (+ constraint extraction)
 - **Context:** Tiers 1, 2, 3 each take a different latency (50ms / 200ms / 100ms) and none consumes another's output. Constraint extraction is regex-on-text and is independent. Running tiers sequentially costs ~350ms for no reason.
@@ -141,8 +141,14 @@ The decisions below (B.1–B.18) were adopted after audits of the pipeline for l
 - **Decision:** **`LEDGER_SNAPSHOT_DEBOUNCE_MS`** coalesces snapshot writes; flush on session close; **`ledger_snapshot_flushes_total`** counter. When debounce is 0 (tests), callers await immediate flush.
 - **Where:** `commitment/ledger.ts`, `constraint/ledger.ts`.
 
-### B.18 Tier 2 on Groq with strict JSON Schema
+### B.18 Tier 2 schema enforcement (Groq JSON schema strict mode)
 
 - **Context:** Tier 2 runs as **`chat.completions`** on **Groq** with **`response_format: json_schema`** (`strict: true`). Providers require every key under `properties` to appear in `required`; optional fields are modeled as **`null`**.
 - **Decision:** **`extractedData`** and non-null **`topicDelta`** objects list **all** keys in schema `required` with nullable types; Zod preprocess strips **`null`** post-parse. Mis-specified schemas yield HTTP 400 before inference ("Tier2 classification failed silently" in logs).
 - **Where:** `pipeline/tier2.ts`, `pipeline/types.ts`, `GROQ_TIER2_MODEL` / `GROQ_API_KEY` in `env.ts`.
+
+### B.19 Utterance timestamp = speech time, not processing time (`speechTimestamp`)
+
+- **Context:** VAD correlation compares utterance timestamps against VAD intervals (clock-adjusted speech-event times). The original `SttResult.ts` was `Date.now()` — the wall clock when Deepgram's transcript handler ran, which is typically 3–8 seconds after the actual speech. For short utterances, the VAD interval would already be closed before the utterance timestamp existed, causing the ±250ms correlation window to always miss.
+- **Decision:** Compute `SttResult.speechTimestamp = DeepgramConnection.connectionStartTime + (result.start * 1000)`, where `result.start` is Deepgram's seconds offset from stream start. The `connectionStartTime` is recorded when the Deepgram WebSocket `open` event fires. This timestamp represents the actual moment the speech occurred (in server time). VAD intervals also represent speech-event time (client send time adjusted by median clock offset), so they naturally overlap.
+- **Where:** `packages/stt/src/deepgram/connection.ts`, `packages/stt/src/types.ts`, `packages/meeting-mode/src/utterance/finalizer.ts`, [docs/VAD.md §Migrations §speechTimestamp](./docs/VAD.md).

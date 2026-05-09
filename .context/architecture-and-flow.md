@@ -176,8 +176,10 @@ This is NOT a single-user experience. Multiple team members share a session.
 
 > **Full Details:** See [meeting-mode.md §3](./meeting-mode.md#3-speaker-identification-via-vad-correlation)
 
-* Each team member's Larity instance runs **local VAD on their microphone** and sends timestamped speaking signals via WebSocket
+* Each team member's Larity instance runs **Rust-native local VAD** (Silero V5 via `voice_activity_detector` crate, not browser WASM) on their microphone and sends timestamped speaking signals via WebSocket
 * The server maintains a **rolling-median clock offset per client** (last 30 samples) so VAD timestamps align with the server's audio ingestion clock
+* Speaker mapping is **hybrid**: STT partials create short-lived provisional diarization→user candidates, STT finals confirm authoritative identity, and late VAD can still trigger retroactive correction.
+* **Utterance timestamps use speech time** (`connectionStartTime + Deepgram.start * 1000`) for VAD correlation, not processing time (`Date.now()`). This eliminates the 3–8 second gap between VAD intervals and utterance timestamps that caused missed correlations for short utterances.
 * The server **correlates offset-corrected VAD timestamps against Deepgram channel-1 diarization indices** (±250ms window after offset correction)
 * Deepgram reassigns diarization indices after silences; the server merges a new channel/index pair onto an existing `SpeakerIdentity` when VAD correlation points at the same userId and the gap since that identity last spoke exceeds the merge threshold (default 15s). `SpeakerIdentity` therefore owns a **set** of channel/index pairs.
 * Matched → TEAM (with userId) | Unmatched → EXTERNAL (client)

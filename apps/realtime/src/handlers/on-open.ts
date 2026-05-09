@@ -57,6 +57,7 @@ export function onOpen(ws: RealtimeSocket): void {
   publishParticipantJoin({
     sessionId,
     userId,
+    name: data.name,
     role,
     ts: data.connectedAt,
   }).catch((err) => {

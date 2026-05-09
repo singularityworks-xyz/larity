@@ -8,6 +8,7 @@
 export interface SocketData {
   sessionId: string;
   userId: string;
+  name: string;
   role: "host" | "participant";
   connectedAt: number;
   lastFrameTs: number;
@@ -74,6 +75,7 @@ export interface SessionEndEvent {
 export interface ParticipantJoinEvent {
   sessionId: string;
   userId: string;
+  name: string;
   role: "host" | "participant";
   ts: number;
 }

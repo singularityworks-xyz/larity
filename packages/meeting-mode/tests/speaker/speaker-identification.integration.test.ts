@@ -206,6 +206,32 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
     expect(second.userId).toBe(aliceId);
   });
 
+  it("uses partial-first mapping when final is delayed", () => {
+    const identifier = new SpeakerIdentifier(sessionId);
+    identifier.registerTeamMember(aliceId, "Alice");
+    const base = Date.now();
+
+    identifier.processVadSignal({
+      type: "vad_speaking",
+      userId: aliceId,
+      sessionId,
+      clientSendTs: base,
+      serverReceiveTs: base,
+    });
+    identifier.processSttPartial(3, base + 300);
+    identifier.processVadSignal({
+      type: "vad_silence",
+      userId: aliceId,
+      sessionId,
+      clientSendTs: base + 900,
+      serverReceiveTs: base + 900,
+    });
+
+    const speaker = identifier.identifySpeakerForFinal(3, base + 4000);
+    expect(speaker.type).toBe("TEAM");
+    expect(speaker.userId).toBe(aliceId);
+  });
+
   it("Clock Skew Simulation: should correct for constant client skew", () => {
     const identifier = new SpeakerIdentifier(sessionId);
     identifier.registerTeamMember(aliceId, "Alice");

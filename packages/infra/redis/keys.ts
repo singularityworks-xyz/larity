@@ -32,4 +32,6 @@ export const redisKeys = {
   meetingUtterance: (sessionId: string) =>
     `meeting.utterance.${sessionId}` as const,
   meetingTopic: (sessionId: string) => `meeting.topic.${sessionId}` as const,
+  sessionConfig: (sessionId: string) =>
+    `meeting:session:${sessionId}:config` as const,
 };

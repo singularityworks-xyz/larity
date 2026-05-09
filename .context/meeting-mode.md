@@ -117,11 +117,12 @@ With multiple team members and external clients all speaking in the same system-
 
 Since all team members run Larity on their own machines, each instance has direct access to that member's **local microphone**. This provides a reliable, platform-agnostic identity signal:
 
-1. Each team member's Larity instance runs **local VAD (Voice Activity Detection)** on their own mic stream continuously during the session. The host's mic audio is also captured as channel 0 of the audio stream; VAD remains the identity signal for non-host TEAM members and the fallback signal if the dual-channel host path degrades to single-channel.
-2. When VAD detects speech, the Larity instance sends a timestamped signal to the server via the existing WebSocket: `{ type: "vad_speaking", userId, ts }` (both `vad_speaking` and `vad_silence` edge events are sent; ts is `performance.now()`-derived monotonic wall clock).
-3. The server **correlates VAD timestamps (after clock-offset reconciliation — see below) against Deepgram diarization timestamps**.
-4. If exactly one team member's VAD overlaps with a diarization index's speech window → that index is assigned to that userId as **TEAM**.
-5. If no team member's VAD overlaps → that index is **EXTERNAL** (client).
+1. Each team member's Larity instance runs **local VAD (Voice Activity Detection)** on their own mic stream continuously during the session. The VAD runs **natively in Rust** using the `voice_activity_detector` crate (Silero VAD V5, ONNX Runtime), not browser WASM — eliminating all `onnxruntime-web`/WebKitGTK bundler issues. The host's mic audio is also captured as channel 0 of the audio stream; VAD remains the identity signal for non-host TEAM members and the fallback signal if the dual-channel host path degrades to single-channel.
+2. When VAD detects speech, the Larity instance sends a timestamped signal to the server via the existing WebSocket: `{ type: "vad_speaking" | "vad_silence", userId, sessionId, clientSendTs }` (edge-triggered on transitions, with 3-frame debounce and 16× gain for quiet-mic compensation; see `apps/desktop/src-tauri/src/audio/vad.rs`).
+3. The server receives the signal — **Elysia auto-parses the JSON into a JavaScript object** so the handler checks `message.type` on the parsed object directly (no `JSON.parse`). The server **correlates VAD timestamps (after clock-offset reconciliation — see below) against Deepgram utterance timestamps**.
+4. **The correlation uses speech time, not processing time.** Utterance timestamps are now computed as `connectionStartTime + (Deepgram.start * 1000)` — the actual wall-clock moment when the speech occurred — rather than `Date.now()` when Deepgram finished processing. This eliminates the 3–8 second gap between VAD intervals and utterance timestamps that caused missed correlations for short utterances.
+5. If exactly one team member's VAD overlaps with a diarization index's speech window → that index is assigned to that userId as **TEAM**.
+6. If no team member's VAD overlaps → that index is **EXTERNAL** (client).
 6. The mapping (`channel + diarizationIndex → SpeakerIdentity`) is **cached for the session** — once identified, subsequent utterances from that channel/index resolve instantly, subject to the reassignment-merge logic below.
 6a. **Host channel short-circuit:** When dual-channel capture is active, any utterance emitted from channel 0 is assigned to the host's `SpeakerIdentity` directly. No VAD correlation is needed for the host channel. VAD correlation continues on channel 1 for non-host TEAM members and EXTERNAL speakers.
 7. If multiple team members speak simultaneously → correlation is ambiguous, defer until unambiguous signal.
@@ -199,12 +200,12 @@ interface SpeakerIdentity {
 Speaker identification uses **local VAD signals** correlated with Deepgram diarization timestamps on the server. No voice embedding models, no voiceprint enrollment, no ML inference required.
 
 * **Client-side (each team member's Larity instance):**
-  * Runs VAD on the local mic stream (`@ricky0123/vad-web` / Silero VAD, Rust-side WebRTC VAD, or equivalent). Rust-side VAD is preferred once the host mic is already captured for ch0, because it avoids opening the microphone twice.
-  * Emits `{ type: "vad_speaking" | "vad_silence", userId, sessionId, ts }` via existing WebSocket connection
+  * Runs VAD on the local mic stream using **Rust-native Silero VAD** (`voice_activity_detector` crate, ONNX Runtime) — not browser WASM. This avoids the `@ricky0123/vad-web`/`onnxruntime-web` bundler issues on WebKitGTK/Linux.
+  * Emits `{ type: "vad_speaking" | "vad_silence", userId, sessionId, clientSendTs }` via existing WebSocket connection (edge-triggered on speech/silence transitions, 3-frame debounce, 16× input gain).
 * **Server-side (`packages/meeting-mode/src/speaker-identification/`):**
   * Maintains `VadState` per session: `Map<userId, { isSpeaking: boolean; startTs: number }>`
   * On each Deepgram word/utterance from channel 0: assigns the host identity directly
-  * On each Deepgram word/utterance from channel 1: checks which team member's VAD was active at that timestamp (±250ms offset-corrected window)
+  * On each Deepgram word/utterance from channel 1: checks which team member's VAD was active at that timestamp (±250ms offset-corrected window). **Utterance timestamps are computed as speech time** (`connectionStartTime + Deepgram.start * 1000`) not processing time (`Date.now()`), eliminating the 3–8s gap between VAD intervals and utterance timestamps.
   * If exactly one member → assigns that channel/index pair to that userId (TEAM)
   * If none → EXTERNAL by default
   * Caches result: `Map<channel:diarizationIndex, SpeakerIdentity>` — all future utterances from that channel/index pair resolve instantly
