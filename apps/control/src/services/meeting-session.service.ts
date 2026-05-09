@@ -495,6 +495,7 @@ export const meetingSessionService = {
     role: "participant";
     websocketUrl: string;
     joinedAt: number;
+    allowNameCustomization: boolean;
   }> {
     // 1. Check session exists and is active
     const sessionKey = redisKeys.meetingSession(sessionId);
