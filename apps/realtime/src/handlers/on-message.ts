@@ -89,15 +89,11 @@ export function onMessage(
     !Buffer.isBuffer(message) &&
     !(message instanceof Uint8Array)
   ) {
-<<<<<<< Updated upstream
     const payload = message as {
       type: string;
       clientSendTs?: number;
       ts?: number;
     };
-=======
-    const payload = message as { type: string; clientSendTs?: number; ts?: number };
->>>>>>> Stashed changes
     handleParsedVadPayload(payload, userId, sessionId, ts);
     return;
   }
