@@ -1,9 +1,10 @@
 use crate::audio::processor::AudioProcessor;
 use crate::audio::AudioDevice;
 use crate::audio::mixer::{AudioMixer, MixerMessage, SourceType};
+use crate::audio::VadState;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Sample, Stream, SupportedStreamConfig};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use std::sync::Arc;
 
 pub struct CaptureHandles {
@@ -80,45 +81,65 @@ pub fn start_capture(
     };
 
     let mic_stream = match mic_format {
-        cpal::SampleFormat::F32 => mic_device.build_input_stream(
-            &mic_config,
-            move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                let chunks = mic_processor.process(data);
-                for chunk in chunks {
-                    let ts = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
-                        .as_millis() as u64;
-                    mixer_clone.send(MixerMessage {
-                        source: SourceType::Mic,
-                        timestamp_ms: ts,
-                        samples: chunk,
-                    });
-                }
-            },
-            err_fn.clone(),
-            None,
-        ),
-        cpal::SampleFormat::I16 => mic_device.build_input_stream(
-            &mic_config,
-            move |data: &[i16], _: &cpal::InputCallbackInfo| {
-                let f32_data: Vec<f32> = data.iter().map(|&s| s.to_sample::<f32>()).collect();
-                let chunks = mic_processor.process(&f32_data);
-                for chunk in chunks {
-                    let ts = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
-                        .as_millis() as u64;
-                    mixer_clone.send(MixerMessage {
-                        source: SourceType::Mic,
-                        timestamp_ms: ts,
-                        samples: chunk,
-                    });
-                }
-            },
-            err_fn.clone(),
-            None,
-        ),
+        cpal::SampleFormat::F32 => {
+            let app_vad = app.clone();
+            mic_device.build_input_stream(
+                &mic_config,
+                move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                    let chunks = mic_processor.process(data);
+                    for chunk in chunks {
+                        let ts = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_millis() as u64;
+                        if let Some(vad_state) = app_vad.try_state::<VadState>() {
+                            if let Ok(guard) = vad_state.vad_tx.try_lock() {
+                                if let Some(vad_tx) = &*guard {
+                                    vad_tx.send(chunk.clone());
+                                }
+                            }
+                        }
+                        mixer_clone.send(MixerMessage {
+                            source: SourceType::Mic,
+                            timestamp_ms: ts,
+                            samples: chunk,
+                        });
+                    }
+                },
+                err_fn.clone(),
+                None,
+            )
+        }
+        cpal::SampleFormat::I16 => {
+            let app_vad = app.clone();
+            mic_device.build_input_stream(
+                &mic_config,
+                move |data: &[i16], _: &cpal::InputCallbackInfo| {
+                    let f32_data: Vec<f32> = data.iter().map(|&s| s.to_sample::<f32>()).collect();
+                    let chunks = mic_processor.process(&f32_data);
+                    for chunk in chunks {
+                        let ts = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap()
+                            .as_millis() as u64;
+                        if let Some(vad_state) = app_vad.try_state::<VadState>() {
+                            if let Ok(guard) = vad_state.vad_tx.try_lock() {
+                                if let Some(vad_tx) = &*guard {
+                                    vad_tx.send(chunk.clone());
+                                }
+                            }
+                        }
+                        mixer_clone.send(MixerMessage {
+                            source: SourceType::Mic,
+                            timestamp_ms: ts,
+                            samples: chunk,
+                        });
+                    }
+                },
+                err_fn.clone(),
+                None,
+            )
+        }
         _ => return Err("Unsupported sample format".into()),
     }.map_err(|e| e.to_string())?;
 
