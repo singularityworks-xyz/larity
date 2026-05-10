@@ -1,4 +1,5 @@
 import type { Redis } from "ioredis";
+import { LEDGER_SNAPSHOT_DEBOUNCE_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import { CommitmentLedger, type CommitmentLedgerOptions } from "./ledger";
 import type {
@@ -17,17 +18,23 @@ export class CommitmentManager {
   private readonly redis: Redis;
   private readonly ledgers = new Map<string, CommitmentLedger>();
   private readonly ledgerOptions: CommitmentLedgerOptions;
+  private readonly snapshotDebounceMs: number;
 
   constructor(redis: Redis, options: CommitmentLedgerOptions = {}) {
     this.redis = redis;
     this.ledgerOptions = options;
+    this.snapshotDebounceMs =
+      options.snapshotDebounceMs ?? LEDGER_SNAPSHOT_DEBOUNCE_MS;
   }
 
   getLedger(sessionId: string): CommitmentLedger {
     let ledger = this.ledgers.get(sessionId);
 
     if (!ledger) {
-      ledger = new CommitmentLedger(this.redis, sessionId, this.ledgerOptions);
+      ledger = new CommitmentLedger(this.redis, sessionId, {
+        ...this.ledgerOptions,
+        snapshotDebounceMs: this.snapshotDebounceMs,
+      });
       this.ledgers.set(sessionId, ledger);
     }
 
@@ -99,8 +106,37 @@ export class CommitmentManager {
       return;
     }
 
-    ledger.closeInMemory();
-    this.ledgers.delete(sessionId);
+    ledger
+      .flushPendingSnapshot()
+      .catch((error) => {
+        log.error(
+          { err: error, sessionId },
+          "Commitment ledger snapshot flush failed on session close"
+        );
+      })
+      .finally(() => {
+        ledger.closeInMemory();
+        this.ledgers.delete(sessionId);
+      });
+  }
+
+  async closeSessionAwaitSnapshots(sessionId: string): Promise<void> {
+    const ledger = this.ledgers.get(sessionId);
+    if (!ledger) {
+      return;
+    }
+
+    try {
+      await ledger.flushPendingSnapshot();
+    } catch (err) {
+      log.error(
+        { err, sessionId },
+        "Commitment ledger snapshot flush failed on await-close"
+      );
+    } finally {
+      ledger.closeInMemory();
+      this.ledgers.delete(sessionId);
+    }
   }
 
   async endSessionAndDeleteSnapshot(sessionId: string): Promise<Commitment[]> {
@@ -114,11 +150,11 @@ export class CommitmentManager {
     return drained;
   }
 
-  closeAll(): void {
+  async closeAll(): Promise<void> {
     const sessionIds = [...this.ledgers.keys()];
-    for (const sessionId of sessionIds) {
-      this.closeSession(sessionId);
-    }
+    await Promise.all(
+      sessionIds.map((sessionId) => this.closeSessionAwaitSnapshots(sessionId))
+    );
   }
 
   getLedgerCount(): number {

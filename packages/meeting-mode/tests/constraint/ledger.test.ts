@@ -18,6 +18,7 @@ describe("constraint/ledger", () => {
     ledger = new ConstraintLedger(redis, sessionId, {
       now: () => 1_700_000_000_000,
       idFactory: mock(() => "constraint-fixed-id"),
+      snapshotDebounceMs: 0,
     });
   });
 

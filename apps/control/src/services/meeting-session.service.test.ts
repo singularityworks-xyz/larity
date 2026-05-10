@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import { redisKeys } from "@larity/packages/infra/redis/keys";
+import { redisKeys } from "@larity/infra/redis/keys";
 import { meetingSessionService } from "./meeting-session.service";
 
 // Mock dependencies
 const mockRedis = {
   get: mock(),
   set: mock(),
+  hget: mock(),
   hgetall: mock(),
   hset: mock(),
   hincrby: mock(),
@@ -49,7 +50,7 @@ const mockPrisma = {
 };
 
 // Mock modules
-mock.module("@larity/packages/infra/redis", () => ({
+mock.module("@larity/infra/redis", () => ({
   redis: mockRedis,
 }));
 
@@ -68,6 +69,7 @@ describe("MeetingSessionService", () => {
     // Reset mocks
     mockRedis.get.mockReset();
     mockRedis.set.mockReset();
+    mockRedis.hget.mockReset();
     mockRedis.hgetall.mockReset();
     mockRedis.hset.mockReset();
     mockRedis.sadd.mockReset();
@@ -199,6 +201,7 @@ describe("MeetingSessionService", () => {
         meetingId,
         status: "active",
       });
+      mockRedis.hget.mockResolvedValue("true");
 
       // Setup Prisma mocks
       mockPrisma.meeting.findUnique.mockResolvedValue({
@@ -220,6 +223,11 @@ describe("MeetingSessionService", () => {
       // Verify
       expect(result.success).toBe(true);
       expect(result.role).toBe("participant");
+      expect(result.allowNameCustomization).toBe(true);
+      expect(mockRedis.hget).toHaveBeenCalledWith(
+        redisKeys.sessionConfig(sessionId),
+        "allowNameCustomization"
+      );
       expect(mockRedis.sadd).toHaveBeenCalledWith(
         redisKeys.sessionParticipants(sessionId),
         userId
@@ -426,6 +434,7 @@ describe("MeetingSessionService", () => {
         .mockResolvedValueOnce("session-live-1")
         .mockResolvedValueOnce(null);
       mockRedis.scard.mockResolvedValue(2);
+      mockRedis.hget.mockResolvedValue("true");
 
       const result = await meetingSessionService.getActiveForOrg(userId);
 
@@ -440,6 +449,7 @@ describe("MeetingSessionService", () => {
         hostName: "Host User",
         startedAt: new Date("2026-04-20T10:00:00.000Z").getTime(),
         participantCount: 3,
+        allowNameCustomization: true,
       });
       expect(mockRedis.scard).toHaveBeenCalledWith(
         redisKeys.sessionParticipants("session-live-1")
@@ -533,6 +543,151 @@ describe("MeetingSessionService", () => {
         redisKeys.meetingContext(sessionId),
         5 * 60
       );
+    });
+  });
+
+  describe("updateConfig", () => {
+    it("should update allowNameCustomization in Redis", async () => {
+      mockRedis.hgetall.mockResolvedValue({
+        sessionId,
+        meetingId,
+        userId: "host-user",
+        status: "active",
+      });
+      mockRedis.hset.mockResolvedValue(1);
+
+      await meetingSessionService.updateConfig(sessionId, "host-user", {
+        allowNameCustomization: false,
+      });
+
+      expect(mockRedis.hset).toHaveBeenCalledWith(
+        redisKeys.sessionConfig(sessionId),
+        "allowNameCustomization",
+        "false"
+      );
+    });
+
+    it("should reject non-host users", async () => {
+      mockRedis.hgetall.mockResolvedValue({
+        sessionId,
+        meetingId,
+        userId: "host-user",
+        status: "active",
+      });
+
+      await expect(
+        meetingSessionService.updateConfig(sessionId, "not-host", {
+          allowNameCustomization: false,
+        })
+      ).rejects.toThrow("Only the host can update session config");
+    });
+
+    it("should throw if session does not exist", async () => {
+      mockRedis.hgetall.mockResolvedValue(null);
+
+      await expect(
+        meetingSessionService.updateConfig(sessionId, "host-user", {
+          allowNameCustomization: false,
+        })
+      ).rejects.toThrow("Session not found");
+    });
+  });
+
+  describe("start config initialization", () => {
+    it("should initialize config with allowNameCustomization=true", async () => {
+      mockPrisma.meeting.findUnique.mockResolvedValue({
+        id: meetingId,
+        clientId,
+        status: "SCHEDULED",
+        title: "Weekly sync",
+        agenda: null,
+        client: {
+          id: clientId,
+          name: "Acme Corp",
+          orgId,
+          org: { settings: null },
+        },
+      });
+      mockRedis.get.mockResolvedValue(null);
+      mockRedis.set.mockResolvedValue("OK");
+      mockRedis.hset.mockResolvedValue(1);
+      mockRedis.expire.mockResolvedValue(1);
+      mockRedis.sadd.mockResolvedValue(1);
+      mockPrisma.decision.findMany.mockResolvedValue([]);
+      mockPrisma.importantPoint.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      mockPrisma.policyGuardrail.findMany.mockResolvedValue([]);
+      mockPrisma.clientMember.findMany.mockResolvedValue([]);
+      mockPrisma.meeting.update.mockResolvedValue({
+        id: meetingId,
+        status: "LIVE",
+      });
+
+      const result = await meetingSessionService.start({ meetingId }, userId);
+
+      expect(result.allowNameCustomization).toBe(true);
+      // Config is set after session creation, sessionId is random
+      const hsetCalls = mockRedis.hset.mock.calls.filter((call) => {
+        return (
+          typeof call[0] === "string" &&
+          call[0].includes("config") &&
+          call[1] === "allowNameCustomization"
+        );
+      });
+      expect(hsetCalls.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe("join config", () => {
+    it("should include allowNameCustomization=false when toggle is off", async () => {
+      mockRedis.hgetall.mockResolvedValue({
+        sessionId,
+        meetingId,
+        status: "active",
+      });
+      mockRedis.hget.mockResolvedValue("false");
+
+      mockPrisma.meeting.findUnique.mockResolvedValue({
+        id: meetingId,
+        client: { orgId },
+      });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: userId,
+        orgId,
+      });
+      mockPrisma.meetingParticipant.upsert.mockResolvedValue({
+        id: "participant-1",
+      });
+
+      const result = await meetingSessionService.join(sessionId, userId);
+
+      expect(result.allowNameCustomization).toBe(false);
+    });
+
+    it("should default to true when config is missing in Redis", async () => {
+      mockRedis.hgetall.mockResolvedValue({
+        sessionId,
+        meetingId,
+        status: "active",
+      });
+      mockRedis.hget.mockResolvedValue(null);
+
+      mockPrisma.meeting.findUnique.mockResolvedValue({
+        id: meetingId,
+        client: { orgId },
+      });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: userId,
+        orgId,
+      });
+      mockPrisma.meetingParticipant.upsert.mockResolvedValue({
+        id: "participant-1",
+      });
+
+      const result = await meetingSessionService.join(sessionId, userId);
+
+      expect(result.allowNameCustomization).toBe(true);
     });
   });
 });

@@ -33,6 +33,7 @@ describe("commitment/ledger", () => {
     ledger = new CommitmentLedger(redis, sessionId, {
       now,
       idFactory: mock(() => "commitment-fixed-id"),
+      snapshotDebounceMs: 0,
     });
   });
 
@@ -210,6 +211,7 @@ describe("commitment/ledger", () => {
 
     const recovered = new CommitmentLedger(redis as unknown as any, sessionId, {
       now,
+      snapshotDebounceMs: 0,
     });
 
     const hydration = await recovered.hydrateFromSnapshot();

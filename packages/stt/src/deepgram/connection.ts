@@ -63,6 +63,7 @@ export class DeepgramConnection {
   private isConnected = false;
   private isConnecting = false;
   private isClosed = false;
+  private connectionStartTime = 0;
 
   // Reconnection state
   private retryCount = 0;
@@ -105,6 +106,7 @@ export class DeepgramConnection {
 
     this.connection.on(LiveTranscriptionEvents.Open, () => {
       log.info(`Connection opened for ${this.sessionId}`);
+      this.connectionStartTime = Date.now();
       this.isConnected = true;
       this.isConnecting = false;
       this.retryCount = 0; // Reset retry count on successful connection
@@ -217,6 +219,7 @@ export class DeepgramConnection {
       start,
       duration,
       ts: Date.now(),
+      speechTimestamp: this.connectionStartTime + start * 1000,
     };
 
     const diarizeSummary = summarizeDiarizedSpeakers(alternative.words);

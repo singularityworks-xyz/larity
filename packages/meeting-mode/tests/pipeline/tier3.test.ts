@@ -96,7 +96,9 @@ describe("Tier3SearchEngine", () => {
   });
 
   test("should force Tier 4 if ledger search returns matches", async () => {
-    mockCommitmentManager.search.mockReturnValue([{ id: "cmt-1", score: 0.9 }]);
+    mockCommitmentManager.search.mockReturnValue([
+      { commitment: { id: "cmt-1" }, similarity: 0.9 },
+    ]);
     const utterance = createUtterance([1, 0, 0]);
 
     const result = await engine.evaluate(
@@ -112,16 +114,14 @@ describe("Tier3SearchEngine", () => {
   });
 
   test("should force Tier 4 if memory search returns strong matches", async () => {
-    // Return a strong match on the first query (Decisions)
-    (prisma.$queryRaw as ReturnType<typeof mock>).mockImplementationOnce(() =>
-      Promise.resolve([{ id: "dec-1", similarity: 0.85 }])
-    );
-    // Return empty for Policies and Points
-    (prisma.$queryRaw as ReturnType<typeof mock>).mockImplementationOnce(() =>
-      Promise.resolve([])
-    );
-    (prisma.$queryRaw as ReturnType<typeof mock>).mockImplementationOnce(() =>
-      Promise.resolve([])
+    (prisma.$queryRaw as ReturnType<typeof mock>).mockImplementation(
+      (strings: TemplateStringsArray, ..._values: unknown[]) => {
+        const sql = strings.join("");
+        if (sql.includes("FROM decisions")) {
+          return Promise.resolve([{ id: "dec-1", similarity: 0.85 }]);
+        }
+        return Promise.resolve([]);
+      }
     );
 
     const utterance = createUtterance([1, 0, 0]);
@@ -139,7 +139,7 @@ describe("Tier3SearchEngine", () => {
   });
 
   test("should not force Tier 4 if memory match is below threshold", async () => {
-    // Threshold is 0.7, so 0.6 should be ignored
+    // Threshold is 0.7, so 0.6 should be ignored (all three pgvector queries run in parallel)
     (prisma.$queryRaw as ReturnType<typeof mock>).mockResolvedValue([
       { id: "dec-1", similarity: 0.6 },
     ]);
@@ -154,5 +154,21 @@ describe("Tier3SearchEngine", () => {
 
     expect(result.memoryMatches.length).toBe(0);
     expect(result.forceTier4).toBe(false);
+  });
+
+  test("short-circuits pgvector when payload is null and ledger is empty", async () => {
+    mockCommitmentManager.search.mockReturnValue([]);
+    const utterance = createUtterance([1, 0, 0]);
+    const result = await engine.evaluate(
+      utterance,
+      null,
+      mockCommitmentManager,
+      []
+    );
+
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
+    expect(result.forceTier4).toBe(false);
+    expect(result.ledgerMatches.length).toBe(0);
+    expect(result.memoryMatches.length).toBe(0);
   });
 });

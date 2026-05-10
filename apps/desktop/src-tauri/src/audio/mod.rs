@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tauri::{AppHandle, Emitter};
 
 pub mod engine;
 pub mod processor;
 pub mod mixer;
+pub mod vad;
 #[cfg(target_os = "linux")]
 pub mod linux_capture;
 
@@ -37,6 +37,19 @@ impl Default for AudioState {
             is_capturing: Arc::new(Mutex::new(false)),
             current_session: Arc::new(Mutex::new(None)),
             stop_tx: Arc::new(Mutex::new(None)),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct VadState {
+    pub vad_tx: Arc<Mutex<Option<vad::VadTx>>>,
+}
+
+impl Default for VadState {
+    fn default() -> Self {
+        Self {
+            vad_tx: Arc::new(Mutex::new(None)),
         }
     }
 }

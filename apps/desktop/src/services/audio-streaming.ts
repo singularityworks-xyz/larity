@@ -25,6 +25,7 @@ export interface AudioStreamingMetrics {
 export interface AudioStreamingOptions {
   wsBaseUrl?: string;
   userId?: string;
+  userName?: string;
   role?: "host" | "participant";
   backpressureThresholdBytes?: number;
   maxPendingFrames?: number;
@@ -59,12 +60,17 @@ export function buildRealtimeSocketUrl(
   wsBaseUrl: string,
   sessionId: string,
   userId: string,
-  role: "host" | "participant"
+  role: "host" | "participant",
+  userName?: string
 ): string {
   const url = new URL(wsBaseUrl);
   url.searchParams.set("sessionId", sessionId);
   url.searchParams.set("userId", userId);
   url.searchParams.set("role", role);
+  const normalizedName = userName?.trim();
+  if (normalizedName) {
+    url.searchParams.set("name", normalizedName);
+  }
   return url.toString();
 }
 
@@ -104,6 +110,7 @@ export class AudioStreamingClient {
   private socket: WebSocket | null = null;
   private readonly wsBaseUrl: string;
   private userId: string;
+  private userName: string;
   private role: "host" | "participant";
   private readonly backpressureThresholdBytes: number;
   private readonly maxPendingFrames: number;
@@ -125,6 +132,7 @@ export class AudioStreamingClient {
   constructor(options: AudioStreamingOptions = {}) {
     this.wsBaseUrl = options.wsBaseUrl ?? DEFAULT_WS_URL;
     this.userId = sanitizeUserId(options.userId);
+    this.userName = options.userName?.trim() ?? "";
     this.role = options.role ?? "host";
     this.backpressureThresholdBytes =
       options.backpressureThresholdBytes ?? DEFAULT_BACKPRESSURE_THRESHOLD;
@@ -147,7 +155,8 @@ export class AudioStreamingClient {
         this.wsBaseUrl,
         sessionId,
         this.userId,
-        this.role
+        this.role,
+        this.userName
       );
     } catch {
       this.warning =
@@ -221,9 +230,16 @@ export class AudioStreamingClient {
     this.socket = ws;
   }
 
-  setIdentity(userId: string, role: "host" | "participant" = "host"): void {
+  setIdentity(
+    userId: string,
+    role: "host" | "participant" = "host",
+    userName?: string
+  ): void {
     this.userId = sanitizeUserId(userId);
     this.role = role;
+    if (userName !== undefined) {
+      this.userName = userName;
+    }
   }
 
   disconnect(): void {
@@ -320,7 +336,7 @@ export class AudioStreamingClient {
         if (!nextFrame) {
           break;
         }
-        this.socket.send(nextFrame);
+        this.socket.send(nextFrame as BufferSource);
         this.metrics.framesSent += 1;
         sent = true;
       }

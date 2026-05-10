@@ -768,11 +768,11 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Status — ✓ implemented (verification: `cd packages/meeting-mode && bun test`; repo root `bun x ultracite check packages/meeting-mode`).**
 
-**Related (utterance UX / latency):** Same-speaker merge + **`MERGE_GAP_MS`** timed flush prevents “lag one utterance” before tiers run ([meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing), B.14).
+**Related (utterance UX / latency):** **`MERGE_GROUPING_MS`** (legacy **`MERGE_GAP_MS`**) for same-speaker merge plus **`MERGE_PUBLISH_GAP_MS`** publish flush; non-blocking **`onUtterancePublished`** + **`evaluateUtteranceQueued`** (see [meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing), **`architecture_decisions.md`** B.14–B.15).
 
 **Related (gate):** Tier 4 runs only when **`runTier4 = !shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)`**; Tier 3’s **`forceTier4`** alone does **not** beat Tier 2’s filler/general stop (B.13).
 
-**Wire-up:** `packages/meeting-mode/src/pipeline/tier4.ts` (`Tier4DeepReasoner`), `types.ts` (Zod + `Tier4Context`), `tier4-context.ts` (preload hydrate + assemble), `tier4-alert.ts` (routing/coercion → `Alert`), `engine.ts` (gate → single publish), `index.ts` (Redis `AlertPublisher`), `env.ts` (`GEMINI_TIER4_MODEL`, `GEMINI_TIER4_TIMEOUT_MS`, `MERGE_GAP_MS`, `PIPELINE_TRACE_PRETTY_JSON`).
+**Wire-up:** `packages/meeting-mode/src/pipeline/tier4.ts` (`Tier4DeepReasoner`), `types.ts` (Zod + **`Tier2Classification`** / **`Tier4Context`**), `tier2.ts` (**Groq** JSON Schema), `tier4-context.ts` (preload hydrate + assemble), `tier4-alert.ts` (routing/coercion → `Alert`), `engine.ts` (gate → **queued** evaluate + **parallel** tiers/constraints), `index.ts` (**cached** Redis **`AlertPublisher`** per session), `env.ts` (`GEMINI_TIER4_MODEL`, `GEMINI_TIER4_TIMEOUT_MS`, **`MERGE_GROUPING_MS`**, **`MERGE_PUBLISH_GAP_MS`**, **`LEDGER_SNAPSHOT_DEBOUNCE_MS`**, **`COST_CAP_CACHE_TTL_MS`**, **`GROQ_TIER2_MODEL`**, `PIPELINE_TRACE_PRETTY_JSON`).
 
 - [x] Set up large LLM integration (Gemini Pro–class via `GEMINI_TIER4_MODEL`, `@google/genai`)
 - [x] Define Tier 4 context assembly:
@@ -944,7 +944,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 - [x] **Information Risk Alerts:**
   - [x] Tier 1 catches structural patterns (API keys, client name matches)
   - [x] Tier 2 catches semantic risks (financial disclosure, roadmap leaks, strategy)
-  - [ ] Routing: BOTH (shared + personal to speaker)
+  - [x] Routing: BOTH (shared + personal to speaker)
 
 - [x] **Tone Warning Alerts:**
   - [x] Tier 2's `tone` field identifies defensive/aggressive/reactive
@@ -998,20 +998,30 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 - [x] Implement speculative processing on partial utterances (confidence > 0.7):
   - [x] Start Tier 2 classification speculatively
-  - [x] Identify likely topic from partial text
+  - [x] Identify likely topic from partial text (keyword-based predictTopics)
   - [x] Pre-fetch relevant constraints
   - [x] Pre-warm LLM connection for high-signal keywords
-- [x] Build speculative cache with validation on final utterance
-- [x] Implement speculative discard logic (text mismatch > 30%)
+- [x] Build speculative cache with Levenshtein validation on final utterance
+- [x] Implement speculative discard logic (text mismatch > 30% / SPECULATIVE_MISMATCH_THRESHOLD = 0.3)
 - [x] Add predictive constraint loading:
   - [x] Agenda parsing from calendar
   - [x] Topic prediction from meeting title/agenda
   - [x] Hot cache for topic → constraint mappings
 - [x] Implement speaker-aware processing priority:
-  - [x] Current user's speech: parallel tiers, lower threshold (0.7), priority LLM queue
-  - [x] Other TEAM speech: standard processing
-  - [x] EXTERNAL speech: sequential, higher threshold (0.85)
+  - [x] Current user's speech (`high`): parallel tiers, lower threshold (0.7), priority LLM queue
+  - [x] Other TEAM speech (`standard`): standard processing
+  - [x] EXTERNAL speech (`low`): sequential, higher threshold (0.85)
 - [x] Add confidence threshold tuning per alert category (Silent Collaborator thresholds)
+
+**Post-implementation fixes (May 2026):**
+
+- [x] Extract `applyTier2SideEffects` helper so commitment persistence, topic delta application, and cache priming run on speculative hits too, not only on real LLM calls
+- [x] Await session hydration before speculative partial processing so Tier 1 sees seeded context and predictive preloader has session constraints available
+- [x] Record speculative Tier 2 LLM token costs via `costManager` so `applyCostGates` and `pipelineSessionCostDollars` are accurate
+- [x] Replace reference equality (`===`) with structural `JSON.stringify` comparison in speculative cache dedup — was dead code, never matched
+- [x] Remove dead `topicToConstraints` field from predictive preloader (written but never read, leaked memory)
+- [x] Use SHA-256 content hash for agenda constraint IDs instead of brittle base64 slice(0,12) which collided on shared-prefix items
+- [x] Correct deprecated JSDoc in `MIN_TIER4_SURFACING_CONFIDENCE` to reference `getCategoryThreshold` instead of non-existent `shouldTier4RespondForCategory`
 
 **Deliverable:** Latency optimizations and processing priority working. ~200-300ms saved via speculation.
 

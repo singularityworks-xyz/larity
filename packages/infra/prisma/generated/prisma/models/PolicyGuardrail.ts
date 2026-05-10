@@ -224,7 +224,7 @@ export type PolicyGuardrailGroupByOutputType = {
   _max: PolicyGuardrailMaxAggregateOutputType | null
 }
 
-type GetPolicyGuardrailGroupByPayload<T extends PolicyGuardrailGroupByArgs> = Prisma.PrismaPromise<
+export type GetPolicyGuardrailGroupByPayload<T extends PolicyGuardrailGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<PolicyGuardrailGroupByOutputType, T['by']> &
       {
@@ -1847,6 +1847,11 @@ export type PolicyGuardrailFindManyArgs<ExtArgs extends runtime.Types.Extensions
    * Skip the first `n` PolicyGuardrails.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of PolicyGuardrails.
+   */
   distinct?: Prisma.PolicyGuardrailScalarFieldEnum | Prisma.PolicyGuardrailScalarFieldEnum[]
 }
 

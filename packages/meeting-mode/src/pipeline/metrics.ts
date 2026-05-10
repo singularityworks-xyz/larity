@@ -8,7 +8,37 @@ import {
 
 const METRICS_PREFIX = "larity_pipeline";
 
+const FINALIZER_METRICS_PREFIX = "larity_finalizer";
+
 const LABEL_NAMES = ["session_id"] as const;
+
+export const finalizerEmbedDurationMs = new Histogram({
+  name: `${FINALIZER_METRICS_PREFIX}_embed_duration_ms`,
+  help: "Gemini embedding wall-clock duration in milliseconds (finalizer)",
+  buckets: [5, 25, 50, 100, 200, 400, 800, 1500],
+});
+
+export const finalizerPublishWaitMs = new Histogram({
+  name: `${FINALIZER_METRICS_PREFIX}_publish_wait_ms`,
+  help: "Wall-clock from finalize start until Redis utterance publish",
+  buckets: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
+});
+
+export const pipelineContextPayloadCacheHitsTotal = new Counter({
+  name: `${METRICS_PREFIX}_context_payload_cache_hits_total`,
+  help: "Pipeline reused cached meeting context payload per session",
+});
+
+export const pipelineContextPayloadCacheMissesTotal = new Counter({
+  name: `${METRICS_PREFIX}_context_payload_cache_misses_total`,
+  help: "Pipeline fetched meeting context payload from getter",
+});
+
+export const ledgerSnapshotFlushesTotal = new Counter({
+  name: `${METRICS_PREFIX}_ledger_snapshot_flushes_total`,
+  help: "Ledger snapshots flushed to Redis (after debounce or immediate)",
+  labelNames: ["kind"],
+});
 
 export const pipelinePrefilterDuration = new Histogram({
   name: `${METRICS_PREFIX}_prefilter_duration_ms`,
@@ -84,6 +114,42 @@ export const pipelineSessionCostDollars = new Gauge({
   name: `${METRICS_PREFIX}_session_cost_dollars`,
   help: "Current session cost in USD",
   labelNames: LABEL_NAMES,
+});
+
+export const pipelineSpeculativeHitsTotal = new Counter({
+  name: `${METRICS_PREFIX}_speculative_hits_total`,
+  help: "Total number of speculative cache hits that saved a Tier 2 LLM call",
+});
+
+export const pipelineSpeculativeMissesTotal = new Counter({
+  name: `${METRICS_PREFIX}_speculative_misses_total`,
+  help: "Total number of speculative cache misses requiring full Tier 2 processing",
+});
+
+export const pipelineSpeculativeDiscardsTotal = new Counter({
+  name: `${METRICS_PREFIX}_speculative_discards_total`,
+  help: "Total number of speculative results discarded due to text mismatch",
+});
+
+export const pipelineSpeakerProvisionalAttemptsTotal = new Counter({
+  name: `${METRICS_PREFIX}_speaker_provisional_attempts_total`,
+  help: "Total number of provisional speaker correlation attempts from partials",
+});
+
+export const pipelineSpeakerProvisionalHitsTotal = new Counter({
+  name: `${METRICS_PREFIX}_speaker_provisional_hits_total`,
+  help: "Total number of partial-based provisional speaker mapping hits",
+});
+
+export const pipelineSpeakerProvisionalDiscardsTotal = new Counter({
+  name: `${METRICS_PREFIX}_speaker_provisional_discards_total`,
+  help: "Total number of provisional attempts discarded due to ambiguity/no match",
+});
+
+export const pipelineSpeakerFinalSourceTotal = new Counter({
+  name: `${METRICS_PREFIX}_speaker_final_source_total`,
+  help: "Final speaker assignment source distribution",
+  labelNames: ["source"],
 });
 
 let defaultMetricsRunning = false;

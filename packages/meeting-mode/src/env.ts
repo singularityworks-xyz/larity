@@ -5,9 +5,42 @@ dotenv.config({ path: resolve(__dirname, "../../../.env") });
 
 export const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
-export const MERGE_GAP_MS = Number.parseInt(
-  process.env.MERGE_GAP_MS || "5000",
-  10
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value ?? "", 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+/**
+ * Max silence between same-speaker finals to merge into one utterance (`UtteranceMerger`).
+ * Legacy: `MERGE_GAP_MS` applies when `MERGE_GROUPING_MS` is unset.
+ */
+export const MERGE_GROUPING_MS = parsePositiveInt(
+  process.env.MERGE_GROUPING_MS ?? process.env.MERGE_GAP_MS,
+  5000
+);
+
+/**
+ * After pending audio end, flush publish if no sibling arrives (`UtteranceFinalizer` timer).
+ * Defaults ~700ms so transcript/alerts are not held for the full grouping window.
+ */
+export const MERGE_PUBLISH_GAP_MS = parsePositiveInt(
+  process.env.MERGE_PUBLISH_GAP_MS,
+  700
+);
+
+/** @deprecated Prefer `MERGE_GROUPING_MS`; kept for docs/tests expecting one knob */
+export const MERGE_GAP_MS = MERGE_GROUPING_MS;
+
+/** Debounce Redis snapshot writes for commitment/constraint ledgers */
+export const LEDGER_SNAPSHOT_DEBOUNCE_MS = parsePositiveInt(
+  process.env.LEDGER_SNAPSHOT_DEBOUNCE_MS,
+  400
+);
+
+/** Hot-path cache TTL for session cost gate reads (`CostManager`) */
+export const COST_CAP_CACHE_TTL_MS = parsePositiveInt(
+  process.env.COST_CAP_CACHE_TTL_MS,
+  500
 );
 
 export const MAX_BUFFER_SIZE = Number.parseInt(
@@ -29,8 +62,21 @@ export const PIPELINE_TRACE_PRETTY_JSON =
     process.env.NODE_ENV !== "production");
 
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-export const GEMINI_TIER2_MODEL =
-  process.env.GEMINI_TIER2_MODEL || "gemini-3.1-flash-lite-preview";
+
+export const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
+export const GROQ_TIER2_MODEL =
+  process.env.GROQ_TIER2_MODEL || "openai/gpt-oss-120b";
+
+const tier2TimeoutParsed = Number.parseInt(
+  process.env.GROQ_TIER2_TIMEOUT_MS || "3000",
+  10
+);
+
+/** Groq Tier 2 request timeout (`tier2.ts`). Override via `GROQ_TIER2_TIMEOUT_MS`. Default 3000ms (raised from 1500ms when Tier2 `max_tokens` was increased to 1024). */
+export const GROQ_TIER2_TIMEOUT_MS =
+  Number.isFinite(tier2TimeoutParsed) && tier2TimeoutParsed > 0
+    ? tier2TimeoutParsed
+    : 3000;
 
 export const GEMINI_TIER4_MODEL =
   process.env.GEMINI_TIER4_MODEL || "gemini-3.1-flash-lite-preview";
@@ -53,7 +99,12 @@ export function validateEnv(): void {
   }
   if (!GEMINI_API_KEY) {
     throw new Error(
-      "GEMINI_API_KEY is required for meeting intelligence (topics, embeddings, Tier 2 / Tier 4)"
+      "GEMINI_API_KEY is required for meeting intelligence (topics, embeddings, Tier 4)"
+    );
+  }
+  if (!GROQ_API_KEY) {
+    throw new Error(
+      "GROQ_API_KEY is required for Tier 2 classification (meeting-mode)"
     );
   }
 }

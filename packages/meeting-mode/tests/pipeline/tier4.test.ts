@@ -11,6 +11,7 @@ import type {
   Tier4HistoricalMatch,
   Tier4Response,
 } from "../../src/pipeline/types";
+import { SILENT_COLLABORATOR_THRESHOLDS } from "../../src/speculative/types";
 
 function minimalContext(overrides: Partial<Tier4Context> = {}): Tier4Context {
   const historical: Tier4HistoricalMatch[] = [];
@@ -33,6 +34,7 @@ function minimalContext(overrides: Partial<Tier4Context> = {}): Tier4Context {
       detections: [],
       blocklistHit: false,
       technicalHit: false,
+      pricingHit: false,
     },
     tier2Classification: {
       intent: "commitment",
@@ -127,6 +129,8 @@ describe("pipeline/tier4", () => {
 });
 
 describe("pipeline/tier4 surfacing guards", () => {
+  const riskyCommitmentThreshold =
+    SILENT_COLLABORATOR_THRESHOLDS.risky_commitment;
   const response: Tier4Response = {
     alertType: "risky_commitment",
     severity: "medium",
@@ -134,7 +138,7 @@ describe("pipeline/tier4 surfacing guards", () => {
     surfaceReason:
       "Speaker committed to a delivery date without confirming scope or risks.",
     suggestion: "Pause and restate what is in scope before agreeing to a date.",
-    confidence: MIN_TIER4_SURFACING_CONFIDENCE + 0.05,
+    confidence: riskyCommitmentThreshold + 0.05,
     shouldSurface: true,
     reasoning: "Hidden diagnostic text",
     routing: "personal",
@@ -156,13 +160,22 @@ describe("pipeline/tier4 surfacing guards", () => {
     ).toBe(false);
   });
 
-  it("abstains when confidence low", () => {
+  it("abstains when confidence below category threshold", () => {
     expect(
       shouldTier4Respond({
         ...response,
-        confidence: MIN_TIER4_SURFACING_CONFIDENCE - 0.05,
+        confidence: riskyCommitmentThreshold - 0.05,
       })
     ).toBe(false);
+  });
+
+  it("surfaces when confidence meets category threshold", () => {
+    expect(
+      shouldTier4Respond({
+        ...response,
+        confidence: riskyCommitmentThreshold + 0.01,
+      })
+    ).toBe(true);
   });
 
   it("fills target user from speaker for personal alerts", () => {

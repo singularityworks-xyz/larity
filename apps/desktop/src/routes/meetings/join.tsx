@@ -110,6 +110,10 @@ export function JoinMeetingPage() {
             meta?.startedAt !== undefined && meta.startedAt !== null
               ? meta.startedAt
               : Date.now(),
+          allowNameCustomization:
+            joined.allowNameCustomization ??
+            meta?.allowNameCustomization ??
+            true,
         },
       });
     } catch (requestError) {

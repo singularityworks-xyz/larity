@@ -38,6 +38,7 @@ export function startServer(): Promise<any> {
             role: t.Union([t.Literal("host"), t.Literal("participant")], {
               error: "Role must be 'host' or 'participant'",
             }),
+            name: t.Optional(t.String()),
           }),
 
           // Payload and timeout configurations
@@ -60,15 +61,13 @@ export function startServer(): Promise<any> {
            * Called when WebSocket connection is established
            */
           open(socket) {
-            // Attach our custom SocketData to the Elysia WS context
-            const { sessionId, userId, role } = socket.data.query;
+            const { sessionId, userId, role, name } = socket.data.query;
             const now = Date.now();
 
-            // We use Object.assign to attach our properties to socket.data
-            // so it implements our SocketData interface expected by handlers
             Object.assign(socket.data, {
               sessionId,
               userId,
+              name: name ?? "",
               role,
               connectedAt: now,
               lastFrameTs: now,

@@ -13,10 +13,12 @@
     "@types/bun": "latest"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^6"
   },
   "dependencies": {
     "@deepgram/sdk": "^4.11.3",
+    "@larity/infra": "workspace:*",
+    "@larity/logger": "workspace:*",
     "cross-fetch": "^4.1.0",
     "dotenv": "^17.2.3",
     "ioredis": "^5.9.1"

@@ -17,6 +17,10 @@ const CURRENCY_REGEX =
   /(?:[$€£₹]\s?\d+(?:[.,]\d+)?|\b\d+(?:[.,]\d+)?\s?(?:usd|inr|eur|gbp|rs|rupees?)\b)/gi;
 const QUANTITY_REGEX =
   /\b\d+\s?(?:hours?|days?|weeks?|months?|people|developers|engineers|tickets?)\b/gi;
+/** Lightweight currency indicator check without the `g` flag — avoids sticky
+ *  lastIndex issues when called inside `.some()` across multiple detect() calls. */
+const PRICING_HINT_RE =
+  /[$€£₹]|\b(?:usd|inr|eur|gbp|rs|rupees?|dollars?|cents?)\b/i;
 const TECHNICAL_PATTERN_REGEXES: ReadonlyArray<{
   type: string;
   regex: RegExp;
@@ -115,6 +119,9 @@ export class Tier1StructuralDetector {
     }
 
     const deduped = dedupeDetections(detections);
+    const pricingHit = deduped.some(
+      (d) => d.type === "number" && PRICING_HINT_RE.test(d.value)
+    );
 
     return {
       detections: deduped,
@@ -123,6 +130,7 @@ export class Tier1StructuralDetector {
         (item) =>
           item.type === "blocklist_keyword" || item.type === "client_name"
       ),
+      pricingHit,
     };
   }
 
@@ -188,4 +196,33 @@ function dedupeDetections(detections: Tier1Detection[]): Tier1Detection[] {
   }
 
   return deduped;
+}
+
+const TIER1_PRICING_SCAN_REGEXES = [
+  PERCENT_REGEX,
+  CURRENCY_REGEX,
+  QUANTITY_REGEX,
+] as const;
+
+/**
+ * Same pricing signal as `Tier1Result.pricingHit` (numeric detections + currency hint).
+ * Exposed so Tier 2 can receive a hint while Tier 1 runs in parallel with Tier 2.
+ */
+export function textMatchesTier1PricingPath(text: string): boolean {
+  const raw: Tier1Detection[] = [];
+  for (const regex of TIER1_PRICING_SCAN_REGEXES) {
+    const scoped = new RegExp(regex.source, regex.flags);
+    for (const match of text.matchAll(scoped)) {
+      const hit = match[0];
+      if (hit) {
+        raw.push({ type: "number", value: hit });
+      }
+    }
+  }
+
+  const deduped = dedupeDetections(raw);
+  return deduped.some(
+    (detection) =>
+      detection.type === "number" && PRICING_HINT_RE.test(detection.value)
+  );
 }

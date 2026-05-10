@@ -263,12 +263,12 @@ Without these optimizations, the same meeting would cost roughly $3-5.
 | `SPECULATIVE_MAX_ENTRIES_PER_SESSION` | 100 | LRU cap per session (env: `SPECULATIVE_CACHE_SIZE`) |
 | `SESSION_COST_LIMIT` | $2.00 | Hard cap — Tier 4 disabled |
 | `WARNING_THRESHOLD` | $1.60 | Warning mode — Tier 4 only for high-signal |
-| `TIER2_TIMEOUT_MS` | 3,000 | Gemini timeout for Tier 2 |
+| `GROQ_TIER2_TIMEOUT_MS` | 3,000 | Groq SDK request timeout for Tier 2 (env: `GROQ_TIER2_TIMEOUT_MS`) |
 | `TIER4_TIMEOUT_MS` | 1,500 | Gemini timeout for Tier 4 |
 | `HOT_CACHE_MAX_PER_SESSION` | 30 | Max topics in predictive preloader hot cache |
 | `MIN_WORDS_REQUIRED` | 3 | Pre-filter drop threshold |
 | `TIER2_CACHE_MAX_SIZE` | 200 | Max entries in Tier 2 semantic cache |
-| `GEMINI_TIER2_MODEL` | `gemini-3.1-flash-lite-preview` | Model for Tier 2 (env-overridable) |
+| `GROQ_TIER2_MODEL` | `openai/gpt-oss-120b` | Model for Tier 2 on Groq (env-overridable) |
 | `GEMINI_TIER4_MODEL` | `gemini-3.1-flash-lite-preview` | Model for Tier 4 (env-overridable) |
 
 ---

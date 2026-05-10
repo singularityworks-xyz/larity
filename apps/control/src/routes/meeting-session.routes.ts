@@ -451,4 +451,77 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
         error: "INTERNAL_ERROR",
       };
     }
-  });
+  })
+
+  /**
+   * POST /meeting-session/:id/config
+   *
+   * Update session configuration (host only).
+   */
+  .post(
+    "/:id/config",
+    async ({ body, params, user, set }) => {
+      if (!user) {
+        set.status = 401;
+        return {
+          success: false,
+          error: "User not authenticated",
+        };
+      }
+
+      try {
+        const { id } = sessionIdSchema.parse(params);
+
+        await meetingSessionService.updateConfig(id, user.id, {
+          allowNameCustomization: body.allowNameCustomization,
+        });
+
+        log.info(
+          {
+            sessionId: id,
+            userId: user.id,
+            allowNameCustomization: body.allowNameCustomization,
+          },
+          "Session config updated"
+        );
+
+        return { success: true };
+      } catch (error) {
+        if (error instanceof MeetingSessionError) {
+          set.status = getHttpStatusForError(error.code);
+          return {
+            success: false,
+            error: error.code,
+            message: error.message,
+          };
+        }
+
+        if (error instanceof ZodError) {
+          set.status = 400;
+          return {
+            success: false,
+            error: "Validation failed",
+            details: error.issues,
+          };
+        }
+
+        log.error(
+          { err: error, sessionId: params.id },
+          "Failed to update session config"
+        );
+        set.status = 500;
+        return {
+          success: false,
+          error: "INTERNAL_ERROR",
+        };
+      }
+    },
+    {
+      params: t.Object({
+        id: t.String(),
+      }),
+      body: t.Object({
+        allowNameCustomization: t.Boolean(),
+      }),
+    }
+  );

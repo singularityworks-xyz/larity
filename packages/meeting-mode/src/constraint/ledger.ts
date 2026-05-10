@@ -3,7 +3,9 @@ import { redisKeys } from "@larity/infra/redis/keys";
 import { TTL } from "@larity/infra/redis/ttl";
 import type { Redis } from "ioredis";
 import { constraintChannel } from "../channels";
+import { LEDGER_SNAPSHOT_DEBOUNCE_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
+import { ledgerSnapshotFlushesTotal } from "../pipeline/metrics";
 import type {
   Constraint,
   ConstraintHydrationResult,
@@ -26,6 +28,7 @@ interface ConstraintLedgerSnapshot {
 export interface ConstraintLedgerOptions {
   now?: () => number;
   idFactory?: () => string;
+  snapshotDebounceMs?: number;
 }
 
 export class ConstraintLedger {
@@ -35,6 +38,8 @@ export class ConstraintLedger {
   private readonly updatesChannel: string;
   private readonly now: () => number;
   private readonly idFactory: () => string;
+  private readonly snapshotDebounceMs: number;
+  private snapshotFlushTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly constraints = new Map<string, Constraint>();
   private readonly indexByNormalizedValue = new Map<string, string>();
 
@@ -49,6 +54,8 @@ export class ConstraintLedger {
     this.updatesChannel = constraintChannel(sessionId);
     this.now = options.now ?? Date.now;
     this.idFactory = options.idFactory ?? randomUUID;
+    this.snapshotDebounceMs =
+      options.snapshotDebounceMs ?? LEDGER_SNAPSHOT_DEBOUNCE_MS;
   }
 
   async insert(input: ConstraintInsertInput): Promise<Constraint> {
@@ -75,7 +82,7 @@ export class ConstraintLedger {
         };
 
         this.constraints.set(existing.id, mergedConstraint);
-        await this.writeSnapshot();
+        await this.persistSnapshotAfterMutation();
         return mergedConstraint;
       }
     }
@@ -92,8 +99,8 @@ export class ConstraintLedger {
     };
 
     this.addToIndex(constraint);
-    await this.writeSnapshot();
     await this.publishConstraintEvent(constraint);
+    await this.persistSnapshotAfterMutation();
     return constraint;
   }
 
@@ -156,10 +163,20 @@ export class ConstraintLedger {
   }
 
   async deleteSnapshot(): Promise<void> {
+    this.cancelSnapshotFlush();
     await this.redis.del(this.snapshotKey);
   }
 
+  async flushPendingSnapshot(): Promise<void> {
+    this.cancelSnapshotFlush();
+    if (this.constraints.size === 0) {
+      return;
+    }
+    await this.flushSnapshotNow();
+  }
+
   closeInMemory(): void {
+    this.cancelSnapshotFlush();
     this.clearInMemoryState();
   }
 
@@ -171,7 +188,39 @@ export class ConstraintLedger {
     );
   }
 
-  private async writeSnapshot(): Promise<void> {
+  private cancelSnapshotFlush(): void {
+    if (this.snapshotFlushTimer !== undefined) {
+      clearTimeout(this.snapshotFlushTimer);
+      this.snapshotFlushTimer = undefined;
+    }
+  }
+
+  private async persistSnapshotAfterMutation(): Promise<void> {
+    if (this.snapshotDebounceMs <= 0) {
+      await this.flushSnapshotNow();
+      return;
+    }
+    if (this.snapshotFlushTimer !== undefined) {
+      return;
+    }
+    this.snapshotFlushTimer = setTimeout(() => {
+      this.snapshotFlushTimer = undefined;
+      this.flushSnapshotNow().catch((error) => {
+        log.error(
+          { err: error, sessionId: this.sessionId },
+          "Constraint ledger snapshot flush failed"
+        );
+      });
+    }, this.snapshotDebounceMs);
+  }
+
+  private async flushSnapshotNow(): Promise<void> {
+    if (this.constraints.size === 0) {
+      return;
+    }
+
+    ledgerSnapshotFlushesTotal.inc({ kind: "constraint" });
+
     const snapshot: ConstraintLedgerSnapshot = {
       version: SNAPSHOT_VERSION,
       sessionId: this.sessionId,
@@ -206,6 +255,7 @@ export class ConstraintLedger {
   }
 
   private clearInMemoryState(): void {
+    this.cancelSnapshotFlush();
     this.constraints.clear();
     this.indexByNormalizedValue.clear();
   }

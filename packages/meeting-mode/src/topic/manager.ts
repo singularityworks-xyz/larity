@@ -9,6 +9,24 @@ import type { TopicState } from "./types";
 
 const log = createMeetingModeLogger("topic-manager");
 
+/** Derive a short initial label from the first utterance text so the
+ *  frontend shows something descriptive before the summarizer or Tier 2
+ *  supplies the real label. */
+function deriveInitialLabel(text?: string): string {
+  if (!text) {
+    return "New Topic";
+  }
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return "New Topic";
+  }
+  const maxLen = 40;
+  if (trimmed.length <= maxLen) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, maxLen)}…`;
+}
+
 export interface TopicPublisher {
   publish(channel: string, message: string): Promise<number>;
   hset(key: string, field: string, value: string): Promise<number>;
@@ -63,8 +81,23 @@ export class TopicManager {
   async assignTopic(utterance: Utterance): Promise<string> {
     const { sessionId, text } = utterance;
 
-    // 1. Embed utterance (use pre-computed if available)
-    const newVector = utterance.embedding ?? (await this.embedder.embed(text));
+    // 1. Embed utterance (pre-computed, in-flight promise, or embed here)
+    let newVector: number[];
+    if (utterance.embedding && utterance.embedding.length > 0) {
+      newVector = utterance.embedding;
+    } else if (utterance.embeddingPromise) {
+      try {
+        const resolved = await utterance.embeddingPromise;
+        newVector =
+          resolved && resolved.length > 0
+            ? resolved
+            : await this.embedder.embed(text);
+      } catch {
+        newVector = await this.embedder.embed(text);
+      }
+    } else {
+      newVector = await this.embedder.embed(text);
+    }
     utterance.embedding = newVector;
 
     // 2. Find best match
@@ -104,12 +137,20 @@ export class TopicManager {
 
       const newTopic: TopicState = this.createNewTopicState(
         assignedTopicId,
-        newVector
+        newVector,
+        text
       );
       sessionTopics.push(newTopic);
       this.activeTopics.set(sessionId, sessionTopics);
 
       log.info({ sessionId, topicId: assignedTopicId }, "Spawned new topic");
+
+      this.persistAndPublish(sessionId, newTopic).catch((err) =>
+        log.error(
+          { err, sessionId, topicId: assignedTopicId },
+          "Failed to publish new topic"
+        )
+      );
     }
 
     if (this.enableAsyncSummarization) {
@@ -375,11 +416,13 @@ export class TopicManager {
 
   private createNewTopicState(
     topicId: string,
-    initialCentroid: number[]
+    initialCentroid: number[],
+    initialText?: string
   ): TopicState {
+    const derivedLabel = deriveInitialLabel(initialText);
     return {
       topicId,
-      label: "New Topic", // Temporary until LLM updates it
+      label: derivedLabel,
       summary: "",
       constraintsMentioned: [],
       commitmentsMentioned: [],

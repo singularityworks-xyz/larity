@@ -1,4 +1,5 @@
 import pino, { type LoggerOptions } from "pino";
+import pretty from "pino-pretty";
 
 export type { Logger } from "pino";
 
@@ -16,23 +17,38 @@ export function createRootLogger(options: CreateLoggerOptions) {
   const logLevel =
     process.env.LOG_LEVEL || options.level || (isDev ? "debug" : "info");
 
+  /** Pino threaded transport breaks under Bun (`pino-pretty` target unresolved). */
+  const isBun = "Bun" in globalThis;
+
   const pinoOptions: LoggerOptions = {
     level: logLevel,
     base: {
       service: options.service,
     },
     timestamp: pino.stdTimeFunctions.isoTime,
-    transport: isDev
-      ? {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            translateTime: "SYS:standard",
-            ignore: "pid,hostname",
-          },
-        }
-      : undefined,
+    transport:
+      isDev && !isBun
+        ? {
+            target: "pino-pretty",
+            options: {
+              colorize: true,
+              translateTime: "SYS:standard",
+              ignore: "pid,hostname",
+            },
+          }
+        : undefined,
   };
+
+  if (isDev && isBun) {
+    return pino(
+      pinoOptions,
+      pretty({
+        colorize: true,
+        translateTime: "SYS:standard",
+        ignore: "pid,hostname",
+      })
+    );
+  }
 
   return pino(pinoOptions);
 }

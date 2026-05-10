@@ -41,11 +41,11 @@ This document tracks architectural decisions, technical tradeoffs, and implement
 
 ## Architectural Overhaul — Latency & Cost Hardening (pre-Week 4 review)
 
-The decisions below (B.1–B.14) were adopted after a full audit of the pipeline for latency, cost, and failure modes. All of them are reflected in `meeting-mode.md`, `architecture-and-flow.md`, and `timeline.md` — this section exists to make the reasoning easy to audit without diffing the long docs.
+The decisions below (B.1–B.19) were adopted after audits of the pipeline for latency, cost, and failure modes. All of them are reflected in `meeting-mode.md`, `architecture-and-flow.md`, and `timeline.md` — this section exists to make the reasoning easy to audit without diffing the long docs.
 
-### B.1 Parallel Tier 1 / Tier 2 / Tier 3 execution
-- **Context:** Tiers 1, 2, 3 each take a different latency (50ms / 200ms / 100ms) and none consumes another's output. Running them sequentially costs ~350ms for no reason.
-- **Decision:** Run them with `Promise.all`. A pure-in-process gate decides Tier 4 after they resolve. Latency envelope drops from ~350ms to ~200ms without Tier 4, and <720ms with Tier 4 — fitting the <800ms end-to-end budget.
+### B.1 Parallel Tier 1 / Tier 2 / Tier 3 (+ constraint extraction)
+- **Context:** Tiers 1, 2, 3 each take a different latency (50ms / 200ms / 100ms) and none consumes another's output. Constraint extraction is regex-on-text and is independent. Running tiers sequentially costs ~350ms for no reason.
+- **Decision:** Run tiers **and** `constraintManager.processUtterance` with `Promise.all`. A pure-in-process gate decides Tier 4 after they resolve. Tier 3’s three pgvector lookups (`decisions`, `policy_guardrails`, `important_points`) run in parallel (`Promise.all`) inside `Tier3SearchEngine.searchMemory`.
 - **Subtlety:** Tier 2's ledger write is awaited inside the Tier 2 task, so Tier 3's ledger search sees prior commitments but not the current one. Tier 1 blocklist/technical hits still fire "instant" alerts without waiting on Tier 4.
 - **Subtlety:** Tier 4 **`forceTier4`** (from Tier 3 memory/ledger hits) does **not** run Gemini when **`shouldStopForDeepReasoning`** is true (Tier 2 high-confidence `filler`/`general`, no risks), unless **`highSignal`** is already true. Traces/logs may therefore show **`fT4=yes`** with **`runT4=no`**.
 - **Where:** [meeting-mode.md §5.6.1](./meeting-mode.md#561-pipeline-orchestration--parallel-tier-execution), timeline Day 28.
@@ -98,7 +98,7 @@ The decisions below (B.1–B.14) were adopted after a full audit of the pipeline
 
 ### B.11 Structured pipeline observability
 - **Context:** Without metrics, the <800ms budget is aspirational. Smoke scripts aren't enough.
-- **Decision:** Per-utterance structured trace covering tier outcomes, **`runTier4`** / **`forceTier4`** / **`highSignal`**, latency slices (`tier2`, gate, Tier 4 wall, total), optional Tier 4 **surfacing** copy (**`message`**, **`surfaceReason`**, **`suggestion`**) — **no** embeddings, **no** internal Tier 4 **`reasoning`**. Implemented as Redis pub/sub on **`meeting.pipeline.{sessionId}`** (`pipelineTraceChannel`, version field in payload). Logs can pretty-print JSON when **`PIPELINE_TRACE_PRETTY_JSON`** is on (non-production default). Per-session rollup (p50/p95/p99) and Prometheus histograms remain optional roadmap.
+- **Decision:** Per-utterance structured trace covering tier outcomes, **`runTier4`** / **`forceTier4`** / **`highSignal`**, latency slices (`tier2`, gate, Tier 4 wall, total), optional Tier 4 **surfacing** copy (**`message`**, **`surfaceReason`**, **`suggestion`**) — **no** embeddings, **no** internal Tier 4 **`reasoning`**. Implemented as Redis pub/sub on **`meeting.pipeline.{sessionId}`** (`pipelineTraceChannel`, version field in payload). Logs can pretty-print JSON when **`PIPELINE_TRACE_PRETTY_JSON`** is on (non-production default). **Prometheus:** tier duration histograms, context-cache counters, ledger flush counter, finalizer embed/publish-wait (`packages/meeting-mode/src/pipeline/metrics.ts`); richer rollups remain optional roadmap.
 - **Where:** `packages/meeting-mode/src/pipeline/pipeline-trace.ts`, timeline Day 28 (partial), realtime subscriber for **`meeting.pipeline.*`**.
 
 ### B.12 Dual-channel host audio — two mono Deepgram streams (implemented)
@@ -117,8 +117,38 @@ The decisions below (B.1–B.14) were adopted after a full audit of the pipeline
 - **Decision:** **`runTier4 = !shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)`** with **`shouldStopForDeepReasoning`** matching Tier 2’s filler/general shortcut (no risk signals, confidence > 0.8). Embedding hits raise **`forceTier4`** but cannot alone trigger Tier 4 on those lines unless **`highSignal`** is already true (e.g. blocklist).
 - **Where:** [meeting-mode.md §5.6.1](./meeting-mode.md#561-pipeline-orchestration--parallel-tier-execution).
 
-### B.14 Utterance merger — timed flush (`MERGE_GAP_MS`)
+### B.14 Split merger grouping vs publish timing (`MERGE_GROUPING_MS`, `MERGE_PUBLISH_GAP_MS`)
 
-- **Context:** Coalescing same-speaker consecutive finals avoids duplicate pipeline work but can defer publishing the **first** segment until a second final arrives (“lag one utterance”).
-- **Decision:** **`UtteranceMerger`** + **`UtteranceFinalizer`** schedule a **`setTimeout`** flush at **audio end + `MERGE_GAP_MS`** for a lone pending segment; new finals reschedule; **`closeSession`** cancels and flushes.
-- **Where:** [meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing).
+- **Context:** Same-speaker merge needs a **long** window to coalesce continuations, but using that same window to **gate Redis publish** created a multi-second transcript/alert floor (~5s tail).
+- **Decision:** **`MERGE_GROUPING_MS`** (legacy **`MERGE_GAP_MS`**) drives **`UtteranceMerger.shouldMerge`** only. **`MERGE_PUBLISH_GAP_MS`** (~700ms default) drives **`scheduleMergerGapFlush`** (`pending audio end + gap`). `closeSession` still cancels/reschedules cleanly and awaits handler drains — see B.15.
+- **Where:** [meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing), `packages/meeting-mode/src/env.ts`.
+
+### B.15 Non-blocking publish handlers + per-session pipeline queue
+
+- **Context:** Awaiting `evaluateUtterance` inside `onUtterancePublished` serialized finals behind Tier 2/Tier 4 latency.
+- **Decision:** Handlers run **fire-and-forget** from `UtteranceFinalizer.publishUtterance` (errors logged). **`MeetingPipelineEngine.evaluateUtteranceQueued`** maintains a **per-`sessionId` promise chain** for FIFO evaluation + trace callbacks. **`closeSession`** awaits in-flight published-handler promises for that session before teardown.
+- **Where:** `utterance/finalizer.ts`, `pipeline/engine.ts`.
+
+### B.16 Session hot-path caches (context payload, cost cap)
+
+- **Context:** Per-utterance Redis GET for meeting context and session cost added redundant RTTs after hydrate.
+- **Decision:** Cache **`PreloadedContextPayload`** on **`SessionPipelineState`** after first hydrate; **`CostManager.getSessionCost`** uses a TTL **hot cache** (**`COST_CAP_CACHE_TTL_MS`**) with **`primeSessionCost`** on pipeline hydrate.
+- **Where:** `pipeline/engine.ts`, `cost/manager.ts`.
+
+### B.17 Debounced ledger Redis snapshots
+
+- **Context:** Full JSON snapshot **`SET`** on every commitment/constraint mutation dominated Redis time.
+- **Decision:** **`LEDGER_SNAPSHOT_DEBOUNCE_MS`** coalesces snapshot writes; flush on session close; **`ledger_snapshot_flushes_total`** counter. When debounce is 0 (tests), callers await immediate flush.
+- **Where:** `commitment/ledger.ts`, `constraint/ledger.ts`.
+
+### B.18 Tier 2 schema enforcement (Groq JSON schema strict mode)
+
+- **Context:** Tier 2 runs as **`chat.completions`** on **Groq** with **`response_format: json_schema`** (`strict: true`). Providers require every key under `properties` to appear in `required`; optional fields are modeled as **`null`**.
+- **Decision:** **`extractedData`** and non-null **`topicDelta`** objects list **all** keys in schema `required` with nullable types; Zod preprocess strips **`null`** post-parse. Mis-specified schemas yield HTTP 400 before inference ("Tier2 classification failed silently" in logs).
+- **Where:** `pipeline/tier2.ts`, `pipeline/types.ts`, `GROQ_TIER2_MODEL` / `GROQ_API_KEY` in `env.ts`.
+
+### B.19 Utterance timestamp = speech time, not processing time (`speechTimestamp`)
+
+- **Context:** VAD correlation compares utterance timestamps against VAD intervals (clock-adjusted speech-event times). The original `SttResult.ts` was `Date.now()` — the wall clock when Deepgram's transcript handler ran, which is typically 3–8 seconds after the actual speech. For short utterances, the VAD interval would already be closed before the utterance timestamp existed, causing the ±250ms correlation window to always miss.
+- **Decision:** Compute `SttResult.speechTimestamp = DeepgramConnection.connectionStartTime + (result.start * 1000)`, where `result.start` is Deepgram's seconds offset from stream start. The `connectionStartTime` is recorded when the Deepgram WebSocket `open` event fires. This timestamp represents the actual moment the speech occurred (in server time). VAD intervals also represent speech-event time (client send time adjusted by median clock offset), so they naturally overlap.
+- **Where:** `packages/stt/src/deepgram/connection.ts`, `packages/stt/src/types.ts`, `packages/meeting-mode/src/utterance/finalizer.ts`, [docs/VAD.md §Migrations §speechTimestamp](./docs/VAD.md).

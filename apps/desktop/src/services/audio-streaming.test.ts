@@ -114,6 +114,50 @@ describe("audio streaming backpressure", () => {
     expect(url).toContain("role=host");
   });
 
+  it("builds realtime websocket URL with required query params", () => {
+    const url = buildRealtimeSocketUrl(
+      "ws://127.0.0.1:9001",
+      "session-1",
+      "user-1",
+      "host"
+    );
+    expect(url).toContain("sessionId=session-1");
+    expect(url).toContain("userId=user-1");
+    expect(url).toContain("role=host");
+  });
+
+  it("includes name query param when userName is provided", () => {
+    const url = buildRealtimeSocketUrl(
+      "ws://127.0.0.1:9001",
+      "session-1",
+      "user-1",
+      "host",
+      "Alice"
+    );
+    expect(url).toContain("name=Alice");
+  });
+
+  it("omits name query param when userName is not provided", () => {
+    const url = buildRealtimeSocketUrl(
+      "ws://127.0.0.1:9001",
+      "session-1",
+      "user-1",
+      "host"
+    );
+    expect(url).not.toContain("name=");
+  });
+
+  it("omits name query param when userName is empty", () => {
+    const url = buildRealtimeSocketUrl(
+      "ws://127.0.0.1:9001",
+      "session-1",
+      "user-1",
+      "host",
+      ""
+    );
+    expect(url).not.toContain("name=");
+  });
+
   it("updates identity dynamically", () => {
     const client = new AudioStreamingClient({
       wsBaseUrl: "ws://127.0.0.1:9001",
@@ -125,5 +169,52 @@ describe("audio streaming backpressure", () => {
 
     expect(Reflect.get(client, "userId")).toBe("next-user");
     expect(Reflect.get(client, "role")).toBe("participant");
+  });
+
+  it("stores userName from constructor options", () => {
+    const client = new AudioStreamingClient({
+      wsBaseUrl: "ws://127.0.0.1:9001",
+      userId: "user-1",
+      userName: "Alice",
+      role: "host",
+    });
+
+    expect(Reflect.get(client, "userName")).toBe("Alice");
+  });
+
+  it("defaults userName to empty string when not provided", () => {
+    const client = new AudioStreamingClient({
+      wsBaseUrl: "ws://127.0.0.1:9001",
+      userId: "user-1",
+      role: "host",
+    });
+
+    expect(Reflect.get(client, "userName")).toBe("");
+  });
+
+  it("updates userName via setIdentity", () => {
+    const client = new AudioStreamingClient({
+      wsBaseUrl: "ws://127.0.0.1:9001",
+      userId: "user-1",
+      userName: "Alice",
+      role: "host",
+    });
+
+    client.setIdentity("user-2", "participant", "Bob");
+
+    expect(Reflect.get(client, "userName")).toBe("Bob");
+  });
+
+  it("does not change userName when setIdentity is called without userName", () => {
+    const client = new AudioStreamingClient({
+      wsBaseUrl: "ws://127.0.0.1:9001",
+      userId: "user-1",
+      userName: "Alice",
+      role: "host",
+    });
+
+    client.setIdentity("user-2", "participant");
+
+    expect(Reflect.get(client, "userName")).toBe("Alice");
   });
 });

@@ -214,7 +214,7 @@ export type MeetingGroupByOutputType = {
   _max: MeetingMaxAggregateOutputType | null
 }
 
-type GetMeetingGroupByPayload<T extends MeetingGroupByArgs> = Prisma.PrismaPromise<
+export type GetMeetingGroupByPayload<T extends MeetingGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<MeetingGroupByOutputType, T['by']> &
       {
@@ -2265,6 +2265,11 @@ export type MeetingFindManyArgs<ExtArgs extends runtime.Types.Extensions.Interna
    * Skip the first `n` Meetings.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Meetings.
+   */
   distinct?: Prisma.MeetingScalarFieldEnum | Prisma.MeetingScalarFieldEnum[]
 }
 

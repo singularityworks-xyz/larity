@@ -18,10 +18,11 @@
     "@types/bun": "latest"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^6"
   },
   "dependencies": {
     "@elysiajs/opentelemetry": "^1.4.10",
+    "@larity/infra": "workspace:*",
     "@larity/logger": "workspace:*",
     "@larity/stt": "workspace:*",
     "@larity/telemetry": "workspace:*",

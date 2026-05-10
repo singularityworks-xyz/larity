@@ -21,7 +21,7 @@ export interface PipelineTracePayload {
   textPreview: string;
   dropped: boolean;
   dropReason?: string;
-  tier1?: Pick<Tier1Result, "technicalHit" | "blocklistHit">;
+  tier1?: Pick<Tier1Result, "technicalHit" | "blocklistHit" | "pricingHit">;
   tier2?: Pick<Tier2Classification, "intent" | "confidence"> & {
     riskSignalCount: number;
     stopDeepReason: boolean;
@@ -72,6 +72,7 @@ function computeHighSignal(
   return (
     tier1.blocklistHit ||
     tier1.technicalHit ||
+    tier1.pricingHit ||
     tier2.intent === "commitment" ||
     tier2.intent === "decision" ||
     tier2.intent === "concern" ||
@@ -230,7 +231,7 @@ export function buildPipelineTracePayload(
 
   const t4Brief = formatTier4Brief(result.runTier4, tier4Trace);
 
-  const terminalLine = `[pipeline] utt=${shortUtteranceId(utterance.utteranceId)} | T2 ${tier2Trace.intent} conf=${tier2Trace.confidence} risks=${tier2Trace.riskSignalCount} stopPrep=${tier2Trace.stopDeepReason ? "yes" : "no"} | T3 fT4=${tier3Trace.forceTier4 ? "yes" : "no"} mem=${tier3Trace.memoryMatchCount} led=${tier3Trace.ledgerMatchCount} novel=${tier3Trace.noveltyScore} | gates highSig=${highSignal ? "yes" : "no"} runT4=${result.runTier4 ? "yes" : "no"} | ${t4Brief} | T1 tec=${tier1.technicalHit ? "yes" : "no"} blk=${tier1.blocklistHit ? "yes" : "no"} text="${textPreview}"`;
+  const terminalLine = `[pipeline] utt=${shortUtteranceId(utterance.utteranceId)} | T2 ${tier2Trace.intent} conf=${tier2Trace.confidence} risks=${tier2Trace.riskSignalCount} stopPrep=${tier2Trace.stopDeepReason ? "yes" : "no"} | T3 fT4=${tier3Trace.forceTier4 ? "yes" : "no"} mem=${tier3Trace.memoryMatchCount} led=${tier3Trace.ledgerMatchCount} novel=${tier3Trace.noveltyScore} | gates highSig=${highSignal ? "yes" : "no"} runT4=${result.runTier4 ? "yes" : "no"} | ${t4Brief} | T1 tec=${tier1.technicalHit ? "yes" : "no"} blk=${tier1.blocklistHit ? "yes" : "no"} prc=${tier1.pricingHit ? "yes" : "no"} text="${textPreview}"`;
   return {
     v: PIPELINE_TRACE_VERSION,
     sessionId: utterance.sessionId,
@@ -241,6 +242,7 @@ export function buildPipelineTracePayload(
     tier1: {
       technicalHit: tier1.technicalHit,
       blocklistHit: tier1.blocklistHit,
+      pricingHit: tier1.pricingHit,
     },
     tier2: tier2Trace,
     tier3: tier3Trace,
