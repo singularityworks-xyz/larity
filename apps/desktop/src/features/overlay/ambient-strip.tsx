@@ -10,7 +10,7 @@ function HeartbeatDot() {
       aria-label="Audio processing active"
       className="relative inline-flex h-[7px] w-[7px] shrink-0 items-center justify-center"
     >
-      <span className="absolute inline-block h-full w-full animate-[overlayHeartbeat_2s_ease-in-out_infinite] rounded-full bg-success-fg/40" />
+      <span className="absolute inline-block h-full w-full animate-[overlay-heartbeat_2s_ease-in-out_infinite] rounded-full bg-success-fg/40" />
       <span className="relative inline-block h-[7px] w-[7px] rounded-full bg-success-fg" />
     </output>
   );

@@ -281,7 +281,10 @@ export function MeetingPage() {
 
     let unlisten: (() => void) | null = null;
 
-    listen<{ sessionId: string }>("overlay:end-meeting", () => {
+    listen<{ sessionId: string }>("overlay:end-meeting", (evt) => {
+      if (evt.payload.sessionId !== sessionId) {
+        return;
+      }
       leaveMeeting().catch(() => {
         /* meeting already ended */
       });

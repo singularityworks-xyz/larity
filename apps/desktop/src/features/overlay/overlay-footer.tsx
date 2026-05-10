@@ -43,6 +43,7 @@ export function OverlayFooter({
 
       <button
         aria-label={alertsMuted ? "Unmute alerts" : "Mute alerts"}
+        aria-pressed={alertsMuted}
         className={footerButtonBase}
         onClick={onMuteAlerts}
         title={alertsMuted ? "Unmute alerts" : "Mute alerts"}
@@ -69,6 +70,7 @@ export function OverlayFooter({
 
       <button
         aria-label="Remember this moment"
+        aria-pressed={rememberFlash}
         className={cx(
           footerButtonBase,
           rememberFlash && "bg-accent-subtle text-accent"

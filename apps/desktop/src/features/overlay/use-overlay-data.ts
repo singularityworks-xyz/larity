@@ -1,5 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AudioStreamingClient,
   type IncomingMessageHandler,
@@ -25,7 +25,10 @@ function parseOverlayParams() {
     role: params.get("role") ?? "participant",
     clientName: params.get("clientName") ?? "Client",
     meetingTitle: params.get("meetingTitle") ?? "Live meeting",
-    startedAtMs: Number(params.get("startedAt") ?? Date.now()),
+    startedAtMs: (() => {
+      const raw = Number.parseInt(params.get("startedAt") ?? "", 10);
+      return Number.isFinite(raw) ? raw : Date.now();
+    })(),
     wsBaseUrl: params.get("wsBaseUrl") ?? DEFAULT_WS_URL,
     userId: params.get("userId") ?? "overlay-viewer",
   };
@@ -152,17 +155,14 @@ export function useOverlayData() {
   const [alertsMuted, setAlertsMuted] = useState(false);
   const [rememberFlash, setRememberFlash] = useState(false);
 
-  const dismissedRef = useRef(dismissedIds);
-  dismissedRef.current = dismissedIds;
-
   const visibleAlerts = useMemo(() => {
     if (alertsMuted) {
       return [];
     }
     return alerts
-      .filter((a) => !dismissedRef.current.has(a.id))
+      .filter((a) => !dismissedIds.has(a.id))
       .slice(0, MAX_VISIBLE_ALERTS);
-  }, [alerts, alertsMuted]);
+  }, [alerts, alertsMuted, dismissedIds]);
 
   const connectedTeammates = useMemo(() => {
     return participants
@@ -309,6 +309,7 @@ export function useOverlayData() {
     isMicActive,
     meetingTitle: params.meetingTitle,
     rememberFlash,
+    role: params.role,
     sessionId: params.sessionId,
     setAlertsMuted,
     setExpandedAlertId,

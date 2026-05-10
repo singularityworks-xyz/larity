@@ -155,7 +155,7 @@
   }
 }
 
-@keyframes overlayHeartbeat {
+@keyframes overlay-heartbeat {
   0%,
   100% {
     box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.4);
@@ -166,7 +166,7 @@
   }
 }
 
-@keyframes overlayAlertIn {
+@keyframes overlay-alert-in {
   from {
     opacity: 0;
     transform: translateY(-6px) scale(0.97);

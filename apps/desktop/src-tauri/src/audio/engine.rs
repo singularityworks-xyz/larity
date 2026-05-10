@@ -60,17 +60,18 @@ pub fn start_capture(
     let mixer = Arc::new(AudioMixer::new(app.clone(), session_id.clone(), role.clone()));
 
     // 1. Setup Microphone
-    let mic_device = if let Some(id) = mic_device_id {
+    let mic_device = if let Some(id) = mic_device_id.clone() {
         host.input_devices()
             .map_err(|e| e.to_string())?
             .find(|d| d.id().map(|did| did.to_string()).unwrap_or_default() == id)
-            .ok_or("Microphone device not found")?
+            .or_else(|| host.default_input_device())
+            .ok_or("No microphone device available")?
     } else {
         host.default_input_device()
             .ok_or("No default input device available")?
     };
 
-    println!("Using Mic device: {}", mic_device.description().map(|d| d.name().to_string()).unwrap_or_default());
+    println!("Using Mic device: {}", mic_device.id().map(|id| id.to_string()).unwrap_or_default());
     let mic_config = mic_device.default_input_config().map_err(|e| e.to_string())?;
     
     let mic_format = mic_config.sample_format();
@@ -164,7 +165,7 @@ pub fn start_capture(
             // macOS / Windows fallback to loopback with cpal
             let sys_device = host.default_output_device()
                 .ok_or("No default output device available for loopback")?;
-            println!("Using Sys device: {}", sys_device.description().map(|d| d.name().to_string()).unwrap_or_default());
+            println!("Using Sys device: {}", sys_device.id().map(|id| id.to_string()).unwrap_or_default());
             
             let sys_config = sys_device.default_input_config()
                 .or_else(|_| sys_device.default_output_config())

@@ -31,7 +31,8 @@ export async function createOverlayWindow(
   try {
     await invoke("create_overlay_window", { url });
   } catch (error) {
-    console.error("Failed to create overlay window:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error("[OverlayWindow] create failed:", errMsg);
     throw error;
   }
 }

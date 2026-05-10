@@ -28,7 +28,7 @@ function AlertCard({
   return (
     <div
       className={cx(
-        "animate-[overlayAlertIn_0.3s_cubic-bezier(0.16,1,0.3,1)] rounded-lg border border-white/[0.04] border-l-2 bg-white/[0.02] px-3 py-2.5 transition-colors duration-150 hover:bg-white/[0.04]",
+        "animate-[overlay-alert-in_0.3s_cubic-bezier(0.16,1,0.3,1)] rounded-lg border border-white/[0.04] border-l-2 bg-white/[0.02] px-3 py-2.5 transition-colors duration-150 hover:bg-white/[0.04]",
         SEVERITY_BORDERS[alert.severity],
         alert.isShared && "border-l-[3px]"
       )}
@@ -65,6 +65,8 @@ function AlertCard({
       </div>
 
       <button
+        aria-controls={`${alert.id}-why-panel`}
+        aria-expanded={isExpanded}
         className={cx(
           "mt-1.5 inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 font-medium text-[10px] transition-colors duration-100 [-webkit-app-region:no-drag] [app-region:no-drag]",
           isExpanded
@@ -85,7 +87,10 @@ function AlertCard({
       </button>
 
       {isExpanded && alert.evidence ? (
-        <div className="mt-2 grid gap-1.5 border-white/[0.04] border-t pt-2">
+        <div
+          className="mt-2 grid gap-1.5 border-white/[0.04] border-t pt-2"
+          id={`${alert.id}-why-panel`}
+        >
           {alert.evidence.utterance ? (
             <div>
               <p className="m-0 font-medium text-[9px] text-fg-subtle uppercase tracking-wider">
