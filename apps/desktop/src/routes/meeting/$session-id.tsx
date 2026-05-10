@@ -23,6 +23,10 @@ import type {
 } from "../../features/meeting-live/types";
 import { api } from "../../lib/api";
 import {
+  closeOverlayWindow,
+  createOverlayWindow,
+} from "../../lib/overlay-window";
+import {
   buttonClass,
   codeClass,
   controlRowClass,
@@ -240,6 +244,22 @@ export function MeetingPage() {
   }, [role, streamingClient, userId, displayName]);
 
   useEffect(() => {
+    if (!sessionId) return;
+
+    let unlisten: (() => void) | null = null;
+
+    listen<{ sessionId: string }>("overlay:end-meeting", () => {
+      leaveMeeting().catch(() => {});
+    }).then((fn) => {
+      unlisten = fn;
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, [sessionId]);
+
+  useEffect(() => {
     if (!sessionId) {
       return;
     }
@@ -419,6 +439,18 @@ export function MeetingPage() {
       // noop, warning handled in startCapture
     });
 
+    createOverlayWindow({
+      sessionId,
+      role,
+      clientName: clientDisplayName,
+      meetingTitle: meetingDisplayTitle,
+      startedAt: meetingStartedAtMs,
+      wsBaseUrl: getWsBaseUrl(state.websocketUrl),
+      userId,
+    }).catch(() => {
+      // overlay is optional
+    });
+
     const unlistenPromise = listen<AudioFramePayload>(
       "audio-frame",
       (event) => {
@@ -447,6 +479,7 @@ export function MeetingPage() {
         unlisten();
       });
 
+      closeOverlayWindow().catch(() => {});
       stopCapture().catch(() => {
         // noop
       });
@@ -462,6 +495,12 @@ export function MeetingPage() {
     isHost,
     allowNameCustomization,
     configuredName,
+    role,
+    userId,
+    clientDisplayName,
+    meetingDisplayTitle,
+    meetingStartedAtMs,
+    state.websocketUrl,
   ]);
 
   async function leaveMeeting() {
@@ -486,6 +525,7 @@ export function MeetingPage() {
           : "Failed to close meeting cleanly"
       );
     } finally {
+      closeOverlayWindow().catch(() => {});
       streamingClient.disconnect();
       setIsBusy(false);
       navigate("/home");

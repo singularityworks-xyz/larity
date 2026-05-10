@@ -18,11 +18,16 @@ import { MeetingPage } from "./routes/meeting/$session-id";
 import { JoinMeetingPage } from "./routes/meetings/join";
 import { StartMeetingPage } from "./routes/meetings/start";
 import { OnboardingPage } from "./routes/onboarding";
+import { OverlayPage } from "./routes/overlay";
 import { RegisterPage } from "./routes/register";
 import { SettingsPage } from "./routes/settings";
 import { WelcomePage } from "./routes/welcome";
 
 const router = createBrowserRouter([
+  {
+    path: "/overlay",
+    element: <OverlayPage />,
+  },
   {
     path: "/welcome",
     loader: guestOnlyLoader,
