@@ -6,6 +6,14 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Sample, Stream};
 use tauri::{AppHandle, Manager};
 use std::sync::Arc;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+
+fn short_hash(s: &str) -> String {
+    let mut hasher = DefaultHasher::new();
+    s.hash(&mut hasher);
+    format!("{:08x}", hasher.finish() as u32)
+}
 
 pub struct CaptureHandles {
     pub _mic_stream: Option<Stream>,
@@ -71,7 +79,8 @@ pub fn start_capture(
             .ok_or("No default input device available")?
     };
 
-    println!("Using Mic device: {}", mic_device.id().map(|id| id.to_string()).unwrap_or_default());
+    let mic_id = mic_device.id().map(|id| id.to_string()).unwrap_or_default();
+    println!("Using Mic device (hash): {}", short_hash(&mic_id));
     let mic_config = mic_device.default_input_config().map_err(|e| e.to_string())?;
     
     let mic_format = mic_config.sample_format();
@@ -165,7 +174,8 @@ pub fn start_capture(
             // macOS / Windows fallback to loopback with cpal
             let sys_device = host.default_output_device()
                 .ok_or("No default output device available for loopback")?;
-            println!("Using Sys device: {}", sys_device.id().map(|id| id.to_string()).unwrap_or_default());
+            let sys_id = sys_device.id().map(|id| id.to_string()).unwrap_or_default();
+            println!("Using Sys device (hash): {}", short_hash(&sys_id));
             
             let sys_config = sys_device.default_input_config()
                 .or_else(|_| sys_device.default_output_config())

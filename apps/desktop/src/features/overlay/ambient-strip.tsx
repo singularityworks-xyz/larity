@@ -1,6 +1,6 @@
-import { Mic, MicOff } from "lucide-react";
 import { cx } from "../../lib/ui";
 import type { OverlaySpeaker, OverlayTeammate } from "./types";
+import { VoiceDotMatrix } from "./voice-dot-matrix";
 
 const MAX_VISIBLE_TEAMMATES = 4;
 
@@ -99,22 +99,6 @@ function TeammateAvatars({ teammates }: { teammates: OverlayTeammate[] }) {
   );
 }
 
-function MicIndicator({ isSpeaking }: { isSpeaking: boolean }) {
-  return isSpeaking ? (
-    <Mic
-      aria-label="You are speaking"
-      className="h-3.5 w-3.5 text-success-fg"
-      strokeWidth={1.5}
-    />
-  ) : (
-    <MicOff
-      aria-label="Microphone silent"
-      className="h-3.5 w-3.5 text-fg-subtle"
-      strokeWidth={1.5}
-    />
-  );
-}
-
 interface AmbientStripProps {
   currentTopic: string | null;
   constraintCount: number;
@@ -141,7 +125,7 @@ export function AmbientStrip({
         <SpeakerIndicator speaker={currentSpeaker} />
         <span className="flex-1" />
         <TeammateAvatars teammates={connectedTeammates} />
-        <MicIndicator isSpeaking={isMicActive} />
+        <VoiceDotMatrix isSpeaking={isMicActive} />
       </div>
     </div>
   );

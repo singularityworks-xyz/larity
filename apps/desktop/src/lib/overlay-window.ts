@@ -1,6 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import { createLogger } from "./logger";
+
 const OVERLAY_LABEL = "meeting-overlay";
+const logger = createLogger("overlay-window");
 
 interface OverlayWindowParams {
   sessionId: string;
@@ -32,7 +35,7 @@ export async function createOverlayWindow(
     await invoke("create_overlay_window", { url });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error("[OverlayWindow] create failed:", errMsg);
+    logger.error("Overlay creation failed", { message: errMsg });
     throw error;
   }
 }
