@@ -1,11 +1,10 @@
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use audio::{AudioDevice, AudioCaptureStatus};
 use meeting_detection::MeetingDetectionHint;
 
 pub mod audio;
 pub mod meeting_detection;
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -90,6 +89,22 @@ fn meeting_detection_check_heuristic() -> Result<Option<MeetingDetectionHint>, S
     meeting_detection::check_process_or_audio_heuristic()
 }
 
+#[tauri::command]
+fn create_overlay_window(app: AppHandle, url: String) -> Result<(), String> {
+    let parsed = tauri::Url::parse(&url).map_err(|e| e.to_string())?;
+    WebviewWindowBuilder::new(&app, "meeting-overlay", WebviewUrl::External(parsed))
+        .title("Larity Meeting")
+        .inner_size(376.0, 480.0)
+        .min_inner_size(320.0, 360.0)
+        .max_inner_size(420.0, 540.0)
+        .decorations(false)
+        .always_on_top(true)
+        .resizable(true)
+        .build()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -100,6 +115,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             greet,
+            create_overlay_window,
             audio_capture_list_devices,
             audio_capture_start,
             audio_capture_stop,
