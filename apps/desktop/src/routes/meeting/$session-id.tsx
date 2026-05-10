@@ -243,13 +243,48 @@ export function MeetingPage() {
     streamingClient.setIdentity(userId, role, displayName);
   }, [role, streamingClient, userId, displayName]);
 
+  const leaveMeeting = useCallback(async () => {
+    if (!sessionId) {
+      navigate("/home");
+      return;
+    }
+
+    setIsBusy(true);
+    try {
+      if (isHost) {
+        await api.post("/meeting-session/end", {
+          sessionId,
+          reason: "user_ended",
+        });
+      }
+      await stopCapture();
+    } catch (error) {
+      setWarning(
+        error instanceof Error
+          ? error.message
+          : "Failed to close meeting cleanly"
+      );
+    } finally {
+      closeOverlayWindow().catch(() => {
+        /* overlay may already be closed */
+      });
+      streamingClient.disconnect();
+      setIsBusy(false);
+      navigate("/home");
+    }
+  }, [sessionId, isHost, stopCapture, navigate, streamingClient]);
+
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId) {
+      return;
+    }
 
     let unlisten: (() => void) | null = null;
 
     listen<{ sessionId: string }>("overlay:end-meeting", () => {
-      leaveMeeting().catch(() => {});
+      leaveMeeting().catch(() => {
+        /* meeting already ended */
+      });
     }).then((fn) => {
       unlisten = fn;
     });
@@ -257,7 +292,7 @@ export function MeetingPage() {
     return () => {
       unlisten?.();
     };
-  }, [sessionId]);
+  }, [sessionId, leaveMeeting]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -479,7 +514,9 @@ export function MeetingPage() {
         unlisten();
       });
 
-      closeOverlayWindow().catch(() => {});
+      closeOverlayWindow().catch(() => {
+        /* overlay may already be closed */
+      });
       stopCapture().catch(() => {
         // noop
       });
@@ -502,35 +539,6 @@ export function MeetingPage() {
     meetingStartedAtMs,
     state.websocketUrl,
   ]);
-
-  async function leaveMeeting() {
-    if (!sessionId) {
-      navigate("/home");
-      return;
-    }
-
-    setIsBusy(true);
-    try {
-      if (isHost) {
-        await api.post("/meeting-session/end", {
-          sessionId,
-          reason: "user_ended",
-        });
-      }
-      await stopCapture();
-    } catch (error) {
-      setWarning(
-        error instanceof Error
-          ? error.message
-          : "Failed to close meeting cleanly"
-      );
-    } finally {
-      closeOverlayWindow().catch(() => {});
-      streamingClient.disconnect();
-      setIsBusy(false);
-      navigate("/home");
-    }
-  }
 
   function handleRememberThis() {
     setRememberBanner(
