@@ -350,8 +350,11 @@ export function MeetingPage() {
             typeof mapSpeakerToParticipant
           >[0]
         );
-        if (prev.some((p) => p.id === participant.id)) {
-          return prev;
+        const idx = prev.findIndex((p) => p.id === participant.id);
+        if (idx >= 0) {
+          const updated = [...prev];
+          updated[idx] = participant;
+          return updated;
         }
         return [...prev, participant];
       });
