@@ -69,17 +69,22 @@ pub fn start_capture(
 
     // 1. Setup Microphone
     let mic_device = if let Some(id) = mic_device_id.clone() {
-        host.input_devices()
-            .map_err(|e| e.to_string())?
-            .find(|d| d.id().map(|did| did.to_string()).unwrap_or_default() == id)
-            .or_else(|| host.default_input_device())
+        let devices = host.input_devices().map_err(|e| e.to_string())?;
+        let mut found = None;
+        for d in devices {
+            if d.id().map(|did| did.to_string()).map_err(|e| e.to_string())? == id {
+                found = Some(d);
+                break;
+            }
+        }
+        found.or_else(|| host.default_input_device())
             .ok_or("No microphone device available")?
     } else {
         host.default_input_device()
             .ok_or("No default input device available")?
     };
 
-    let mic_id = mic_device.id().map(|id| id.to_string()).unwrap_or_default();
+    let mic_id = mic_device.id().map(|id| id.to_string()).map_err(|e| e.to_string())?;
     println!("Using Mic device (hash): {}", short_hash(&mic_id));
     let mic_config = mic_device.default_input_config().map_err(|e| e.to_string())?;
     
@@ -174,7 +179,7 @@ pub fn start_capture(
             // macOS / Windows fallback to loopback with cpal
             let sys_device = host.default_output_device()
                 .ok_or("No default output device available for loopback")?;
-            let sys_id = sys_device.id().map(|id| id.to_string()).unwrap_or_default();
+            let sys_id = sys_device.id().map(|id| id.to_string()).map_err(|e| e.to_string())?;
             println!("Using Sys device (hash): {}", short_hash(&sys_id));
             
             let sys_config = sys_device.default_input_config()

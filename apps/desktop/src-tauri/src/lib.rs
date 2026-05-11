@@ -305,13 +305,12 @@ fn meeting_detection_check_heuristic() -> Result<Option<MeetingDetectionHint>, S
 fn create_overlay_window(app: AppHandle, url: String) -> Result<(), String> {
     let parsed = tauri::Url::parse(&url).map_err(|e| e.to_string())?;
 
-    if let Some(main_window) = app.get_webview_window("main") {
-        if let Ok(main_url) = main_window.url() {
-            let main_origin = main_url.origin();
-            if parsed.origin() != main_origin {
-                return Err("External URL origin does not match app origin".to_string());
-            }
-        }
+    let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
+    let main_url = main_window.url().map_err(|e| e.to_string())?;
+    let main_origin = main_url.origin();
+
+    if parsed.origin() != main_origin {
+        return Err("External URL origin does not match app origin".to_string());
     }
 
     WebviewWindowBuilder::new(&app, "meeting-overlay", WebviewUrl::External(parsed))
