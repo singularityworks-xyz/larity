@@ -115,17 +115,16 @@ export function AmbientStrip({
   isMicActive,
 }: AmbientStripProps) {
   return (
-    <div className="flex flex-col gap-2.5 border-white/[0.04] border-b px-3.5 pt-3 pb-2.5">
-      <div className="flex items-center gap-2">
+    <div className="flex w-full flex-col gap-2.5 border-white/[0.04] border-b px-3.5 pt-3 pb-2.5">
+      <div className="flex w-full min-w-0 items-center gap-2">
         <HeartbeatDot />
         <TopicLabel topic={currentTopic} />
         <ConstraintBadge count={constraintCount} />
-      </div>
-      <div className="flex items-center gap-2.5">
-        <SpeakerIndicator speaker={currentSpeaker} />
-        <span className="flex-1" />
         <TeammateAvatars teammates={connectedTeammates} />
         <VoiceDotMatrix isSpeaking={isMicActive} />
+      </div>
+      <div className="flex w-full min-w-0 items-center gap-2.5">
+        <SpeakerIndicator speaker={currentSpeaker} />
       </div>
     </div>
   );
