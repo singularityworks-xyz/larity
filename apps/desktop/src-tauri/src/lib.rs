@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use audio::{AudioDevice, AudioCaptureStatus, VadState};
 use meeting_detection::MeetingDetectionHint;
 
@@ -217,7 +217,6 @@ mod linux_media_permission {
     }
 }
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -303,6 +302,31 @@ fn meeting_detection_check_heuristic() -> Result<Option<MeetingDetectionHint>, S
 }
 
 #[tauri::command]
+fn create_overlay_window(app: AppHandle, url: String) -> Result<(), String> {
+    let parsed = tauri::Url::parse(&url).map_err(|e| e.to_string())?;
+
+    let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
+    let main_url = main_window.url().map_err(|e| e.to_string())?;
+    let main_origin = main_url.origin();
+
+    if parsed.origin() != main_origin {
+        return Err("External URL origin does not match app origin".to_string());
+    }
+
+    WebviewWindowBuilder::new(&app, "meeting-overlay", WebviewUrl::External(parsed))
+        .title("Larity Meeting")
+        .inner_size(376.0, 480.0)
+        .min_inner_size(320.0, 360.0)
+        .max_inner_size(420.0, 540.0)
+        .decorations(false)
+        .always_on_top(true)
+        .resizable(true)
+        .build()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn vad_start(app: AppHandle, state: State<'_, VadState>) -> Result<(), String> {
     let vad_tx = audio::vad::spawn_vad_task(app).map_err(|e| e.to_string())?;
     *state.vad_tx.blocking_lock() = Some(vad_tx);
@@ -366,6 +390,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             greet,
+            create_overlay_window,
             audio_capture_list_devices,
             audio_capture_start,
             audio_capture_stop,

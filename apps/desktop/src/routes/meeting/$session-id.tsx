@@ -23,6 +23,10 @@ import type {
 } from "../../features/meeting-live/types";
 import { api } from "../../lib/api";
 import {
+  closeOverlayWindow,
+  createOverlayWindow,
+} from "../../lib/overlay-window";
+import {
   buttonClass,
   codeClass,
   controlRowClass,
@@ -239,6 +243,60 @@ export function MeetingPage() {
     streamingClient.setIdentity(userId, role, displayName);
   }, [role, streamingClient, userId, displayName]);
 
+  const leaveMeeting = useCallback(async () => {
+    if (!sessionId) {
+      navigate("/home");
+      return;
+    }
+
+    setIsBusy(true);
+    try {
+      if (isHost) {
+        await api.post("/meeting-session/end", {
+          sessionId,
+          reason: "user_ended",
+        });
+      }
+      await stopCapture();
+    } catch (error) {
+      setWarning(
+        error instanceof Error
+          ? error.message
+          : "Failed to close meeting cleanly"
+      );
+    } finally {
+      closeOverlayWindow().catch(() => {
+        /* overlay may already be closed */
+      });
+      streamingClient.disconnect();
+      setIsBusy(false);
+      navigate("/home");
+    }
+  }, [sessionId, isHost, stopCapture, navigate, streamingClient]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      return;
+    }
+
+    let unlisten: (() => void) | null = null;
+
+    listen<{ sessionId: string }>("overlay:end-meeting", (evt) => {
+      if (evt.payload.sessionId !== sessionId) {
+        return;
+      }
+      leaveMeeting().catch(() => {
+        /* meeting already ended */
+      });
+    }).then((fn) => {
+      unlisten = fn;
+    });
+
+    return () => {
+      unlisten?.();
+    };
+  }, [sessionId, leaveMeeting]);
+
   useEffect(() => {
     if (!sessionId) {
       return;
@@ -295,8 +353,11 @@ export function MeetingPage() {
             typeof mapSpeakerToParticipant
           >[0]
         );
-        if (prev.some((p) => p.id === participant.id)) {
-          return prev;
+        const idx = prev.findIndex((p) => p.id === participant.id);
+        if (idx >= 0) {
+          const updated = [...prev];
+          updated[idx] = participant;
+          return updated;
         }
         return [...prev, participant];
       });
@@ -419,6 +480,18 @@ export function MeetingPage() {
       // noop, warning handled in startCapture
     });
 
+    createOverlayWindow({
+      sessionId,
+      role,
+      clientName: clientDisplayName,
+      meetingTitle: meetingDisplayTitle,
+      startedAt: meetingStartedAtMs,
+      wsBaseUrl: getWsBaseUrl(state.websocketUrl),
+      userId,
+    }).catch(() => {
+      // overlay is optional
+    });
+
     const unlistenPromise = listen<AudioFramePayload>(
       "audio-frame",
       (event) => {
@@ -447,6 +520,9 @@ export function MeetingPage() {
         unlisten();
       });
 
+      closeOverlayWindow().catch(() => {
+        /* overlay may already be closed */
+      });
       stopCapture().catch(() => {
         // noop
       });
@@ -462,35 +538,13 @@ export function MeetingPage() {
     isHost,
     allowNameCustomization,
     configuredName,
+    role,
+    userId,
+    clientDisplayName,
+    meetingDisplayTitle,
+    meetingStartedAtMs,
+    state.websocketUrl,
   ]);
-
-  async function leaveMeeting() {
-    if (!sessionId) {
-      navigate("/home");
-      return;
-    }
-
-    setIsBusy(true);
-    try {
-      if (isHost) {
-        await api.post("/meeting-session/end", {
-          sessionId,
-          reason: "user_ended",
-        });
-      }
-      await stopCapture();
-    } catch (error) {
-      setWarning(
-        error instanceof Error
-          ? error.message
-          : "Failed to close meeting cleanly"
-      );
-    } finally {
-      streamingClient.disconnect();
-      setIsBusy(false);
-      navigate("/home");
-    }
-  }
 
   function handleRememberThis() {
     setRememberBanner(

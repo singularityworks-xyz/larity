@@ -150,7 +150,7 @@ export class SpeakerIdentifier {
     const existingSpeakerId = this.indexToSpeakerId.get(diarizationIndex);
     if (existingSpeakerId) {
       const mapping = this.speakerMappings.get(existingSpeakerId);
-      if (mapping) {
+      if (mapping && mapping.speaker.type === "TEAM") {
         mapping.lastUtteranceTs = utteranceTimestamp;
         return mapping.speaker;
       }
@@ -268,8 +268,14 @@ export class SpeakerIdentifier {
     }
 
     for (const pending of pendingUtterances) {
-      if (this.indexToSpeakerId.has(pending.diarizationIndex)) {
-        continue;
+      const existingSpeakerId = this.indexToSpeakerId.get(
+        pending.diarizationIndex
+      );
+      if (existingSpeakerId) {
+        const mapping = this.speakerMappings.get(existingSpeakerId);
+        if (mapping && mapping.speaker.type === "TEAM") {
+          continue;
+        }
       }
 
       const correlatedUserId = this.correlate(
