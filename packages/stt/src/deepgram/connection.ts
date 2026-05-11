@@ -64,6 +64,7 @@ export class DeepgramConnection {
   private isConnecting = false;
   private isClosed = false;
   private connectionStartTime = 0;
+  private streamStartServerTs = 0;
 
   // Reconnection state
   private retryCount = 0;
@@ -145,6 +146,16 @@ export class DeepgramConnection {
   }
 
   /**
+   * Set the perfect server-side timestamp for the start of the audio stream
+   */
+  setAudioStreamStart(serverAudioStartTs: number): void {
+    log.info(
+      `Anchor TS set for ${this.sessionId}: ${serverAudioStartTs} (previously: ${this.streamStartServerTs})`
+    );
+    this.streamStartServerTs = serverAudioStartTs;
+  }
+
+  /**
    * Send audio buffer to Deepgram
    * Lazily connects if not already connected.
    *
@@ -206,8 +217,21 @@ export class DeepgramConnection {
     // Extract diarization index from words if available
     // Deepgram includes speaker index per word when diarize=true
     // Default to -1 if not available (e.g. first few seconds or empty words)
-    const diarizationIndex = alternative.words?.[0]?.speaker ?? -1;
-    const channelIndex = this.logicalChannel;
+    const rawDiarizationIndex = alternative.words?.[0]?.speaker ?? -1;
+
+    // Offset the index by channel to prevent collisions in downstream SpeakerIdentifier.
+    // Channel 0 (Mic): 0-999
+    // Channel 1 (Sys): 1000-1999
+    const diarizationIndex =
+      rawDiarizationIndex >= 0
+        ? rawDiarizationIndex + this.logicalChannel * 1000
+        : rawDiarizationIndex;
+
+    // Use the perfectly synced stream start TS if available, otherwise fallback to lazy connection time
+    const anchorTs =
+      this.streamStartServerTs > 0
+        ? this.streamStartServerTs
+        : this.connectionStartTime;
 
     const sttResult: SttResult = {
       sessionId: this.sessionId,
@@ -215,16 +239,15 @@ export class DeepgramConnection {
       transcript,
       confidence: alternative.confidence || 0,
       diarizationIndex,
-      channel: channelIndex,
+      channel: this.logicalChannel,
       start,
       duration,
       ts: Date.now(),
-      speechTimestamp: this.connectionStartTime + start * 1000,
+      speechTimestamp: anchorTs + start * 1000,
     };
-
     const diarizeSummary = summarizeDiarizedSpeakers(alternative.words);
     log.info(
-      `"${transcript}" | session=${this.sessionId} capture_ch=${channelIndex} ` +
+      `"${transcript}" | session=${this.sessionId} capture_ch=${this.logicalChannel} ` +
         `dg_speaker=${diarizationIndex} dg_speakers=[${diarizeSummary}] ` +
         `speech_final=${result.speech_final} ${is_final ? "final" : "partial"} ` +
         `conf=${(alternative.confidence || 0).toFixed(2)}`

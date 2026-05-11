@@ -38,6 +38,11 @@ export function createDualChannelSession(
       }
     },
 
+    setAudioStreamStart(serverAudioStartTs: number): void {
+      mic.setAudioStreamStart(serverAudioStartTs);
+      sys.setAudioStreamStart(serverAudioStartTs);
+    },
+
     close(): void {
       mic.close();
       sys.close();

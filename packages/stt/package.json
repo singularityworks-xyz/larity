@@ -16,7 +16,7 @@
     "typescript": "^6"
   },
   "dependencies": {
-    "@deepgram/sdk": "^4.11.3",
+    "@deepgram/sdk": "^5.1.0",
     "@larity/infra": "workspace:*",
     "@larity/logger": "workspace:*",
     "cross-fetch": "^4.1.0",
