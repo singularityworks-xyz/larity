@@ -1,5 +1,46 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
+// Must mock BEFORE imports to prevent real Redis module init (module-level new Redis())
+mock.module("@larity/infra/redis", () => {
+  const mockRedis = {
+    status: "close",
+    connect: mock(() => Promise.resolve()),
+    disconnect: mock(() => undefined),
+    ping: mock(() => Promise.resolve("PONG")),
+    set: mock(() => Promise.resolve("OK")),
+    get: mock(() => Promise.resolve("test_value")),
+    del: mock(() => Promise.resolve(1)),
+    publish: mock(() => Promise.resolve(1)),
+    on: mock(() => undefined),
+  };
+
+  return {
+    redis: mockRedis,
+    connectRedis: mock(async () => {
+      if (mockRedis.status === "ready" || mockRedis.status === "connect") {
+        return true;
+      }
+      if (
+        mockRedis.status === "connecting" ||
+        mockRedis.status === "reconnecting"
+      ) {
+        await mockRedis.ping();
+        return true;
+      }
+      try {
+        await mockRedis.connect();
+        return true;
+      } catch {
+        return false;
+      }
+    }),
+    getRedisClient: mock(() => mockRedis),
+    disconnectRedis: mock(() => {
+      mockRedis.disconnect();
+    }),
+  };
+});
+
 import { connectRedis, redis } from "../client";
 import { checkRedisHealth } from "../health";
 import { redisKeys } from "../keys";
@@ -36,12 +77,14 @@ describe("Redis Infrastructure Tests", () => {
 
     describe("connectRedis", () => {
       it("should successfully connect to Redis", async () => {
+        redis.status = "close";
         redis.connect = mock(() => Promise.resolve());
         const result = await connectRedis();
         expect(result).toBe(true);
       });
 
       it("should handle connection errors gracefully", async () => {
+        redis.status = "close";
         redis.connect = mock(() =>
           Promise.reject(new Error("Connection failed"))
         );

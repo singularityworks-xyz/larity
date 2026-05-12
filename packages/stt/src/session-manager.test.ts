@@ -1,4 +1,27 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+
+// Must mock BEFORE imports to prevent real Redis/Deepgram init
+mock.module("@larity/infra/redis", () => ({
+  redis: {
+    publish: mock(() => Promise.resolve(1)),
+    connect: mock(() => Promise.resolve()),
+    disconnect: mock(() => undefined),
+  },
+  connectRedis: mock(() => Promise.resolve(true)),
+}));
+
+mock.module("./deepgram/client", () => ({
+  getDeepgramClient: mock(() => ({
+    listen: {
+      live: mock(() => ({
+        on: mock(),
+        send: mock(),
+        requestClose: mock(),
+      })),
+    },
+  })),
+}));
+
 import { SessionManager } from "./session-manager";
 
 describe("SessionManager", () => {
