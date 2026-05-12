@@ -1,16 +1,12 @@
 import { describe, expect, it, mock } from "bun:test";
-import { redis } from "@larity/infra/redis";
-import { DeepgramConnection } from "./connection";
-import type { TranscriptResult } from "./types";
 
-// Mock the Redis module
+// Mock modules BEFORE importing them to prevent real module init
 mock.module("@larity/infra/redis", () => ({
   redis: {
     publish: mock(() => Promise.resolve(1)),
   },
 }));
 
-// Mock the Deepgram client module
 mock.module("./client", () => ({
   getDeepgramClient: mock(() => ({
     listen: {
@@ -22,6 +18,10 @@ mock.module("./client", () => ({
     },
   })),
 }));
+
+import { redis } from "@larity/infra/redis";
+import { DeepgramConnection } from "./connection";
+import type { TranscriptResult } from "./types";
 
 describe("DeepgramConnection Diarization", () => {
   const sessionId = "test-session-123";
@@ -238,5 +238,6 @@ describe("DeepgramConnection Diarization", () => {
     const payload = JSON.parse(lastCall[1]);
 
     expect(payload.channel).toBe(1);
+    expect(payload.diarizationIndex).toBe(1000);
   });
 });

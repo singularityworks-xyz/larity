@@ -11,6 +11,7 @@ mock.module("@larity/stt", () => ({
     hasSession: () => false,
     closeAll: () => Promise.resolve(),
     sendAudio: () => Promise.resolve(),
+    setAudioStreamStart: () => undefined,
   },
   validateEnv: () => undefined,
 }));

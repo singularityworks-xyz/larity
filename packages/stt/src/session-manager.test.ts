@@ -13,6 +13,7 @@ describe("SessionManager", () => {
     connectionFactory = mock(() => ({
       close: closeMock,
       sendAudio: sendAudioMock,
+      setAudioStreamStart: mock(() => undefined),
     }));
 
     manager = new SessionManager(connectionFactory);
@@ -56,6 +57,21 @@ describe("SessionManager", () => {
     expect(closeMock).toHaveBeenCalledTimes(1);
     expect(manager.hasSession("session-a")).toBe(false);
     expect(manager.sessionCount).toBe(0);
+  });
+
+  it("setAudioStreamStart delegates to the underlying connection", () => {
+    manager.createSession("session-a");
+
+    manager.setAudioStreamStart("session-a", 1_234_567_890);
+
+    const connection = connectionFactory.mock.results[0]?.value;
+    expect(connection.setAudioStreamStart).toHaveBeenCalledWith(1_234_567_890);
+  });
+
+  it("setAudioStreamStart does not throw for non-existent session", () => {
+    expect(() => {
+      manager.setAudioStreamStart("missing-session", 0);
+    }).not.toThrow();
   });
 
   it("closeAll closes every active session", () => {
