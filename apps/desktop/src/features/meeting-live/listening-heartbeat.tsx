@@ -22,7 +22,6 @@ export function ListeningHeartbeat({
       ) : (
         <span className="inline-block h-[7px] w-[7px] rounded-full bg-fg-subtle/50" />
       )}
-      <span className="sr-only">{isActive ? label : "Disconnected"}</span>
     </output>
   );
 }

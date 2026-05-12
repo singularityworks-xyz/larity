@@ -56,7 +56,11 @@ function handleParsedVadPayload(
 ): void {
   if (payload.type === "audio_stream_start") {
     const { clientTs, clientSendTs } = payload;
-    if (typeof clientTs === "number" && typeof clientSendTs === "number") {
+    if (
+      Number.isFinite(clientTs) &&
+      Number.isFinite(clientSendTs) &&
+      Number.isFinite(ts)
+    ) {
       // Estimate one-way network latency as half of the observed RTT
       // (Server receive time - Client send time)
       const networkLatency = Math.max(

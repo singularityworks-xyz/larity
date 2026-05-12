@@ -63,6 +63,12 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
         return newAlerts.slice(0, maxVisible);
       });
 
+      // Skip or reset timer if duplicate
+      const existingTimer = timeoutsRef.current.get(alert.id);
+      if (existingTimer) {
+        window.clearTimeout(existingTimer);
+      }
+
       // Schedule auto-dismiss
       const expiryMs = ALERT_EXPIRY_MS[alert.severity];
       const timerId = window.setTimeout(() => {
@@ -76,6 +82,7 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
 
   const clearAll = useCallback(() => {
     setVisibleAlerts([]);
+    setAlertHistory([]);
     for (const timerId of timeoutsRef.current.values()) {
       window.clearTimeout(timerId);
     }

@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -26,8 +27,7 @@ interface AlertCardProps {
   isHistoryView?: boolean;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Required for dynamic component loading
-const ICON_MAP: Record<string, any> = {
+const ICON_MAP: Record<string, LucideIcon> = {
   "git-branch": GitBranch,
   users: Users,
   "alert-triangle": AlertTriangle,
@@ -90,17 +90,19 @@ export function AlertCard({
 
         {/* Footer Actions */}
         <div className="mt-1 flex flex-row items-center justify-between">
-          <button
-            className="flex items-center gap-1 text-fg-muted text-xs transition-colors hover:text-fg"
-            onClick={() => onToggleExpand?.(alert.id)}
-            type="button"
-          >
-            Why?{" "}
-            <ChevronDown
-              className={`transform transition-transform ${isExpanded ? "rotate-180" : ""}`}
-              size={14}
-            />
-          </button>
+          {onToggleExpand && (
+            <button
+              className="flex items-center gap-1 text-fg-muted text-xs transition-colors hover:text-fg"
+              onClick={() => onToggleExpand(alert.id)}
+              type="button"
+            >
+              Why?{" "}
+              <ChevronDown
+                className={`transform transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                size={14}
+              />
+            </button>
+          )}
 
           {!isHistoryView && onDismiss && (
             <button

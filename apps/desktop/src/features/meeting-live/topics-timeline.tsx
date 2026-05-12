@@ -42,6 +42,7 @@ export function TopicsTimeline({
         const isActive = topic.id === activeTopicId;
         return (
           <button
+            aria-pressed={isActive}
             className={cx(
               "relative flex min-w-[120px] shrink-0 flex-col justify-center border-border-subtle border-r px-3 text-left transition-all duration-200 ease-out last:border-r-0 hover:bg-bg-subtle",
               isActive &&

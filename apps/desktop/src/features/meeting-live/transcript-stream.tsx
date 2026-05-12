@@ -154,6 +154,7 @@ export function TranscriptStream({
     scrollToBottom,
     utterances.length,
     visible.length,
+    alertHistory.length,
     mode,
     pendingFinals.length,
     livePartial?.text,

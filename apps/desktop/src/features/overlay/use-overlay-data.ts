@@ -118,11 +118,11 @@ export function useOverlayData() {
   }, []);
 
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      streamingClient.subscribe("*", (data) => {
-        console.debug("[overlay] ws message:", data);
-      });
-    }
+    const unsubWildcard = import.meta.env.DEV
+      ? streamingClient.subscribe("*", (data) => {
+          console.debug("[overlay] ws message:", data);
+        })
+      : undefined;
 
     const unsubUtterance = streamingClient.subscribe("utterance", ((
       data: Record<string, unknown>
@@ -199,6 +199,7 @@ export function useOverlayData() {
     );
 
     return () => {
+      unsubWildcard?.();
       unsubUtterance();
       unsubTopic();
       unsubLedger();

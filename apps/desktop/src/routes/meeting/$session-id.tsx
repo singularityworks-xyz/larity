@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AlertCard } from "../../features/alerts/alert-card";
 import { mapBackendAlertToMeetingAlert } from "../../features/alerts/mapper";
@@ -164,6 +164,8 @@ export function MeetingPage() {
   const [sysDeviceId, setSysDeviceId] = useState<string | null>(null);
 
   const alertQueue = useAlertQueue();
+  const addAlertRef = useRef(alertQueue.addAlert);
+  addAlertRef.current = alertQueue.addAlert;
   const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
 
   const teamCommitmentCount = useMemo(
@@ -496,7 +498,7 @@ export function MeetingPage() {
     const unsubAlert = streamingClient.subscribe("alert", (data) => {
       const alert = mapBackendAlertToMeetingAlert(data);
       if (alert) {
-        alertQueue.addAlert(alert);
+        addAlertRef.current(alert);
       }
     });
 
@@ -508,7 +510,7 @@ export function MeetingPage() {
       unsubSttFinal();
       unsubAlert();
     };
-  }, [streamingClient, userId, alertQueue]);
+  }, [streamingClient, userId]);
 
   useEffect(() => {
     if (isHost) {

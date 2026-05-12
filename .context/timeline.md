@@ -421,7 +421,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - [x] Server computes `sampleOffset = serverReceiveTs - clientSendTs - halfRTT` on each message (heartbeat + VAD)
   - [x] Maintain rolling median (last 30 samples) per userId per session — **median, not mean** — robust to jitter spikes
   - [x] Apply offset to VAD timestamps before correlation: `adjustedTs = vadEvent.ts + clientOffset`
-  - [x] Tighten correlation window to ±250ms (from ±300ms) now that drift is corrected, not tolerated
+  - [x] Tighten correlation window to 1500ms (from ±300ms) now that drift is corrected, not tolerated
   - [x] If offset median shifts >500ms within a short window (likely sleep/resume), mark recent VAD untrusted for ~2s and defer assignment in that gap
 - [x] **Diarization index reassignment-merge (B.4):**
   - [x] Change `SpeakerIdentity.diarizationIndex` (single) → `SpeakerIdentity.diarizationIndices: Set<number>`
@@ -1497,7 +1497,7 @@ packages/
 │   │   ├── identifier.ts           # SpeakerIdentifier (diarization ↔ VAD, reassignment-merge)
 │   │   ├── vad-state.ts            # Per-session VAD state (Map<userId, {isSpeaking, ts}>)
 │   │   ├── clock-offset.ts         # Per-client rolling median offset (last 30 samples)
-│   │   ├── correlation.ts          # ±250ms offset-corrected timestamp correlation
+│   │   ├── correlation.ts          # 1500ms offset-corrected timestamp correlation
 │   │   ├── pending-buffer.ts       # Utterances awaiting late VAD confirmation (~2s)
 │   │   └── types.ts                # SpeakerIdentity with diarizationIndices: {channel,index}[]
 │   ├── state/
@@ -1590,7 +1590,7 @@ apps/
 |------|------------|
 | Deepgram latency spikes | Implement timeout + skip, don't block pipeline |
 | Deepgram diarization inaccurate | Host channel short-circuit handles host attribution; VAD-correlation handles non-host TEAM attribution on channel 1. Diarization still needs to be internally consistent (same index for same speaker within a window). Reassignment-merge logic (Day 10-11) collapses post-silence index swaps back onto the existing `SpeakerIdentity` so a single talker is never mistaken for two |
-| Client clock drift / sleep-resume | Per-client rolling-median clock offset (Day 10-11) aligns VAD timestamps with the server clock; correlation window tightened to ±250ms |
+| Client clock drift / sleep-resume | Per-client rolling-median clock offset (Day 10-11) aligns VAD timestamps with the server clock; correlation window tightened to 1500ms |
 | **macOS system audio capture denied / no ScreenCaptureKit permission** | Surface clear instructions + fallback instructions for virtual device (BlackHole); the user can still participate as a non-host |
 | **macOS pre-13 support** | Require macOS 13+ for ScreenCaptureKit audio; document virtual-device fallback for older versions |
 | **Linux missing PipeWire & PulseAudio** | Detect at startup, surface error asking user to use pipewire-pulse or pulseaudio; refuse to host without a monitor source |
@@ -1766,7 +1766,7 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 | **Cost control** | Nominal budget only | **Per-meeting Redis cost counter; gate tightening at 80% of cap; Tier 4 disabled at 100% of cap** |
 | **Diarization index drift** | Ignored | **Reassignment-merge onto existing SpeakerIdentity after silence** |
 | **Host speaker attribution** | VAD correlation like everyone else | **Channel 0 short-circuit maps directly to host identity; VAD correlation runs on channel 1 for non-host TEAM members** |
-| **Client clock drift** | Fixed ±300ms tolerance | **Per-client rolling-median offset + ±250ms window** |
+| **Client clock drift** | Fixed ±300ms tolerance | **Per-client rolling-median offset + 1500ms window** |
 | **Alert UX** | Progressive / preliminary alerts | **Single atomic alert per Tier 4; content-free "Checking…" indicator only** |
 | **Raw audio persistence** | Not specified | **Parallel fire-and-forget stream to MinIO, 30-day lifecycle** |
 | **Desktop distribution** | "Tauri build" | **Code-signed Win MSI + notarized macOS universal + Linux .deb/.rpm/.AppImage; signed auto-update** |

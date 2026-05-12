@@ -54,7 +54,12 @@ export class SpeakerIdentifier {
     name: string,
     role?: "host" | "participant"
   ): void {
-    this.teamMembers.set(userId, { userId, name, role });
+    const existing = this.teamMembers.get(userId);
+    this.teamMembers.set(userId, {
+      userId,
+      name,
+      role: role ?? existing?.role,
+    });
 
     const counter = this.userIdToSpeakerId.size;
     if (!this.userIdToSpeakerId.has(userId)) {

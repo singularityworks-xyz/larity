@@ -144,7 +144,10 @@ export function mapBackendAlertToMeetingAlert(
     isShared,
     timestamp: extractNumber(data, Date.now(), "timestamp", "ts"),
     confidence: extractNumber(data, 0.9, "confidence", "score"),
-    triggerTier: extractNumber(data, 1, "triggerTier", "tier") as 1 | 2 | 3 | 4,
+    triggerTier: (() => {
+      const raw = extractNumber(data, 1, "triggerTier", "tier");
+      return [1, 2, 3, 4].includes(raw) ? (raw as 1 | 2 | 3 | 4) : 1;
+    })(),
     evidence,
   };
 }

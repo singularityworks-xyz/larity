@@ -245,6 +245,8 @@ export class AudioStreamingClient {
   }
 
   disconnect(): void {
+    this.pendingFrames.length = 0;
+    this.streamStarted = false;
     if (this.socket) {
       this.log.info("Disconnecting socket manually");
       this.socket.close();

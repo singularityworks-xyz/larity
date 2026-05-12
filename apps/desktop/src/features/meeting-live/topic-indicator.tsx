@@ -21,8 +21,6 @@ export function TopicIndicator({ topic, className }: TopicIndicatorProps) {
       }, 120);
       return () => window.clearTimeout(timeout);
     }
-    setDisplayTopic(topic);
-    setIsTransitioning(false);
   }, [topic]);
 
   return (

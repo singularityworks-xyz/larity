@@ -26,7 +26,7 @@ export class SpeakerManager {
     sessionId: string,
     userId: string,
     name: string,
-    role?: string
+    role?: "host" | "participant"
   ): void {
     const identifier = this.getIdentifier(sessionId);
     identifier.registerTeamMember(userId, name, role);

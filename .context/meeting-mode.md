@@ -151,7 +151,7 @@ To eliminate "identity bleeding" between the host mic and system audio, the syst
 
 This ensures that even if a host's VAD fires during system audio (e.g., the host talking while a YouTube video plays), the system audio can never be misidentified as the host.
 
-#### 3.3.2 Diarization Index Reassignment — Merge Logic
+#### 3.3.3 Diarization Index Reassignment — Merge Logic
 
 Deepgram (and diarization engines in general) will **reassign speaker indices after long silence gaps or voice changes** — the same physical speaker may appear as `speaker=0` for the first ten minutes and `speaker=3` after a silence. The server must not treat this as a new speaker.
 

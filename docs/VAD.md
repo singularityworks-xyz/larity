@@ -223,19 +223,16 @@ private correlate(diarizationIndex, utteranceTimestamp): string | undefined {
   return undefined;
 }
 
-<<<<<<< Updated upstream
 /**
  * Hardened role-to-channel isolation:
  * - Host (Mic) is always on diarization index 0-999 (Channel 0).
  * - Participants (System) are always on diarization index 1000+ (Channel 1).
  */
-function isChannelRoleMatch(diarizationIndex, role): boolean {
-  if (!role) return true; 
+function isChannelRoleMatch(diarizationIndex: number, role?: string): boolean {
+  if (!role) return true;
   const isSystemChannel = diarizationIndex >= 1000;
   return role === "host" ? !isSystemChannel : isSystemChannel;
 }
-=======
->>>>>>> Stashed changes
 ```
 
 **Key rules:**
@@ -243,12 +240,8 @@ function isChannelRoleMatch(diarizationIndex, role): boolean {
 | Condition | Behavior |
 |-----------|----------|
 | 0 team members speaking | No correlation → `EXTERNAL` |
-<<<<<<< Updated upstream
 | 1 team member speaking (role match) | Increment confirmation counter; if ≥ threshold → **TEAM match** |
 | 1 team member speaking (role mismatch) | Discarded → `EXTERNAL` (prevents system audio bleeding into mic) |
-=======
-| 1 team member speaking | Filter by role; if valid → **TEAM match** |
->>>>>>> Stashed changes
 | 2+ team members speaking | Ambiguous → skip; log debug warning |
 
 **Correlation Window**: Increased to **1500ms** to account for native VAD detection lag (Silero requires ~300ms of audio before emitting a speaking event).
