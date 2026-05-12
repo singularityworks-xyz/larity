@@ -2,6 +2,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { AlertCard } from "../../features/alerts/alert-card";
+import { mapBackendAlertToMeetingAlert } from "../../features/alerts/mapper";
+import { useAlertQueue } from "../../features/alerts/use-alert-queue";
 import { useAuthSession } from "../../features/auth/use-session";
 import { AmbientStatusBar } from "../../features/meeting-live/ambient-status-bar";
 import {
@@ -159,6 +162,9 @@ export function MeetingPage() {
   const [devices, setDevices] = useState<AudioDevice[]>([]);
   const [micDeviceId, setMicDeviceId] = useState<string | null>(null);
   const [sysDeviceId, setSysDeviceId] = useState<string | null>(null);
+
+  const alertQueue = useAlertQueue();
+  const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
 
   const teamCommitmentCount = useMemo(
     () =>
@@ -487,14 +493,22 @@ export function MeetingPage() {
       });
     });
 
+    const unsubAlert = streamingClient.subscribe("alert", (data) => {
+      const alert = mapBackendAlertToMeetingAlert(data);
+      if (alert) {
+        alertQueue.addAlert(alert);
+      }
+    });
+
     return () => {
       unsubUtterance();
       unsubTopic();
       unsubLedger();
       unsubSttPartial();
       unsubSttFinal();
+      unsubAlert();
     };
-  }, [streamingClient, userId]);
+  }, [streamingClient, userId, alertQueue]);
 
   useEffect(() => {
     if (isHost) {
@@ -685,8 +699,9 @@ export function MeetingPage() {
         topics={topics}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+      <div className="relative flex min-h-0 flex-1 flex-col md:flex-row">
         <TranscriptStream
+          alertHistory={alertQueue.alertHistory}
           livePartial={livePartial}
           meetingStartedAtMs={meetingStartedAtMs}
           onConsumedScrollTarget={clearScrollTarget}
@@ -694,6 +709,22 @@ export function MeetingPage() {
           scrollTargetId={scrollTargetId}
           utterances={utterances}
         />
+
+        {!alertsMuted && alertQueue.visibleAlerts.length > 0 && (
+          <div className="absolute top-4 left-1/2 z-50 flex w-80 max-w-full -translate-x-1/2 flex-col gap-2 px-4 md:left-4 md:translate-x-0">
+            {alertQueue.visibleAlerts.map((alert) => (
+              <AlertCard
+                alert={alert}
+                expandedId={expandedAlertId}
+                key={alert.id}
+                onDismiss={() => alertQueue.dismissAlert(alert.id)}
+                onToggleExpand={(id) =>
+                  setExpandedAlertId((prev) => (prev === id ? null : id))
+                }
+              />
+            ))}
+          </div>
+        )}
 
         <MeetingSidebar
           commitments={commitments}

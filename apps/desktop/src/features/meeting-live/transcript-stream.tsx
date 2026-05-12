@@ -12,6 +12,8 @@ import {
   segmentButtonClass,
   segmentControlClass,
 } from "../../lib/ui";
+import { AlertCard } from "../alerts/alert-card";
+import type { MeetingAlert } from "../alerts/types";
 import type { LivePendingUtterance, LiveUtterance } from "./types";
 
 function formatUtteranceClock(meetingStartMs: number, ts: number): string {
@@ -67,7 +69,7 @@ function SpeakerChip({
   );
 }
 
-type StreamMode = "full" | "commitments";
+type StreamMode = "full" | "commitments" | "alerts";
 
 function captureChannelLabel(channel: number): string {
   return channel === 0 ? "Mic" : "System";
@@ -80,6 +82,7 @@ interface TranscriptStreamProps {
   onConsumedScrollTarget: () => void;
   pendingFinals?: LivePendingUtterance[];
   livePartial?: { text: string; ts: number; channel: number } | null;
+  alertHistory?: MeetingAlert[];
 }
 
 export function TranscriptStream({
@@ -89,10 +92,12 @@ export function TranscriptStream({
   onConsumedScrollTarget,
   pendingFinals = [],
   livePartial = null,
+  alertHistory = [],
 }: TranscriptStreamProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [pinnedToBottom, setPinnedToBottom] = useState(true);
   const [mode, setMode] = useState<StreamMode>("full");
+  const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
 
   const visible = utterances.filter((u) =>
     mode === "commitments" ? u.isCommitment : true
@@ -102,7 +107,9 @@ export function TranscriptStream({
     mode === "full" &&
     (pendingFinals.length > 0 || Boolean(livePartial?.text?.trim()));
 
-  const listIsEmpty = visible.length === 0 && !showLiveTail;
+  const listIsEmpty =
+    (mode !== "alerts" && visible.length === 0 && !showLiveTail) ||
+    (mode === "alerts" && alertHistory.length === 0);
   const scrollToBottom = useCallback(() => {
     const el = rootRef.current;
     if (!el) {
@@ -181,6 +188,16 @@ export function TranscriptStream({
           >
             Commitments only
           </button>
+          <button
+            className={cx(
+              segmentButtonClass,
+              mode === "alerts" ? segmentButtonActiveClass : ""
+            )}
+            onClick={() => setMode("alerts")}
+            type="button"
+          >
+            Alert history
+          </button>
         </div>
       </div>
 
@@ -191,13 +208,33 @@ export function TranscriptStream({
           ref={rootRef}
           role="log"
         >
-          {listIsEmpty ? (
+          {listIsEmpty && (
             <p className="px-2 py-8 text-center text-fg-muted text-xs">
-              {mode === "commitments"
-                ? "No commitments classified in this meeting yet."
-                : "Transcript lines appear here as audio is processed."}
+              {mode === "commitments" &&
+                "No commitments classified in this meeting yet."}
+              {mode === "alerts" && "No alerts triggered in this meeting yet."}
+              {mode === "full" &&
+                "Transcript lines appear here as audio is processed."}
             </p>
-          ) : (
+          )}
+
+          {!listIsEmpty && mode === "alerts" && (
+            <div className="mx-auto flex max-w-2xl flex-col gap-3">
+              {alertHistory.map((alert) => (
+                <AlertCard
+                  alert={alert}
+                  expandedId={expandedAlertId}
+                  isHistoryView={true}
+                  key={alert.id}
+                  onToggleExpand={(id) =>
+                    setExpandedAlertId((prev) => (prev === id ? null : id))
+                  }
+                />
+              ))}
+            </div>
+          )}
+
+          {!listIsEmpty && mode !== "alerts" && (
             <>
               {visible.map((row) => (
                 <div
