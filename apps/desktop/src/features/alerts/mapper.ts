@@ -95,26 +95,40 @@ export function mapBackendAlertToMeetingAlert(
   const isShared = extractBoolean(data, "isShared", "shared");
   const routing = parseRouting(extractString(data, "routing"), isShared);
 
-  const evidenceObj =
-    data.evidence && typeof data.evidence === "object"
-      ? (data.evidence as Record<string, unknown>)
+  const speakerObj =
+    typeof data.speaker === "object" && data.speaker !== null
+      ? (data.speaker as Record<string, unknown>)
       : null;
-  const evidence = evidenceObj
-    ? {
-        utterance: extractString(evidenceObj, "utterance"),
-        reasoning: extractString(evidenceObj, "reasoning"),
-      }
-    : undefined;
 
-  const speakerTypeRaw = extractString(
-    data,
-    "speakerType",
-    "speakerRole"
-  ).toUpperCase();
+  const speakerName = speakerObj
+    ? extractString(speakerObj, "name")
+    : extractString(data, "speakerName", "speaker");
+
+  const speakerTypeRaw = speakerObj
+    ? extractString(speakerObj, "type").toUpperCase()
+    : extractString(data, "speakerType", "speakerRole").toUpperCase();
+
   const speakerType =
     speakerTypeRaw === "TEAM" || speakerTypeRaw === "EXTERNAL"
       ? speakerTypeRaw
       : undefined;
+
+  const reasoning = extractString(data, "reasoning");
+  const surfaceReason = extractString(data, "surfaceReason", "reason");
+
+  const evidenceObj =
+    data.evidence && typeof data.evidence === "object"
+      ? (data.evidence as Record<string, unknown>)
+      : null;
+  let evidence: { utterance: string; reasoning: string } | undefined;
+  if (evidenceObj) {
+    evidence = {
+      utterance: extractString(evidenceObj, "utterance"),
+      reasoning: extractString(evidenceObj, "reasoning") || reasoning,
+    };
+  } else if (reasoning) {
+    evidence = { utterance: "", reasoning };
+  }
 
   return {
     id,
@@ -122,9 +136,9 @@ export function mapBackendAlertToMeetingAlert(
     severity: parseSeverity(rawSeverity),
     title: extractString(data, "title", "summary", "message") || "Alert",
     message: extractString(data, "message", "description") || "",
-    surfaceReason: extractString(data, "surfaceReason", "reason"),
+    surfaceReason,
     suggestion: extractString(data, "suggestion", "action"),
-    speakerName: extractString(data, "speakerName", "speaker"),
+    speakerName,
     speakerType,
     routing,
     isShared,

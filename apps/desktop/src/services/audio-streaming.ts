@@ -441,7 +441,11 @@ function detectIncomingMessageType(
   if (typeof data.topicId === "string") {
     return "topic";
   }
-  if (typeof data.alertType === "string" || typeof data.level === "string") {
+  if (
+    typeof data.alertType === "string" ||
+    typeof data.level === "string" ||
+    (typeof data.category === "string" && typeof data.severity === "string")
+  ) {
     return "alert";
   }
   if (

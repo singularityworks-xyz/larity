@@ -56,6 +56,7 @@ export interface VadSignal {
   sessionId: string;
   clientSendTs: number;
   serverReceiveTs: number;
+  role?: "host" | "participant";
 }
 
 /**

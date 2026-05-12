@@ -97,12 +97,18 @@ function handleParticipantJoin(message: string): void {
       sessionId: string;
       userId: string;
       name?: string;
+      role?: "host" | "participant";
     };
     if (speakerManagerRef) {
       // In a real system, we'd fetch the user's name from DB or Redis.
       // For now, we just pass the userId as the name if we don't have it.
       const name = event.name || event.userId;
-      speakerManagerRef.registerTeamMember(event.sessionId, event.userId, name);
+      speakerManagerRef.registerTeamMember(
+        event.sessionId,
+        event.userId,
+        name,
+        event.role
+      );
     }
   } catch (error) {
     log.error({ err: error }, "Error handling participant join");

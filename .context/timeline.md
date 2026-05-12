@@ -374,7 +374,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 - [x] Implement diarization correlation on the server:
   - [x] On each Deepgram diarized word/utterance: check which team member's VAD was active at `word.startTime`
   - [ ] On channel 0 in dual-channel mode: assign host identity directly without VAD correlation
-  - [x] Use a ±300ms correlation window to account for clock drift and audio pipeline delay between mic and system audio
+  - [x] Use a **1500ms** correlation window (increased from 250ms) to account for the native VAD engine's latency (Silero requires ~300ms of audio before emitting a speaking event)
   - [x] If exactly one team member overlaps → assign: `channel + diarizationIndex → TEAM (userId)`
   - [x] If multiple overlap (simultaneous speech) → ambiguous, defer, accumulate more signals
   - [x] If no team member overlaps → `diarizationIndex → EXTERNAL`
@@ -425,9 +425,12 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - [x] If offset median shifts >500ms within a short window (likely sleep/resume), mark recent VAD untrusted for ~2s and defer assignment in that gap
 - [x] **Diarization index reassignment-merge (B.4):**
   - [x] Change `SpeakerIdentity.diarizationIndex` (single) → `SpeakerIdentity.diarizationIndices: Set<number>`
-  - [ ] Change `SpeakerIdentity.diarizationIndices` to channel-aware pairs: `{ channel: 0 | 1; index: number }[]`
+  - [x] Change `SpeakerIdentity.diarizationIndices` to channel-aware pairs: `{ channel: 0 | 1; index: number }[]`
   - [x] Restructure cache from `Map<diarizationIndex, SpeakerIdentity>` to `Map<diarizationIndex, speakerId>` → `Map<speakerId, SpeakerIdentity>` (single-channel baseline)
-  - [ ] Restructure cache key to `Map<channel:index, speakerId>` for dual-channel mode
+  - [x] Restructure cache key to `Map<channel:index, speakerId>` for dual-channel mode
+  - [x] **Dual-Channel Role Hardening (NEW):**
+    - [x] Implement role-based correlation filter: System Audio (indices 1000+) blocked from Host; Mic Audio (indices 0-999) blocked from Participants
+    - [x] Propagate `role` ("host" | "participant") in `VadSignal` and session state
   - [x] On a new, unseen diarization index: run VAD correlation → candidate userId; if an existing SpeakerIdentity has the same userId AND gap since its `lastUtteranceTs` > 15s, **merge** (add the new index to the existing identity's set)
   - [x] Do not emit a "new speaker" event for merged indices
   - [x] If gap < 15s and correlation conflicts → genuinely a different speaker → new SpeakerIdentity

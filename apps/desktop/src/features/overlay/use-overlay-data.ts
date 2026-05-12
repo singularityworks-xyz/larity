@@ -6,10 +6,7 @@ import {
 } from "../../services/audio-streaming";
 import { mapBackendAlertToMeetingAlert } from "../alerts/mapper";
 import { useAlertQueue } from "../alerts/use-alert-queue";
-import {
-  mapBackendTopicToLive,
-  mapSpeakerToParticipant,
-} from "../meeting-live/mappers";
+import { mapSpeakerToParticipant } from "../meeting-live/mappers";
 import type { LiveParticipant } from "../meeting-live/types";
 import type { OverlaySpeaker, OverlayTeammate } from "./types";
 
@@ -32,17 +29,17 @@ function parseOverlayParams() {
   };
 }
 
-// function extractStringField(
-//   data: Record<string, unknown>,
-//   ...keys: string[]
-// ): string | null {
-//   for (const key of keys) {
-//     if (typeof data[key] === "string") {
-//       return data[key] as string;
-//     }
-//   }
-//   return null;
-// }
+function extractStringField(
+  data: Record<string, unknown>,
+  ...keys: string[]
+): string | null {
+  for (const key of keys) {
+    if (typeof data[key] === "string") {
+      return data[key] as string;
+    }
+  }
+  return null;
+}
 
 // function extractBooleanField(
 //   data: Record<string, unknown>,
@@ -121,6 +118,12 @@ export function useOverlayData() {
   }, []);
 
   useEffect(() => {
+    if (import.meta.env.DEV) {
+      streamingClient.subscribe("*", (data) => {
+        console.debug("[overlay] ws message:", data);
+      });
+    }
+
     const unsubUtterance = streamingClient.subscribe("utterance", ((
       data: Record<string, unknown>
     ) => {
@@ -150,10 +153,12 @@ export function useOverlayData() {
     const unsubTopic = streamingClient.subscribe("topic", ((
       data: Record<string, unknown>
     ) => {
-      const topic = mapBackendTopicToLive(
-        data as unknown as Parameters<typeof mapBackendTopicToLive>[0]
-      );
-      setCurrentTopic(topic.label);
+      const label =
+        extractStringField(data, "label", "name", "title") ??
+        extractStringField(data, "summary");
+      if (label) {
+        setCurrentTopic(label);
+      }
       const raw = data as Record<string, unknown>;
       const constraints = raw.constraintsMentioned as unknown[];
       if (Array.isArray(constraints)) {
@@ -230,12 +235,22 @@ export function useOverlayData() {
     };
   }, []);
 
+  const displaySpeaker = useMemo(() => {
+    if (isMicActive) {
+      return {
+        name: params.clientName,
+        type: "TEAM",
+      } as OverlaySpeaker;
+    }
+    return currentSpeaker;
+  }, [isMicActive, currentSpeaker, params.clientName]);
+
   return {
     clientName: params.clientName,
     commitmentCount,
     connectedTeammates,
     constraintCount,
-    currentSpeaker,
+    currentSpeaker: displaySpeaker,
     currentTopic,
     dismissAlert,
     expandedAlertId,
