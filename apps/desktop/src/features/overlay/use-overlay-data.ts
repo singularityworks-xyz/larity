@@ -195,7 +195,8 @@ export function useOverlayData() {
         const participant = mapSpeakerToParticipant(
           raw.speaker as unknown as Parameters<
             typeof mapSpeakerToParticipant
-          >[0]
+          >[0],
+          params.userId
         );
         setCurrentSpeaker({
           name: participant.name,
@@ -252,7 +253,8 @@ export function useOverlayData() {
           const mapped = (data.participants as Record<string, unknown>[]).map(
             (raw) =>
               mapSpeakerToParticipant(
-                raw as unknown as Parameters<typeof mapSpeakerToParticipant>[0]
+                raw as unknown as Parameters<typeof mapSpeakerToParticipant>[0],
+                params.userId
               )
           );
           setParticipants(mapped);
@@ -267,7 +269,7 @@ export function useOverlayData() {
       unsubAlert();
       unsubParticipantEvent();
     };
-  }, [streamingClient]);
+  }, [streamingClient, params.userId]);
 
   useEffect(() => {
     if (!params.sessionId) {
