@@ -49,6 +49,8 @@ export interface LiveParticipant {
   type: "TEAM" | "EXTERNAL";
   confidence: number;
   isSelf: boolean;
+  isHost: boolean;
+  isConnected: boolean;
 }
 
 export type CommitmentStatus =
