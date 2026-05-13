@@ -9,8 +9,9 @@ Larity's meeting-mode pipeline is a four-tier classification cascade that proces
 ```
 Utterance arrives
   │
-  ├─ Pre-Filter   (<10ms, zero network)
-  │  Drops: acknowledgments, sub-3-word fragments, near-duplicates
+├─ Pre-Filter   (<10ms, zero network)
+   │  Drops: acknowledgments, sub-3-word utterances, near-duplicates
+   │  (STT accumulation + diarization-index merger prevent most fragments)
   │
   ├─ Speculative Cache Lookup   (<1ms)
   │  If we already ran Tier 2 on a near-identical partial: use it.
