@@ -6,6 +6,7 @@ export interface VadSignal {
   sessionId: string;
   clientSendTs: number;
   serverReceiveTs: number;
+  role?: "host" | "participant";
 }
 
 export interface VadSpeakerState {
@@ -58,7 +59,7 @@ export interface SpeakerIdentifierConfig {
 }
 
 export const DEFAULT_SPEAKER_CONFIG: SpeakerIdentifierConfig = {
-  correlationWindowMs: 250,
+  correlationWindowMs: 1500,
   lateCorrelationWindowMs: 2000,
   minConfirmationSignals: 1,
   provisionalTtlMs: 8000,

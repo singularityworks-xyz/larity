@@ -27,7 +27,8 @@ function handleVadMessage(
   clientSendTs: number,
   userId: string,
   sessionId: string,
-  serverReceiveTs: number
+  serverReceiveTs: number,
+  role?: "host" | "participant"
 ): void {
   publishVadSignal({
     type,
@@ -35,24 +36,62 @@ function handleVadMessage(
     sessionId,
     clientSendTs,
     serverReceiveTs,
+    role,
   }).catch((err) => {
     log.error({ err, sessionId }, "Failed to publish VAD signal");
   });
 }
 
 function handleParsedVadPayload(
-  payload: { type: string; clientSendTs?: number; ts?: number },
+  payload: {
+    type: string;
+    clientSendTs?: number;
+    ts?: number;
+    clientTs?: number;
+  },
   userId: string,
   sessionId: string,
-  ts: number
+  ts: number,
+  role?: "host" | "participant"
 ): void {
+  if (payload.type === "audio_stream_start") {
+    const { clientTs, clientSendTs } = payload;
+    if (
+      Number.isFinite(clientTs) &&
+      Number.isFinite(clientSendTs) &&
+      Number.isFinite(ts)
+    ) {
+      // Estimate one-way network latency as half of the observed RTT
+      // (Server receive time - Client send time)
+      const networkLatency = Math.max(
+        0,
+        Math.min(500, (ts - clientSendTs) / 2)
+      );
+      const serverAudioStartTs = clientTs + networkLatency;
+
+      log.info(
+        {
+          sessionId,
+          serverAudioStartTs,
+          clientTs,
+          clientSendTs,
+          networkLatency,
+        },
+        "Syncing audio stream start with network-aware offset"
+      );
+      sessionManager.setAudioStreamStart(sessionId, serverAudioStartTs);
+    }
+    return;
+  }
+
   if (payload.type === "vad_speaking" || payload.type === "vad_silence") {
     handleVadMessage(
-      payload.type,
+      payload.type as "vad_speaking" | "vad_silence",
       extractClientSendTs(payload, ts),
       userId,
       sessionId,
-      ts
+      ts,
+      role
     );
   }
 }
@@ -94,13 +133,13 @@ export function onMessage(
       clientSendTs?: number;
       ts?: number;
     };
-    handleParsedVadPayload(payload, userId, sessionId, ts);
+    handleParsedVadPayload(payload, userId, sessionId, ts, role);
     return;
   }
 
   if (typeof message === "string") {
     try {
-      handleParsedVadPayload(JSON.parse(message), userId, sessionId, ts);
+      handleParsedVadPayload(JSON.parse(message), userId, sessionId, ts, role);
     } catch {
       log.warn("Received invalid text frame, ignoring");
     }

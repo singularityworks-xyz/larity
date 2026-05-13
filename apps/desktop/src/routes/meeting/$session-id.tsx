@@ -1,8 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { AlertCard } from "../../features/alerts/alert-card";
+import { mapBackendAlertToMeetingAlert } from "../../features/alerts/mapper";
+import { useAlertQueue } from "../../features/alerts/use-alert-queue";
 import { useAuthSession } from "../../features/auth/use-session";
+import { AmbientStatusBar } from "../../features/meeting-live/ambient-status-bar";
 import {
   mapBackendCommitmentToLive,
   mapBackendTopicToLive,
@@ -144,6 +148,9 @@ export function MeetingPage() {
   const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
   const [alertsMuted, setAlertsMuted] = useState(false);
   const [rememberBanner, setRememberBanner] = useState<string | null>(null);
+  const [constraintCount, setConstraintCount] = useState(0);
+  const [ambientTopic, setAmbientTopic] = useState<string | null>(null);
+  const [isStreamActive, setIsStreamActive] = useState(true);
 
   const [status, setStatus] = useState<AudioStatusSnapshot | null>(null);
   const [framesReceived, setFramesReceived] = useState(0);
@@ -156,14 +163,42 @@ export function MeetingPage() {
   const [micDeviceId, setMicDeviceId] = useState<string | null>(null);
   const [sysDeviceId, setSysDeviceId] = useState<string | null>(null);
 
+  const alertQueue = useAlertQueue();
+  const addAlertRef = useRef(alertQueue.addAlert);
+  addAlertRef.current = alertQueue.addAlert;
+  const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
+
+  const teamCommitmentCount = useMemo(
+    () =>
+      commitments.filter((c) =>
+        participants.some((p) => p.id === c.speakerId && p.type === "TEAM")
+      ).length,
+    [commitments, participants]
+  );
+
+  const externalCommitmentCount = useMemo(
+    () =>
+      commitments.filter((c) =>
+        participants.some((p) => p.id === c.speakerId && p.type === "EXTERNAL")
+      ).length,
+    [commitments, participants]
+  );
+
+  const contradictionCount = useMemo(
+    () => commitments.filter((c) => c.status === "CONTRADICTED").length,
+    [commitments]
+  );
+
   const refreshStatus = useCallback(async (): Promise<void> => {
     try {
       const nextStatus = await invoke<AudioStatusSnapshot>(
         "audio_capture_status"
       );
       setStatus(nextStatus);
+      setIsStreamActive(nextStatus?.active ?? false);
     } catch (error) {
       setWarning(`Unable to read capture status: ${String(error)}`);
+      setIsStreamActive(false);
     }
   }, []);
 
@@ -351,7 +386,8 @@ export function MeetingPage() {
         const participant = mapSpeakerToParticipant(
           raw.speaker as unknown as Parameters<
             typeof mapSpeakerToParticipant
-          >[0]
+          >[0],
+          userId
         );
         const idx = prev.findIndex((p) => p.id === participant.id);
         if (idx >= 0) {
@@ -376,6 +412,20 @@ export function MeetingPage() {
         }
         return [...prev, topic];
       });
+      setActiveTopicId((prev) => {
+        if (prev === topic.id) {
+          return prev;
+        }
+        return topic.id;
+      });
+      setAmbientTopic(topic.label);
+      const rawConstraints = data as unknown as {
+        constraintsMentioned?: unknown[];
+      };
+      const mentioned = rawConstraints.constraintsMentioned;
+      if (Array.isArray(mentioned) && mentioned.length > 0) {
+        setConstraintCount((prev) => prev + mentioned.length);
+      }
     });
 
     const unsubLedger = streamingClient.subscribe("ledger", (data) => {
@@ -445,14 +495,22 @@ export function MeetingPage() {
       });
     });
 
+    const unsubAlert = streamingClient.subscribe("alert", (data) => {
+      const alert = mapBackendAlertToMeetingAlert(data);
+      if (alert) {
+        addAlertRef.current(alert);
+      }
+    });
+
     return () => {
       unsubUtterance();
       unsubTopic();
       unsubLedger();
       unsubSttPartial();
       unsubSttFinal();
+      unsubAlert();
     };
-  }, [streamingClient]);
+  }, [streamingClient, userId]);
 
   useEffect(() => {
     if (isHost) {
@@ -595,6 +653,7 @@ export function MeetingPage() {
         clientName={clientDisplayName}
         isEndingBusy={isBusy}
         isHost={isHost}
+        isStreamActive={isStreamActive}
         meetingTitle={meetingDisplayTitle}
         onEndMeeting={() => {
           leaveMeeting().catch(() => {
@@ -625,6 +684,16 @@ export function MeetingPage() {
         </div>
       ) : null}
 
+      <AmbientStatusBar
+        constraintCount={constraintCount}
+        contradictionCount={contradictionCount}
+        currentTopic={ambientTopic}
+        externalCommitmentCount={externalCommitmentCount}
+        isStreamActive={isStreamActive}
+        participants={participants}
+        teamCommitmentCount={teamCommitmentCount}
+      />
+
       <TopicsTimeline
         activeTopicId={activeTopicId}
         meetingStartedAtMs={meetingStartedAtMs}
@@ -632,8 +701,9 @@ export function MeetingPage() {
         topics={topics}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+      <div className="relative flex min-h-0 flex-1 flex-col md:flex-row">
         <TranscriptStream
+          alertHistory={alertQueue.alertHistory}
           livePartial={livePartial}
           meetingStartedAtMs={meetingStartedAtMs}
           onConsumedScrollTarget={clearScrollTarget}
@@ -641,6 +711,22 @@ export function MeetingPage() {
           scrollTargetId={scrollTargetId}
           utterances={utterances}
         />
+
+        {!alertsMuted && alertQueue.visibleAlerts.length > 0 && (
+          <div className="absolute top-4 left-1/2 z-50 flex w-80 max-w-full -translate-x-1/2 flex-col gap-2 px-4 md:left-4 md:translate-x-0">
+            {alertQueue.visibleAlerts.map((alert) => (
+              <AlertCard
+                alert={alert}
+                expandedId={expandedAlertId}
+                key={alert.id}
+                onDismiss={() => alertQueue.dismissAlert(alert.id)}
+                onToggleExpand={(id) =>
+                  setExpandedAlertId((prev) => (prev === id ? null : id))
+                }
+              />
+            ))}
+          </div>
+        )}
 
         <MeetingSidebar
           commitments={commitments}

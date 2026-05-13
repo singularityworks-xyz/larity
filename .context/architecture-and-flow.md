@@ -180,7 +180,8 @@ This is NOT a single-user experience. Multiple team members share a session.
 * The server maintains a **rolling-median clock offset per client** (last 30 samples) so VAD timestamps align with the server's audio ingestion clock
 * Speaker mapping is **hybrid**: STT partials create short-lived provisional diarization→user candidates, STT finals confirm authoritative identity, and late VAD can still trigger retroactive correction.
 * **Utterance timestamps use speech time** (`connectionStartTime + Deepgram.start * 1000`) for VAD correlation, not processing time (`Date.now()`). This eliminates the 3–8 second gap between VAD intervals and utterance timestamps that caused missed correlations for short utterances.
-* The server **correlates offset-corrected VAD timestamps against Deepgram channel-1 diarization indices** (±250ms window after offset correction)
+* **Dual-Channel Hardening**: The server enforces strict role-to-channel isolation. Host VAD only correlates with Channel 0 (indices 0-999); Participant VAD only correlates with Channel 1 (indices 1000-1999). This prevents identity bleeding from system audio (YouTube/conferencing) into the host's identity.
+* The server **correlates offset-corrected VAD timestamps against diarization indices** (±1500ms window to account for VAD engine lag).
 * Deepgram reassigns diarization indices after silences; the server merges a new channel/index pair onto an existing `SpeakerIdentity` when VAD correlation points at the same userId and the gap since that identity last spoke exceeds the merge threshold (default 15s). `SpeakerIdentity` therefore owns a **set** of channel/index pairs.
 * Matched → TEAM (with userId) | Unmatched → EXTERNAL (client)
 * External speaker names from calendar data (best-effort)

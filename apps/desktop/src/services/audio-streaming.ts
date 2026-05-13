@@ -114,7 +114,8 @@ export class AudioStreamingClient {
   private role: "host" | "participant";
   private readonly backpressureThresholdBytes: number;
   private readonly maxPendingFrames: number;
-  private readonly pendingFrames: Uint8Array[] = [];
+  private readonly pendingFrames: { data: Uint8Array; ts: number }[] = [];
+  private streamStarted = false;
   private readonly log = createLogger("audio-streaming");
   private readonly messageHandlers = new Map<
     IncomingMessageType | "*",
@@ -172,6 +173,7 @@ export class AudioStreamingClient {
       this.log.info("WebSocket connected");
       if (this.socket === ws) {
         this.warning = "";
+        this.streamStarted = false; // Reset stream state on new connection
       }
     };
 
@@ -243,6 +245,8 @@ export class AudioStreamingClient {
   }
 
   disconnect(): void {
+    this.pendingFrames.length = 0;
+    this.streamStarted = false;
     if (this.socket) {
       this.log.info("Disconnecting socket manually");
       this.socket.close();
@@ -281,11 +285,7 @@ export class AudioStreamingClient {
     const payload = event.payload;
     this.metrics.lastFrameTs = payload.ts;
 
-    if (
-      !this.socket ||
-      this.socket.readyState === WebSocket.CLOSED ||
-      this.socket.readyState === WebSocket.CLOSING
-    ) {
+    if (!this.isSocketAvailable()) {
       this.metrics.framesDropped += 1;
       this.warning =
         "Realtime socket is not connected. Frames are being dropped.";
@@ -295,14 +295,32 @@ export class AudioStreamingClient {
     const frameBytes = ensureTaggedAudioFrame(
       decodeBase64ToBytes(payload.data)
     );
-    this.pendingFrames.push(frameBytes);
+    this.pendingFrames.push({ data: frameBytes, ts: payload.ts });
 
+    const dropped = this.manageBackpressure();
+    const sent = this.flushPending(payload.sessionId);
+
+    this.updateWarning(sent, dropped);
+
+    return { sent, dropped };
+  }
+
+  private isSocketAvailable(): boolean {
+    return (
+      !!this.socket &&
+      this.socket.readyState !== WebSocket.CLOSED &&
+      this.socket.readyState !== WebSocket.CLOSING
+    );
+  }
+
+  private manageBackpressure(): boolean {
     let dropped = false;
+    const isSocketOpen = this.socket?.readyState === WebSocket.OPEN;
 
     if (
-      this.socket.readyState === WebSocket.OPEN &&
+      isSocketOpen &&
       shouldDropFrame(
-        this.socket.bufferedAmount,
+        this.socket?.bufferedAmount ?? 0,
         this.backpressureThresholdBytes
       )
     ) {
@@ -317,34 +335,65 @@ export class AudioStreamingClient {
       this.pendingFrames.shift();
       this.metrics.framesDropped += 1;
       dropped = true;
-      if (this.socket.readyState === WebSocket.OPEN) {
+      if (isSocketOpen) {
         this.warning =
           "Network heartbeat warning: upload is congested; dropping oldest realtime audio frames.";
       }
     }
+    return dropped;
+  }
 
+  private flushPending(sessionId: string): boolean {
     let sent = false;
-    if (this.socket.readyState === WebSocket.OPEN) {
-      while (
-        this.pendingFrames.length > 0 &&
-        !shouldDropFrame(
-          this.socket.bufferedAmount,
-          this.backpressureThresholdBytes
-        )
-      ) {
-        const nextFrame = this.pendingFrames.shift();
-        if (!nextFrame) {
-          break;
-        }
-        this.socket.send(nextFrame as BufferSource);
-        this.metrics.framesSent += 1;
-        sent = true;
+    if (this.socket?.readyState !== WebSocket.OPEN) {
+      return sent;
+    }
+
+    while (
+      this.pendingFrames.length > 0 &&
+      !shouldDropFrame(
+        this.socket.bufferedAmount,
+        this.backpressureThresholdBytes
+      )
+    ) {
+      const nextFrame = this.pendingFrames.shift();
+      if (!nextFrame) {
+        break;
       }
+
+      if (!this.streamStarted) {
+        this.sendStreamStart(sessionId, nextFrame.ts);
+      }
+
+      this.socket.send(nextFrame.data as BufferSource);
+      this.metrics.framesSent += 1;
+      sent = true;
+    }
+    return sent;
+  }
+
+  private sendStreamStart(sessionId: string, clientTs: number): void {
+    this.socket?.send(
+      JSON.stringify({
+        type: "audio_stream_start",
+        sessionId,
+        userId: this.userId,
+        clientTs,
+        clientSendTs: Date.now(),
+      })
+    );
+    this.streamStarted = true;
+  }
+
+  private updateWarning(sent: boolean, dropped: boolean): void {
+    if (sent && this.warning !== "") {
+      this.warning = "";
+      return;
     }
 
     if (
       !dropped &&
-      this.socket.readyState === WebSocket.OPEN &&
+      this.socket?.readyState === WebSocket.OPEN &&
       this.pendingFrames.length > 0 &&
       shouldDropFrame(
         this.socket.bufferedAmount,
@@ -354,12 +403,6 @@ export class AudioStreamingClient {
       this.warning =
         "Network heartbeat warning: upload is congested; dropping oldest realtime audio frames.";
     }
-
-    if (sent && this.warning !== "") {
-      this.warning = "";
-    }
-
-    return { sent, dropped };
   }
 
   sendVadSignal(type: "vad_speaking" | "vad_silence", sessionId: string): void {
@@ -400,7 +443,11 @@ function detectIncomingMessageType(
   if (typeof data.topicId === "string") {
     return "topic";
   }
-  if (typeof data.alertType === "string" || typeof data.level === "string") {
+  if (
+    typeof data.alertType === "string" ||
+    typeof data.level === "string" ||
+    (typeof data.category === "string" && typeof data.severity === "string")
+  ) {
     return "alert";
   }
   if (

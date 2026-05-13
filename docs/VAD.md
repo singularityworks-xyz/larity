@@ -81,6 +81,7 @@ interface ParticipantJoinEvent {
   sessionId: string;
   userId: string;      // Known — the user is authenticated
   name?: string;
+  role?: "host" | "participant";
 }
 ```
 
@@ -103,6 +104,7 @@ interface VadSignal {
   sessionId: string;
   clientSendTs: number; // Timestamp on the desktop machine
   serverReceiveTs: number;
+  role?: "host" | "participant"; // host (mic) vs participant (system)
 }
 ```
 
@@ -120,7 +122,7 @@ vadState.set("user-alice", { isSpeaking: true, startTs: 1777905000000 });
 This is the key mapping that survives Deepgram's diarization resets:
 
 ```ts
-// diarizationIndex → speakerId  (e.g., 0 → "spk_0", 1 → "spk_1")
+// diarizationIndex → speakerId  (e.g., 0 → "spk_0", 1001 → "spk_1")
 private readonly indexToSpeakerId: Map<number, string> = new Map();
 ```
 
@@ -148,10 +150,25 @@ interface SpeakerIdentity {
   type: "TEAM" | "EXTERNAL";
   userId?: string;        // e.g. "user-alice" (only for TEAM)
   name: string;           // e.g. "Alice" or "Speaker 2"
-  diarizationIndices: number[];
+  diarizationIndices: number[]; // Includes channel offsets (e.g. 1000+)
   isCurrentUser: boolean;
   confidence: number;
 }
+
+---
+
+## Multi-Channel Namespace Isolation
+
+Larity captures two logical sources:
+- **Channel 0 (Mic)**: The host's own microphone.
+- **Channel 1 (System)**: The meeting loopback (remote participants + clients).
+
+To prevent ID collisions in `SpeakerIdentifier`, the `diarizationIndex` is offset by channel:
+- **Mic Indices**: `0-999`
+- **System Indices**: `1000-1999` (e.g., Deepgram index `0` on channel 1 becomes `1000`).
+
+This ensures that a client speaking on the system channel never conflicts with the host speaking on the mic channel.
+
 ```
 
 ---
@@ -183,29 +200,38 @@ If we've seen this diarization index before and mapped it, we skip all VAD corre
 
 ```ts
 private correlate(diarizationIndex, utteranceTimestamp): string | undefined {
-  const speakingMembers: string[] = [];
+  const speakingMembers = this.getActiveMembersAt(utteranceTimestamp);
 
-  for (const [userId, state] of this.vadState) {
-    if (!state.isSpeaking) continue;
-
-    // Does this VAD signal align with the utterance timestamp?
-    const speakingDuration = utteranceTimestamp - state.startTs;
-    if (speakingDuration < -this.config.correlationWindowMs) continue;
-
-    speakingMembers.push(userId);
-  }
+  // Hard Constraint: Role-Based Filtering
+  // 1. System audio (>= 1000) should NEVER map to the host.
+  // 2. Mic audio (< 1000) should NEVER map to a remote participant.
+  const validMembers = speakingMembers.filter((userId) => {
+    const member = this.teamMembers.get(userId);
+    if (!member) return false;
+    return isChannelRoleMatch(diarizationIndex, member.role);
+  });
 
   // Exactly one person was speaking → potential match
-  if (speakingMembers.length === 1) {
-    const userId = speakingMembers[0];
+  if (validMembers.length === 1) {
+    const userId = validMembers[0];
     const count = incrementConfirmationCount(userId, diarizationIndex);
     if (count >= minConfirmationSignals) {
       return userId;  // Confirmed!
     }
   }
 
-  // Zero or multiple speakers speaking → can't correlate
   return undefined;
+}
+
+/**
+ * Hardened role-to-channel isolation:
+ * - Host (Mic) is always on diarization index 0-999 (Channel 0).
+ * - Participants (System) are always on diarization index 1000+ (Channel 1).
+ */
+function isChannelRoleMatch(diarizationIndex: number, role?: string): boolean {
+  if (!role) return true;
+  const isSystemChannel = diarizationIndex >= 1000;
+  return role === "host" ? !isSystemChannel : isSystemChannel;
 }
 ```
 
@@ -214,8 +240,12 @@ private correlate(diarizationIndex, utteranceTimestamp): string | undefined {
 | Condition | Behavior |
 |-----------|----------|
 | 0 team members speaking | No correlation → `EXTERNAL` |
-| 1 team member speaking | Increment confirmation counter; if ≥ threshold → **TEAM match** |
+| 1 team member speaking (role match) | Increment confirmation counter; if ≥ threshold → **TEAM match** |
+| 1 team member speaking (role mismatch) | Discarded → `EXTERNAL` (prevents system audio bleeding into mic) |
 | 2+ team members speaking | Ambiguous → skip; log debug warning |
+
+**Correlation Window**: Increased to **1500ms** to account for native VAD detection lag (Silero requires ~300ms of audio before emitting a speaking event).
+
 
 ### Step 3: Create Identity
 
@@ -344,25 +374,28 @@ This means the pipeline may process the utterance **twice**: once as EXTERNAL, a
 
 ---
 
-## Clock Offset Tracking
+### 1. Clock Synchronization Handshake
 
-Desktop clocks drift. A VAD signal's `clientSendTs` (desktop time) and `serverReceiveTs` (server time) can diverge. The `ClockOffsetTracker` solves this by maintaining a median offset per user:
+When the desktop app starts streaming audio, it sends a control event `audio_stream_start` containing:
+- `clientTs`: Local wall-clock time on the desktop.
+- `clientSendTs`: Precise timestamp when the packet was sent.
 
-```ts
-class ClockOffsetTracker {
-  addSample(userId, clientTs, serverTs): void;
-  getMedianOffset(userId): number;
-  isUntrusted(): boolean;  // True until enough samples collected
-}
-```
+The server calculates `networkLatency = (serverReceiveTs - clientSendTs) / 2` and anchors the STT stream start at `serverAudioStartTs = clientTs + networkLatency`. This ensures that even with high one-way latency, the STT timeline is correctly anchored to the client's wall clock.
+
+### 2. Sliding Window Median Filter
+
+Desktop clocks drift and network jitter is random. The `ClockOffsetTracker` handles this by maintaining a **sliding window median** (last 30 samples) per user:
+
+1. **Sampling**: Every VAD signal includes `clientSendTs`.
+2. **Offset Calculation**: `offset = serverReceiveTs - clientSendTs - estimatedRTT`.
+3. **Median Smoothing**: The median of the window is used as the authoritative offset. Median is robust to sudden network "spikes" and jitter.
+4. **Drift Detection**: If the median shifts by more than 500ms suddenly, the clock is marked as `untrusted` for 2 seconds to prevent miscorrelation.
 
 The adjusted timestamp is used for all VAD-to-utterance correlation:
 
 ```ts
 const adjustedTs = clientSendTs + medianOffset;
 ```
-
-The system is designed to be conservative — `isUntrusted()` returns `true` until enough samples are collected, preventing false correlations during the clock synchronization phase.
 
 ---
 
@@ -494,6 +527,9 @@ The realtime server published VAD signals to `meeting.vad.<sessionId>` but meeti
 | Decision | Rationale |
 |----------|-----------|
 | VAD over voice embeddings | No ML model, no Python, no enrollment. Works for any speaker instantly. |
+| Role-Based Gating | Prevents host mic identity from bleeding into system audio loopback. |
+| Dual-Channel Isolation | Explicitly separates Mic (0-999) from System (1000+) diarization indices. |
+| 1500ms Correlation Window | Accommodates Silero VAD engine latency and network jitter. |
 | Per-session `indexToSpeakerId` | Survives Deepgram diarization resets. Once index is mapped, it stays mapped. |
 | Confirmation counters | Prevents one-off VAD-Deepgram alignment from causing false positives. |
 | Ring buffer + retroactive fix | Solves the inherent network race between VAD (desktop→Redis) and audio (direct). |

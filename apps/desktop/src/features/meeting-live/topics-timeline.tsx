@@ -37,20 +37,33 @@ export function TopicsTimeline({
   }
 
   return (
-    <div className="flex h-10 shrink-0 items-stretch gap-0 overflow-x-auto border-border border-b bg-bg-elevated">
+    <div className="scrollbar-none flex h-10 shrink-0 items-stretch gap-0 overflow-x-auto border-border border-b bg-bg-elevated">
       {topics.map((topic) => {
         const isActive = topic.id === activeTopicId;
         return (
           <button
+            aria-pressed={isActive}
             className={cx(
-              "flex min-w-[120px] shrink-0 flex-col justify-center border-border-subtle border-r px-3 text-left transition-colors duration-150 ease-out last:border-r-0 hover:bg-bg-subtle",
-              isActive && "border-l-2 border-l-accent bg-accent-subtle"
+              "relative flex min-w-[120px] shrink-0 flex-col justify-center border-border-subtle border-r px-3 text-left transition-all duration-200 ease-out last:border-r-0 hover:bg-bg-subtle",
+              isActive &&
+                "border-l-2 border-l-accent bg-accent-subtle/50 hover:bg-accent-subtle"
             )}
             key={topic.id}
             onClick={() => onSelectTopic(topic)}
             type="button"
           >
-            <span className="truncate font-medium text-fg text-xs">
+            {isActive ? (
+              <span
+                aria-hidden
+                className="absolute inset-x-0 bottom-0 h-[2px] bg-accent transition-all duration-300"
+              />
+            ) : null}
+            <span
+              className={cx(
+                "truncate font-medium text-xs transition-colors duration-200",
+                isActive ? "text-fg" : "text-fg-muted"
+              )}
+            >
               {topic.label}
             </span>
             <span className="font-mono text-[10px] text-fg-subtle tabular-nums">

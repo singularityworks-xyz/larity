@@ -37,8 +37,10 @@ export class SpeakerIdentifier {
   private readonly confirmationCounts: Map<string, Map<number, number>> =
     new Map();
   private readonly userIdToSpeakerId: Map<string, string> = new Map();
-  private readonly teamMembers: Map<string, { userId: string; name: string }> =
-    new Map();
+  private readonly teamMembers: Map<
+    string,
+    { userId: string; name: string; role?: "host" | "participant" }
+  > = new Map();
 
   private readonly clockTracker = new ClockOffsetTracker();
 
@@ -47,8 +49,17 @@ export class SpeakerIdentifier {
     this.config = { ...DEFAULT_SPEAKER_CONFIG, ...config };
   }
 
-  registerTeamMember(userId: string, name: string): void {
-    this.teamMembers.set(userId, { userId, name });
+  registerTeamMember(
+    userId: string,
+    name: string,
+    role?: "host" | "participant"
+  ): void {
+    const existing = this.teamMembers.get(userId);
+    this.teamMembers.set(userId, {
+      userId,
+      name,
+      role: role ?? existing?.role,
+    });
 
     const counter = this.userIdToSpeakerId.size;
     if (!this.userIdToSpeakerId.has(userId)) {
@@ -67,6 +78,7 @@ export class SpeakerIdentifier {
         this.teamMembers.set(mapping.speaker.userId, {
           userId: mapping.speaker.userId,
           name: mapping.speaker.name,
+          role: mapping.speaker.isCurrentUser ? "host" : "participant",
         });
         this.userIdToSpeakerId.set(mapping.speaker.userId, speakerId);
 
@@ -84,16 +96,16 @@ export class SpeakerIdentifier {
   }
 
   processVadSignal(signal: VadSignal): void {
-    const { userId, type, clientSendTs, serverReceiveTs } = signal;
+    const { userId, type, clientSendTs, serverReceiveTs, role } = signal;
 
     let teamMember = this.teamMembers.get(userId);
     if (!teamMember) {
       // If participant.join was missed, trust authenticated VAD userId and
       // register a minimal team identity so VAD correlation still works.
-      this.registerTeamMember(userId, userId);
+      this.registerTeamMember(userId, userId, role);
       teamMember = this.teamMembers.get(userId);
       log.info(
-        { sessionId: this.sessionId, userId },
+        { sessionId: this.sessionId, userId, role },
         "Auto-registered team member from VAD signal"
       );
     }
@@ -211,10 +223,40 @@ export class SpeakerIdentifier {
     utteranceTimestamp: number,
     options: { useConfirmation: boolean }
   ): string | undefined {
-    const speakingMembers = this.getActiveMembersAt(utteranceTimestamp);
+    let speakingMembers = this.getActiveMembersAt(utteranceTimestamp);
 
-    if (speakingMembers.length === 1) {
-      const userId = speakingMembers[0] as string;
+    // DUAL-CHANNEL CORRELATION HARDENING
+    // Ensure that System Audio (>= 1000) does not correlate with the Host's VAD
+    // and Mic Audio (< 1000) does not correlate with a Remote Participant's VAD.
+    speakingMembers = speakingMembers.filter((userId) => {
+      const member = this.teamMembers.get(userId);
+      const isHost = member?.role === "host";
+      const isParticipant = member?.role === "participant";
+
+      if (diarizationIndex >= 1000 && isHost) {
+        return false; // System audio should never map to the Host
+      }
+      if (diarizationIndex < 1000 && isParticipant) {
+        return false; // Mic audio should never map to a Remote Participant
+      }
+      return true;
+    });
+
+    if (speakingMembers.length === 0) {
+      return undefined;
+    }
+
+    // Hardened filtering: only consider members whose role matches the physical channel
+    const validMembers = speakingMembers.filter((userId) => {
+      const member = this.teamMembers.get(userId);
+      if (!member) {
+        return false;
+      }
+      return isChannelRoleMatch(diarizationIndex, member.role);
+    });
+
+    if (validMembers.length === 1) {
+      const userId = validMembers[0] as string;
 
       if (!options.useConfirmation) {
         return userId;
@@ -228,10 +270,23 @@ export class SpeakerIdentifier {
       }
     }
 
-    if (speakingMembers.length > 1) {
+    if (speakingMembers.length === 1 && validMembers.length === 0) {
+      const userId = speakingMembers[0] as string;
+      const member = this.teamMembers.get(userId);
+      log.info(
+        { diarizationIndex, userId, role: member?.role },
+        "Correlation discarded: role-channel mismatch"
+      );
+    }
+
+    if (validMembers.length > 1) {
       log.debug(
-        { diarizationIndex, speakingMembers, count: speakingMembers.length },
-        "Ambiguous correlation: multiple speakers active"
+        {
+          diarizationIndex,
+          speakingMembers: validMembers,
+          count: validMembers.length,
+        },
+        "Ambiguous correlation: multiple speakers active after role filter"
       );
     }
 
@@ -383,8 +438,6 @@ export class SpeakerIdentifier {
   ): SpeakerIdentity {
     let speakerId = this.userIdToSpeakerId.get(userId);
 
-    // if there's a conflict or this user already has an identity but we're creating a new one (gap < 15s)
-    // we should make sure the ID is unique for this session
     if (!speakerId || this.speakerMappings.has(speakerId)) {
       speakerId = `spk_${diarizationIndex}_${Date.now()}`;
     }
@@ -539,4 +592,29 @@ export class SpeakerIdentifier {
       }
     }
   }
+}
+
+/**
+ * Hardened role-to-channel isolation:
+ * - System Audio (indices 1000+) MUST NOT correlate to the Host (Mic).
+ * - Mic Audio (indices 0-999) MUST NOT correlate to a Participant (System).
+ */
+function isChannelRoleMatch(
+  diarizationIndex: number,
+  role?: "host" | "participant"
+): boolean {
+  if (!role) {
+    return true; // Default to permissive if role unknown
+  }
+
+  const isSystemChannel = diarizationIndex >= 1000;
+  if (role === "host") {
+    // Host must NOT be on a system channel
+    return !isSystemChannel;
+  }
+  if (role === "participant") {
+    // Participant MUST be on a system channel (as their audio is captured via system loopback)
+    return isSystemChannel;
+  }
+  return true;
 }

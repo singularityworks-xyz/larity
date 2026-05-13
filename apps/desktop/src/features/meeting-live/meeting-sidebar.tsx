@@ -1,4 +1,4 @@
-import { ChevronDown, Pencil } from "lucide-react";
+import { ChevronDown, Crown, Pencil } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   buttonClass,
@@ -8,6 +8,7 @@ import {
   metricChipClass,
   textareaClass,
 } from "../../lib/ui";
+import { ParticipantIdentificationStatus } from "./participant-avatars";
 import type { LiveCommitment, LiveParticipant } from "./types";
 
 const WHITESPACE_SPLIT = /\s+/;
@@ -54,16 +55,6 @@ function statusBadgeClass(status: LiveCommitment["status"]): string {
     default:
       return metricChipClass("muted");
   }
-}
-
-function confidenceDotClass(confidence: number): string {
-  if (confidence >= 0.85) {
-    return "bg-success-fg";
-  }
-  if (confidence >= 0.6) {
-    return "bg-warning-fg";
-  }
-  return "bg-fg-subtle";
 }
 
 function formatEvidenceClock(meetingStartMs: number, ts: number): string {
@@ -139,7 +130,12 @@ export function MeetingSidebar({
 
     return (
       <div className="group flex items-start gap-2 py-2 first:pt-0" key={p.id}>
-        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-1)] border border-border bg-bg-subtle font-semibold text-[10px] text-fg">
+        <div
+          className={cx(
+            "flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-1)] border bg-bg-subtle font-semibold text-[10px] text-fg",
+            p.isSelf ? "border-accent/30 bg-accent-subtle" : "border-border"
+          )}
+        >
           {initials || "?"}
         </div>
         <div className="min-w-0 flex-1">
@@ -167,6 +163,12 @@ export function MeetingSidebar({
               <span className="truncate font-medium text-[13px] text-fg">
                 {display}
               </span>
+              {p.isHost ? (
+                <span className="inline-flex items-center gap-0.5 rounded-[4px] bg-accent-subtle/60 px-1 py-px font-medium text-[9px] text-accent leading-none">
+                  <Crown aria-hidden className="h-2.5 w-2.5" strokeWidth={2} />
+                  Host
+                </span>
+              ) : null}
               {p.isSelf ? (
                 <span className="rounded-[4px] bg-accent-subtle px-1.5 py-px font-medium text-[10px] text-accent">
                   You
@@ -175,11 +177,12 @@ export function MeetingSidebar({
               <span className="rounded-[4px] border border-border-strong bg-transparent px-1.5 py-px font-medium text-[10px] text-fg-muted leading-snug">
                 {p.type}
               </span>
+              <ParticipantIdentificationStatus participant={p} />
               <span
-                aria-label={`Identification confidence ${Math.round(p.confidence * 100)} percent`}
+                aria-label={`Connection ${p.isConnected ? "active" : "disconnected"}`}
                 className={cx(
-                  "inline-block h-1 w-1 shrink-0 rounded-[2px]",
-                  confidenceDotClass(p.confidence)
+                  "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+                  p.isConnected ? "bg-success-fg" : "bg-fg-subtle/40"
                 )}
                 role="img"
               />

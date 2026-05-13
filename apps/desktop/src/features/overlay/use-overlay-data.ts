@@ -4,19 +4,14 @@ import {
   AudioStreamingClient,
   type IncomingMessageHandler,
 } from "../../services/audio-streaming";
-import {
-  mapBackendTopicToLive,
-  mapSpeakerToParticipant,
-} from "../meeting-live/mappers";
+import { mapBackendAlertToMeetingAlert } from "../alerts/mapper";
+import { useAlertQueue } from "../alerts/use-alert-queue";
+import { mapSpeakerToParticipant } from "../meeting-live/mappers";
 import type { LiveParticipant } from "../meeting-live/types";
-import type { OverlayAlert, OverlaySpeaker, OverlayTeammate } from "./types";
+import type { OverlaySpeaker, OverlayTeammate } from "./types";
 
-const MAX_VISIBLE_ALERTS = 2;
 const DEFAULT_WS_URL = import.meta.env.VITE_WS_URL ?? "ws://127.0.0.1:9001";
 const WHITESPACE_RE = /\s+/;
-
-const CRITICAL_LEVELS = new Set(["critical", "error", "danger", "high"]);
-const WARNING_LEVELS = new Set(["warning", "warn", "medium"]);
 
 function parseOverlayParams() {
   const params = new URLSearchParams(window.location.search);
@@ -46,76 +41,17 @@ function extractStringField(
   return null;
 }
 
-function extractBooleanField(
-  data: Record<string, unknown>,
-  ...keys: string[]
-): boolean | null {
-  for (const key of keys) {
-    if (typeof data[key] === "boolean") {
-      return data[key] as boolean;
-    }
-  }
-  return null;
-}
-
-function resolveAlertId(data: Record<string, unknown>): string | null {
-  return extractStringField(data, "alertId", "id");
-}
-
-function resolveSeverity(
-  data: Record<string, unknown>
-): OverlayAlert["severity"] {
-  const level = String(data.level ?? data.severity ?? "");
-  if (CRITICAL_LEVELS.has(level)) {
-    return "critical";
-  }
-  if (WARNING_LEVELS.has(level)) {
-    return "warning";
-  }
-  return "info";
-}
-
-function resolveSummary(data: Record<string, unknown>): string {
-  return extractStringField(data, "summary", "message") ?? "Alert triggered";
-}
-
-function resolveIsShared(data: Record<string, unknown>): boolean {
-  return extractBooleanField(data, "isShared", "shared") ?? false;
-}
-
-function resolveEvidence(
-  data: Record<string, unknown>
-): OverlayAlert["evidence"] | undefined {
-  if (!data.evidence || typeof data.evidence !== "object") {
-    return undefined;
-  }
-  const ev = data.evidence as Record<string, unknown>;
-  const hasUtterance = typeof ev.utterance === "string";
-  const hasReasoning = typeof ev.reasoning === "string";
-  if (!(hasUtterance || hasReasoning)) {
-    return undefined;
-  }
-  return {
-    utterance: hasUtterance ? (ev.utterance as string) : "",
-    reasoning: hasReasoning ? (ev.reasoning as string) : "",
-  };
-}
-
-function extractAlertFromEvent(
-  data: Record<string, unknown>
-): OverlayAlert | null {
-  const id = resolveAlertId(data);
-  if (!id) {
-    return null;
-  }
-  return {
-    id,
-    severity: resolveSeverity(data),
-    summary: resolveSummary(data),
-    isShared: resolveIsShared(data),
-    evidence: resolveEvidence(data),
-  };
-}
+// function extractBooleanField(
+//   data: Record<string, unknown>,
+//   ...keys: string[]
+// ): boolean | null {
+//   for (const key of keys) {
+//     if (typeof data[key] === "boolean") {
+//       return data[key] as boolean;
+//     }
+//   }
+//   return null;
+// }
 
 function participantToTeammate(p: LiveParticipant): OverlayTeammate {
   const initials = p.name
@@ -146,8 +82,6 @@ export function useOverlayData() {
     null
   );
   const [participants, setParticipants] = useState<LiveParticipant[]>([]);
-  const [alerts, setAlerts] = useState<OverlayAlert[]>([]);
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
   const [constraintCount, setConstraintCount] = useState(0);
   const [commitmentCount, setCommitmentCount] = useState(0);
@@ -155,14 +89,14 @@ export function useOverlayData() {
   const [alertsMuted, setAlertsMuted] = useState(false);
   const [rememberFlash, setRememberFlash] = useState(false);
 
+  const alertQueue = useAlertQueue();
+
   const visibleAlerts = useMemo(() => {
     if (alertsMuted) {
       return [];
     }
-    return alerts
-      .filter((a) => !dismissedIds.has(a.id))
-      .slice(0, MAX_VISIBLE_ALERTS);
-  }, [alerts, alertsMuted, dismissedIds]);
+    return alertQueue.visibleAlerts;
+  }, [alertQueue.visibleAlerts, alertsMuted]);
 
   const connectedTeammates = useMemo(() => {
     return participants
@@ -170,14 +104,13 @@ export function useOverlayData() {
       .map(participantToTeammate);
   }, [participants]);
 
-  const dismissAlert = useCallback((id: string) => {
-    setDismissedIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      return next;
-    });
-    setExpandedAlertId(null);
-  }, []);
+  const dismissAlert = useCallback(
+    (id: string) => {
+      alertQueue.dismissAlert(id);
+      setExpandedAlertId(null);
+    },
+    [alertQueue]
+  );
 
   const handleRememberThis = useCallback(() => {
     setRememberFlash(true);
@@ -185,6 +118,12 @@ export function useOverlayData() {
   }, []);
 
   useEffect(() => {
+    const unsubWildcard = import.meta.env.DEV
+      ? streamingClient.subscribe("*", (data) => {
+          console.debug("[overlay] ws message:", data);
+        })
+      : undefined;
+
     const unsubUtterance = streamingClient.subscribe("utterance", ((
       data: Record<string, unknown>
     ) => {
@@ -195,7 +134,8 @@ export function useOverlayData() {
         const participant = mapSpeakerToParticipant(
           raw.speaker as unknown as Parameters<
             typeof mapSpeakerToParticipant
-          >[0]
+          >[0],
+          params.userId
         );
         setCurrentSpeaker({
           name: participant.name,
@@ -213,10 +153,12 @@ export function useOverlayData() {
     const unsubTopic = streamingClient.subscribe("topic", ((
       data: Record<string, unknown>
     ) => {
-      const topic = mapBackendTopicToLive(
-        data as unknown as Parameters<typeof mapBackendTopicToLive>[0]
-      );
-      setCurrentTopic(topic.label);
+      const label =
+        extractStringField(data, "label", "name", "title") ??
+        extractStringField(data, "summary");
+      if (label) {
+        setCurrentTopic(label);
+      }
       const raw = data as Record<string, unknown>;
       const constraints = raw.constraintsMentioned as unknown[];
       if (Array.isArray(constraints)) {
@@ -231,14 +173,9 @@ export function useOverlayData() {
     const unsubAlert = streamingClient.subscribe("alert", ((
       data: Record<string, unknown>
     ) => {
-      const alert = extractAlertFromEvent(data);
+      const alert = mapBackendAlertToMeetingAlert(data);
       if (alert) {
-        setAlerts((prev) => {
-          if (prev.some((a) => a.id === alert.id)) {
-            return prev;
-          }
-          return [...prev, alert];
-        });
+        alertQueue.addAlert(alert);
       }
     }) as IncomingMessageHandler);
 
@@ -252,7 +189,8 @@ export function useOverlayData() {
           const mapped = (data.participants as Record<string, unknown>[]).map(
             (raw) =>
               mapSpeakerToParticipant(
-                raw as unknown as Parameters<typeof mapSpeakerToParticipant>[0]
+                raw as unknown as Parameters<typeof mapSpeakerToParticipant>[0],
+                params.userId
               )
           );
           setParticipants(mapped);
@@ -261,13 +199,14 @@ export function useOverlayData() {
     );
 
     return () => {
+      unsubWildcard?.();
       unsubUtterance();
       unsubTopic();
       unsubLedger();
       unsubAlert();
       unsubParticipantEvent();
     };
-  }, [streamingClient]);
+  }, [streamingClient, params.userId, alertQueue.addAlert]);
 
   useEffect(() => {
     if (!params.sessionId) {
@@ -297,12 +236,22 @@ export function useOverlayData() {
     };
   }, []);
 
+  const displaySpeaker = useMemo(() => {
+    if (isMicActive) {
+      return {
+        name: params.clientName,
+        type: "TEAM",
+      } as OverlaySpeaker;
+    }
+    return currentSpeaker;
+  }, [isMicActive, currentSpeaker, params.clientName]);
+
   return {
     clientName: params.clientName,
     commitmentCount,
     connectedTeammates,
     constraintCount,
-    currentSpeaker,
+    currentSpeaker: displaySpeaker,
     currentTopic,
     dismissAlert,
     expandedAlertId,

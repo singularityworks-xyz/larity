@@ -90,7 +90,7 @@ interface SessionParticipant {
 
 ---
 
-## 3. Speaker Identification via Voice Embeddings
+## 3. Speaker Identification via VAD Correlation
 
 ### 3.1 The Problem
 
@@ -131,17 +131,27 @@ Since all team members run Larity on their own machines, each instance has direc
 
 > **Why this works:** Larity captures OS-level system audio regardless of platform (Zoom, Meet, Teams, etc.). The host mic channel is captured on the same machine as loopback and is identified directly. Other team members' local mic VAD signals are aligned to the server audio-ingestion clock through rolling clock-offset reconciliation, so timing correlation remains consistent across meeting platforms.
 
-#### 3.3.1 Clock-Offset Reconciliation
+#### 3.3.1 Clock-Offset Reconciliation & Synchronization
 
 Client-side timestamps cannot be trusted directly — they originate from different machines, drift against each other, and are subject to process suspension (e.g. laptop sleep). The server maintains a **per-client rolling clock offset** so VAD timestamps align with the server's audio ingestion clock:
 
-- On every inbound client message (heartbeat or VAD event), the server computes `sampleOffset = serverReceiveTs - clientSendTs - halfRTT`.
-- The server keeps a **rolling median of the last 30 samples** per client as the authoritative offset (median, not mean — robust to jitter spikes).
-- All VAD timestamps from that client are adjusted by `offset` before correlation: `adjustedTs = vadEvent.ts + clientOffset`.
-- Correlation window: ±250ms around the diarization word's start time (previously ±300ms; tighter because offset is corrected, not tolerated).
-- If offset median shifts by >500ms within a short window (e.g. laptop resumed from sleep), the server marks recent VAD signals as untrusted for ~2s and defers speaker assignment for utterances in that gap.
+1. **Initial Handshake**: When the host starts streaming audio, it sends an `audio_stream_start` control event with its local wall-clock time (`clientTs`) and send-timestamp (`clientSendTs`). The server calculates `networkLatency = (serverReceiveTs - clientSendTs) / 2` and anchors the STT stream start at `serverAudioStartTs = clientTs + networkLatency`.
+2. **Sliding Window Median Filter**: Every VAD signal includes `clientSendTs`. The server computes `sampleOffset = serverReceiveTs - clientSendTs - estimatedRTT` and maintains a **rolling median of the last 30 samples** per client as the authoritative offset. Median is robust to sudden network "spikes" and jitter.
+3. **Correlation Window**: Utterance timestamps are computed using speech time (`connectionStartTime + Deepgram.start * 1000`). Correlation uses a **1500ms** window (increased from 250ms) to account for the native VAD engine's latency (Silero requires ~300ms of audio before emitting a speaking event).
+4. **Drift Detection**: If the median shifts by more than 500ms suddenly, the clock is marked as `untrusted` for 2 seconds to prevent miscorrelation.
 
-#### 3.3.2 Diarization Index Reassignment — Merge Logic
+#### 3.3.2 Multi-Channel Role Isolation (Hardening)
+
+To eliminate "identity bleeding" between the host mic and system audio, the system enforces a strict role-to-channel constraint:
+
+- **Namespace Isolation**: Diarization indices are offset by channel: **Mic (Channel 0)** indices are `0-999`, **System (Channel 1)** indices are `1000-1999` (e.g., Deepgram index `2` on channel 1 becomes `1002`). This prevents collision between the host and external speakers.
+- **Role-Based Gating**: Correlation is constrained by the participant's `role` ("host" vs "participant"):
+    1. **System Audio (`index >= 1000`)** is programmatically blocked from correlating with the **host** role.
+    2. **Mic Audio (`index < 1000`)** is programmatically blocked from correlating with the **participant** role.
+
+This ensures that even if a host's VAD fires during system audio (e.g., the host talking while a YouTube video plays), the system audio can never be misidentified as the host.
+
+#### 3.3.3 Diarization Index Reassignment — Merge Logic
 
 Deepgram (and diarization engines in general) will **reassign speaker indices after long silence gaps or voice changes** — the same physical speaker may appear as `speaker=0` for the first ten minutes and `speaker=3` after a silence. The server must not treat this as a new speaker.
 
@@ -202,11 +212,12 @@ Speaker identification uses **local VAD signals** correlated with Deepgram diari
 * **Client-side (each team member's Larity instance):**
   * Runs VAD on the local mic stream using **Rust-native Silero VAD** (`voice_activity_detector` crate, ONNX Runtime) — not browser WASM. This avoids the `@ricky0123/vad-web`/`onnxruntime-web` bundler issues on WebKitGTK/Linux.
   * Emits `{ type: "vad_speaking" | "vad_silence", userId, sessionId, clientSendTs }` via existing WebSocket connection (edge-triggered on speech/silence transitions, 3-frame debounce, 16× input gain).
-* **Server-side (`packages/meeting-mode/src/speaker-identification/`):**
-  * Maintains `VadState` per session: `Map<userId, { isSpeaking: boolean; startTs: number }>`
-  * On each Deepgram word/utterance from channel 0: assigns the host identity directly
-  * On each Deepgram word/utterance from channel 1: checks which team member's VAD was active at that timestamp (±250ms offset-corrected window). **Utterance timestamps are computed as speech time** (`connectionStartTime + Deepgram.start * 1000`) not processing time (`Date.now()`), eliminating the 3–8s gap between VAD intervals and utterance timestamps.
-  * If exactly one member → assigns that channel/index pair to that userId (TEAM)
+* **Server-side (`packages/meeting-mode/src/speaker/`):**
+  * Maintains `VadState` per session: `Map<userId, { isSpeaking: boolean; startTs: number; role: "host" | "participant" }>`
+  * On each Deepgram word/utterance from channel 0: assigns the host identity directly (namespace `0-999`)
+  * On each Deepgram word/utterance from channel 1: checks which team member's VAD was active at that timestamp (±1500ms window, using 1000+ namespace).
+  * **Role Filtering**: Host VAD can only correlate with channel 0; Participant VAD can only correlate with channel 1.
+  * If exactly one member matches the role/channel constraint → assigns that channel/index pair to that userId (TEAM)
   * If none → EXTERNAL by default
   * Caches result: `Map<channel:diarizationIndex, SpeakerIdentity>` — all future utterances from that channel/index pair resolve instantly
 * **Latency:** Identification resolves within <50ms of utterance finalization for actively speaking team members

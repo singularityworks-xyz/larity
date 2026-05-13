@@ -1,4 +1,14 @@
-import { mock } from "bun:test";
+import { afterEach, describe, expect, it, mock } from "bun:test";
+
+// Must mock BEFORE imports to prevent real Redis/STT module init
+mock.module("@larity/infra/redis", () => ({
+  redis: {
+    publish: mock(() => Promise.resolve(1)),
+    connect: mock(() => Promise.resolve()),
+    disconnect: mock(() => undefined),
+  },
+  connectRedis: mock(() => Promise.resolve(true)),
+}));
 
 mock.module("@larity/stt", () => ({
   env: {
@@ -11,11 +21,11 @@ mock.module("@larity/stt", () => ({
     hasSession: () => false,
     closeAll: () => Promise.resolve(),
     sendAudio: () => Promise.resolve(),
+    setAudioStreamStart: () => undefined,
   },
   validateEnv: () => undefined,
 }));
 
-import { describe, expect, it } from "bun:test";
 import { onClose } from "../src/handlers/on-close";
 import { onDrain } from "../src/handlers/on-drain";
 import { onMessage } from "../src/handlers/on-message";
@@ -24,9 +34,20 @@ import {
   __test_only_handleAlertChannel,
   __test_only_handleBroadcastSessionChannel,
 } from "../src/redis/subscriber";
-import { getSession, getSessionCount, removeConnection } from "../src/session";
+import {
+  getAllSessionIds,
+  getSession,
+  getSessionCount,
+  removeConnection,
+} from "../src/session";
 
 describe("WebSocket Handlers Unit Tests", () => {
+  // Clean up any sessions created during tests to prevent leaks
+  afterEach(() => {
+    for (const sessionId of getAllSessionIds()) {
+      removeConnection(sessionId, "test-user");
+    }
+  });
   // Create mock socket
   const createMockSocket = (sessionId: string) => {
     return {

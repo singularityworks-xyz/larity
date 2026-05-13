@@ -110,7 +110,7 @@ describe("SpeakerIdentifier", () => {
         clientSendTs: now + 50,
         serverReceiveTs: now + 50,
       });
-      const speaker = custom.identifySpeakerForFinal(7, now + 500);
+      const speaker = custom.identifySpeakerForFinal(7, now + 2000);
       expect(speaker.type).toBe("EXTERNAL");
     });
   });
@@ -493,7 +493,7 @@ describe("SpeakerIdentifier", () => {
     });
 
     it("should use default config values", () => {
-      expect(DEFAULT_SPEAKER_CONFIG.correlationWindowMs).toBe(250);
+      expect(DEFAULT_SPEAKER_CONFIG.correlationWindowMs).toBe(1500);
       expect(DEFAULT_SPEAKER_CONFIG.lateCorrelationWindowMs).toBe(2000);
       expect(DEFAULT_SPEAKER_CONFIG.minConfirmationSignals).toBe(1);
     });

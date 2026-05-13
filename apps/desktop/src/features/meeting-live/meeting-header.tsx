@@ -1,6 +1,7 @@
 import { Bell, BellOff, Bookmark, PhoneOff, UserCog } from "lucide-react";
 import { useEffect, useState } from "react";
 import { buttonClass, cx, eyebrowClass, heroTitleClass } from "../../lib/ui";
+import { HeartbeatDotInline } from "./listening-heartbeat";
 
 function formatElapsed(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -15,6 +16,7 @@ interface MeetingHeaderProps {
   meetingTitle: string;
   startedAtMs: number;
   isHost: boolean;
+  isStreamActive: boolean;
   alertsMuted: boolean;
   isEndingBusy: boolean;
   allowNameCustomization: boolean;
@@ -29,6 +31,7 @@ export function MeetingHeader({
   meetingTitle,
   startedAtMs,
   isHost,
+  isStreamActive,
   alertsMuted,
   isEndingBusy,
   allowNameCustomization,
@@ -49,11 +52,7 @@ export function MeetingHeader({
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-4 border-border border-b bg-bg px-4">
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <span
-          aria-hidden
-          className="inline-block h-1.5 w-1.5 shrink-0 animate-pulse bg-success-fg"
-          title="Listening"
-        />
+        <HeartbeatDotInline isActive={isStreamActive} size={7} />
         <div className="min-w-0">
           <p className={cx(eyebrowClass, "truncate")}>{clientName}</p>
           <h1 className={cx(heroTitleClass, "truncate text-base")}>

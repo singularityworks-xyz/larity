@@ -53,7 +53,7 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       serverReceiveTs: baseTs + 7000,
     });
 
-    const speaker2 = identifier.identifySpeaker(2, baseTs + 8000);
+    const speaker2 = identifier.identifySpeaker(2, baseTs + 10_000);
     expect(speaker2.type).toBe("EXTERNAL");
   });
 
@@ -112,7 +112,9 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       serverReceiveTs: base + 2000,
     });
 
-    const spk1 = identifier.identifySpeaker(1, base + 3000);
+    // Alice stopped at 2000. Bob starts at 5000.
+    // Check at 4000: 4000 - 1500 = 2500. Alice (end 2000) is gone. Bob (start 5000) hasn't started.
+    const spk1 = identifier.identifySpeaker(1, base + 4000);
     expect(spk1.type).toBe("EXTERNAL");
 
     identifier.processVadSignal({
@@ -134,7 +136,8 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       serverReceiveTs: base + 7000,
     });
 
-    const spk1Again = identifier.identifySpeaker(1, base + 3000);
+    // Bob stopped at 7000. Check at 9000: 9000 - 1500 = 7500. Bob (end 7000) is gone.
+    const spk1Again = identifier.identifySpeaker(1, base + 9000);
     expect(spk1Again.type).toBe("EXTERNAL");
 
     const stats = identifier.getStats();

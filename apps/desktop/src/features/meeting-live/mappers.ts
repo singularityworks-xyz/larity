@@ -149,7 +149,8 @@ export function mapBackendCommitmentToLive(
 }
 
 export function mapSpeakerToParticipant(
-  speaker: BackendSpeaker
+  speaker: BackendSpeaker,
+  hostUserId?: string
 ): LiveParticipant {
   return {
     id: speaker.speakerId,
@@ -157,6 +158,8 @@ export function mapSpeakerToParticipant(
     type: speaker.type,
     confidence: speaker.confidence,
     isSelf: speaker.isCurrentUser,
+    isHost: speaker.userId != null && speaker.userId === hostUserId,
+    isConnected: true,
   };
 }
 

@@ -14,6 +14,7 @@ export const WS_AUDIO_TAG_SYS = 1;
 
 export interface DualChannelSession {
   sendAudio: (audioBuffer: Buffer) => Promise<void>;
+  setAudioStreamStart: (serverAudioStartTs: number) => void;
   close: () => void;
 }
 
@@ -36,6 +37,11 @@ export function createDualChannelSession(
       } else if (tag === WS_AUDIO_TAG_SYS) {
         await sys.sendAudio(pcm);
       }
+    },
+
+    setAudioStreamStart(serverAudioStartTs: number): void {
+      mic.setAudioStreamStart(serverAudioStartTs);
+      sys.setAudioStreamStart(serverAudioStartTs);
     },
 
     close(): void {
