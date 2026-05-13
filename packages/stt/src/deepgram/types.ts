@@ -35,7 +35,7 @@ export const DEFAULT_DG_CONFIG = {
   punctuate: true,
   interim_results: true,
   smart_format: true,
-  endpointing: 600, // 600ms silence = end of utterance
+  endpointing: 100, // 1200ms silence = end of utterance
   vad_events: true,
   encoding: "linear16",
   sample_rate: 16_000,

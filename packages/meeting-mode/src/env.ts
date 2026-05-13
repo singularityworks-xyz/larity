@@ -79,7 +79,7 @@ export const GROQ_TIER2_TIMEOUT_MS =
     : 3000;
 
 export const GEMINI_TIER4_MODEL =
-  process.env.GEMINI_TIER4_MODEL || "gemini-3.1-flash-lite-preview";
+  process.env.GEMINI_TIER4_MODEL || "gemini-3.1-flash-lite";
 
 const tier4TimeoutParsed = Number.parseInt(
   process.env.GEMINI_TIER4_TIMEOUT_MS || "1500",
