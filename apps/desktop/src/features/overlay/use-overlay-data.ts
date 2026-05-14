@@ -1,31 +1,25 @@
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  AudioStreamingClient,
-  type IncomingMessageHandler,
-} from "../../services/audio-streaming";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mapBackendAlertToMeetingAlert } from "../alerts/mapper";
 import { useAlertQueue } from "../alerts/use-alert-queue";
 import { mapSpeakerToParticipant } from "../meeting-live/mappers";
 import type { LiveParticipant } from "../meeting-live/types";
 import type { OverlaySpeaker, OverlayTeammate } from "./types";
 
-const DEFAULT_WS_URL = import.meta.env.VITE_WS_URL ?? "ws://127.0.0.1:9001";
 const WHITESPACE_RE = /\s+/;
 
 function parseOverlayParams() {
   const params = new URLSearchParams(window.location.search);
   return {
     sessionId: params.get("sessionId") ?? "",
-    role: params.get("role") ?? "participant",
     clientName: params.get("clientName") ?? "Client",
     meetingTitle: params.get("meetingTitle") ?? "Live meeting",
     startedAtMs: (() => {
       const raw = Number.parseInt(params.get("startedAt") ?? "", 10);
       return Number.isFinite(raw) ? raw : Date.now();
     })(),
-    wsBaseUrl: params.get("wsBaseUrl") ?? DEFAULT_WS_URL,
     userId: params.get("userId") ?? "overlay-viewer",
+    role: params.get("role") ?? "participant",
   };
 }
 
@@ -41,18 +35,6 @@ function extractStringField(
   return null;
 }
 
-// function extractBooleanField(
-//   data: Record<string, unknown>,
-//   ...keys: string[]
-// ): boolean | null {
-//   for (const key of keys) {
-//     if (typeof data[key] === "boolean") {
-//       return data[key] as boolean;
-//     }
-//   }
-//   return null;
-// }
-
 function participantToTeammate(p: LiveParticipant): OverlayTeammate {
   const initials = p.name
     .split(WHITESPACE_RE)
@@ -66,16 +48,6 @@ function participantToTeammate(p: LiveParticipant): OverlayTeammate {
 
 export function useOverlayData() {
   const params = useMemo(() => parseOverlayParams(), []);
-
-  const streamingClient = useMemo(
-    () =>
-      new AudioStreamingClient({
-        wsBaseUrl: params.wsBaseUrl,
-        userId: params.userId,
-        role: "participant",
-      }),
-    [params.wsBaseUrl, params.userId]
-  );
 
   const [currentTopic, setCurrentTopic] = useState<string | null>(null);
   const [currentSpeaker, setCurrentSpeaker] = useState<OverlaySpeaker | null>(
@@ -117,106 +89,129 @@ export function useOverlayData() {
     window.setTimeout(() => setRememberFlash(false), 2000);
   }, []);
 
+  const addAlertRef = useRef(alertQueue.addAlert);
+  addAlertRef.current = alertQueue.addAlert;
+
+  const seenCommitmentIdsRef = useRef(new Set<string>());
+
+  // Receive forwarded data from the meeting page via Tauri events
   useEffect(() => {
-    const unsubWildcard = import.meta.env.DEV
-      ? streamingClient.subscribe("*", (data) => {
-          console.debug("[overlay] ws message:", data);
-        })
-      : undefined;
-
-    const unsubUtterance = streamingClient.subscribe("utterance", ((
-      data: Record<string, unknown>
-    ) => {
-      const raw = data as unknown as {
-        speaker?: Record<string, unknown>;
-      };
-      if (raw.speaker) {
-        const participant = mapSpeakerToParticipant(
-          raw.speaker as unknown as Parameters<
-            typeof mapSpeakerToParticipant
-          >[0],
-          params.userId
-        );
-        setCurrentSpeaker({
-          name: participant.name,
-          type: participant.type,
-        });
-        setParticipants((prev) => {
-          if (prev.some((p) => p.id === participant.id)) {
-            return prev;
-          }
-          return [...prev, participant];
-        });
+    function handleAlert(payload: Record<string, unknown> | undefined): void {
+      if (!payload) {
+        return;
       }
-    }) as IncomingMessageHandler);
+      const alert = mapBackendAlertToMeetingAlert(payload);
+      if (alert) {
+        addAlertRef.current(alert);
+      }
+    }
 
-    const unsubTopic = streamingClient.subscribe("topic", ((
-      data: Record<string, unknown>
-    ) => {
-      const label =
-        extractStringField(data, "label", "name", "title") ??
-        extractStringField(data, "summary");
+    function handleTopic(payload: Record<string, unknown> | undefined): void {
+      if (!payload) {
+        return;
+      }
+      const label = extractStringField(payload, "label");
       if (label) {
         setCurrentTopic(label);
       }
-      const raw = data as Record<string, unknown>;
-      const constraints = raw.constraintsMentioned as unknown[];
-      if (Array.isArray(constraints)) {
-        setConstraintCount((prev) => prev + constraints.length);
+      const delta = payload.constraintsMentioned;
+      if (typeof delta === "number") {
+        setConstraintCount(delta);
       }
-    }) as IncomingMessageHandler);
-
-    const unsubLedger = streamingClient.subscribe("ledger", (() => {
-      setCommitmentCount((prev) => prev + 1);
-    }) as IncomingMessageHandler);
-
-    const unsubAlert = streamingClient.subscribe("alert", ((
-      data: Record<string, unknown>
-    ) => {
-      const alert = mapBackendAlertToMeetingAlert(data);
-      if (alert) {
-        alertQueue.addAlert(alert);
-      }
-    }) as IncomingMessageHandler);
-
-    const unsubParticipantEvent = streamingClient.subscribe(
-      "participant_event",
-      ((data: Record<string, unknown>) => {
-        if (
-          data.type === "participant_list" &&
-          Array.isArray(data.participants)
-        ) {
-          const mapped = (data.participants as Record<string, unknown>[]).map(
-            (raw) =>
-              mapSpeakerToParticipant(
-                raw as unknown as Parameters<typeof mapSpeakerToParticipant>[0],
-                params.userId
-              )
-          );
-          setParticipants(mapped);
-        }
-      }) as IncomingMessageHandler
-    );
-
-    return () => {
-      unsubWildcard?.();
-      unsubUtterance();
-      unsubTopic();
-      unsubLedger();
-      unsubAlert();
-      unsubParticipantEvent();
-    };
-  }, [streamingClient, params.userId, alertQueue.addAlert]);
-
-  useEffect(() => {
-    if (!params.sessionId) {
-      return;
     }
-    streamingClient.connect(params.sessionId);
+
+    function handleUtterance(
+      payload: Record<string, unknown> | undefined
+    ): void {
+      if (!payload) {
+        return;
+      }
+      const raw = payload as { speaker?: Record<string, unknown> };
+      if (!raw.speaker) {
+        return;
+      }
+      const participant = mapSpeakerToParticipant(
+        raw.speaker as unknown as Parameters<typeof mapSpeakerToParticipant>[0],
+        params.userId
+      );
+      setCurrentSpeaker({ name: participant.name, type: participant.type });
+      setParticipants((prev) => {
+        if (prev.some((p) => p.id === participant.id)) {
+          return prev;
+        }
+        return [...prev, participant];
+      });
+    }
+
+    function handleParticipantEvent(
+      payload: Record<string, unknown> | undefined
+    ): void {
+      if (!payload) {
+        return;
+      }
+      const data = payload as Record<string, unknown>;
+      if (
+        data.type === "participant_list" &&
+        Array.isArray(data.participants)
+      ) {
+        const mapped = (data.participants as Record<string, unknown>[]).map(
+          (raw) =>
+            mapSpeakerToParticipant(
+              raw as unknown as Parameters<typeof mapSpeakerToParticipant>[0],
+              params.userId
+            )
+        );
+        setParticipants(mapped);
+      }
+    }
+
+    const unlisten = listen<{
+      type: string;
+      payload?: Record<string, unknown>;
+    }>("overlay-data", (event) => {
+      const { type, payload } = event.payload;
+      if (!type) {
+        return;
+      }
+
+      switch (type) {
+        case "alert":
+          handleAlert(payload);
+          break;
+        case "topic":
+          handleTopic(payload);
+          break;
+        case "utterance":
+          handleUtterance(payload);
+          break;
+        case "ledger": {
+          const commitmentId =
+            payload &&
+            typeof (payload as Record<string, unknown>).commitmentId ===
+              "string"
+              ? ((payload as Record<string, unknown>).commitmentId as string)
+              : null;
+          if (commitmentId && seenCommitmentIdsRef.current.has(commitmentId)) {
+            break;
+          }
+          if (commitmentId) {
+            seenCommitmentIdsRef.current.add(commitmentId);
+          }
+          setCommitmentCount((prev) => prev + 1);
+          break;
+        }
+        case "participant_event":
+          handleParticipantEvent(payload);
+          break;
+        default:
+          break;
+      }
+    });
+
     return () => {
-      streamingClient.disconnect();
+      unlisten.then((f) => f());
     };
-  }, [streamingClient, params.sessionId]);
+  }, [params.userId]);
 
   useEffect(() => {
     let unlistenStart: (() => void) | null = null;

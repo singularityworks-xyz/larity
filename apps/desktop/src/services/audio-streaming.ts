@@ -55,6 +55,8 @@ const DEFAULT_MAX_PENDING_FRAMES = 8;
 const WS_AUDIO_TAG_MIC = 0;
 const WS_AUDIO_TAG_SYS = 1;
 const LEGACY_AUDIO_FRAME_TAG = WS_AUDIO_TAG_SYS;
+const DEBUG_INGEST_ENDPOINT =
+  "http://127.0.0.1:7268/ingest/d02c4985-7539-46d4-bc45-33f990c9f9a8";
 
 export function buildRealtimeSocketUrl(
   wsBaseUrl: string,
@@ -104,6 +106,57 @@ export function shouldDropFrame(
   thresholdBytes: number
 ): boolean {
   return bufferedAmount > thresholdBytes;
+}
+
+function sendAlertClassificationDebugLog(
+  data: Record<string, unknown>,
+  resolvedType: IncomingMessageType
+): void {
+  const cat = data.category;
+  const sev = data.severity;
+  const looksLikeAlert =
+    (typeof cat === "string" && typeof sev === "string") ||
+    typeof data.alertType === "string" ||
+    typeof data.level === "string";
+  if (!looksLikeAlert) {
+    return;
+  }
+  const enabled =
+    process.env.ENABLE_ALERT_CLASSIFICATION_DEBUG === "true" ||
+    process.env.ENABLE_ALERT_CLASSIFICATION_DEBUG === "1";
+  if (!enabled) {
+    return;
+  }
+  // #region agent log
+  fetch(DEBUG_INGEST_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "6eb14a",
+    },
+    body: JSON.stringify({
+      sessionId: "6eb14a",
+      runId: "post-fix",
+      hypothesisId: "A",
+      location: "audio-streaming.ts:onmessage",
+      message: "WS frame classified for alert-shaped payload",
+      data: {
+        resolvedType,
+        hasUtteranceId: typeof data.utteranceId === "string",
+        hasTopicId: typeof data.topicId === "string",
+        topicIdValue:
+          typeof data.topicId === "string"
+            ? (data.topicId as string).slice(0, 64)
+            : null,
+        hasCategory: typeof cat === "string",
+        hasSeverity: typeof sev === "string",
+        hasId: typeof data.id === "string",
+        triggerTier: data.triggerTier,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => undefined);
+  // #endregion
 }
 
 export class AudioStreamingClient {
@@ -214,6 +267,7 @@ export class AudioStreamingClient {
       }
 
       const type = detectIncomingMessageType(data);
+      sendAlertClassificationDebugLog(data, type);
       const handlers = this.messageHandlers.get(type);
       if (handlers) {
         for (const handler of handlers) {
@@ -440,15 +494,16 @@ function detectIncomingMessageType(
   if (typeof data.utteranceId === "string") {
     return "utterance";
   }
-  if (typeof data.topicId === "string") {
-    return "topic";
-  }
+  // Alerts include `topicId` (context); classify before generic topicId branch.
   if (
     typeof data.alertType === "string" ||
     typeof data.level === "string" ||
     (typeof data.category === "string" && typeof data.severity === "string")
   ) {
     return "alert";
+  }
+  if (typeof data.topicId === "string") {
+    return "topic";
   }
   if (
     dataType === "participant_joined" ||
