@@ -261,7 +261,5 @@ export function useOverlayData() {
     handleRememberThis,
     alertsMuted,
     visibleAlerts,
-    pendingCount: alertQueue.pendingCount,
-    exitingIds: alertQueue.exitingIds,
   };
 }
