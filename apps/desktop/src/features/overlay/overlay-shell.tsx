@@ -6,7 +6,6 @@ import { AlertRegion } from "./alert-region";
 import { AmbientStrip } from "./ambient-strip";
 import { OverlayFooter } from "./overlay-footer";
 import { useOverlayData } from "./use-overlay-data";
-import { VoiceGradient } from "./voice-gradient";
 
 function formatElapsed(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -73,90 +72,70 @@ export function OverlayShell() {
   return (
     <div
       className={cx(
-        "relative flex h-screen w-screen select-none flex-col overflow-hidden",
-        "rounded-[12px] border border-white/[0.06]",
-        "bg-[#0E0E0EE6]",
-        "shadow-[0_8px_32px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.03)]"
+        "flex h-screen w-screen select-none flex-col overflow-hidden",
+        "rounded-xl border border-white/[0.06]",
+        "bg-[#08080a]/[0.97] backdrop-blur-2xl",
+        "shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.02)]"
       )}
       data-tauri-drag-region
     >
-      <VoiceGradient
-        alertSeverity={data.visibleAlerts[0]?.severity ?? null}
-        alertsMuted={data.alertsMuted}
-        hasActiveAlert={data.visibleAlerts.length > 0}
-        isSpeaking={data.isMicActive}
+      <div
+        className="flex items-center justify-between border-white/[0.04] border-b px-3 py-1.5"
+        data-tauri-drag-region
+      >
+        <div className="flex min-w-0 items-center gap-2" data-tauri-drag-region>
+          <span className="inline-block h-1 w-1 shrink-0 animate-pulse rounded-full bg-success-fg" />
+          <span className="truncate font-medium text-[10px] text-fg-muted">
+            {data.clientName}
+          </span>
+          <span className="text-fg-subtle">&middot;</span>
+          <span className="truncate font-medium text-[10px] text-fg">
+            {data.meetingTitle}
+          </span>
+        </div>
+        <time
+          className="shrink-0 font-mono text-[10px] text-fg-subtle tabular-nums"
+          dateTime={`PT${Math.floor(elapsedMs / 1000)}S`}
+        >
+          {formatElapsed(elapsedMs)}
+        </time>
+      </div>
+
+      <AmbientStrip
+        connectedTeammates={data.connectedTeammates}
+        constraintCount={data.constraintCount}
+        currentSpeaker={data.currentSpeaker}
+        currentTopic={data.currentTopic}
+        isMicActive={data.isMicActive}
       />
 
-      <div className="relative z-[1] flex flex-1 flex-col overflow-hidden">
+      <AlertRegion
+        alertsMuted={data.alertsMuted}
+        expandedAlertId={data.expandedAlertId}
+        onDismiss={data.dismissAlert}
+        onToggleExpand={data.setExpandedAlertId}
+        visibleAlerts={data.visibleAlerts}
+      />
+
+      {data.rememberFlash ? (
         <div
-          className="flex h-7 items-center justify-between border-white/[0.05] border-b bg-black/[0.2] px-3"
-          data-tauri-drag-region
+          aria-live="polite"
+          className="border-white/[0.04] border-t bg-accent-subtle/40 px-3 py-1.5 text-center font-medium text-[10px] text-accent"
         >
-          <div
-            className="flex min-w-0 items-center gap-1.5"
-            data-tauri-drag-region
-          >
-            <span className="relative inline-flex h-[5px] w-[5px] shrink-0">
-              <span className="absolute inline-flex h-full w-full animate-[speak-ring_2s_ease-out_infinite] rounded-full bg-[hsl(var(--grad-hue)_70%_55%)/0.5]" />
-              <span className="relative inline-flex h-[5px] w-[5px] rounded-full bg-[hsl(var(--grad-hue)_70%_55%)]" />
-            </span>
-            <span className="truncate font-medium text-[9px] text-fg-subtle">
-              {data.clientName}
-            </span>
-            <span className="text-[9px] text-fg-subtle/40">&middot;</span>
-            <span className="truncate font-medium text-[10px] text-fg-muted">
-              {data.meetingTitle}
-            </span>
-          </div>
-          <time
-            className="shrink-0 font-mono text-[10px] text-fg-subtle tabular-nums"
-            dateTime={`PT${Math.floor(elapsedMs / 1000)}S`}
-          >
-            {formatElapsed(elapsedMs)}
-          </time>
+          Marked this moment — last ~30s will be structured
         </div>
+      ) : null}
 
-        <AmbientStrip
-          connectedTeammates={data.connectedTeammates}
-          constraintCount={data.constraintCount}
-          currentSpeaker={data.currentSpeaker}
-          currentTopic={data.currentTopic}
-          isMicActive={data.isMicActive}
-        />
-
-        <AlertRegion
-          alertsMuted={data.alertsMuted}
-          exitingIds={data.exitingIds}
-          expandedAlertId={data.expandedAlertId}
-          onDismiss={data.dismissAlert}
-          onToggleExpand={data.setExpandedAlertId}
-          visibleAlerts={data.visibleAlerts}
-        />
-
-        {data.rememberFlash && (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute right-3 bottom-2 h-8 w-8 rounded-full bg-accent-subtle"
-            style={{
-              animation:
-                "remember-ripple 1.4s cubic-bezier(0.2, 0, 0, 1) forwards",
-              zIndex: 2,
-            }}
-          />
-        )}
-
-        <OverlayFooter
-          alertsMuted={data.alertsMuted}
-          isEndingBusy={isEndingBusy}
-          isHost={data.role === "host"}
-          onEndMeeting={handleEndMeeting}
-          onExpandToPanel={handleExpandToPanel}
-          onMuteAlerts={() => data.setAlertsMuted(!data.alertsMuted)}
-          onRememberThis={data.handleRememberThis}
-          pendingCount={data.pendingCount}
-          rememberFlash={data.rememberFlash}
-        />
-      </div>
+      <OverlayFooter
+        alertsMuted={data.alertsMuted}
+        isEndingBusy={isEndingBusy}
+        isHost={data.role === "host"}
+        onEndMeeting={handleEndMeeting}
+        onExpandToPanel={handleExpandToPanel}
+        onMuteAlerts={() => data.setAlertsMuted(!data.alertsMuted)}
+        onRememberThis={data.handleRememberThis}
+        rememberFlash={data.rememberFlash}
+      />
     </div>
   );
 }
