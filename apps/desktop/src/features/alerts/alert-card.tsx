@@ -25,6 +25,8 @@ interface AlertCardProps {
   expandedId?: string | null;
   onToggleExpand?: (id: string) => void;
   isHistoryView?: boolean;
+  isExiting?: boolean;
+  style?: React.CSSProperties;
 }
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -48,6 +50,7 @@ export function AlertCard({
   expandedId,
   onToggleExpand,
   isHistoryView = false,
+  isExiting = false,
 }: AlertCardProps) {
   const isExpanded = expandedId === alert.id;
 
@@ -63,7 +66,7 @@ export function AlertCard({
 
   return (
     <div
-      className={`relative flex w-full flex-col rounded-none border border-border text-sm ${bgClass} border-l-[2px] ${routingColorClass}`}
+      className={`relative flex w-full flex-col rounded-none border border-border text-sm ${bgClass} border-l-[2px] ${routingColorClass} ${isExiting ? "alert-card-exit" : ""}`}
     >
       <div className="flex flex-col gap-2 p-3 px-4">
         {/* Header */}

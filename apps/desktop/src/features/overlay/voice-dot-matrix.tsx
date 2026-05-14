@@ -22,31 +22,35 @@ interface Dot {
   id: string;
   cx: number;
   cy: number;
-  delay: number;
+  delayRandom: number;
+  delayRipple: number;
 }
 
 // Pre-built so React never sees array-index keys.
 const DOTS: Dot[] = Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
   const row = Math.floor(i / GRID_SIZE);
   const col = i % GRID_SIZE;
+  // Center is row 2, col 2
+  const distFromCenter = Math.sqrt((row - 2) ** 2 + (col - 2) ** 2);
   return {
     id: `r${row}c${col}`,
     cx: DOT_START + col * DOT_STEP,
     cy: DOT_START + row * DOT_STEP,
-    delay: DOT_DELAYS[i],
+    delayRandom: DOT_DELAYS[i],
+    delayRipple: Math.round(distFromCenter * 150),
   };
 });
 
 interface VoiceDotMatrixProps {
-  /** Whether the user is currently speaking — drives the twinkle animation. */
+  /** Whether the user is currently speaking — drives the animation. */
   isSpeaking: boolean;
   /** Accessible label for the indicator. */
   label?: string;
 }
 
 /**
- * A 5×5 dot matrix that idles at near-invisible opacity and independently
- * twinkles each dot on a staggered loop while the user is speaking.
+ * A 5×5 dot matrix that idles at near-invisible opacity and shifts to
+ * a rippling hue effect while the user is speaking.
  */
 export function VoiceDotMatrix({ isSpeaking, label }: VoiceDotMatrixProps) {
   const ariaLabel =
@@ -78,7 +82,7 @@ export function VoiceDotMatrix({ isSpeaking, label }: VoiceDotMatrixProps) {
               cy={dot.cy}
               fill="currentColor"
               key={`base-${dot.id}`}
-              r={1.6}
+              r={1.8}
             />
           ))}
         </g>
@@ -86,9 +90,9 @@ export function VoiceDotMatrix({ isSpeaking, label }: VoiceDotMatrixProps) {
         {/* Active layer: continuously animating dots, revealed when speaking */}
         <g
           style={{
-            color: "white",
+            color: "hsl(var(--grad-hue, 252) 80% 70%)",
             opacity: isSpeaking ? 1 : 0,
-            transition: "opacity 200ms ease-out",
+            transition: "opacity 200ms ease-out, color 300ms ease-out",
           }}
         >
           {DOTS.map((dot) => (
@@ -97,10 +101,12 @@ export function VoiceDotMatrix({ isSpeaking, label }: VoiceDotMatrixProps) {
               cy={dot.cy}
               fill="currentColor"
               key={`twinkle-${dot.id}`}
-              r={1.6}
+              r={1.8}
               style={{
-                // Animation runs continuously in background to maintain chaotic phase
-                animation: `dot-twinkle ${CYCLE_MS}ms cubic-bezier(0.65, 0, 0.35, 1) -${dot.delay}ms infinite both`,
+                // Switches from random twinkle (idle but hidden) to centre ripple (active)
+                animation: isSpeaking
+                  ? `dot-twinkle ${CYCLE_MS}ms cubic-bezier(0.65, 0, 0.35, 1) ${dot.delayRipple}ms infinite both`
+                  : `dot-twinkle ${CYCLE_MS}ms cubic-bezier(0.65, 0, 0.35, 1) -${dot.delayRandom}ms infinite both`,
               }}
             />
           ))}
