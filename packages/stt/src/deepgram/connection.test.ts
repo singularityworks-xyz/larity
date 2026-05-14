@@ -25,12 +25,19 @@ import type { TranscriptResult } from "./types";
 
 describe("DeepgramConnection Diarization", () => {
   const sessionId = "test-session-123";
+  const created: DeepgramConnection[] = [];
 
   const createConnection = () => {
-    return new DeepgramConnection(sessionId);
+    const c = new DeepgramConnection(sessionId);
+    created.push(c);
+    return c;
   };
 
-  afterEach(() => {
+  afterEach(async () => {
+    for (const c of created) {
+      await c.close();
+    }
+    created.length = 0;
     (redis.publish as any).mockClear();
   });
 
