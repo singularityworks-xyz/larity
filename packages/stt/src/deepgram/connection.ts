@@ -495,8 +495,17 @@ export class DeepgramConnection {
   /**
    * Close the connection permanently
    */
-  close(): void {
-    this.flushAccumulatedFinal();
+  async close(): Promise<void> {
+    this.clearSpeechFinalFlushTimer();
+
+    try {
+      await this.flushAccumulatedFinal();
+    } catch (error) {
+      log.error(
+        `Error flushing accumulated on close for ${this.sessionId}:`,
+        error
+      );
+    }
 
     this.isClosed = true;
     this.isConnected = false;
