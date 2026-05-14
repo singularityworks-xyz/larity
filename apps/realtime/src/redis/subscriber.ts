@@ -1,6 +1,6 @@
 import { Redis } from "ioredis";
 import { createRealtimeLogger } from "../logger";
-import { broadcast, getConnection, hasSession, sendToUser } from "../session";
+import { broadcast, hasSession, sendToUser } from "../session";
 
 const log = createRealtimeLogger("subscriber");
 const pipelineTraceLog = createRealtimeLogger("pipeline-trace");
@@ -168,7 +168,7 @@ function handleAlertChannel(channel: string, message: string): void {
   }
 
   // #region agent log
-  {
+  if (process.env.DEBUG_ALERT_INGEST === "true") {
     let category: string | null = null;
     let alertRouting: string | null = null;
     try {
@@ -196,17 +196,14 @@ function handleAlertChannel(channel: string, message: string): void {
         location: "subscriber.ts:handleAlertChannel",
         message: "Redis alert channel received",
         data: {
-          channelSuffix: channel.slice(-80),
-          redisSessionId: sessionId,
+          channelSuffix: "REDACTED",
+          redisSessionId: "REDACTED",
           route,
           category,
           alertRouting,
           sessionLive,
-          personalTargetUserId: route === "user" ? (parts[4] ?? null) : null,
-          personalHasSocket:
-            route === "user" && parts[4]
-              ? !!getConnection(sessionId, parts[4])
-              : null,
+          personalTargetUserId: "REDACTED",
+          personalHasSocket: null,
         },
         timestamp: Date.now(),
       }),
