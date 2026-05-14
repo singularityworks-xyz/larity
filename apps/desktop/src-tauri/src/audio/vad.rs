@@ -3,9 +3,10 @@ use std::thread;
 use tauri::{AppHandle, Emitter};
 use voice_activity_detector::VoiceActivityDetector;
 
-const THRESHOLD: f32 = 0.3;
-const DEBOUNCE_FRAMES: usize = 3;
-const INPUT_GAIN: f32 = 16.0;
+const THRESHOLD: f32 = 0.5;
+const SPEECH_START_FRAMES: usize = 5;
+const SPEECH_END_HOLDOVER: usize = 10;
+const INPUT_GAIN: f32 = 5.0;
 const VAD_CHANNEL_CAPACITY: usize = 4;
 
 #[derive(Clone)]
@@ -63,17 +64,19 @@ fn run_vad_loop(
                 speech_counter += 1;
                 silence_counter = 0;
             } else {
-                silence_counter += 1;
                 speech_counter = 0;
+                silence_counter += 1;
             }
 
-            if speech_counter >= DEBOUNCE_FRAMES && !is_speaking {
+            if speech_counter >= SPEECH_START_FRAMES && !is_speaking {
                 is_speaking = true;
+                silence_counter = 0;
                 let _ = app.emit("vad-speech-start", ());
             }
 
-            if silence_counter >= DEBOUNCE_FRAMES && is_speaking {
+            if silence_counter >= SPEECH_END_HOLDOVER && is_speaking {
                 is_speaking = false;
+                speech_counter = 0;
                 let _ = app.emit("vad-speech-end", ());
             }
         }
