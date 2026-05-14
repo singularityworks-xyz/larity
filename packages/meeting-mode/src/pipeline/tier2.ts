@@ -179,6 +179,7 @@ Classify the CURRENT utterance; use recentSameSpeaker only as short local contex
 - backtracking: Reversing or walking back a previous statement ("actually we need", "I know we said X but", "that was never confirmed", "we didn't agree to that"). Denying or revising prior commitments.
 - disclosure: Promising to share, expose, or give access to data that may be confidential (client data, internal figures, PII, passwords, API keys, unreleased plans, M&A strategy). "I can share X", "I'll send you Y", "let me give you access".
 - compliance: Regulatory or legal noncompliance risk (GDPR, HIPAA, data storage, privacy, data residency). Mentions of storing PII unsafely or mishandling sensitive data.
+- manipulation: Emotional manipulation or psychological leverage — guilt-tripping ("after everything we've done for you"), playing victim ("you'll put us out of business with these rates"), false urgency ("my job depends on this", "I'll be fired if"), flattery-as-leverage ("you're the best, that's why we need you to"), or manufactured emotional stakes ("our entire quarter rides on this"). Different from pressure (explicit deadlines/ultimatums from authority) — manipulation uses guilt, obligation, or emotional debt.
 - escalation: Rapid raising of stakes (involving executives, legal, or external parties suddenly; threatening to escalate disputes).
 - pricing_discussed: Any specific price, amount, currency, discount, or rate mentioned — even as a hypothetical. This is a factual marker, always include it when money is mentioned.
 
@@ -193,7 +194,8 @@ Classify the CURRENT utterance; use recentSameSpeaker only as short local contex
 {"intent":"commitment","commitmentType":"timeline","tone":"confident","riskSignals":["vague_deadline"],"extractedData":{"deadline":"end of this month","quantity":null,"scope":"integration","amount":null,"currency":null},"confidence":0.9,"topicDelta":null}
 {"intent":"commitment","commitmentType":"price","tone":"confident","riskSignals":["pricing_discussed"],"extractedData":{"deadline":null,"quantity":null,"scope":null,"amount":2500,"currency":"USD"},"confidence":0.9,"topicDelta":null}
 {"intent":"filler","commitmentType":null,"tone":"neutral","riskSignals":[],"extractedData":{"deadline":null,"quantity":null,"scope":null,"amount":null,"currency":null},"confidence":0.95,"topicDelta":null}
-{"intent":"concern","commitmentType":null,"tone":"hesitant","riskSignals":["scope_creep","pressure"],"extractedData":{"deadline":null,"quantity":null,"scope":null,"amount":null,"currency":null},"confidence":0.85,"topicDelta":null}`,
+{"intent":"concern","commitmentType":null,"tone":"hesitant","riskSignals":["scope_creep","pressure"],"extractedData":{"deadline":null,"quantity":null,"scope":null,"amount":null,"currency":null},"confidence":0.85,"topicDelta":null}
+{"intent":"concern","commitmentType":null,"tone":"hesitant","riskSignals":["manipulation","pricing_discussed"],"extractedData":{"deadline":null,"quantity":null,"scope":null,"amount":null,"currency":null},"confidence":0.8,"topicDelta":null}`,
 ].join("\n");
 
 function buildUserMessage(input: Tier2Input): string {

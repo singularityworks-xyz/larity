@@ -47,9 +47,9 @@ Evaluate the context JSON and choose exactly ONE alertType. Base your decision o
    - Evidence: Dismissive aggressive tone toward client ("that's just not how software works"), aggressive defense of pricing with dismissive language.
 
 6. pressure_detected (Routing: shared)
-   - Trigger: EXTERNAL speaker applies pressure. Gate: riskSignals contains pressure AND speaker.type=EXTERNAL.
+   - Trigger: EXTERNAL speaker applies pressure or emotional manipulation. Gate: riskSignals contains pressure OR manipulation AND speaker.type=EXTERNAL.
    - Also triggered when riskSignals contains timeline_risk (ultimatum timeliness).
-   - Evidence: Urgency from authority ("CEO needs this"), social proof ("competitor does this for free"), or ultimatums ("signed contract by Friday or we go elsewhere").
+   - Evidence: Direct pressure — urgency from authority ("CEO needs this"), social proof ("competitor does this for free"), ultimatums ("signed by Friday or we go elsewhere"). Manipulation — guilt-tripping ("after everything we've done"), playing victim ("you'll put us out of business"), false urgency ("my job depends on this"), flattery-as-leverage.
 
 7. self_contradiction (Routing: personal)
    - Trigger: TEAM speaker contradicts their OWN earlier commitment. Gate: matchedCommitments exists where matchedCommitment.commitment.speaker.userId === currentSpeaker.userId AND (riskSignals contains backtracking OR tier1.pricingHit=true OR tier2.intent=commitment with timeline/price).
