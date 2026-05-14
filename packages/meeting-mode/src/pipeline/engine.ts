@@ -428,8 +428,14 @@ export class MeetingPipelineEngine {
     // Respect Tier 2 "low-value / filler" gate for the whole Tier 4 call: Tier 3
     // ledger/memory hits can otherwise force Tier 4 on every greeting when embeddings
     // loosely match hydrated commitments — wasteful and breaks the tiered design.
+    // Structural Tier 1 hits (API keys, passwords, pricing, blocklist) override the
+    // stop — they always need Tier 4 reasoning regardless of Tier 2 classification.
     let runTier4 =
-      !tier2.shouldStopForDeepReasoning && (highSignal || tier3.forceTier4);
+      this.tier4PassesStructuralOverride(
+        tier1,
+        tier2.shouldStopForDeepReasoning
+      ) &&
+      (highSignal || tier3.forceTier4);
 
     // --- Speaker-aware Tier 4 gate ---
     runTier4 = this.applySpeakerAwareGate(
@@ -524,6 +530,21 @@ export class MeetingPipelineEngine {
       tier2Classification.intent === "concern" ||
       tier2Classification.riskSignals.length > 0
     );
+  }
+
+  /**
+   * Structural Tier 1 hits (API key, password, pricing, blocklist) override
+   * Tier 2's "stop deep reasoning" signal. An API key leaked in casual filler
+   * should still reach Tier 4 for information_risk assessment.
+   */
+  private tier4PassesStructuralOverride(
+    tier1: Tier1Result,
+    shouldStop: boolean
+  ): boolean {
+    if (!shouldStop) {
+      return true;
+    }
+    return tier1.technicalHit || tier1.blocklistHit || tier1.pricingHit;
   }
 
   private applySpeakerAwareGate(
