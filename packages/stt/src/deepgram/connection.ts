@@ -74,6 +74,7 @@ export class DeepgramConnection {
   private accumulatedConfidence = 0;
   private accumulatedSegmentCount = 0;
   private accumulatedStart = 0;
+  private accumulatedEnd = 0;
   private accumulatedDiarizationIndex = -1;
   private speechFinalFlushTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly SPEECH_FINAL_FLUSH_MS = 5000;
@@ -237,7 +238,7 @@ export class DeepgramConnection {
 
     // --- Accumulate intermediate finals (is_final=true, speech_final=false) ---
     if (is_final && !result.speech_final) {
-      this.accumulateSegment(transcript, alternative, start);
+      this.accumulateSegment(transcript, alternative, start, duration);
       return;
     }
 
@@ -292,6 +293,10 @@ export class DeepgramConnection {
     const finalConfidence = this.combineConfidence(alternative.confidence || 0);
     const finalStart =
       this.accumulatedSegmentCount > 0 ? this.accumulatedStart : start;
+    const finalDuration =
+      this.accumulatedSegmentCount > 0
+        ? Math.max(this.accumulatedEnd, start + duration) - finalStart
+        : duration;
     const diarizationIndex =
       this.accumulatedSegmentCount > 0
         ? this.accumulatedDiarizationIndex
@@ -312,7 +317,7 @@ export class DeepgramConnection {
       diarizationIndex,
       channel: this.logicalChannel,
       start: finalStart,
-      duration,
+      duration: finalDuration,
       ts: Date.now(),
       speechTimestamp: anchorTs + finalStart * 1000,
     };
@@ -381,6 +386,8 @@ export class DeepgramConnection {
         : 0;
     const start = this.accumulatedStart;
     const diarizationIndex = this.accumulatedDiarizationIndex;
+    const flushDuration =
+      this.accumulatedEnd > start ? this.accumulatedEnd - start : 0;
 
     this.resetAccumulation();
     this.clearSpeechFinalFlushTimer();
@@ -398,7 +405,7 @@ export class DeepgramConnection {
       diarizationIndex,
       channel: this.logicalChannel,
       start,
-      duration: 0,
+      duration: flushDuration,
       ts: Date.now(),
       speechTimestamp: anchorTs + start * 1000,
     };
@@ -419,7 +426,8 @@ export class DeepgramConnection {
   private accumulateSegment(
     transcript: string,
     alternative: TranscriptAlternative,
-    start: number
+    start: number,
+    duration: number
   ): void {
     this.accumulatedText += (this.accumulatedText ? " " : "") + transcript;
     this.accumulatedConfidence += alternative.confidence || 0;
@@ -427,8 +435,14 @@ export class DeepgramConnection {
     if (this.accumulatedSegmentCount === 1) {
       this.accumulatedStart = start;
     }
-    this.accumulatedDiarizationIndex =
-      this.computeDiarizationIndex(alternative);
+    const segmentEnd = start + (duration ?? 0);
+    if (segmentEnd > this.accumulatedEnd) {
+      this.accumulatedEnd = segmentEnd;
+    }
+    const diarizationIndex = this.computeDiarizationIndex(alternative);
+    if (diarizationIndex >= 0) {
+      this.accumulatedDiarizationIndex = diarizationIndex;
+    }
     this.resetSpeechFinalFlushTimer();
     log.debug(
       `Accumulated final segment: "${transcript}" ` +
@@ -455,6 +469,7 @@ export class DeepgramConnection {
     this.accumulatedConfidence = 0;
     this.accumulatedSegmentCount = 0;
     this.accumulatedStart = 0;
+    this.accumulatedEnd = 0;
     this.accumulatedDiarizationIndex = -1;
   }
 

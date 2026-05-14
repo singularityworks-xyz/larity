@@ -116,7 +116,7 @@ export function useOverlayData() {
       }
       const delta = payload.constraintsMentioned;
       if (typeof delta === "number") {
-        setConstraintCount((prev) => prev + delta);
+        setConstraintCount(delta);
       }
     }
 
@@ -261,5 +261,7 @@ export function useOverlayData() {
     handleRememberThis,
     alertsMuted,
     visibleAlerts,
+    pendingCount: alertQueue.pendingCount,
+    exitingIds: alertQueue.exitingIds,
   };
 }
