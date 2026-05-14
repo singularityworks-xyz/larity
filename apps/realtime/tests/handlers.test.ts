@@ -35,7 +35,7 @@ import {
   __test_only_handleBroadcastSessionChannel,
 } from "../src/redis/subscriber";
 import {
-  getAllSessionIds,
+  __test_only_reset,
   getSession,
   getSessionCount,
   removeConnection,
@@ -44,9 +44,7 @@ import {
 describe("WebSocket Handlers Unit Tests", () => {
   // Clean up any sessions created during tests to prevent leaks
   afterEach(() => {
-    for (const sessionId of getAllSessionIds()) {
-      removeConnection(sessionId, "test-user");
-    }
+    __test_only_reset();
   });
   // Create mock socket
   const createMockSocket = (sessionId: string) => {
