@@ -399,8 +399,11 @@ export function MeetingPage() {
       });
       if (rawData.speaker) {
         emitTo("meeting-overlay", "overlay-data", {
+          type: "utterance",
           payload: { speaker: rawData.speaker },
-        }).catch(() => undefined);
+        }).catch((err) =>
+          console.warn("overlay-data utterance emit failed:", err)
+        );
       }
     });
 
@@ -437,7 +440,7 @@ export function MeetingPage() {
           label: topic.label,
           constraintsMentioned: Array.isArray(mentioned) ? mentioned.length : 0,
         },
-      }).catch(() => undefined);
+      }).catch((err) => console.warn("overlay-data topic emit failed:", err));
     });
 
     const unsubLedger = streamingClient.subscribe("ledger", (data) => {
@@ -468,7 +471,8 @@ export function MeetingPage() {
       );
       emitTo("meeting-overlay", "overlay-data", {
         type: "ledger",
-      }).catch(() => undefined);
+        payload: { commitmentId: live.id },
+      }).catch((err) => console.warn("overlay-data ledger emit failed:", err));
     });
 
     const unsubSttPartial = streamingClient.subscribe("stt_partial", (data) => {
@@ -517,17 +521,29 @@ export function MeetingPage() {
         emitTo("meeting-overlay", "overlay-data", {
           type: "alert",
           payload: alert,
-        }).catch(() => undefined);
+        }).catch((err) => console.warn("overlay-data alert emit failed:", err));
       }
     });
 
     const unsubParticipantEvent = streamingClient.subscribe(
       "participant_event",
-      (data) => {
+      (data: Record<string, unknown>) => {
+        const participantData: Record<string, unknown> = {};
+        if (
+          data.type === "participant_list" &&
+          Array.isArray(data.participants)
+        ) {
+          participantData.type = "participant_list";
+          participantData.participants = data.participants;
+        } else if (typeof data.type === "string") {
+          participantData.type = data.type;
+        }
         emitTo("meeting-overlay", "overlay-data", {
           type: "participant_event",
-          payload: data,
-        }).catch(() => undefined);
+          payload: participantData,
+        }).catch((err) =>
+          console.warn("overlay-data participant_event emit failed:", err)
+        );
       }
     );
 
