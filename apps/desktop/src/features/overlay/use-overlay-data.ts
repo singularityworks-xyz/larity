@@ -1,5 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mapBackendAlertToMeetingAlert } from "../alerts/mapper";
 import { useAlertQueue } from "../alerts/use-alert-queue";
 import { mapSpeakerToParticipant } from "../meeting-live/mappers";
@@ -19,6 +19,7 @@ function parseOverlayParams() {
       return Number.isFinite(raw) ? raw : Date.now();
     })(),
     userId: params.get("userId") ?? "overlay-viewer",
+    role: params.get("role") ?? "participant",
   };
 }
 
@@ -88,6 +89,11 @@ export function useOverlayData() {
     window.setTimeout(() => setRememberFlash(false), 2000);
   }, []);
 
+  const addAlertRef = useRef(alertQueue.addAlert);
+  addAlertRef.current = alertQueue.addAlert;
+
+  const seenCommitmentIdsRef = useRef(new Set<string>());
+
   // Receive forwarded data from the meeting page via Tauri events
   useEffect(() => {
     function handleAlert(payload: Record<string, unknown> | undefined): void {
@@ -96,7 +102,7 @@ export function useOverlayData() {
       }
       const alert = mapBackendAlertToMeetingAlert(payload);
       if (alert) {
-        alertQueue.addAlert(alert);
+        addAlertRef.current(alert);
       }
     }
 
@@ -108,9 +114,9 @@ export function useOverlayData() {
       if (label) {
         setCurrentTopic(label);
       }
-      const constraintCount = payload.constraintsMentioned;
-      if (typeof constraintCount === "number") {
-        setConstraintCount((prev) => prev + constraintCount);
+      const delta = payload.constraintsMentioned;
+      if (typeof delta === "number") {
+        setConstraintCount((prev) => prev + delta);
       }
     }
 
@@ -120,9 +126,7 @@ export function useOverlayData() {
       if (!payload) {
         return;
       }
-      const raw = payload as unknown as {
-        speaker?: Record<string, unknown>;
-      };
+      const raw = payload as { speaker?: Record<string, unknown> };
       if (!raw.speaker) {
         return;
       }
@@ -180,9 +184,22 @@ export function useOverlayData() {
         case "utterance":
           handleUtterance(payload);
           break;
-        case "ledger":
+        case "ledger": {
+          const commitmentId =
+            payload &&
+            typeof (payload as Record<string, unknown>).commitmentId ===
+              "string"
+              ? ((payload as Record<string, unknown>).commitmentId as string)
+              : null;
+          if (commitmentId && seenCommitmentIdsRef.current.has(commitmentId)) {
+            break;
+          }
+          if (commitmentId) {
+            seenCommitmentIdsRef.current.add(commitmentId);
+          }
           setCommitmentCount((prev) => prev + 1);
           break;
+        }
         case "participant_event":
           handleParticipantEvent(payload);
           break;
@@ -194,7 +211,7 @@ export function useOverlayData() {
     return () => {
       unlisten.then((f) => f());
     };
-  }, [alertQueue.addAlert, params.userId]);
+  }, [params.userId]);
 
   useEffect(() => {
     let unlistenStart: (() => void) | null = null;
@@ -236,6 +253,7 @@ export function useOverlayData() {
     isMicActive,
     meetingTitle: params.meetingTitle,
     rememberFlash,
+    role: params.role,
     sessionId: params.sessionId,
     setAlertsMuted,
     setExpandedAlertId,
@@ -243,5 +261,7 @@ export function useOverlayData() {
     handleRememberThis,
     alertsMuted,
     visibleAlerts,
+    pendingCount: alertQueue.pendingCount,
+    exitingIds: alertQueue.exitingIds,
   };
 }
