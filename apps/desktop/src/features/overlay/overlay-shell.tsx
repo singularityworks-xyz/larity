@@ -129,7 +129,7 @@ export function OverlayShell() {
       <OverlayFooter
         alertsMuted={data.alertsMuted}
         isEndingBusy={isEndingBusy}
-        isHost={data.role === "host"}
+        isHost={false}
         onEndMeeting={handleEndMeeting}
         onExpandToPanel={handleExpandToPanel}
         onMuteAlerts={() => data.setAlertsMuted(!data.alertsMuted)}

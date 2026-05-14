@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AlertCard } from "../../features/alerts/alert-card";
@@ -367,6 +367,7 @@ export function MeetingPage() {
       const utterance = mapBackendUtteranceToLive(
         data as unknown as Parameters<typeof mapBackendUtteranceToLive>[0]
       );
+      const rawData = data as unknown as { speaker?: Record<string, unknown> };
       setUtterances((prev) => {
         if (prev.some((u) => u.id === utterance.id)) {
           return prev;
@@ -379,12 +380,11 @@ export function MeetingPage() {
         );
       }
       setParticipants((prev) => {
-        const raw = data as unknown as { speaker?: Record<string, unknown> };
-        if (!raw.speaker) {
+        if (!rawData.speaker) {
           return prev;
         }
         const participant = mapSpeakerToParticipant(
-          raw.speaker as unknown as Parameters<
+          rawData.speaker as unknown as Parameters<
             typeof mapSpeakerToParticipant
           >[0],
           userId
@@ -397,6 +397,11 @@ export function MeetingPage() {
         }
         return [...prev, participant];
       });
+      if (rawData.speaker) {
+        emitTo("meeting-overlay", "overlay-data", {
+          payload: { speaker: rawData.speaker },
+        }).catch(() => undefined);
+      }
     });
 
     const unsubTopic = streamingClient.subscribe("topic", (data) => {
@@ -426,6 +431,13 @@ export function MeetingPage() {
       if (Array.isArray(mentioned) && mentioned.length > 0) {
         setConstraintCount((prev) => prev + mentioned.length);
       }
+      emitTo("meeting-overlay", "overlay-data", {
+        type: "topic",
+        payload: {
+          label: topic.label,
+          constraintsMentioned: Array.isArray(mentioned) ? mentioned.length : 0,
+        },
+      }).catch(() => undefined);
     });
 
     const unsubLedger = streamingClient.subscribe("ledger", (data) => {
@@ -454,6 +466,9 @@ export function MeetingPage() {
           u.id === live.sourceUtteranceId ? { ...u, isCommitment: true } : u
         )
       );
+      emitTo("meeting-overlay", "overlay-data", {
+        type: "ledger",
+      }).catch(() => undefined);
     });
 
     const unsubSttPartial = streamingClient.subscribe("stt_partial", (data) => {
@@ -499,8 +514,22 @@ export function MeetingPage() {
       const alert = mapBackendAlertToMeetingAlert(data);
       if (alert) {
         addAlertRef.current(alert);
+        emitTo("meeting-overlay", "overlay-data", {
+          type: "alert",
+          payload: alert,
+        }).catch(() => undefined);
       }
     });
+
+    const unsubParticipantEvent = streamingClient.subscribe(
+      "participant_event",
+      (data) => {
+        emitTo("meeting-overlay", "overlay-data", {
+          type: "participant_event",
+          payload: data,
+        }).catch(() => undefined);
+      }
+    );
 
     return () => {
       unsubUtterance();
@@ -509,6 +538,7 @@ export function MeetingPage() {
       unsubSttPartial();
       unsubSttFinal();
       unsubAlert();
+      unsubParticipantEvent();
     };
   }, [streamingClient, userId]);
 
