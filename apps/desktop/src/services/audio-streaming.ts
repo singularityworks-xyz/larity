@@ -114,7 +114,8 @@ function sendAlertClassificationDebugLog(
   const sev = data.severity;
   const looksLikeAlert =
     (typeof cat === "string" && typeof sev === "string") ||
-    typeof data.alertType === "string";
+    typeof data.alertType === "string" ||
+    typeof data.level === "string";
   if (!looksLikeAlert) {
     return;
   }
