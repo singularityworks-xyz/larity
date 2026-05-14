@@ -1,11 +1,12 @@
+@import "tailwindcss";
+
 @import "@fontsource/geist-sans/latin-400.css";
 @import "@fontsource/geist-sans/latin-500.css";
 @import "@fontsource/geist-sans/latin-600.css";
 @import "@fontsource/geist-mono/latin-400.css";
 @import "@fontsource/geist-mono/latin-500.css";
 @import "@fontsource/share-tech-mono/latin-400.css";
-
-@import "tailwindcss";
+@import "./meeting-mode.css";
 
 @theme {
   --color-bg: var(--bg);
