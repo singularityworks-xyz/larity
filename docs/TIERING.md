@@ -270,7 +270,7 @@ Without these optimizations, the same meeting would cost roughly $3-5.
 | `MIN_WORDS_REQUIRED` | 3 | Pre-filter drop threshold |
 | `TIER2_CACHE_MAX_SIZE` | 200 | Max entries in Tier 2 semantic cache |
 | `GROQ_TIER2_MODEL` | `openai/gpt-oss-120b` | Model for Tier 2 on Groq (env-overridable) |
-| `GEMINI_TIER4_MODEL` | `gemini-3.1-flash-lite-preview` | Model for Tier 4 (env-overridable) |
+| `GEMINI_TIER4_MODEL` | `gemini-3.1-flash-lite` | Model for Tier 4 (env-overridable) |
 
 ---
 
