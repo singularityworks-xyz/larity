@@ -523,7 +523,7 @@ describe("DeepgramConnection Diarization", () => {
     // Accumulation no longer publishes separately
     expect(redis.publish).not.toHaveBeenCalled();
 
-    connection.close();
+    await connection.close();
 
     expect(redis.publish).toHaveBeenCalledTimes(1);
     const call = (redis.publish as any).mock.calls[0];
