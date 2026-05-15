@@ -16,14 +16,17 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
   const [alertHistory, setAlertHistory] = useState<MeetingAlert[]>([]);
   const [queue, setQueue] = useState<MeetingAlert[]>([]);
   const [exitingIds, setExitingIds] = useState<Set<string>>(new Set());
-  const timeoutsRef = useRef<Map<string, number>>(new Map());
+  const autoDismissTimeoutsRef = useRef<Map<string, number>>(new Map());
+  const animTimeoutsRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     return () => {
-      for (const timerId of timeoutsRef.current.values()) {
+      for (const timerId of autoDismissTimeoutsRef.current.values()) {
         window.clearTimeout(timerId);
       }
-      timeoutsRef.current.clear();
+      for (const timerId of animTimeoutsRef.current.values()) {
+        window.clearTimeout(timerId);
+      }
     };
   }, []);
 
@@ -44,6 +47,13 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
   const dismissAlert = useCallback((id: string) => {
     setExitingIds((prev) => new Set([...prev, id]));
 
+    // Cancel the auto-dismiss timer — the exit animation replaces it
+    const existingAuto = autoDismissTimeoutsRef.current.get(id);
+    if (existingAuto) {
+      window.clearTimeout(existingAuto);
+      autoDismissTimeoutsRef.current.delete(id);
+    }
+
     const animTimerId = window.setTimeout(() => {
       setVisibleAlerts((prev) => prev.filter((a) => a.id !== id));
       setExitingIds((prev) => {
@@ -51,14 +61,10 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
         s.delete(id);
         return s;
       });
-      const timer = timeoutsRef.current.get(id);
-      if (timer) {
-        window.clearTimeout(timer);
-        timeoutsRef.current.delete(id);
-      }
+      animTimeoutsRef.current.delete(id);
     }, 220);
 
-    timeoutsRef.current.set(id, animTimerId);
+    animTimeoutsRef.current.set(id, animTimerId);
   }, []);
 
   const addAlert = useCallback(
@@ -76,7 +82,8 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
         }
 
         if (prev.length >= maxVisible) {
-          // Queue it instead
+          // Queue it instead — inside setVisibleAlerts for atomicity (avoids race
+          // between reading visibleAlerts.length and writing to the queue)
           setQueue((q) =>
             q.some((a) => a.id === alert.id) ? q : [...q, alert]
           );
@@ -95,7 +102,7 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
         return newAlerts.slice(0, maxVisible);
       });
 
-      const existingTimer = timeoutsRef.current.get(alert.id);
+      const existingTimer = autoDismissTimeoutsRef.current.get(alert.id);
       if (existingTimer) {
         window.clearTimeout(existingTimer);
       }
@@ -105,7 +112,7 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
         dismissAlert(alert.id);
       }, expiryMs);
 
-      timeoutsRef.current.set(alert.id, timerId);
+      autoDismissTimeoutsRef.current.set(alert.id, timerId);
     },
     [maxVisible, dismissAlert]
   );
@@ -115,10 +122,14 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
     setAlertHistory([]);
     setQueue([]);
     setExitingIds(new Set());
-    for (const timerId of timeoutsRef.current.values()) {
+    for (const timerId of autoDismissTimeoutsRef.current.values()) {
       window.clearTimeout(timerId);
     }
-    timeoutsRef.current.clear();
+    for (const timerId of animTimeoutsRef.current.values()) {
+      window.clearTimeout(timerId);
+    }
+    autoDismissTimeoutsRef.current.clear();
+    animTimeoutsRef.current.clear();
   }, []);
 
   const pendingCount = queue.length;
