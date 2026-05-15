@@ -308,7 +308,7 @@ apps/desktop/src/
 |---|---|
 | **AI Gradient System** (`VoiceGradient` canvas) | Overlay feels alive; VAD amplitude drives visual breathing |
 | **Gradient hue context-shifting** | Hue moves from violet → teal (speaking) → red (critical alert) across both overlay and panel header dot |
-| **Glass surface** (overlay) | `backdrop-filter: blur(24px)` + noise texture replaces flat opaque background |
+| **Overlay shell** | 90% opaque flat background (`--surface-overlay: #0E0E0EE6`) — no backdrop-filter, no noise texture, no glass |
 | **Alert suggestion always visible** | Reduces clicks to understand the alert's actionable guidance |
 | **Alert entry spring animation** | Signals urgency without being jarring |
 | **Alert exit animation** (coordinated dismiss) | Alerts slide out gracefully; queue promotion is smooth |
@@ -432,7 +432,7 @@ export function OverlayShell() {
 
 **Redesigned:**
 - Height: `28px`
-- Background: `rgba(0,0,0,0.2)` layered on glass
+- Background: `rgba(0,0,0,0.2)`
 - Border-bottom: `1px solid rgba(255,255,255,0.05)`
 - `client`: `9px / 500 / fg-subtle`
 - `·`: `fg-subtle/40` separator
