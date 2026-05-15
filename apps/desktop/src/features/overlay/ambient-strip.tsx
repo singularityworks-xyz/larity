@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cx } from "../../lib/ui";
 import type { OverlaySpeaker, OverlayTeammate } from "./types";
 import { VoiceDotMatrix } from "./voice-dot-matrix";
@@ -45,9 +45,12 @@ function AnimatedTopicLabel({ topic }: { topic: string | null }) {
 
 function ConstraintBadge({ count }: { count: number }) {
   const [flash, setFlash] = useState(false);
+  const prevCountRef = useRef(count);
 
   useEffect(() => {
-    if (count > 0) {
+    const prev = prevCountRef.current;
+    prevCountRef.current = count;
+    if (prev < count && count > 0) {
       setFlash(true);
       const timer = setTimeout(() => setFlash(false), 400);
       return () => clearTimeout(timer);

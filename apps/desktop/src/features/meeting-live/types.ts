@@ -67,5 +67,5 @@ export interface LiveCommitment {
   timestamp: number;
   status: CommitmentStatus;
   sourceUtteranceId: string;
-  contradictedBy?: number;
+  contradictedAtTimestamp?: number;
 }

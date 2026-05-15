@@ -52,9 +52,9 @@ function CounterBadge({
     if (count > prevCount) {
       setFlash(true);
       const timer = setTimeout(() => setFlash(false), 400);
-      setPrevCount(count);
       return () => clearTimeout(timer);
     }
+    setPrevCount(count);
   }, [count, prevCount]);
 
   if (count === 0) {

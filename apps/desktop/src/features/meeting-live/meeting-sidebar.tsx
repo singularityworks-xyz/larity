@@ -1,6 +1,7 @@
 import { ChevronDown, Crown, GitBranch, Pencil, UserCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cx, inputClass } from "../../lib/ui";
+import { IDENTIFICATION_CONFIDENCE_THRESHOLD } from "./participant-avatars";
 import type { LiveCommitment, LiveParticipant } from "./types";
 
 const WHITESPACE_SPLIT = /\s+/;
@@ -152,7 +153,9 @@ export function MeetingSidebar({
       .toUpperCase();
 
     // Determine if unidentified
-    const isUnidentified = p.type === "TEAM" && p.confidence < 0.6; // assuming < 0.6 is unidentified
+    const isUnidentified =
+      p.type === "TEAM" &&
+      (p.confidence ?? 0) < IDENTIFICATION_CONFIDENCE_THRESHOLD;
 
     return (
       <div
@@ -321,14 +324,18 @@ export function MeetingSidebar({
                   )}
                 </div>
                 <p className="m-0 text-[12px] text-fg leading-snug">{c.text}</p>
-                {c.status === "CONTRADICTED" && c.contradictedBy && (
+                {c.status === "CONTRADICTED" && c.contradictedAtTimestamp && (
                   <p className="m-0 flex items-start gap-1 text-[11px] text-danger-fg/80">
                     <GitBranch
                       className="mt-0.5 h-3 w-3 shrink-0"
                       strokeWidth={1.5}
                     />
-                    Contradicted at [
-                    {formatEvidenceClock(meetingStartedAtMs, c.contradictedBy)}]
+                    Contradicted at [{" "}
+                    {formatEvidenceClock(
+                      meetingStartedAtMs,
+                      c.contradictedAtTimestamp
+                    )}
+                    ]
                   </p>
                 )}
               </li>
