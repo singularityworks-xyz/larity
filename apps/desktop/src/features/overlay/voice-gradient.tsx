@@ -177,7 +177,10 @@ export function VoiceGradient({
     };
 
     rafId = requestAnimationFrame(drawFrame);
-    return () => cancelAnimationFrame(rafId);
+    return () => {
+      cancelAnimationFrame(rafId);
+      document.documentElement.style.removeProperty("--grad-hue");
+    };
   }, []);
 
   // Handle high-DPI scaling

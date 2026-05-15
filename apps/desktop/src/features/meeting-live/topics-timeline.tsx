@@ -34,7 +34,7 @@ function TopicSegment({
     <button
       aria-pressed={isActive}
       className={cx(
-        "group relative flex flex-col justify-center overflow-hidden border-border-subtle border-r px-3 py-0",
+        "group relative flex shrink-0 flex-col justify-center overflow-hidden border-border-subtle border-r px-3 py-0",
         "transition-colors duration-150",
         "last:border-r-0",
         isActive

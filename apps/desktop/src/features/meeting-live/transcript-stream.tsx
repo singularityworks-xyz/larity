@@ -9,6 +9,7 @@ import {
 import { cx } from "../../lib/ui";
 import { AlertCard } from "../alerts/alert-card";
 import type { MeetingAlert } from "../alerts/types";
+import { IDENTIFICATION_CONFIDENCE_THRESHOLD } from "./participant-avatars";
 import type { LivePendingUtterance, LiveUtterance } from "./types";
 
 function formatUtteranceClock(meetingStartMs: number, ts: number): string {
@@ -32,7 +33,7 @@ function SpeakerChip({
   if (confidence !== undefined) {
     if (confidence >= 0.85) {
       dot = "bg-success-fg";
-    } else if (confidence >= 0.6) {
+    } else if (confidence >= IDENTIFICATION_CONFIDENCE_THRESHOLD) {
       dot = "bg-warning-fg";
     }
   } else if (speakerType === "team_self") {
@@ -148,12 +149,13 @@ export function TranscriptStream({
     onConsumedScrollTarget();
   }, [scrollTargetId, onConsumedScrollTarget]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: visible.length triggers refire on new content
   useEffect(() => {
     if (!pinnedToBottom) {
       return;
     }
     scrollToBottom();
-  }, [pinnedToBottom, scrollToBottom]);
+  }, [pinnedToBottom, scrollToBottom, visible.length]);
 
   const showJump = !pinnedToBottom && (visible.length > 0 || showLiveTail);
 
@@ -183,13 +185,14 @@ export function TranscriptStream({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-border border-r">
       {/* Tabs Nav */}
-      <nav
+      <div
         aria-label="Transcript view mode"
         className="flex shrink-0 items-stretch gap-0 border-border-subtle border-b bg-bg-elevated"
+        role="tablist"
       >
         {(["full", "commitments", "alerts"] as const).map((m) => (
           <button
-            aria-selected={mode === m}
+            aria-current={mode === m ? "true" : undefined}
             className={cx(
               "relative flex h-8 items-center px-3 font-medium text-[11px] transition-colors duration-100",
               mode === m
@@ -198,7 +201,6 @@ export function TranscriptStream({
             )}
             key={m}
             onClick={() => setMode(m)}
-            role="tab"
             type="button"
           >
             {m === "full" && "Transcript"}
@@ -222,7 +224,7 @@ export function TranscriptStream({
             </span>
           )}
         </span>
-      </nav>
+      </div>
 
       <div className="relative min-h-0 flex-1">
         <div

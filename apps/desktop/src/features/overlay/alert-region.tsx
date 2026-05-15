@@ -1,6 +1,8 @@
 import { AlertCard } from "../alerts/alert-card";
 import type { MeetingAlert } from "../alerts/types";
 
+const EMPTY_EXITING_SET = new Set<string>();
+
 interface AlertRegionProps {
   visibleAlerts: MeetingAlert[];
   exitingIds?: Set<string>;
@@ -12,7 +14,7 @@ interface AlertRegionProps {
 
 export function AlertRegion({
   visibleAlerts,
-  exitingIds = new Set(),
+  exitingIds = EMPTY_EXITING_SET,
   alertsMuted,
   expandedAlertId,
   onDismiss,
