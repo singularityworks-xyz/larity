@@ -87,6 +87,34 @@ export function mapBackendAlertToMeetingAlert(
 ): MeetingAlert | null {
   const id = extractString(data, "alertId", "id");
   if (!id) {
+    // #region agent log
+    if (
+      typeof data.category === "string" ||
+      typeof data.alertType === "string"
+    ) {
+      fetch(
+        "http://127.0.0.1:7268/ingest/d02c4985-7539-46d4-bc45-33f990c9f9a8",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "6eb14a",
+          },
+          body: JSON.stringify({
+            sessionId: "6eb14a",
+            runId: "post-fix",
+            hypothesisId: "D",
+            location: "mapper.ts:mapBackendAlertToMeetingAlert",
+            message: "Alert mapper dropped payload (missing id)",
+            data: {
+              keys: Object.keys(data).slice(0, 24),
+            },
+            timestamp: Date.now(),
+          }),
+        }
+      ).catch(() => undefined);
+    }
+    // #endregion
     return null;
   }
 

@@ -106,6 +106,50 @@ export function shouldDropFrame(
   return bufferedAmount > thresholdBytes;
 }
 
+function sendAlertClassificationDebugLog(
+  data: Record<string, unknown>,
+  resolvedType: IncomingMessageType
+): void {
+  const cat = data.category;
+  const sev = data.severity;
+  const looksLikeAlert =
+    (typeof cat === "string" && typeof sev === "string") ||
+    typeof data.alertType === "string";
+  if (!looksLikeAlert) {
+    return;
+  }
+  // #region agent log
+  fetch("http://127.0.0.1:7268/ingest/d02c4985-7539-46d4-bc45-33f990c9f9a8", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "6eb14a",
+    },
+    body: JSON.stringify({
+      sessionId: "6eb14a",
+      runId: "post-fix",
+      hypothesisId: "A",
+      location: "audio-streaming.ts:onmessage",
+      message: "WS frame classified for alert-shaped payload",
+      data: {
+        resolvedType,
+        hasUtteranceId: typeof data.utteranceId === "string",
+        hasTopicId: typeof data.topicId === "string",
+        topicIdValue:
+          typeof data.topicId === "string"
+            ? (data.topicId as string).slice(0, 64)
+            : null,
+        hasCategory: typeof cat === "string",
+        hasSeverity: typeof sev === "string",
+        hasId: typeof data.id === "string",
+        triggerTier: data.triggerTier,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => undefined);
+  // #endregion
+}
+
 export class AudioStreamingClient {
   private socket: WebSocket | null = null;
   private readonly wsBaseUrl: string;
@@ -214,6 +258,7 @@ export class AudioStreamingClient {
       }
 
       const type = detectIncomingMessageType(data);
+      sendAlertClassificationDebugLog(data, type);
       const handlers = this.messageHandlers.get(type);
       if (handlers) {
         for (const handler of handlers) {
@@ -443,15 +488,16 @@ function detectIncomingMessageType(
   if (typeof data.utteranceId === "string") {
     return "utterance";
   }
-  if (typeof data.topicId === "string") {
-    return "topic";
-  }
+  // Alerts include `topicId` (context); classify before generic topicId branch.
   if (
     typeof data.alertType === "string" ||
     typeof data.level === "string" ||
     (typeof data.category === "string" && typeof data.severity === "string")
   ) {
     return "alert";
+  }
+  if (typeof data.topicId === "string") {
+    return "topic";
   }
   if (
     dataType === "participant_joined" ||
