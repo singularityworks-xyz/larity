@@ -431,6 +431,9 @@ function detectIncomingMessageType(
   if (dataType === "stt_final") {
     return "stt_final";
   }
+  if (dataType === "alert") {
+    return "alert";
+  }
   if (
     typeof dataType === "string" &&
     (dataType === "insert" || dataType === "status_change")

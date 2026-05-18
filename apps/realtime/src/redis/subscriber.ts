@@ -167,8 +167,15 @@ function handleAlertChannel(channel: string, message: string): void {
     return;
   }
 
+  let wrapped: string;
+  try {
+    wrapped = JSON.stringify({ ...JSON.parse(message), type: "alert" });
+  } catch {
+    return;
+  }
+
   if (route === "shared") {
-    broadcast(sessionId, message);
+    broadcast(sessionId, wrapped);
     return;
   }
 
@@ -181,7 +188,7 @@ function handleAlertChannel(channel: string, message: string): void {
     return;
   }
 
-  sendToUser(sessionId, userId, message);
+  sendToUser(sessionId, userId, wrapped);
 }
 
 function handlePipelineTraceMessage(message: string): void {

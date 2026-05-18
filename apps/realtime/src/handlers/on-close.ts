@@ -47,9 +47,7 @@ export function onClose(
   const isSessionEmpty = !!sessionRemoved;
 
   if (role === "host" || isSessionEmpty) {
-    sessionManager.closeSession(sessionId).catch((err) => {
-      log.error({ err, sessionId }, "Failed to close Deepgram session");
-    });
+    sessionManager.closeSession(sessionId);
 
     const sessionData = sessionRemoved || currentSession;
     const sessionDuration = sessionData ? now - sessionData.startedAt : 0;

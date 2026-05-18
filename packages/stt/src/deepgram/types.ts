@@ -6,42 +6,26 @@
  */
 
 /**
- * Deepgram live transcription configuration
- */
-export interface DeepgramLiveConfig {
-  model: string;
-  language: string;
-  punctuate: boolean;
-  interim_results: boolean;
-  smart_format: boolean;
-  endpointing: number;
-  vad_events: boolean;
-  encoding: string;
-  sample_rate: number;
-  channels: number;
-  diarize: boolean;
-}
-
-/**
  * Default configuration for live transcription
  * Assumes linear16 @ 16kHz mono (common for speech)
  *
  * diarize=true enables speaker diarization — Deepgram assigns
  * speaker indices (0, 1, 2...) to each word/segment.
+ *
+ * Note: v5 SDK requires boolean options as string literals.
  */
 export const DEFAULT_DG_CONFIG = {
   model: "nova-3",
-  language: "en-US",
-  punctuate: true,
-  interim_results: true,
-  smart_format: true,
-  endpointing: 600, // 600ms silence = end of utterance
-  vad_events: true,
+  language: "multi",
+  punctuate: "true",
+  interim_results: "true",
+  smart_format: "true",
+  endpointing: "600",
+  vad_events: "true",
   encoding: "linear16",
-  sample_rate: 16_000,
-  channels: 1,
-  keepAlive: true,
-  diarize: true,
+  sample_rate: "16000",
+  channels: "1",
+  diarize: "true",
 } as const;
 
 /**
@@ -73,14 +57,14 @@ export interface ChannelResult {
 }
 
 /**
- * Deepgram transcript result event
+ * Deepgram transcript result event (v5 ListenV1Results shape)
  */
 export interface TranscriptResult {
   type: "Results";
   channel_index: number[];
   duration: number;
   start: number;
-  is_final: boolean;
-  speech_final: boolean;
+  is_final?: boolean;
+  speech_final?: boolean;
   channel: ChannelResult;
 }
