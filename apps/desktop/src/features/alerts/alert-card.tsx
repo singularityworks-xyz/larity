@@ -7,6 +7,7 @@ import {
   Gauge,
   GitBranch,
   HelpCircle,
+  Lightbulb,
   ListChecks,
   Lock,
   Mic,
@@ -90,6 +91,14 @@ export function AlertCard({
         <div className="break-words font-medium text-fg leading-snug">
           {alert.message || alert.title}
         </div>
+
+        {/* Suggestion */}
+        {alert.suggestion && (
+          <div className="mt-1 flex items-start gap-1.5 rounded-[3px] bg-accent-subtle px-2 py-1.5 font-medium text-accent text-xs">
+            <Lightbulb className="mt-[1px] shrink-0" size={13} />
+            <span className="leading-snug">{alert.suggestion}</span>
+          </div>
+        )}
 
         {/* Footer Actions */}
         <div className="mt-1 flex flex-row items-center justify-between">
