@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
 // Must mock BEFORE imports to prevent real Redis/Deepgram init
 mock.module("@larity/infra/redis", () => ({
@@ -40,6 +40,10 @@ describe("SessionManager", () => {
     }));
 
     manager = new SessionManager(connectionFactory);
+  });
+
+  afterEach(() => {
+    manager.closeAll();
   });
 
   it("creates one Deepgram connection per session", () => {

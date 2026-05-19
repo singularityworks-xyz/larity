@@ -128,33 +128,74 @@ Output must match the JSON schema only. All seven top-level keys are required; a
 
 Classify the CURRENT utterance; use recentSameSpeaker only as short local context.
 
-Intent rubric — pick the FIRST that fits:
-- commitment: any statement that binds a person, team, or process to a future action, deadline, price, scope, or capability — regardless of grammatical person or phrasing. Covers: "I'll do X", "X will be done by Y", "we can handle Z", "I promise", "guaranteed", passive voice future plans, spoken-number prices. If a deadline or price is mentioned alongside a deliverable, it is always commitment.
-- decision: a choice already resolved and agreed by the group that does NOT bind future action ("we're going with React", "that's finalized", "we decided to drop feature X").
-- question: asks for info, approval, confirmation, or a decision.
-- concern: expresses risk, objection, uncertainty, hesitation, or legal/commercial worry.
-- filler: greeting, backchannel ("yeah", "okay", "mm-hmm"), audibility check, polite closer, noise.
-- general: substantive but none of the above — analysis, context, explanation with no binding or decision.
+## Intent rubric — pick the FIRST that fits:
 
-commitmentType — set when intent is commitment or decision (else null):
+**commitment**: Any statement that creates, implies, requests, or revises a future obligation — delivery, price, timeline, scope, capability, or resource allocation.
+- Affirmative: "I'll do X", "we can handle Z", "I promise", "guaranteed", "consider it done", "we'll deliver by Y", "within same budget", "no extra cost", "we'll integrate with any tool"
+- Price/scope commitments: "I'll approve 30% discount", "we can build the mobile app within this budget", "99.99% uptime from day one"
+- **Negative revisions of existing commitments**: "we can't make March 15th", "that timeline won't work", "we need to push delivery", "actually the price needs to be higher" — if the speaker is revising a prior promise, it is always commitment
+- **Client requests that expand scope**: "can you also add X", "I assumed Y was included", "we'll need Z included" — these are commitment requests, classify as commitment with scope_creep risk signal
+
+**decision**: A choice already resolved and agreed by the group that does NOT bind future action ("we're going with React", "that's finalized", "we decided to drop feature X").
+
+**question**: Asks for info, approval, confirmation, or a decision.
+- Does NOT include rhetorical questions that imply an unmet expectation ("I assumed X was included, right?" — this is concern/scope_creep, not question)
+- Does NOT include pressure tactics disguised as questions ("your competitor already does this for free, why are you charging?" — this is concern with pressure)
+
+**concern**: Expresses risk, objection, uncertainty, hesitation, legal/commercial worry, OR dissatisfaction with a proposal.
+- Includes external pressure statements: "our CEO is watching", "your competitor offers this for free", "we'll have to go with another vendor"
+- Includes downside of proposals: "that doesn't work for us", "we have a problem with X", "I'm not comfortable with that timeline"
+- Includes scope creep from clients: "I assumed the data migration was included, right?" — this implies unconfirmed scope expansion
+
+**filler**: Greeting, backchannel ("yeah", "okay", "mm-hmm", "right"), audibility check, polite closer, noise. Also includes simple acknowledgments with no substantive content.
+
+**general**: Substantive but none of the above — analysis, context, explanation, procedural discussion with no binding, decision, or concern.
+- EXCEPTION: If the utterance discusses unreleased strategy, M&A, confidential info, or internal financials that should not be shared externally, classify as general BUT include riskSignals: ["disclosure"].
+
+## commitmentType — set when intent is commitment or decision (else null):
 - timeline: binds a deadline or delivery date
 - price: mentions a specific amount, currency, or pricing decision
-- scope: defines what is or is not included
+- scope: defines what is or is not included (including negative scope: "we can't include X")
 - resource: assigns people or capacity
-- capability: claims ability to do something
+- capability: claims ability to do something ("we can handle X", "we support Y", "our system does Z")
 
-Risk signals (max 3, business risk only): unconditional_promise, underestimation, open_scope, vague_deadline, pressure, escalation, disclosure, compliance, scope_creep, backtracking, pricing_discussed.
-Always include "pricing_discussed" when any specific price/amount/currency appears — never omit it.
-Skip riskSignals for pure filler or STT noise.
+## Tone — describe the speaker's emotional register, not the content:
+- neutral: Default conversational tone, factual delivery, no emotional charge
+- confident: Assertive and self-assured, positive framing, no hedging. NOT aggressive.
+- hesitant: Uncertainty, hedging ("maybe", "I think", "possibly", "sort of"), pauses, self-correction
+- defensive: Deflecting blame, justifying, explaining repeatedly, "I told you already", passive-aggressive or dismissive responses to challenges
+- aggressive: Sharp or hostile language, interrupting, condescending ("that's just not how X works"), personal criticism, raised intensity
+- Do NOT mark confident speech about positive outcomes as aggressive. Do NOT mark factual delivery as defensive.
 
-extractedData: fill only from explicit speech; never infer. Use null for any key not present.
-topicDelta: null unless the utterance carries a clear topic signal; if set, include all seven keys (unused ones null).
-English, Hindi, Hinglish, code-switching. Broken STT → lower confidence; never invent facts.
+## Risk signals (max 3; choose only the most business-critical for the utterance):
+- unconditional_promise: Absolute guarantees without qualifiers ("100%", "guarantee", "no problem at all", "always", "never fail"). NOT confident language — only over-promising.
+- underestimation: Dismissing complexity ("straightforward", "easy", "no problem", "shouldn't take long", "simple"). Explicitly under-values time/effort.
+- open_scope: High-ambiguity work items with no boundaries ("full integration", "entire app", "any tool", "complete rebuild", "whatever you need"). Implies unverified scope.
+- vague_deadline: Missing or extremely fuzzy timeframes ("soon", "ASAP", "at some point", "later", "eventually"). Also when a deadline-critical task has no timeline assigned.
+- vague_ownership: No person or team accountable ("someone should", "they'll handle it", "it'll get done", "we need to sort out"). Passive ownership with no responsible party.
+- scope_creep: Expanding deliverables beyond the current agreement mid-conversation ("also add X", "I assumed Y was included", "while you're at it", "can you also"). Client casually adding features or rewriting scope.
+- pressure: Urgency tactics or leverage ("CEO needs this", "deadline from above", "your competitor offers this", "we'll go elsewhere", "need answer today"). Social proof, authority pressure, ultimatums.
+- timeline_risk: Timeline that contradicts known constraints or seems impossible under current scope. Overlaps with backtracking but specifically about time contradictions.
+- backtracking: Reversing or walking back a previous statement ("actually we need", "I know we said X but", "that was never confirmed", "we didn't agree to that"). Denying or revising prior commitments.
+- disclosure: Promising to share, expose, or give access to data that may be confidential (client data, internal figures, PII, passwords, API keys, unreleased plans, M&A strategy). "I can share X", "I'll send you Y", "let me give you access".
+- compliance: Regulatory or legal noncompliance risk (GDPR, HIPAA, data storage, privacy, data residency). Mentions of storing PII unsafely or mishandling sensitive data.
+- manipulation: Emotional manipulation or psychological leverage — guilt-tripping ("after everything we've done for you"), playing victim ("you'll put us out of business with these rates"), false urgency ("my job depends on this", "I'll be fired if"), flattery-as-leverage ("you're the best, that's why we need you to"), or manufactured emotional stakes ("our entire quarter rides on this"). Different from pressure (explicit deadlines/ultimatums from authority) — manipulation uses guilt, obligation, or emotional debt.
+- escalation: Rapid raising of stakes (involving executives, legal, or external parties suddenly; threatening to escalate disputes).
+- pricing_discussed: Any specific price, amount, currency, discount, or rate mentioned — even as a hypothetical. This is a factual marker, always include it when money is mentioned.
 
-Schema shape (all keys required, swap values per rubric):
+## Other rules:
+- Always include "pricing_discussed" when any specific price/amount/currency/discount/rate appears — never omit it.
+- Skip riskSignals for pure filler or STT noise.
+- extractedData: fill only from explicit speech; never infer. Use null for any key not present.
+- topicDelta: null unless the utterance carries a clear topic signal; if set, include all seven keys (unused ones null).
+- English, Hindi, Hinglish, code-switching. Broken STT → lower confidence; never invent facts.
+
+## Examples:
 {"intent":"commitment","commitmentType":"timeline","tone":"confident","riskSignals":["vague_deadline"],"extractedData":{"deadline":"end of this month","quantity":null,"scope":"integration","amount":null,"currency":null},"confidence":0.9,"topicDelta":null}
 {"intent":"commitment","commitmentType":"price","tone":"confident","riskSignals":["pricing_discussed"],"extractedData":{"deadline":null,"quantity":null,"scope":null,"amount":2500,"currency":"USD"},"confidence":0.9,"topicDelta":null}
-{"intent":"filler","commitmentType":null,"tone":"neutral","riskSignals":[],"extractedData":{"deadline":null,"quantity":null,"scope":null,"amount":null,"currency":null},"confidence":0.95,"topicDelta":null}`,
+{"intent":"filler","commitmentType":null,"tone":"neutral","riskSignals":[],"extractedData":{"deadline":null,"quantity":null,"scope":null,"amount":null,"currency":null},"confidence":0.95,"topicDelta":null}
+{"intent":"concern","commitmentType":null,"tone":"hesitant","riskSignals":["scope_creep","pressure"],"extractedData":{"deadline":null,"quantity":null,"scope":null,"amount":null,"currency":null},"confidence":0.85,"topicDelta":null}
+{"intent":"concern","commitmentType":null,"tone":"hesitant","riskSignals":["manipulation","pricing_discussed"],"extractedData":{"deadline":null,"quantity":null,"scope":null,"amount":null,"currency":null},"confidence":0.8,"topicDelta":null}`,
 ].join("\n");
 
 function buildUserMessage(input: Tier2Input): string {

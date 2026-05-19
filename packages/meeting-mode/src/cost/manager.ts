@@ -8,7 +8,7 @@ const COST_KEY_PREFIX = "meeting:cost:";
 
 const MODEL_PRICING: Record<string, { inputRate: number; outputRate: number }> =
   {
-    "gemini-3.1-flash-lite-preview": { inputRate: 0.25, outputRate: 1.5 },
+    "gemini-3.1-flash-lite": { inputRate: 0.25, outputRate: 1.5 },
     "gemini-pro": { inputRate: 1.25, outputRate: 1.25 },
     "openai/gpt-oss-120b": { inputRate: 0.9, outputRate: 0.9 },
     "llama-3.3-70b": { inputRate: 0.85, outputRate: 1.2 },
@@ -160,7 +160,7 @@ export class CostManager {
       return this.getSessionCost(sessionId);
     }
 
-    const flashLitePricing = MODEL_PRICING["gemini-3.1-flash-lite-preview"];
+    const flashLitePricing = MODEL_PRICING["gemini-3.1-flash-lite"];
     const pricing = MODEL_PRICING[model] ??
       flashLitePricing ?? { inputRate: 0.075, outputRate: 0.075 };
     const cost =

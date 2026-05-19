@@ -170,6 +170,8 @@ This is NOT a single-user experience. Multiple team members share a session.
 ### 7. Streaming STT with Diarization
 * **Deepgram Output:** Partial hypotheses with channel indices + speaker indices → Corrections → Final segments with speaker attribution
 * **Diarization:** Deepgram assigns speaker indices (0, 1, 2, ...) within **each** mono stream — arbitrary integers, not identities. **Logical capture channel 0** (host mic) maps to the host `SpeakerIdentity` directly; **logical capture channel 1** (loopback) uses VAD correlation for TEAM vs EXTERNAL.
+* **Utterance Accumulation:** Deepgram sends `is_final=true` for intermediate segments within a single utterance — only the last has `speech_final=true`. The STT layer accumulates `is_final=true, speech_final=false` segments until `speech_final=true` signals the utterance boundary, preventing sentence fragmentation. A 5s safety timeout flushes accumulated text if `speech_final` never arrives.
+* **Partial Prepend:** During accumulation, incoming partials are prepended with the accumulated text so the frontend sees the full sentence grow, rather than disjoint segment text jumping in. Duplication is avoided by checking if the partial already starts with the accumulated text.
 * *Note: Raw STT output is not LLM-safe.*
 
 ### 7.1 Speaker Identification (VAD Correlation)
@@ -213,8 +215,9 @@ interface SpeakerIdentity {
 * **Success Rate:** ~85% of speculative work is usable
 
 ### 8. STT Normalization Layer
-* **Component:** Utterance Finalizer (pure logic)
-* **Actions:** Drop non-final segments, merge short utterances, add light punctuation, attach **speaker identity** + timestamp
+* **Component:** DeepgramConnection (STT layer) + Utterance Finalizer (meeting-mode)
+* **STT Layer Actions:** Accumulate `is_final=true, speech_final=false` segments until `speech_final=true`, then publish a single combined final. During accumulation, prepend accumulated text to incoming partials for frontend continuity. 5s safety flush for edge cases.
+* **Meeting-Mode Actions:** Drop non-final segments, merge short utterances, add light punctuation, attach **speaker identity** + timestamp
 * **Output:**
     ```json
     {

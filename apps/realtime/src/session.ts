@@ -172,3 +172,11 @@ export function getTotalConnectionCount(): number {
 export function getAllSessionIds(): string[] {
   return Array.from(sessions.keys());
 }
+
+/**
+ * Test-only reset: clears all session state.
+ * Must NOT be used in production code.
+ */
+export function __test_only_reset(): void {
+  sessions.clear();
+}

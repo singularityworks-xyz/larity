@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { emitTo, listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AlertCard } from "../../features/alerts/alert-card";
@@ -367,6 +367,7 @@ export function MeetingPage() {
       const utterance = mapBackendUtteranceToLive(
         data as unknown as Parameters<typeof mapBackendUtteranceToLive>[0]
       );
+      const rawData = data as unknown as { speaker?: Record<string, unknown> };
       setUtterances((prev) => {
         if (prev.some((u) => u.id === utterance.id)) {
           return prev;
@@ -379,12 +380,11 @@ export function MeetingPage() {
         );
       }
       setParticipants((prev) => {
-        const raw = data as unknown as { speaker?: Record<string, unknown> };
-        if (!raw.speaker) {
+        if (!rawData.speaker) {
           return prev;
         }
         const participant = mapSpeakerToParticipant(
-          raw.speaker as unknown as Parameters<
+          rawData.speaker as unknown as Parameters<
             typeof mapSpeakerToParticipant
           >[0],
           userId
@@ -397,6 +397,14 @@ export function MeetingPage() {
         }
         return [...prev, participant];
       });
+      if (rawData.speaker) {
+        emitTo("meeting-overlay", "overlay-data", {
+          type: "utterance",
+          payload: { speaker: rawData.speaker },
+        }).catch((err) =>
+          console.warn("overlay-data utterance emit failed:", err)
+        );
+      }
     });
 
     const unsubTopic = streamingClient.subscribe("topic", (data) => {
@@ -426,6 +434,13 @@ export function MeetingPage() {
       if (Array.isArray(mentioned) && mentioned.length > 0) {
         setConstraintCount((prev) => prev + mentioned.length);
       }
+      emitTo("meeting-overlay", "overlay-data", {
+        type: "topic",
+        payload: {
+          label: topic.label,
+          constraintsMentioned: Array.isArray(mentioned) ? mentioned.length : 0,
+        },
+      }).catch((err) => console.warn("overlay-data topic emit failed:", err));
     });
 
     const unsubLedger = streamingClient.subscribe("ledger", (data) => {
@@ -454,6 +469,10 @@ export function MeetingPage() {
           u.id === live.sourceUtteranceId ? { ...u, isCommitment: true } : u
         )
       );
+      emitTo("meeting-overlay", "overlay-data", {
+        type: "ledger",
+        payload: { commitmentId: live.id },
+      }).catch((err) => console.warn("overlay-data ledger emit failed:", err));
     });
 
     const unsubSttPartial = streamingClient.subscribe("stt_partial", (data) => {
@@ -499,8 +518,34 @@ export function MeetingPage() {
       const alert = mapBackendAlertToMeetingAlert(data);
       if (alert) {
         addAlertRef.current(alert);
+        emitTo("meeting-overlay", "overlay-data", {
+          type: "alert",
+          payload: alert,
+        }).catch((err) => console.warn("overlay-data alert emit failed:", err));
       }
     });
+
+    const unsubParticipantEvent = streamingClient.subscribe(
+      "participant_event",
+      (data: Record<string, unknown>) => {
+        const participantData: Record<string, unknown> = {};
+        if (
+          data.type === "participant_list" &&
+          Array.isArray(data.participants)
+        ) {
+          participantData.type = "participant_list";
+          participantData.participants = data.participants;
+        } else if (typeof data.type === "string") {
+          participantData.type = data.type;
+        }
+        emitTo("meeting-overlay", "overlay-data", {
+          type: "participant_event",
+          payload: participantData,
+        }).catch((err) =>
+          console.warn("overlay-data participant_event emit failed:", err)
+        );
+      }
+    );
 
     return () => {
       unsubUtterance();
@@ -509,6 +554,7 @@ export function MeetingPage() {
       unsubSttPartial();
       unsubSttFinal();
       unsubAlert();
+      unsubParticipantEvent();
     };
   }, [streamingClient, userId]);
 

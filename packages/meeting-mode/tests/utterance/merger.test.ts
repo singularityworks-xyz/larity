@@ -63,9 +63,11 @@ describe("UtteranceMerger", () => {
     it("should NOT merge different speakerId utterances", () => {
       const speaker1 = createTeamSpeaker("user-1", "Alice", {
         speakerId: "spk_0",
+        diarizationIndices: [0],
       });
       const speaker2 = createExternalSpeaker("Client", {
         speakerId: "spk_1",
+        diarizationIndices: [1],
       });
       const now = Date.now();
 
@@ -120,8 +122,14 @@ describe("UtteranceMerger", () => {
     });
 
     it("should NOT merge same type but different speakerId", () => {
-      const ext1 = createExternalSpeaker("Client A", { speakerId: "spk_0" });
-      const ext2 = createExternalSpeaker("Client B", { speakerId: "spk_1" });
+      const ext1 = createExternalSpeaker("Client A", {
+        speakerId: "spk_0",
+        diarizationIndices: [0],
+      });
+      const ext2 = createExternalSpeaker("Client B", {
+        speakerId: "spk_1",
+        diarizationIndices: [1],
+      });
       const now = Date.now();
 
       const u1 = createTestUtterance({
@@ -143,6 +151,44 @@ describe("UtteranceMerger", () => {
       expect(emitted).not.toBeNull();
       expect(emitted?.text).toBe("From A");
       expect(emitted?.speaker.speakerId).toBe("spk_0");
+    });
+
+    it("should merge same diarizationIndex despite different speakerId", () => {
+      const unresolvedSpeaker = createExternalSpeaker("Speaker 1", {
+        speakerId: "spk_0",
+        diarizationIndices: [1],
+      });
+      const resolvedSpeaker = createTeamSpeaker("user-alice", "Alice", {
+        speakerId: "user-alice",
+        diarizationIndices: [1],
+      });
+      const now = Date.now();
+
+      const u1 = createTestUtterance({
+        speaker: unresolvedSpeaker,
+        text: "first part",
+        timestamp: now,
+        duration: 1.0,
+        wordCount: 2,
+      });
+      const u2 = createTestUtterance({
+        speaker: resolvedSpeaker,
+        text: "second part",
+        timestamp: now + 1500,
+        duration: 1.0,
+        wordCount: 2,
+      });
+
+      merger.push(u1);
+      const result = merger.push(u2);
+
+      // Should be merged (same diarization index, different speakerId)
+      expect(result).toBeNull();
+      expect(merger.hasPending()).toBe(true);
+
+      const merged = merger.flush();
+      expect(merged?.text).toBe("first part second part");
+      expect(merged?.wordCount).toBe(4);
     });
   });
 
