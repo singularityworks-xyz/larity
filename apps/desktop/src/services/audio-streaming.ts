@@ -55,6 +55,8 @@ const DEFAULT_MAX_PENDING_FRAMES = 8;
 const WS_AUDIO_TAG_MIC = 0;
 const WS_AUDIO_TAG_SYS = 1;
 const LEGACY_AUDIO_FRAME_TAG = WS_AUDIO_TAG_SYS;
+const DEBUG_INGEST_ENDPOINT =
+  "http://127.0.0.1:7268/ingest/d02c4985-7539-46d4-bc45-33f990c9f9a8";
 
 export function buildRealtimeSocketUrl(
   wsBaseUrl: string,
@@ -114,12 +116,19 @@ function sendAlertClassificationDebugLog(
   const sev = data.severity;
   const looksLikeAlert =
     (typeof cat === "string" && typeof sev === "string") ||
-    typeof data.alertType === "string";
+    typeof data.alertType === "string" ||
+    typeof data.level === "string";
   if (!looksLikeAlert) {
     return;
   }
+  const enabled =
+    process.env.ENABLE_ALERT_CLASSIFICATION_DEBUG === "true" ||
+    process.env.ENABLE_ALERT_CLASSIFICATION_DEBUG === "1";
+  if (!enabled) {
+    return;
+  }
   // #region agent log
-  fetch("http://127.0.0.1:7268/ingest/d02c4985-7539-46d4-bc45-33f990c9f9a8", {
+  fetch(DEBUG_INGEST_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -675,7 +675,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [x] Set up direct Gemini integration (`@google/genai`) for small LLM (`gemini-3.1-flash-lite-preview`)
+- [x] Set up direct Gemini integration (`@google/genai`) for small LLM (`gemini-3.1-flash-lite`)
 - [x] Define Tier 2 input schema:
   ```ts
   interface Tier2Input {
@@ -1719,7 +1719,7 @@ apps/
 ### External Services
 - **Deepgram** — Streaming STT with diarization (API key required)
 - **OpenAI Whisper API** — Batch STT refinement (post-meeting)
-- **Google Gemini (`@google/genai`)** — Tier 2 classification (`gemini-3.1-flash-lite-preview`) and embeddings (`text-embedding-004` / Gemini embedding models)
+- **Google Gemini (`@google/genai`)** — Tier 2 classification (`gemini-3.1-flash-lite`) and embeddings (`text-embedding-004` / Gemini embedding models)
 
 ### Infrastructure
 - **Redis** — Already configured in packages/infra. Needs new key patterns for multi-user, commitment ledger snapshots, per-meeting cost counters, and pub/sub channels for ledger updates. **Not on the audio path.**

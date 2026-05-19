@@ -332,8 +332,9 @@ This loop runs continuously on the **remote server** until the meeting ends. All
 2. Realtime **`createDualChannelSession`** routes each frame to **its** Deepgram socket — both use `diarize=true`, `channels=1`.
 3. STT emits partial hypotheses **with logical capture channel + diarization indices** (per mono stream)
 4. **Speculative processing begins on partials** (see 5.2)
-5. Normalizer waits for `isFinal = true`
-6. Speaker identification resolves:
+5. **STT accumulation:** `is_final=true, speech_final=false` segments are accumulated silently until `speech_final=true` signals the utterance boundary. During accumulation, incoming partials are prepended with the accumulated text so the frontend sees the full sentence grow (avoiding duplication when Deepgram's own partials already include the context). A 5s safety timeout flushes if no `speech_final` arrives.
+6. Normalizer receives one `isFinal=true` per complete utterance (after accumulation)
+7. Speaker identification resolves:
    * Channel 0 → host `SpeakerIdentity` directly
    * Channel 1 → **VAD correlation + reassignment-merge** (see §3.3.1–3.3.2): the channel/index pair is mapped to a `SpeakerIdentity` using the clock-offset-corrected VAD state. If no VAD-team match → EXTERNAL.
 7. Final utterance created:
@@ -572,6 +573,7 @@ After a **STT final**, meeting-mode builds one `Utterance`, **starts** a Gemini 
 | **`MERGE_PUBLISH_GAP_MS`** | After the pending segment’s **audio end**, if no merge sibling arrives, **flush Redis publish** after this delay so transcripts/alerts are **not** held for the full grouping window. | ~700 ms |
 
 - **Same-speaker merge:** Next final same **`speakerId`** within **`MERGE_GROUPING_MS`** after prior audio end → **single merged** utterance (one publish).
+- **Diarization fallback:** When `speakerId` differs (e.g., `"spk_1"` → `"user123"` because speaker identification resolved mid-stream), the merger checks if both utterances share a common Deepgram `diarizationIndex`. If they do, they're treated as the same speaker and merged — preventing fragments like "So they have sent the" + "base" from staying separate due to timing of identification.
 - **Otherwise:** Pending text publishes first (subject to **`MERGE_PUBLISH_GAP_MS`** timer); new segment becomes pending.
 - **Timers:** Pending flush schedules **`pendingEndMs + MERGE_PUBLISH_GAP_MS`**; each new final **clears and reschedules**. **`closeSession`** cancels the timer, **`flush()`** publishes any remainder, then **awaits in-flight `onUtterancePublished` handlers** so constraint snapshots / pipeline side-effects finish before topic teardown.
 

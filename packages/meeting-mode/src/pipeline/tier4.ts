@@ -17,58 +17,70 @@ export interface Tier4DeepReasonerOptions {
 }
 
 const CATEGORY_PROMPT_BLOCK = `
-Evaluate the context and choose exactly ONE alertType based on the provided intent, riskSignals, Tier 1 hits, and matched commitments:
+Evaluate the context JSON and choose exactly ONE alertType. Base your decision on the provided tier2 (intent, tone, riskSignals), tier1 (blocklistHit, technicalHit, pricingHit), speaker identity (type: TEAM/EXTERNAL), and matchedCommitments (Tier 3 ledger matches). riskSignal names match Tier 2 exactly.
 
 1. risky_commitment (Routing: personal)
-   - Trigger: TEAM speaker over-promises. (Tier 2 intent: commitment + riskSignals: underestimation, vague_deadline, unconditional_promise, open_scope, scope_creep_risk, or pricingHit).
-   - Evidence: "no problem" underestimation, unconditional SLA/guarantee, unverified scope expansion, discount/approval without authority, or open-ended capability/scope guarantee.
+   - Trigger: TEAM speaker over-promises. Gate: tier2.intent=commitment AND riskSignals contains any of: underestimation, vague_deadline, unconditional_promise, open_scope, scope_creep.
+   - Also triggered when tier2.intent=commitment with riskSignals contains pricing_discussed OR tier1.pricingHit=true AND the commitment is a price/discount/scope guarantee without clear limits.
+   - Evidence: "no problem" underestimation, unconditional SLA/guarantee, unverified scope expansion ("entire mobile app within same budget"), discount/approval without authority ("I'll approve 30%", "consider it done"), or open-ended capability/scope guarantee ("any tool you need, no extra cost").
+   - Do NOT fire for normal confident commitments with clear scope and timeline.
 
 2. scope_creep (Routing: shared)
-   - Trigger: EXTERNAL (client) speaker expands scope. (Tier 2 intent: concern, question, or commitment + riskSignals: scope_creep_risk, underestimation).
-   - Evidence: Client assuming unconfirmed work is in scope, or casually requesting extra features.
+   - Trigger: EXTERNAL (client) speaker expands scope. Gate: riskSignals contains scope_creep (and speaker.type=EXTERNAL).
+   - Can also fire when intent=concern and riskSignals contains scope_creep (client questioning scope boundaries is still scope_creep).
+   - Evidence: Client assuming unconfirmed work is in scope, casually requesting extra features, or implying deliverables were always included.
 
 3. missing_clarity (Routing: shared)
-   - Trigger: Substantive topic without owner/deadline/action. (Tier 2 intent: concern, commitment, or general + riskSignals: vague_ownership, vague_deadline, or unresolved pricing).
-   - Evidence: Vague ownership ("Someone should..."), vague deadline ("at some point"), or unresolved pricing without a clear next step.
+   - Trigger: Substantive topic without owner/deadline/action. Gate: riskSignals contains vague_ownership OR vague_deadline — regardless of intent.
+   - Also triggered when tier1.pricingHit=true (or riskSignals contains pricing_discussed) AND the utterance describes unresolved pricing with no next action or owner.
+   - Evidence: Vague ownership ("Someone should...", "we need to sort out"), vague deadline ("at some point", "we'll follow up"), or pricing discussion without resolution.
 
 4. information_risk (Routing: both)
-   - Trigger: Sensitive data disclosed in meeting. (Tier 1 technicalHit: api_key, password_assignment OR intent: general mentioning confidential strategy).
+   - Trigger: Sensitive data disclosed in meeting. Gate: tier1.technicalHit=true (API key, password, JWT, credential pattern) — fires regardless of intent or riskSignals.
+   - Also triggered when riskSignals contains disclosure AND speaker discusses: unreleased M&A, confidential strategy, internal financials, client PII, third-party secrets, or other protected information.
    - Evidence: Exposing live API keys, database passwords, internal financials, unreleased strategy/M&A, or third-party confidential details.
 
 5. tone_warning (Routing: personal)
-   - Trigger: TEAM speaker's tone is damaging. (Tier 2 tone: aggressive/defensive, especially with pricingHit or client concerns).
-   - Evidence: Dismissive tone toward client, aggressive defense of pricing.
+   - Trigger: TEAM speaker's tone is damaging to relationship. Gate: tier2.tone=aggressive AND (riskSignals contains any of underestimation/pressure OR tier1.pricingHit=true OR intent=concern).
+   - If tone=defensive, only fire when paired with riskSignals (especially underestimation or pressure) — defensive alone is usually justified explanation, not a warning.
+   - Do NOT fire on tone=confident or tone=neutral regardless of content.
+   - Evidence: Dismissive aggressive tone toward client ("that's just not how software works"), aggressive defense of pricing with dismissive language.
 
 6. pressure_detected (Routing: shared)
-   - Trigger: EXTERNAL speaker applies pressure. (Tier 2 intent: concern + riskSignals: pressure, timeline_risk).
-   - Evidence: Urgency from authority ("CEO needs this"), social proof ("competitor does this for free"), or ultimatums.
+   - Trigger: EXTERNAL speaker applies pressure or emotional manipulation. Gate: riskSignals contains pressure OR manipulation AND speaker.type=EXTERNAL.
+   - Also triggered when riskSignals contains timeline_risk (ultimatum timeliness).
+   - Evidence: Direct pressure — urgency from authority ("CEO needs this"), social proof ("competitor does this for free"), ultimatums ("signed by Friday or we go elsewhere"). Manipulation — guilt-tripping ("after everything we've done"), playing victim ("you'll put us out of business"), false urgency ("my job depends on this"), flattery-as-leverage.
 
 7. self_contradiction (Routing: personal)
-   - Trigger: TEAM speaker contradicts their OWN earlier commitment.
-   - Evidence: Requires a Tier 3 ledger match from the SAME speaker + intent: commitment + riskSignals: backtracking / date / pricing hit.
+   - Trigger: TEAM speaker contradicts their OWN earlier commitment. Gate: matchedCommitments exists where matchedCommitment.commitment.speaker.userId === currentSpeaker.userId AND (riskSignals contains backtracking OR tier1.pricingHit=true OR tier2.intent=commitment with timeline/price).
+   - Explicitly verify speaker.userId matches. If different speaker, this is team_inconsistency, not self_contradiction.
+   - Evidence: "We can't make March 15th" when speaker earlier committed to March 15th.
 
 8. team_inconsistency (Routing: shared)
    - Trigger: TEAM speaker gives conflicting info to a DIFFERENT team member's earlier commitment.
-   - Evidence: Requires a Tier 3 ledger match from a DIFFERENT team member (e.g., timeline, scope, price).
+   - Gate: matchedCommitments exists where matchedCommitment.commitment.speaker.userId !== currentSpeaker.userId AND matchedCommitment.commitment.speaker.type === "TEAM".
+   - Evidence: Team member B says "8 weeks" when team member A earlier committed to "4 weeks."
 
 9. client_backtrack (Routing: shared)
-   - Trigger: EXTERNAL speaker reverses their OWN commitment.
-   - Evidence: Requires a Tier 3 ledger match from the client + intent: concern/decision + riskSignals: backtracking / pricing hit.
+   - Trigger: EXTERNAL speaker reverses their OWN commitment. Gate: matchedCommitments exists where matchedCommitment.commitment.speaker.userId === currentSpeaker.userId AND speaker.type=EXTERNAL AND (riskSignals contains backtracking OR tier1.pricingHit=true OR riskSignals contains pricing_discussed).
+   - Evidence: Client says "we never agreed to that pricing" when they earlier accepted the price.
 
 10. policy_violation (Routing: both)
-    - Trigger: Utterance conflicts with org constraints. (Tier 2 intent: commitment + riskSignals: disclosure, or commitmentType: scope for data/security).
+    - Trigger: Utterance conflicts with org constraints. Gate: riskSignals contains disclosure OR compliance.
+    - Also triggered when tier2.intent=commitment with commitmentType=scope AND the scope involves data sharing, PII, or security-sensitive work.
     - Evidence: Promising to share client data with third parties, storing PII unsafely, or other compliance breaches.
 
 11. client_disengagement (Routing: shared)
-    - Trigger: EXTERNAL gives repeated minimal/passive responses after team-heavy explanation.
+    - Trigger: EXTERNAL gives repeated minimal/passive responses after team-heavy explanation. Only if context includes speaker state data suggesting disengagement pattern. Rare.
 
 12. undiscussed_agenda (Routing: shared)
-    - Trigger: Meeting-end only; do not emit mid-meeting unless context explicitly says agenda closeout.
+    - Trigger: Meeting-end only; do not emit mid-meeting unless context explicitly says agenda closeout. Rare.
 
 - none: no actionable meeting risk, ambiguous evidence, filler, audibility check, greeting, duplicated statement, or harmless STT artifact.
 
 Decision discipline:
-- Tier 3 ledger matches are only clues. Surface only if the current utterance truly conflicts with, changes, or risks something in context. Explicitly verify speaker.userId against matched commitments.
+- matchedCommitments list may be empty. Only use it for contradiction/inconsistency/backtrack categories.
+- Explicitly verify matchedCommitment.commitment.speaker.userId against currentSpeaker.userId: same = self_contradiction or client_backtrack; different TEAM = team_inconsistency; different EXTERNAL = weak evidence, prefer none.
 - Prefer 'none' when evidence is weak, purely conversational, or not actionable in the next 10 seconds.
 - shouldSurface=true only when confidence is high enough for a message, surfaceReason, and suggestion that help immediately in the overlay.
 - Calibrate confidence: 0.9+ clear direct evidence, 0.75-0.89 likely but context dependent, <0.75 should usually not surface.
