@@ -23,7 +23,7 @@ export function onClose(
 
   // Remove connection from memory
   // returns session if it was the last connection and session is removed
-  const sessionRemoved = removeConnection(sessionId, userId);
+  const sessionRemoved = removeConnection(sessionId, userId, ws);
 
   const now = Date.now();
   const duration = now - connectedAt;

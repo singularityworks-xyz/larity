@@ -1,6 +1,6 @@
 import { Redis } from "ioredis";
 import { createRealtimeLogger } from "../logger";
-import { broadcast, getConnection, hasSession, sendToUser } from "../session";
+import { broadcast, hasSession, sendToUser } from "../session";
 
 const log = createRealtimeLogger("subscriber");
 const pipelineTraceLog = createRealtimeLogger("pipeline-trace");
@@ -89,6 +89,7 @@ function handleMessage(
     }
 
     if (channel.startsWith("meeting.alert.")) {
+      log.info({ channel }, "handleMessage: routing to handleAlertChannel");
       handleAlertChannel(channel, message);
     }
   } catch (error) {
@@ -223,6 +224,13 @@ function handleAlertChannel(channel: string, message: string): void {
 
   if (route === "shared") {
     broadcast(sessionId, wrapped);
+    log.info(
+      {
+        sessionId,
+        channelLen: channel.length,
+      },
+      "handleAlertChannel: broadcast alert to session"
+    );
     return;
   }
 
