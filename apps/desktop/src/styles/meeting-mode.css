@@ -162,3 +162,19 @@
   );
   mask-image: linear-gradient(to top, black 0%, black 35%, transparent 100%);
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .alert-card-enter,
+  .alert-card-exit,
+  .alert-expand-in,
+  .topic-enter,
+  .counter-flash,
+  .speak-ring,
+  .speak-pulse,
+  .remember-ripple,
+  .commitment-row-enter {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}

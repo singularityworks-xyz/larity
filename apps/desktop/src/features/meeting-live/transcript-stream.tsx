@@ -149,13 +149,19 @@ export function TranscriptStream({
     onConsumedScrollTarget();
   }, [scrollTargetId, onConsumedScrollTarget]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: visible.length triggers refire on new content
+  // biome-ignore lint/correctness/useExhaustiveDependencies: visible.length, pendingFinals.length and livePartial trigger refire on new content
   useEffect(() => {
     if (!pinnedToBottom) {
       return;
     }
     scrollToBottom();
-  }, [pinnedToBottom, scrollToBottom, visible.length]);
+  }, [
+    pinnedToBottom,
+    scrollToBottom,
+    visible.length,
+    pendingFinals.length,
+    livePartial?.text,
+  ]);
 
   const showJump = !pinnedToBottom && (visible.length > 0 || showLiveTail);
 
@@ -192,15 +198,18 @@ export function TranscriptStream({
       >
         {(["full", "commitments", "alerts"] as const).map((m) => (
           <button
-            aria-current={mode === m ? "true" : undefined}
+            aria-controls={`panel-${m}`}
+            aria-selected={mode === m}
             className={cx(
               "relative flex h-8 items-center px-3 font-medium text-[11px] transition-colors duration-100",
               mode === m
                 ? "text-fg after:absolute after:inset-x-0 after:bottom-0 after:h-[1.5px] after:bg-accent"
                 : "text-fg-muted hover:text-fg"
             )}
+            id={`tab-${m}`}
             key={m}
             onClick={() => setMode(m)}
+            role="tab"
             type="button"
           >
             {m === "full" && "Transcript"}
@@ -228,10 +237,12 @@ export function TranscriptStream({
 
       <div className="relative min-h-0 flex-1">
         <div
+          aria-labelledby={`tab-${mode}`}
           className="h-full overflow-y-auto bg-bg"
+          id={`panel-${mode}`}
           onScroll={handleScroll}
           ref={rootRef}
-          role="log"
+          role="tabpanel"
         >
           {listIsEmpty && (
             <div className="flex flex-1 items-center justify-center py-12">
@@ -422,8 +433,8 @@ export function TranscriptStream({
 
           {!listIsEmpty && mode === "commitments" && (
             <div className="pb-4">
-              {commitmentsByBlock.map(({ speaker, rows }) => (
-                <div key={speaker}>
+              {commitmentsByBlock.map(({ speaker, rows }, i) => (
+                <div key={`${speaker}-${rows[0]?.id ?? i}`}>
                   <div className="sticky top-0 z-10 flex items-center gap-2 border-border-subtle border-b bg-bg px-5 py-1.5">
                     <SpeakerChip
                       name={speaker}

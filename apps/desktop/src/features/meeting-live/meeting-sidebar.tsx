@@ -18,9 +18,13 @@ function CollapsibleSection({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const contentId = `sidebar-section-${title.toLowerCase().replace(/\s+/g, "-")}-content`;
+
   return (
     <section className="border-border-subtle border-t first:border-t-0">
       <button
+        aria-controls={contentId}
+        aria-expanded={open}
         className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left transition-colors duration-100 hover:bg-bg-subtle/40"
         onClick={() => setOpen(!open)}
         type="button"
@@ -43,7 +47,11 @@ function CollapsibleSection({
           strokeWidth={1.5}
         />
       </button>
-      {open ? <div className="px-3 pb-3">{children}</div> : null}
+      {open ? (
+        <div className="px-3 pb-3" id={contentId}>
+          {children}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -324,20 +332,21 @@ export function MeetingSidebar({
                   )}
                 </div>
                 <p className="m-0 text-[12px] text-fg leading-snug">{c.text}</p>
-                {c.status === "CONTRADICTED" && c.contradictedAtTimestamp && (
-                  <p className="m-0 flex items-start gap-1 text-[11px] text-danger-fg/80">
-                    <GitBranch
-                      className="mt-0.5 h-3 w-3 shrink-0"
-                      strokeWidth={1.5}
-                    />
-                    Contradicted at [{" "}
-                    {formatEvidenceClock(
-                      meetingStartedAtMs,
-                      c.contradictedAtTimestamp
-                    )}
-                    ]
-                  </p>
-                )}
+                {c.status === "CONTRADICTED" &&
+                  c.contradictedAtTimestamp != null && (
+                    <p className="m-0 flex items-start gap-1 text-[11px] text-danger-fg/80">
+                      <GitBranch
+                        className="mt-0.5 h-3 w-3 shrink-0"
+                        strokeWidth={1.5}
+                      />
+                      Contradicted at [{" "}
+                      {formatEvidenceClock(
+                        meetingStartedAtMs,
+                        c.contradictedAtTimestamp
+                      )}
+                      ]
+                    </p>
+                  )}
               </li>
             ))}
           </ul>
