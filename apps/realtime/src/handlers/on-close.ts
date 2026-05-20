@@ -23,7 +23,7 @@ export function onClose(
 
   // Remove connection from memory
   // returns session if it was the last connection and session is removed
-  const sessionRemoved = removeConnection(sessionId, userId);
+  const sessionRemoved = removeConnection(sessionId, userId, ws);
 
   const now = Date.now();
   const duration = now - connectedAt;
@@ -47,9 +47,9 @@ export function onClose(
   const isSessionEmpty = !!sessionRemoved;
 
   if (role === "host" || isSessionEmpty) {
-    sessionManager.closeSession(sessionId).catch((err) => {
-      log.error({ err, sessionId }, "Failed to close Deepgram session");
-    });
+    // closeSession internally cleans up STT connections and schedules asynchronous cleanup tasks,
+    // so a direct await is unnecessary/redundant here.
+    sessionManager.closeSession(sessionId);
 
     const sessionData = sessionRemoved || currentSession;
     const sessionDuration = sessionData ? now - sessionData.startedAt : 0;

@@ -89,6 +89,7 @@ function handleMessage(
     }
 
     if (channel.startsWith("meeting.alert.")) {
+      log.info({ channel }, "handleMessage: routing to handleAlertChannel");
       handleAlertChannel(channel, message);
     }
   } catch (error) {
@@ -214,8 +215,22 @@ function handleAlertChannel(channel: string, message: string): void {
   }
   // #endregion
 
+  let wrapped: string;
+  try {
+    wrapped = JSON.stringify({ ...JSON.parse(message), type: "alert" });
+  } catch {
+    return;
+  }
+
   if (route === "shared") {
-    broadcast(sessionId, message);
+    broadcast(sessionId, wrapped);
+    log.info(
+      {
+        sessionId,
+        channelLen: channel.length,
+      },
+      "handleAlertChannel: broadcast alert to session"
+    );
     return;
   }
 
@@ -228,7 +243,7 @@ function handleAlertChannel(channel: string, message: string): void {
     return;
   }
 
-  sendToUser(sessionId, userId, message);
+  sendToUser(sessionId, userId, wrapped);
 }
 
 function handlePipelineTraceMessage(message: string): void {

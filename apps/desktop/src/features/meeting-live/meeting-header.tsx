@@ -1,7 +1,6 @@
 import { Bell, BellOff, Bookmark, PhoneOff, UserCog } from "lucide-react";
 import { useEffect, useState } from "react";
-import { buttonClass, cx, eyebrowClass, heroTitleClass } from "../../lib/ui";
-import { HeartbeatDotInline } from "./listening-heartbeat";
+import { cx } from "../../lib/ui";
 
 function formatElapsed(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -9,6 +8,28 @@ function formatElapsed(ms: number): string {
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function LiveIndicator({ isActive }: { isActive: boolean }) {
+  return (
+    <span className="relative inline-flex h-[7px] w-[7px] shrink-0">
+      {isActive && (
+        <span
+          aria-hidden
+          className="absolute inset-0 animate-[speak-ring_2.2s_ease-out_infinite] rounded-full"
+          style={{ background: "hsl(var(--grad-hue,252) 70% 55% / 0.45)" }}
+        />
+      )}
+      <span
+        className="relative h-[7px] w-[7px] rounded-full transition-colors duration-500"
+        style={{
+          background: isActive
+            ? "hsl(var(--grad-hue,252) 70% 60%)"
+            : "var(--fg-subtle)",
+        }}
+      />
+    </span>
+  );
 }
 
 interface MeetingHeaderProps {
@@ -49,34 +70,53 @@ export function MeetingHeader({
     return () => window.clearInterval(id);
   }, [startedAtMs]);
 
+  const ghostButtonClass = cx(
+    "flex h-7 w-7 items-center justify-center rounded-[5px]",
+    "text-fg-subtle hover:bg-white/[0.05] hover:border hover:border-white/[0.06] transition-colors hover:text-fg"
+  );
+
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-4 border-border border-b bg-bg px-4">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <HeartbeatDotInline isActive={isStreamActive} size={7} />
+    <header className="meeting-header relative sticky top-0 z-20 flex h-[52px] shrink-0 items-center gap-4 border-border border-b bg-bg px-4">
+      {/* Background gradient wash */}
+      <div
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 45% 100% at 0% 50%, rgba(124, 92, 255, 0.06) 0%, transparent 100%)",
+        }}
+      />
+
+      <div className="relative z-[1] flex min-w-0 flex-1 items-center gap-2.5">
+        <LiveIndicator isActive={isStreamActive} />
         <div className="min-w-0">
-          <p className={cx(eyebrowClass, "truncate")}>{clientName}</p>
-          <h1 className={cx(heroTitleClass, "truncate text-base")}>
+          <p className="truncate font-medium text-[10px] text-fg-subtle uppercase tracking-[0.06em]">
+            {clientName}
+          </p>
+          <h1
+            className="truncate font-medium text-[15px] text-fg leading-tight"
+            style={{ fontFamily: "var(--font-display, var(--font-sans))" }}
+          >
             {meetingTitle}
           </h1>
         </div>
       </div>
 
       <time
-        className="font-mono text-fg-muted text-xs tabular-nums"
+        className="relative z-[1] shrink-0 font-mono text-[12px] text-fg-muted tabular-nums"
         dateTime={`PT${Math.floor(elapsedMs / 1000)}S`}
       >
         {formatElapsed(elapsedMs)}
       </time>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-        {isHost ? (
+      <div className="relative z-[1] flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+        {isHost && (
           <button
             aria-label={
               allowNameCustomization
                 ? "Disable name customization"
                 : "Enable name customization"
             }
-            className={buttonClass({ variant: "ghost", icon: true })}
+            className={ghostButtonClass}
             onClick={onToggleNameCustomization}
             title={
               allowNameCustomization
@@ -85,43 +125,46 @@ export function MeetingHeader({
             }
             type="button"
           >
-            <UserCog className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <UserCog className="h-4 w-4" strokeWidth={1.5} />
           </button>
-        ) : null}
+        )}
         <button
           aria-label="Remember this moment"
-          className={buttonClass({ variant: "ghost", icon: true })}
+          className={ghostButtonClass}
           onClick={onRememberThis}
           title="Remember this"
           type="button"
         >
-          <Bookmark className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <Bookmark className="h-4 w-4" strokeWidth={1.5} />
         </button>
         <button
           aria-label={alertsMuted ? "Unmute alerts" : "Mute alerts"}
-          className={buttonClass({ variant: "ghost", icon: true })}
+          className={ghostButtonClass}
           onClick={onMuteAlertsToggle}
           title={alertsMuted ? "Unmute alerts" : "Mute alerts"}
           type="button"
         >
           {alertsMuted ? (
-            <BellOff className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <BellOff className="h-4 w-4" strokeWidth={1.5} />
           ) : (
-            <Bell className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <Bell className="h-4 w-4" strokeWidth={1.5} />
           )}
         </button>
         <button
           aria-busy={isEndingBusy}
-          className={buttonClass({
-            variant: isHost ? "danger" : "secondary",
-            size: "sm",
-          })}
+          className={cx(
+            "inline-flex h-7 items-center gap-1.5 rounded-[5px] px-3",
+            "border font-medium text-[11px] transition-all duration-100",
+            isHost
+              ? "border-danger-fg/25 bg-danger-fg/10 text-danger-fg hover:border-danger-fg/40 hover:bg-danger-fg/18"
+              : "border-border bg-bg-subtle text-fg-muted hover:bg-bg-emphasis hover:text-fg"
+          )}
           disabled={isEndingBusy}
           onClick={onEndMeeting}
           type="button"
         >
-          <PhoneOff className="inline h-3.5 w-3.5" strokeWidth={1.5} />
-          <span className="ml-1">{isHost ? "End meeting" : "Leave"}</span>
+          <PhoneOff className="h-3.5 w-3.5" strokeWidth={1.5} />
+          {isHost ? "End meeting" : "Leave"}
         </button>
       </div>
     </header>

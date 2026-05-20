@@ -6,8 +6,6 @@
  * Handles transcript events and publishes to Redis.
  */
 
-import type { ListenLiveClient } from "@deepgram/sdk";
-import { LiveTranscriptionEvents } from "@deepgram/sdk";
 import { redis } from "@larity/infra/redis";
 import { partialChannel, transcriptChannel } from "../channels";
 import { createSttLogger } from "../logger";
@@ -19,6 +17,15 @@ import {
   type TranscriptAlternative,
   type TranscriptResult,
 } from "./types";
+
+/** Minimal handle for a v5 Listen V1 WebSocket connection. */
+interface LiveConnection {
+  on(event: string, callback: (...args: unknown[]) => void): void;
+  sendMedia(message: ArrayBuffer | Blob | ArrayBufferView): void;
+  connect(): void;
+  close(): void;
+  waitForOpen(): Promise<unknown>;
+}
 
 const log = createSttLogger("dg-connection");
 
@@ -57,7 +64,7 @@ function summarizeDiarizedSpeakers(words: DeepgramWord[] | undefined): string {
  * - Stamp logical channel (mic vs sys) on published SttResult
  */
 export class DeepgramConnection {
-  private connection: ListenLiveClient | null = null;
+  private connection: LiveConnection | null = null;
   private readonly sessionId: string;
   /** Logical capture channel: 0 = host mic, 1 = system / loopback (stamped on SttResult.channel). */
   private readonly logicalChannel: number;
@@ -101,10 +108,17 @@ export class DeepgramConnection {
 
     try {
       const client = getDeepgramClient();
-      this.connection = client.listen.live(DEFAULT_DG_CONFIG);
+      // biome-ignore lint/suspicious/noExplicitAny: SDK internally fills Authorization
+      const cfg = DEFAULT_DG_CONFIG as any;
+      this.connection = await client.listen.v1.connect(cfg);
       this.setupEventHandlers();
+      this.connection.connect();
+      await this.connection.waitForOpen();
     } catch (error) {
-      log.error(`Failed to create connection for ${this.sessionId}:`, error);
+      log.error(
+        error as Error,
+        `Failed to create connection for ${this.sessionId}`
+      );
       this.isConnecting = false;
       await this.reconnect();
     }
@@ -118,7 +132,7 @@ export class DeepgramConnection {
       return;
     }
 
-    this.connection.on(LiveTranscriptionEvents.Open, () => {
+    this.connection.on("open", () => {
       log.info(`Connection opened for ${this.sessionId}`);
       this.connectionStartTime = Date.now();
       this.isConnected = true;
@@ -126,16 +140,16 @@ export class DeepgramConnection {
       this.retryCount = 0; // Reset retry count on successful connection
     });
 
-    this.connection.on(LiveTranscriptionEvents.Close, (event: unknown) => {
+    this.connection.on("close", (event: unknown) => {
       const closeEvent = event as {
         code?: number;
         reason?: string;
         wasClean?: boolean;
       };
-      log.info(`Connection closed for ${this.sessionId}`, {
-        code: closeEvent?.code,
-        reason: closeEvent?.reason,
-      });
+      log.info(
+        { code: closeEvent?.code, reason: closeEvent?.reason },
+        `Connection closed for ${this.sessionId}`
+      );
       this.isConnected = false;
       this.isConnecting = false;
 
@@ -146,16 +160,16 @@ export class DeepgramConnection {
       }
     });
 
-    this.connection.on(LiveTranscriptionEvents.Error, (error) => {
-      log.error(`Error for ${this.sessionId}:`, error);
+    this.connection.on("error", (error) => {
+      log.error(error as Error, `Error for ${this.sessionId}`);
     });
 
-    this.connection.on(
-      LiveTranscriptionEvents.Transcript,
-      (result: TranscriptResult) => {
+    this.connection.on("message", (data: unknown) => {
+      const result = data as TranscriptResult;
+      if (result.type === "Results") {
         this.handleTranscript(result);
       }
-    );
+    });
   }
 
   /**
@@ -205,7 +219,7 @@ export class DeepgramConnection {
       buffer.byteOffset,
       buffer.byteOffset + buffer.byteLength
     );
-    this.connection.send(arrayBuffer);
+    this.connection.sendMedia(arrayBuffer as ArrayBuffer);
   }
 
   /**
@@ -342,7 +356,10 @@ export class DeepgramConnection {
     try {
       await redis.publish(channel, JSON.stringify(result));
     } catch (error) {
-      log.error(`Failed to publish transcript for ${this.sessionId}:`, error);
+      log.error(
+        error as Error,
+        `Failed to publish transcript for ${this.sessionId}`
+      );
     }
   }
 
@@ -528,9 +545,12 @@ export class DeepgramConnection {
 
     if (this.connection) {
       try {
-        this.connection.requestClose();
+        this.connection.close();
       } catch (error) {
-        log.error(`Error closing connection for ${this.sessionId}:`, error);
+        log.error(
+          error as Error,
+          `Error closing connection for ${this.sessionId}`
+        );
       }
       this.connection = null;
     }

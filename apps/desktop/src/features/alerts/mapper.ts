@@ -120,8 +120,12 @@ export function mapBackendAlertToMeetingAlert(
 
   const rawCategory = extractString(data, "category", "alertType");
   const rawSeverity = extractString(data, "severity", "level");
-  const isShared = extractBoolean(data, "isShared", "shared");
-  const routing = parseRouting(extractString(data, "routing"), isShared);
+  const rawRouting = extractString(data, "routing");
+  const isShared =
+    extractBoolean(data, "isShared", "shared") ||
+    rawRouting === "shared" ||
+    rawRouting === "both";
+  const routing = parseRouting(rawRouting, isShared);
 
   const speakerObj =
     typeof data.speaker === "object" && data.speaker !== null

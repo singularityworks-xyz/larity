@@ -4,7 +4,7 @@ import type { LiveParticipant } from "./types";
 
 const WHITESPACE_RE = /\s+/;
 const MAX_VISIBLE = 5;
-const IDENTIFICATION_CONFIDENCE_THRESHOLD = 0.6;
+export const IDENTIFICATION_CONFIDENCE_THRESHOLD = 0.6;
 
 function participantInitials(name: string): string {
   return name

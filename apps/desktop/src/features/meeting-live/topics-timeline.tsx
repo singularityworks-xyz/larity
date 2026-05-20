@@ -1,10 +1,8 @@
+import { useMemo } from "react";
 import { cx } from "../../lib/ui";
 import type { LiveTopic } from "./types";
 
-function formatTopicOffset(
-  meetingStartMs: number,
-  topicStartMs: number
-): string {
+function formatOffset(meetingStartMs: number, topicStartMs: number): string {
   const delta = Math.max(0, topicStartMs - meetingStartMs);
   const totalSec = Math.floor(delta / 1000);
   const m = Math.floor(totalSec / 60);
@@ -19,60 +17,113 @@ interface TopicsTimelineProps {
   onSelectTopic: (topic: LiveTopic) => void;
 }
 
+function TopicSegment({
+  topic,
+  isActive,
+  style,
+  meetingStartedAtMs,
+  onClick,
+}: {
+  topic: LiveTopic;
+  isActive: boolean;
+  style: React.CSSProperties;
+  meetingStartedAtMs: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      aria-pressed={isActive}
+      className={cx(
+        "group relative flex shrink-0 flex-col justify-center overflow-hidden border-border-subtle border-r px-3 py-0",
+        "transition-colors duration-150",
+        "last:border-r-0",
+        isActive
+          ? "bg-accent-subtle/40 hover:bg-accent-subtle/60"
+          : "hover:bg-bg-subtle"
+      )}
+      onClick={onClick}
+      style={style}
+      type="button"
+    >
+      {isActive && (
+        <span className="absolute inset-x-0 bottom-0 h-[2px] bg-accent/80" />
+      )}
+
+      <span
+        className={cx(
+          "relative truncate font-medium text-[11px] transition-colors",
+          isActive ? "text-fg" : "text-fg-muted"
+        )}
+      >
+        {topic.label}
+      </span>
+      <span className="relative font-mono text-[9px] text-fg-subtle tabular-nums">
+        +{formatOffset(meetingStartedAtMs, topic.startedAt)}
+      </span>
+    </button>
+  );
+}
+
 export function TopicsTimeline({
   topics,
   meetingStartedAtMs,
   activeTopicId,
   onSelectTopic,
 }: TopicsTimelineProps) {
-  if (topics.length === 0) {
+  const segments = useMemo(() => {
+    if (topics.length === 0) {
+      return [];
+    }
+
+    // biome-ignore lint/style/useAtIndex: .at(-1) returns undefined, tsc rejects it
+    const lastTopicStartedAt = topics[topics.length - 1].startedAt;
+    const now = Math.max(lastTopicStartedAt, Date.now());
+    const totalElapsed = Math.max(1, now - meetingStartedAtMs);
+
+    return topics.map((topic, i) => {
+      const start = topic.startedAt - meetingStartedAtMs;
+      const end =
+        i < topics.length - 1
+          ? topics[i + 1].startedAt - meetingStartedAtMs
+          : totalElapsed;
+      const duration = Math.max(0, end - start);
+      const proportion =
+        totalElapsed > 0 ? duration / totalElapsed : 1 / topics.length;
+      return {
+        topic,
+        flexGrow: proportion,
+        minWidth: "80px",
+        maxWidth: "220px",
+      };
+    });
+  }, [topics, meetingStartedAtMs]);
+
+  if (segments.length === 0) {
     return (
-      <div
-        aria-live="polite"
-        className="flex h-10 shrink-0 items-center border-border border-b bg-bg-elevated px-3 text-fg-muted text-xs"
-      >
-        Topics appear as the conversation shifts.
+      <div className="flex h-10 items-center border-border border-b bg-bg-elevated px-4">
+        <span className="font-medium text-[10px] text-fg-subtle/50">
+          Topic segments will appear as the conversation shifts…
+        </span>
       </div>
     );
   }
 
   return (
-    <div className="scrollbar-none flex h-10 shrink-0 items-stretch gap-0 overflow-x-auto border-border border-b bg-bg-elevated">
-      {topics.map((topic) => {
-        const isActive = topic.id === activeTopicId;
-        return (
-          <button
-            aria-pressed={isActive}
-            className={cx(
-              "relative flex min-w-[120px] shrink-0 flex-col justify-center border-border-subtle border-r px-3 text-left transition-all duration-200 ease-out last:border-r-0 hover:bg-bg-subtle",
-              isActive &&
-                "border-l-2 border-l-accent bg-accent-subtle/50 hover:bg-accent-subtle"
-            )}
-            key={topic.id}
-            onClick={() => onSelectTopic(topic)}
-            type="button"
-          >
-            {isActive ? (
-              <span
-                aria-hidden
-                className="absolute inset-x-0 bottom-0 h-[2px] bg-accent transition-all duration-300"
-              />
-            ) : null}
-            <span
-              className={cx(
-                "truncate font-medium text-xs transition-colors duration-200",
-                isActive ? "text-fg" : "text-fg-muted"
-              )}
-            >
-              {topic.label}
-            </span>
-            <span className="font-mono text-[10px] text-fg-subtle tabular-nums">
-              +{formatTopicOffset(meetingStartedAtMs, topic.startedAt)}
-            </span>
-          </button>
-        );
-      })}
-      <span aria-hidden className="w-2 shrink-0" />
+    <div className="scrollbar-none sticky top-[96px] z-[18] flex h-10 shrink-0 items-stretch gap-0 overflow-x-auto border-border border-b bg-bg-elevated">
+      {segments.map((s) => (
+        <TopicSegment
+          isActive={s.topic.id === activeTopicId}
+          key={s.topic.id}
+          meetingStartedAtMs={meetingStartedAtMs}
+          onClick={() => onSelectTopic(s.topic)}
+          style={{
+            flexGrow: s.flexGrow,
+            minWidth: s.minWidth,
+            maxWidth: s.maxWidth,
+          }}
+          topic={s.topic}
+        />
+      ))}
     </div>
   );
 }

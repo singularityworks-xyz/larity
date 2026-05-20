@@ -7,6 +7,7 @@ import {
   Gauge,
   GitBranch,
   HelpCircle,
+  Lightbulb,
   ListChecks,
   Lock,
   Mic,
@@ -25,6 +26,8 @@ interface AlertCardProps {
   expandedId?: string | null;
   onToggleExpand?: (id: string) => void;
   isHistoryView?: boolean;
+  isExiting?: boolean;
+  style?: React.CSSProperties;
 }
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -48,6 +51,8 @@ export function AlertCard({
   expandedId,
   onToggleExpand,
   isHistoryView = false,
+  isExiting = false,
+  style,
 }: AlertCardProps) {
   const isExpanded = expandedId === alert.id;
 
@@ -63,7 +68,8 @@ export function AlertCard({
 
   return (
     <div
-      className={`relative flex w-full flex-col rounded-none border border-border text-sm ${bgClass} border-l-[2px] ${routingColorClass}`}
+      className={`relative flex w-full flex-col rounded-none border border-border text-sm ${bgClass} border-l-[2px] ${routingColorClass} ${isExiting ? "alert-card-exit" : ""}`}
+      style={style}
     >
       <div className="flex flex-col gap-2 p-3 px-4">
         {/* Header */}
@@ -87,6 +93,14 @@ export function AlertCard({
         <div className="break-words font-medium text-fg leading-snug">
           {alert.message || alert.title}
         </div>
+
+        {/* Suggestion */}
+        {alert.suggestion && (
+          <div className="mt-1 flex items-start gap-1.5 rounded-[3px] bg-accent-subtle px-2 py-1.5 font-medium text-accent text-xs">
+            <Lightbulb className="mt-[1px] shrink-0" size={13} />
+            <span className="leading-snug">{alert.suggestion}</span>
+          </div>
+        )}
 
         {/* Footer Actions */}
         <div className="mt-1 flex flex-row items-center justify-between">

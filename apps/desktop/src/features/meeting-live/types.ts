@@ -63,7 +63,9 @@ export interface LiveCommitment {
   id: string;
   text: string;
   speakerId: string;
+  speakerName?: string;
   timestamp: number;
   status: CommitmentStatus;
   sourceUtteranceId: string;
+  contradictedAtTimestamp?: number;
 }
