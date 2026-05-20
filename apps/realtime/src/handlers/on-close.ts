@@ -47,6 +47,8 @@ export function onClose(
   const isSessionEmpty = !!sessionRemoved;
 
   if (role === "host" || isSessionEmpty) {
+    // closeSession internally cleans up STT connections and schedules asynchronous cleanup tasks,
+    // so a direct await is unnecessary/redundant here.
     sessionManager.closeSession(sessionId);
 
     const sessionData = sessionRemoved || currentSession;
