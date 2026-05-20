@@ -52,6 +52,7 @@ export function AlertCard({
   onToggleExpand,
   isHistoryView = false,
   isExiting = false,
+  style,
 }: AlertCardProps) {
   const isExpanded = expandedId === alert.id;
 
@@ -68,6 +69,7 @@ export function AlertCard({
   return (
     <div
       className={`relative flex w-full flex-col rounded-none border border-border text-sm ${bgClass} border-l-[2px] ${routingColorClass} ${isExiting ? "alert-card-exit" : ""}`}
+      style={style}
     >
       <div className="flex flex-col gap-2 p-3 px-4">
         {/* Header */}

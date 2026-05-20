@@ -45,7 +45,7 @@ The single expressive element in an otherwise flat UI. A canvas-rendered radial 
 
 The gradient canvas is `position: absolute; bottom: 0; left: 0; right: 0; height: 200px` — anchored to the overlay's bottom edge. A CSS `mask-image` creates a clean fade-to-transparent at the top so it never bleeds into content above. All UI content (title bar, ambient strip, alerts, footer) sits above on `z-index: 1`.
 
-```
+```text
 ┌─────────────────────────────────┐
 │ [title bar]               z:1   │
 │ [ambient strip]           z:1   │
@@ -253,7 +253,7 @@ All components are **flat and opaque**. This is enforced, not optional.
 
 Changes are scoped to:
 
-```
+```text
 apps/desktop/src/
   features/
     overlay/
@@ -347,7 +347,7 @@ The overlay is the primary meeting-mode surface for most users — it lives on t
 
 ### Structural Anatomy (Revised)
 
-```
+```text
 ┌─────────────────────────────────────┐  ← 360px wide, auto-height
 │  [AI Gradient Canvas — z-0]         │
 │  [Glass base layer — z-1]           │
@@ -382,7 +382,7 @@ The overlay is the primary meeting-mode surface for most users — it lives on t
 
 The shell is **flat, opaque, and simple**. Two elements — the window surface and the gradient canvas at the bottom:
 
-```
+```text
 ┌───────────────────────────────────────┐
 │  bg: --surface-overlay (#0E0E0EE6)    │  ← window shell (90% opaque)
 │  border: 1px solid rgba(255,255,255,  │
@@ -453,7 +453,7 @@ New file: `voice-gradient.tsx`. The canvas is `position: absolute; bottom: 0`, 2
 The strip renders on top of the gradient canvas. It loses its border-bottom.
 
 **New layout:**
-```
+```text
 Row 1: [◉ pulse] [topic label (flex-1, animated)] [constraint badge] [teammate avatars]
 Row 2: [voice matrix OR speaker pill] [mic state label]
 ```
@@ -474,7 +474,7 @@ Row 2: [voice matrix OR speaker pill] [mic state label]
 - Dot radius: `r=1.8`
 
 **Speaker Pill:**
-```
+```text
 [dot 5px, rounded-[1px], hsl(--grad-hue) fill] [Name 11px/500/fg] [TEAM|EXTERNAL badge]
 ```
 
@@ -540,7 +540,7 @@ function RememberRipple({ active }: { active: boolean }) {
 ### Footer (Redesigned)
 
 #### Layout
-```
+```text
 [ End ] [ 🔔 ] [ ⤢ ]     ——flex-1 spacer——    [+2 queued]  [ ★ ]
 ```
 
@@ -602,7 +602,7 @@ Every alert must communicate **four things instantly**:
 
 ### Alert Card — Visual Anatomy (Revised)
 
-```
+```text
 ╔══════════════════════════════════════════╗  ← rounded-[6px] border
 ║ ▌                                        ║  ← 2.5px left rail
 ║ ▌  [Category chip]       [time] [✕]     ║
@@ -722,7 +722,7 @@ Gradient canvas desaturates: `filter: saturate(0) brightness(0.6)`.
 **Redesigned:** 52px header with shallow atmospheric gradient wash.
 
 #### Layout
-```
+```text
 ┌────────────────────────────────────────────────────────────────┐  52px
 │  ◉  [ClientName]  ·  [Meeting Title]          00:42:17  [Actions]│
 └────────────────────────────────────────────────────────────────┘
@@ -772,14 +772,13 @@ function LiveIndicator({ isActive }: { isActive: boolean }) {
 **Redesigned:** 44px semantic intelligence rail.
 
 #### Layout
-```
+```text
 ◉  |  [Topic chip — animated]  |  [Constraint badge]  [Commitment badges]  |  [Participant row]
 ```
 
 #### Background
 ```css
 background: linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
-backdrop-filter: blur(8px);
 ```
 
 #### Topic Chip
@@ -826,7 +825,7 @@ Each segment's `flex-grow` is set to its proportion value. Active topic gets a 2
 
 ### Layout Integration
 
-```
+```text
 <header class="meeting-header">   52px, sticky z-20
 <output class="ambient-status-bar">  44px, sticky z-19
 <div class="topics-timeline">   40px, sticky z-18

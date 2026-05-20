@@ -23,7 +23,7 @@ export function AlertRegion({
   if (alertsMuted) {
     return (
       <section aria-live="polite" className="flex-1 overflow-y-auto px-3 py-2">
-        {/* Alerts muted is handled visually by the gradient desaturation, but we keep a structural block */}
+        <span className="sr-only">Alerts muted</span>
       </section>
     );
   }

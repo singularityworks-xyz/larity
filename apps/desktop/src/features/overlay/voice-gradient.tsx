@@ -45,6 +45,37 @@ export function VoiceGradient({
       hue: 252,
     };
 
+    // Contextual hue based on current props state
+    const getTargetHue = (
+      hasAlert: boolean,
+      alertSev: typeof alertSeverity,
+      speaking: boolean
+    ) => {
+      if (hasAlert) {
+        if (alertSev === "critical") {
+          return 5;
+        }
+        if (alertSev === "high") {
+          return 28;
+        }
+      }
+      if (speaking) {
+        return 200;
+      }
+      return 252;
+    };
+
+    // Simulate living rhythm when mic is active
+    const getDynamicAmp = (time: number, speaking: boolean) => {
+      if (!speaking) {
+        return 0;
+      }
+      const flutter = Math.sin(time * 0.014) * Math.cos(time * 0.008) * 0.18;
+      const breath = Math.sin(time * 0.003) * 0.12;
+      const tick = Math.sin(time * 0.025) * 0.06;
+      return Math.max(0, Math.min(1, 0.6 + flutter + breath + tick));
+    };
+
     const drawFrame = (time: number) => {
       const dt = time - lastTime;
       lastTime = time;
@@ -55,30 +86,16 @@ export function VoiceGradient({
         alertSeverity: pAlertSeverity,
       } = propsRef.current;
 
-      const W = canvas.width;
-      const H = canvas.height;
+      const dpr = window.devicePixelRatio || 1;
+      const W = canvas.width / dpr;
+      const H = canvas.height / dpr;
 
-      // Contextual hue
-      let targetHue = 252;
-      if (pHasActiveAlert) {
-        if (pAlertSeverity === "critical") {
-          targetHue = 5;
-        } else if (pAlertSeverity === "high") {
-          targetHue = 28;
-        }
-      } else if (pIsSpeaking) {
-        targetHue = 200;
-      }
-
-      // Simulate living rhythm when mic is active (only get boolean VAD)
-      let dynamicTargetAmp = 0;
-      if (pIsSpeaking) {
-        const flutter = Math.sin(time * 0.014) * Math.cos(time * 0.008) * 0.18;
-        const breath = Math.sin(time * 0.003) * 0.12;
-        const tick = Math.sin(time * 0.025) * 0.06;
-        dynamicTargetAmp = 0.6 + flutter + breath + tick;
-      }
-      const targetAmp = Math.max(0, Math.min(1, dynamicTargetAmp));
+      const targetHue = getTargetHue(
+        pHasActiveAlert,
+        pAlertSeverity,
+        pIsSpeaking
+      );
+      const targetAmp = getDynamicAmp(time, pIsSpeaking);
 
       // Asymmetric smoothing: snap up on speech, ease down gracefully
       const attack = 0.15;

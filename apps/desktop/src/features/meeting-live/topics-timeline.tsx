@@ -76,7 +76,8 @@ export function TopicsTimeline({
     }
 
     // biome-ignore lint/style/useAtIndex: .at(-1) returns undefined, tsc rejects it
-    const now = topics[topics.length - 1].startedAt;
+    const lastTopicStartedAt = topics[topics.length - 1].startedAt;
+    const now = Math.max(lastTopicStartedAt, Date.now());
     const totalElapsed = Math.max(1, now - meetingStartedAtMs);
 
     return topics.map((topic, i) => {
