@@ -121,9 +121,11 @@ function sendAlertClassificationDebugLog(
   if (!looksLikeAlert) {
     return;
   }
-  const enabled =
-    process.env.ENABLE_ALERT_CLASSIFICATION_DEBUG === "true" ||
-    process.env.ENABLE_ALERT_CLASSIFICATION_DEBUG === "1";
+  const isDebugEnv =
+    typeof process !== "undefined"
+      ? process.env.ENABLE_ALERT_CLASSIFICATION_DEBUG
+      : import.meta.env?.VITE_ENABLE_ALERT_CLASSIFICATION_DEBUG;
+  const enabled = isDebugEnv === "true" || isDebugEnv === "1";
   if (!enabled) {
     return;
   }
