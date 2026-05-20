@@ -51,6 +51,7 @@ function CounterBadge({
   useEffect(() => {
     if (count > prevCount) {
       setFlash(true);
+      setPrevCount(count);
       const timer = setTimeout(() => setFlash(false), 400);
       return () => clearTimeout(timer);
     }
@@ -87,6 +88,7 @@ interface AmbientStatusBarProps {
 }
 
 export function AmbientStatusBar({
+  isStreamActive,
   currentTopic,
   constraintCount,
   teamCommitmentCount,
@@ -94,6 +96,8 @@ export function AmbientStatusBar({
   participants,
   className,
 }: AmbientStatusBarProps) {
+  const isLive = isStreamActive || participants.length > 0;
+
   return (
     <output
       aria-label="Meeting ambient status"
@@ -104,7 +108,6 @@ export function AmbientStatusBar({
       style={{
         background:
           "linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%)",
-        backdropFilter: "blur(8px)",
       }}
     >
       {/* Replaced ListeningHeartbeat with just the indicator per spec if needed, but the layout says: */}
@@ -112,8 +115,13 @@ export function AmbientStatusBar({
       {/* However, the ◉ in the status bar was removed in the spec, wait, it says "◉  |  [Topic chip — animated]" */}
       {/* Actually the live dot is in the title bar now, but maybe it remains here? No, spec says: */}
       {/* "The flat topic text becomes a topic chip" */}
-      <span className="flex items-center text-fg-subtle">
-        <span className="inline-block h-1.5 w-1.5 rounded-full bg-fg-subtle" />
+      <span className="flex items-center">
+        <span
+          className={cx(
+            "inline-block h-1.5 w-1.5 rounded-full transition-colors duration-300",
+            isLive ? "animate-pulse bg-success-fg" : "bg-fg-subtle/30"
+          )}
+        />
       </span>
 
       <span aria-hidden className="h-3 w-px shrink-0 bg-border-subtle" />
