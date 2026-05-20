@@ -11,6 +11,17 @@ interface UseAlertQueueResult {
   exitingIds: Set<string>;
 }
 
+const sortAlerts = (alerts: MeetingAlert[]) => {
+  return [...alerts].sort((a, b) => {
+    const priorityDiff =
+      ALERT_PRIORITY[a.category] - ALERT_PRIORITY[b.category];
+    if (priorityDiff !== 0) {
+      return priorityDiff;
+    }
+    return b.timestamp - a.timestamp;
+  });
+};
+
 export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
   const [visibleAlerts, setVisibleAlerts] = useState<MeetingAlert[]>([]);
   const [alertHistory, setAlertHistory] = useState<MeetingAlert[]>([]);
@@ -29,20 +40,6 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
       }
     };
   }, []);
-
-  // Promote from queue when space opens up
-  useEffect(() => {
-    if (queue.length > 0 && visibleAlerts.length < maxVisible) {
-      const nextAlert = queue[0];
-      setQueue((prev) => prev.slice(1));
-      setVisibleAlerts((prev) => {
-        if (prev.some((a) => a.id === nextAlert.id)) {
-          return prev;
-        }
-        return [...prev, nextAlert];
-      });
-    }
-  }, [queue, visibleAlerts.length, maxVisible]);
 
   const dismissAlert = useCallback((id: string) => {
     setExitingIds((prev) => new Set([...prev, id]));
@@ -67,6 +64,33 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
     animTimeoutsRef.current.set(id, animTimerId);
   }, []);
 
+  // Promote from queue when space opens up
+  useEffect(() => {
+    if (queue.length > 0 && visibleAlerts.length < maxVisible) {
+      const nextAlert = queue[0];
+      setQueue((prev) => prev.slice(1));
+      setVisibleAlerts((prev) => {
+        if (prev.some((a) => a.id === nextAlert.id)) {
+          return prev;
+        }
+
+        const existingTimer = autoDismissTimeoutsRef.current.get(nextAlert.id);
+        if (existingTimer) {
+          window.clearTimeout(existingTimer);
+        }
+
+        const expiryMs = ALERT_EXPIRY_MS[nextAlert.severity];
+        const timerId = window.setTimeout(() => {
+          dismissAlert(nextAlert.id);
+        }, expiryMs);
+
+        autoDismissTimeoutsRef.current.set(nextAlert.id, timerId);
+
+        return sortAlerts([...prev, nextAlert]);
+      });
+    }
+  }, [queue, visibleAlerts.length, maxVisible, dismissAlert]);
+
   const addAlert = useCallback(
     (alert: MeetingAlert) => {
       setAlertHistory((prev) => {
@@ -84,35 +108,28 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
         if (prev.length >= maxVisible) {
           // Queue it instead — inside setVisibleAlerts for atomicity (avoids race
           // between reading visibleAlerts.length and writing to the queue)
-          setQueue((q) =>
-            q.some((a) => a.id === alert.id) ? q : [...q, alert]
-          );
+          setQueue((q) => {
+            const filtered = q.filter((a) => a.id !== alert.id);
+            return sortAlerts([...filtered, alert]);
+          });
           return prev;
         }
 
-        const newAlerts = [...prev, alert].sort((a, b) => {
-          const priorityDiff =
-            ALERT_PRIORITY[a.category] - ALERT_PRIORITY[b.category];
-          if (priorityDiff !== 0) {
-            return priorityDiff;
-          }
-          return b.timestamp - a.timestamp;
-        });
+        const existingTimer = autoDismissTimeoutsRef.current.get(alert.id);
+        if (existingTimer) {
+          window.clearTimeout(existingTimer);
+        }
 
+        const expiryMs = ALERT_EXPIRY_MS[alert.severity];
+        const timerId = window.setTimeout(() => {
+          dismissAlert(alert.id);
+        }, expiryMs);
+
+        autoDismissTimeoutsRef.current.set(alert.id, timerId);
+
+        const newAlerts = sortAlerts([...prev, alert]);
         return newAlerts.slice(0, maxVisible);
       });
-
-      const existingTimer = autoDismissTimeoutsRef.current.get(alert.id);
-      if (existingTimer) {
-        window.clearTimeout(existingTimer);
-      }
-
-      const expiryMs = ALERT_EXPIRY_MS[alert.severity];
-      const timerId = window.setTimeout(() => {
-        dismissAlert(alert.id);
-      }, expiryMs);
-
-      autoDismissTimeoutsRef.current.set(alert.id, timerId);
     },
     [maxVisible, dismissAlert]
   );
