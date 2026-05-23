@@ -59,7 +59,7 @@ export function AlertCard({
   const meta = ALERT_CATEGORY_META[alert.category];
 
   const isCritical = alert.severity === "critical";
-  const bgClass = isCritical ? "bg-danger-bg" : "bg-bg-elevated";
+  const bgClass = isCritical ? "bg-danger-bg" : "bg-bg-elevated-a";
 
   const routingColorClass =
     alert.routing === "shared" ? "border-l-accent" : "border-l-warning-fg";
@@ -68,7 +68,7 @@ export function AlertCard({
 
   return (
     <div
-      className={`relative flex w-full flex-col rounded-none border border-border text-sm ${bgClass} border-l-[2px] ${routingColorClass} ${isExiting ? "alert-card-exit" : ""}`}
+      className={`relative flex w-full flex-col rounded-none border border-border text-sm ${bgClass} border-l-[2px] backdrop-blur-md ${routingColorClass} ${isExiting ? "alert-card-exit" : ""}`}
       style={style}
     >
       <div className="flex flex-col gap-2 p-3 px-4">
