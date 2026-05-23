@@ -443,4 +443,88 @@ describe("Day 28 — Semantic Cache, Cost Caps, Topic Refinement", () => {
     expect(result.tier2).toBeDefined();
     expect(result.tier3).toBeDefined();
   });
+  it("enforces strict latency budgets for each tier", async () => {
+    const sessionId = "day28-latency-budgets";
+    const engine = new MeetingPipelineEngine({
+      finalizer: {
+        getRecentSameSpeakerText: () => [],
+        getRecentEmbeddings: () => [],
+        getRecentUtterancesChronological: () => [],
+        applyTier2TopicDelta: asyncNoop,
+      },
+      constraintManager: {
+        ensureHydrated: asyncNoop,
+        processUtterance: asyncNoop,
+        getAll: () => [],
+      },
+      commitmentManager: {
+        hydrateSession: asyncNoop,
+        addCommitment: async () => makeCommitment(),
+        search: () => [],
+        getAll: () => [],
+      },
+      getContextPayload: async () => createContext(sessionId),
+      getCurrentTopicLabel: async () => "General",
+      preFilter: new PreFilter(),
+      tier1: new Tier1StructuralDetector(),
+      tier2: new Tier2Classifier({
+        invoke: async () => ({
+          text: JSON.stringify({
+            intent: "commitment",
+            commitmentType: "timeline",
+            tone: "confident",
+            riskSignals: ["backtracking"],
+            extractedData: { deadline: "Friday" },
+            confidence: 0.91,
+          }),
+          promptTokens: 50,
+          completionTokens: 30,
+        }),
+      }),
+      tier4: new Tier4DeepReasoner({
+        invoke: () =>
+          Promise.resolve(
+            JSON.stringify({
+              alertType: "self_contradiction",
+              severity: "high",
+              message: "Test message",
+              surfaceReason: "Test surface",
+              suggestion: "Test suggestion",
+              confidence: 0.88,
+              shouldSurface: true,
+              reasoning: "Test reasoning",
+              routing: "personal",
+              targetUserId: "user-alice",
+            })
+          ),
+      }),
+      tier4Alerts: {
+        publish: (): Promise<void> => Promise.resolve(),
+      },
+    });
+
+    const start = performance.now();
+    const result = await engine.evaluateUtterance(
+      createTestUtterance({
+        sessionId,
+        text: "Actually, delivery is pushed to Friday.",
+        speaker: createTeamSpeaker("user-alice", "Alice"),
+        embedding: [0.2, 0.4, 0.65],
+      })
+    );
+    const endToEndElapsed = performance.now() - start;
+
+    expect(result.latencies).toBeDefined();
+    expect(result.latencies.preFilterMs).toBeLessThan(10);
+    expect(result.latencies.tier1Ms).toBeLessThan(50);
+    expect(result.latencies.tier2Ms).toBeLessThan(200);
+    expect(result.latencies.tier3Ms ?? 0).toBeLessThan(100);
+
+    if (result.tier4Outcome?.invoked) {
+      expect(result.latencies.tier4Ms).toBeLessThan(500);
+    }
+
+    expect(result.latencies.pipelineBudgetMs).toBeLessThan(800);
+    expect(endToEndElapsed).toBeLessThan(800);
+  });
 });

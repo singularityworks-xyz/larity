@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "bun:test";
-import type { SttResult } from "../../stt/src/types";
-import { ContextAssembler } from "../src/context/context-assembler";
-import type { UtterancePublisher } from "../src/utterance/finalizer";
-import { UtteranceFinalizer } from "../src/utterance/finalizer";
-import { RingBuffer } from "../src/utterance/ring-buffer";
-import { createUnidentifiedSpeaker } from "../src/utterance/types";
-import { resetUtteranceSeq } from "./helpers";
+import type { SttResult } from "../../../stt/src/types";
+import { ContextAssembler } from "../../src/context/context-assembler";
+import type { UtterancePublisher } from "../../src/utterance/finalizer";
+import { UtteranceFinalizer } from "../../src/utterance/finalizer";
+import { RingBuffer } from "../../src/utterance/ring-buffer";
+import { createUnidentifiedSpeaker } from "../../src/utterance/types";
+import { resetUtteranceSeq } from "../helpers";
 
 vi.mock("../src/topic/embedder", () => {
   return {
