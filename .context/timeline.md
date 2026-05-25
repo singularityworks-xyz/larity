@@ -1184,33 +1184,6 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Deliverable:** Working multi-user meeting mode with all 12 alert categories, VAD-correlation speaker identification, and tiered LLM pipeline end-to-end.
 
-### Day 46+: Desktop Distribution & Auto-Update (B.10) — closes Week 6
-
-**apps/desktop (Tauri)**
-
-> A Tauri app is not a product until it can be signed, installed, and updated on end-user machines. This phase is explicitly called out because it was previously hidden inside "frontend polish" and consistently under-scoped in desktop projects.
-
-- [x] **Windows:**
-  - [x] Code-signing certificate procured (EV or OV); signing integrated into Tauri `bundle` step in CI
-  - [x] Installer format: MSI via `tauri build --bundles msi`; verify SmartScreen reputation over first few releases
-- [x] **macOS:**
-  - [x] Apple Developer ID application certificate; Developer ID Installer certificate
-  - [x] Signing + notarization via `notarytool` wired into CI
-  - [x] Hardened runtime enabled; entitlements file lists microphone + screen-recording (required for ScreenCaptureKit audio) + network client
-  - [x] Verify Gatekeeper pass on a clean machine before every release
-- [x] **Linux:**
-  - [x] `.deb` and `.rpm` packages via Tauri bundler
-  - [x] `.AppImage` as the universal fallback
-  - [x] Optional: publish to Flathub (longer timeline, post-MVP)
-- [x] **Auto-update:**
-  - [x] Tauri updater plugin configured with a signed update manifest
-  - [x] Update manifest hosted on a static bucket (S3/MinIO/Cloudflare R2) with Ed25519 signature
-  - [x] Staged rollout: 10% → 50% → 100% over 48h, controlled via manifest
-  - [x] In-app prompt: "Update available — restart to install" (non-blocking; updates only apply on next launch, never mid-meeting)
-- [x] **Crash reporting:** Sentry (or equivalent) wired on both Rust and JS sides with session-scrubbed breadcrumbs (never capture utterance text)
-
-**Deliverable:** Signed, notarized, auto-updating installers for Windows, macOS (Intel + Apple Silicon), and Linux — distributable to real users.
-
 ---
 
 ## Week 7: Post-Meeting Pipeline
@@ -1221,20 +1194,20 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **apps/workers + apps/realtime**
 
-- [x] Set up worker app structure
-- [x] Implement RabbitMQ consumer base class
-- [x] Create worker lifecycle management (graceful shutdown)
-- [x] Add health check endpoints
-- [x] Implement job retry logic with exponential backoff
-- [x] Set up worker logging and metrics
-- [x] **Audio persistence for post-meeting Whisper refinement (B.9):**
-  - [x] Stand up MinIO (S3-compatible) in the dev/staging compose stack, bucket `larity-audio`
-  - [x] `apps/realtime` streams each session's PCM frames **in parallel** to both Deepgram (live path) and MinIO (cold path) — the MinIO write is fire-and-forget, failures never block live processing
-  - [x] Chunk object layout: `s3://larity-audio/{orgId}/{sessionId}/{chunkIndex}.pcm16` (or Opus-encoded, if CPU budget allows — ~10× smaller)
-  - [x] Object lifecycle policy: auto-expire raw audio after 30 days unless the meeting is flagged for retention (org policy / legal hold)
-  - [x] Encryption: SSE-S3 / MinIO server-side encryption with per-org key
-  - [x] Manifest object on session close: `{sessionId}/manifest.json` with chunk list, codec, sample rate, total duration — consumed by the Whisper refinement worker
-  - [x] Quick-restore path for debugging: `/admin/sessions/:id/audio.wav` endpoint (admin-only) that stitches chunks back together
+- [ ] Set up worker app structure
+- [ ] Implement RabbitMQ consumer base class
+- [ ] Create worker lifecycle management (graceful shutdown)
+- [ ] Add health check endpoints
+- [ ] Implement job retry logic with exponential backoff
+- [ ] Set up worker logging and metrics
+- [ ] **Audio persistence for post-meeting Whisper refinement (B.9):**
+  - [ ] Stand up MinIO (S3-compatible) in the dev/staging compose stack, bucket `larity-audio`
+  - [ ] `apps/realtime` streams each session's PCM frames **in parallel** to both Deepgram (live path) and MinIO (cold path) — the MinIO write is fire-and-forget, failures never block live processing
+  - [ ] Chunk object layout: `s3://larity-audio/{orgId}/{sessionId}/{chunkIndex}.pcm16` (or Opus-encoded, if CPU budget allows — ~10× smaller)
+  - [ ] Object lifecycle policy: auto-expire raw audio after 30 days unless the meeting is flagged for retention (org policy / legal hold)
+  - [ ] Encryption: SSE-S3 / MinIO server-side encryption with per-org key
+  - [ ] Manifest object on session close: `{sessionId}/manifest.json` with chunk list, codec, sample rate, total duration — consumed by the Whisper refinement worker
+  - [ ] Quick-restore path for debugging: `/admin/sessions/:id/audio.wav` endpoint (admin-only) that stitches chunks back together
 
 **Deliverable:** Worker infrastructure ready to consume jobs; raw session audio persisted to object storage for Whisper refinement, debugging, and selective long-term retention — without touching the live latency budget.
 
@@ -1395,6 +1368,33 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Deliverable:** Fully integrated assistant mode.
 
+### Day 46+: Desktop Distribution & Auto-Update (B.10) — moved after Week 8
+
+**apps/desktop (Tauri)**
+
+> A Tauri app is not a product until it can be signed, installed, and updated on end-user machines. This phase is explicitly called out because it was previously hidden inside "frontend polish" and consistently under-scoped in desktop projects.
+
+- [ ] **Windows:**
+  - [ ] Code-signing certificate procured (EV or OV); signing integrated into Tauri `bundle` step in CI
+  - [ ] Installer format: MSI via `tauri build --bundles msi`; verify SmartScreen reputation over first few releases
+- [ ] **macOS:**
+  - [ ] Apple Developer ID application certificate; Developer ID Installer certificate
+  - [ ] Signing + notarization via `notarytool` wired into CI
+  - [ ] Hardened runtime enabled; entitlements file lists microphone + screen-recording (required for ScreenCaptureKit audio) + network client
+  - [ ] Verify Gatekeeper pass on a clean machine before every release
+- [ ] **Linux:**
+  - [ ] `.deb` and `.rpm` packages via Tauri bundler
+  - [ ] `.AppImage` as the universal fallback
+  - [ ] Optional: publish to Flathub (longer timeline, post-MVP)
+- [ ] **Auto-update:**
+  - [ ] Tauri updater plugin configured with a signed update manifest
+  - [ ] Update manifest hosted on a static bucket (S3/MinIO/Cloudflare R2) with Ed25519 signature
+  - [ ] Staged rollout: 10% → 50% → 100% over 48h, controlled via manifest
+  - [ ] In-app prompt: "Update available — restart to install" (non-blocking; updates only apply on next launch, never mid-meeting)
+- [ ] **Crash reporting:** Sentry (or equivalent) wired on both Rust and JS sides with session-scrubbed breadcrumbs (never capture utterance text)
+
+**Deliverable:** Signed, notarized, auto-updating installers for Windows, macOS (Intel + Apple Silicon), and Linux — distributable to real users.
+
 ---
 
 ## Week 9: Web Dashboard (apps/web) — NEW
@@ -1456,14 +1456,15 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 | 3 | 15-21 | **State & Structural Detection** | Topic state, commitment ledger (**in-memory HNSW + Redis snapshot**, with embeddings), constraint ledger, pre-filter, Tier 1 structural |
 | 4 | 22-28 | **LLM Classification & Search** | Tier 2 small LLM (single semantic source replacing all regex), **Post-Day 23 dual-channel intake hardening before Tier 3**, Tier 3 embedding search + commitment ledger search (shared embedding reuse), Tier 4 deep reasoning, **parallel Tier 1/2/3 orchestration, async topic-summary refinement off hot path, Tier 2 semantic cache, per-meeting cost cap (w/ warning mode at 80% & hard cap at $2.00), structured observability** |
 | 5 | 29-36 | **Alert System & Speaker Tracking** | All 12 alert categories, alert routing (shared/personal), speaker state tracker, tone trajectory, client disengagement, speculative processing, **atomic alert UX (no progressive flicker)** |
-| 6 | 37-46+ | **Desktop Frontend, E2E & Distribution** | Desktop UI (tray + overlay + main), ambient components, alert UI (12 categories), meeting mode screen, multi-user end-to-end testing, **signed/notarized installers + auto-update across Win/macOS/Linux** |
+| 6 | 37-46 | **Desktop Frontend & E2E** | Desktop UI (tray + overlay + main), ambient components, alert UI (12 categories), meeting mode screen, multi-user end-to-end testing |
 | 7 | 47-55 | **Post-Meeting** | Workers, **MinIO raw audio persistence (30-day lifecycle)**, Whisper refinement, speaker-attributed transcripts, commitment ledger → pgvector, extraction, memory writes |
 | 8 | 56-68 | **Assistant** | Vector search, RAG, actions, auto-remembrance, UI (inside desktop app) |
+| — | — | **Distribution** (post-Week 8) | **signed/notarized installers + auto-update across Win/macOS/Linux** |
 | 9 | 69-76 | **Web Dashboard** | `apps/web` — meetings/transcripts/decisions/commitments/tasks review, team/client/policy admin, search, usage dashboard |
 
-**Total: 76 working days (~11 weeks at 7 days/week, or ~15 weeks with weekends)**
+**Total: 76 working days (~11 weeks at 7 days/week, or ~15 weeks with weekends)** (excl. distribution, which runs after Week 8)
 
-> Weeks 8 (Assistant) and 9 (Web Dashboard) are largely parallelizable with a second developer.
+> Weeks 8 (Assistant), Distribution (code-signing, CI, auto-update), and 9 (Web Dashboard) are largely parallelizable with a second developer.
 
 ---
 
