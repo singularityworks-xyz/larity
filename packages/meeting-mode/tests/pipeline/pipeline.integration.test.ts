@@ -7,7 +7,7 @@ import { RingBuffer } from "../../src/utterance/ring-buffer";
 import { createUnidentifiedSpeaker } from "../../src/utterance/types";
 import { resetUtteranceSeq } from "../helpers";
 
-vi.mock("../src/topic/embedder", () => {
+vi.mock("../../src/topic/embedder", () => {
   return {
     GoogleGenAIEmbedder: vi.fn().mockImplementation(() => {
       return {
@@ -17,7 +17,7 @@ vi.mock("../src/topic/embedder", () => {
   };
 });
 
-vi.mock("../src/topic/summarizer", () => {
+vi.mock("../../src/topic/summarizer", () => {
   return {
     TopicSummarizer: vi.fn().mockImplementation(() => {
       return {
