@@ -1462,7 +1462,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 | — | — | **Distribution** (post-Week 8) | **signed/notarized installers + auto-update across Win/macOS/Linux** |
 | 9 | 69-76 | **Web Dashboard** | `apps/web` — meetings/transcripts/decisions/commitments/tasks review, team/client/policy admin, search, usage dashboard |
 
-**Total: 76 working days (~11 weeks at 7 days/week, or ~15 weeks with weekends)** (excl. distribution, which runs after Week 8)
+**Total: 76 working days (~11 weeks at 7 days/week, or ~15 weeks without weekends)** (excl. distribution, which runs after Week 8)
 
 > Weeks 8 (Assistant), Distribution (code-signing, CI, auto-update), and 9 (Web Dashboard) are largely parallelizable with a second developer.
 
@@ -1785,7 +1785,7 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 ## Notes
 
 - This timeline assumes 1 developer working full-time
-- 76 working days = ~11 weeks at 7 days/week, or ~15 weeks with weekends
+- 76 working days = ~11 weeks at 7 days/week, or ~15 weeks without weekends
 - Week 1 is primarily migration work (updating existing code to new architecture)
 - Audio intake is the biggest platform-specific workstream. Week 2 establishes the prototype capture path; **Post-Day 23 / B.12** aligns **server STT + desktop tagged per-source frames** (no client-side mic/sys mix). **Rust-native WebSocket** and **Win/mac loopback** remain the main follow-ups before calling desktop capture “fully production-grade” on every OS.
 - Pattern library work from the old timeline is completely removed (replaced by Tier 2 LLM)
