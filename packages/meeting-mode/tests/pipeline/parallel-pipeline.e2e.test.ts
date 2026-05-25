@@ -534,7 +534,9 @@ describe("Day 28 — Semantic Cache, Cost Caps, Topic Refinement", () => {
       expect(result.latencies.tier4Ms).toBeLessThan(SLO.tier4Ms);
     }
 
-    expect(result.latencies.pipelineBudgetMs).toBeLessThan(SLO.pipelineBudgetMs);
+    expect(result.latencies.pipelineBudgetMs).toBeLessThan(
+      SLO.pipelineBudgetMs
+    );
     expect(endToEndElapsed).toBeLessThan(SLO.endToEndMs);
   });
 });

@@ -145,9 +145,7 @@ class DelegatingPipelineFinalizer {
     ): Promise<void>;
   } | null = null;
 
-  setDelegate(
-    delegate: NonNullable<typeof this.delegate>
-  ): void {
+  setDelegate(delegate: NonNullable<typeof this.delegate>): void {
     this.delegate = delegate;
   }
 
@@ -157,7 +155,14 @@ class DelegatingPipelineFinalizer {
     currentUtteranceId?: string,
     limit?: number
   ): string[] {
-    return this.delegate?.getRecentSameSpeakerText(sessionId, speakerId, currentUtteranceId, limit) ?? [];
+    return (
+      this.delegate?.getRecentSameSpeakerText(
+        sessionId,
+        speakerId,
+        currentUtteranceId,
+        limit
+      ) ?? []
+    );
   }
 
   getRecentEmbeddings(sessionId: string, limit?: number): number[][] {
@@ -168,7 +173,9 @@ class DelegatingPipelineFinalizer {
     sessionId: string,
     options?: { excludeUtteranceId?: string; limit?: number }
   ): Utterance[] {
-    return this.delegate?.getRecentUtterancesChronological(sessionId, options) ?? [];
+    return (
+      this.delegate?.getRecentUtterancesChronological(sessionId, options) ?? []
+    );
   }
 
   async applyTier2TopicDelta(
