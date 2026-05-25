@@ -11,6 +11,7 @@
 @theme {
   --color-bg: var(--bg);
   --color-bg-elevated: var(--bg-elevated);
+  --color-bg-elevated-a: var(--bg-elevated-a);
   --color-bg-subtle: var(--bg-subtle);
   --color-bg-emphasis: var(--bg-emphasis);
   --color-surface-overlay: var(--surface-overlay);
@@ -51,6 +52,7 @@
   :root {
     --bg: #000000;
     --bg-elevated: #0a0a0a;
+    --bg-elevated-a: #0a0a0a1a;
     --bg-subtle: #111111;
     --bg-emphasis: #171717;
     --surface-overlay: #0e0e0ee6;

@@ -122,4 +122,126 @@ describe("Behavioral & Risk Alerts Pipeline", () => {
     expect(alert?.severity).toBe("medium");
     expect(alert?.title).toBe("Scope creep");
   });
+  it("handles client backtrack risk signals", () => {
+    const context = createMockContext({
+      utterance: "Actually, we need this done by Tuesday instead of Friday.",
+      tier2Classification: {
+        intent: "directive",
+        commitmentType: "timeline",
+        tone: "demanding",
+        riskSignals: ["backtracking", "schedule_change"],
+        extractedData: {},
+        confidence: 0.9,
+      },
+    });
+
+    const mockTier4Response = {
+      alertType: "client_backtrack" as const,
+      severity: "high" as const,
+      message: "Client is changing the previously agreed upon timeline.",
+      surfaceReason: "Client is changing the previously agreed upon timeline.",
+      suggestion:
+        "Confirm if the new timeline is feasible and point out the prior agreement.",
+      confidence: 0.9,
+      shouldSurface: true,
+      routing: "shared" as const,
+      reasoning:
+        "Speaker is changing the timeline to Tuesday instead of Friday.",
+    };
+
+    const alert = buildAlertFromTier4Response({
+      response: mockTier4Response,
+      triggerUtteranceId: context.triggerUtteranceId,
+      speaker: context.speaker,
+      topicId: context.topicId,
+    });
+    expect(alert).toBeDefined();
+    expect(alert?.category).toBe("client_backtrack");
+    expect(alert?.severity).toBe("high");
+    expect(alert?.title).toBe("Client backtrack");
+  });
+
+  it("handles information risk signals", () => {
+    const context = createMockContext({
+      utterance: "Our production database password is Password123!",
+      tier2Classification: {
+        intent: "statement",
+        commitmentType: null,
+        tone: "casual",
+        riskSignals: ["sensitive_data_exposure", "password_mentioned"],
+        extractedData: {},
+        confidence: 0.95,
+      },
+    });
+
+    const mockTier4Response = {
+      alertType: "information_risk" as const,
+      severity: "critical" as const,
+      message:
+        "Sensitive information (password) was exposed during the meeting.",
+      surfaceReason:
+        "Sensitive information (password) was exposed during the meeting.",
+      suggestion: "Rotate the exposed password immediately after the call.",
+      confidence: 0.95,
+      shouldSurface: true,
+      routing: "both" as const,
+      reasoning: "Speaker explicitly mentioned a production database password.",
+    };
+
+    const alert = buildAlertFromTier4Response({
+      response: mockTier4Response,
+      triggerUtteranceId: context.triggerUtteranceId,
+      speaker: context.speaker,
+      topicId: context.topicId,
+    });
+    expect(alert).toBeDefined();
+    expect(alert?.category).toBe("information_risk");
+    expect(alert?.severity).toBe("critical");
+    expect(alert?.title).toBe("Information risk");
+  });
+
+  it("handles policy violation risk signals", () => {
+    const context = createMockContext({
+      utterance:
+        "We can probably use the new internal unreleased Alpha API for this client.",
+      tier1Result: {
+        detections: [],
+        blocklistHit: true,
+        technicalHit: false,
+        pricingHit: false,
+      },
+      tier2Classification: {
+        intent: "proposal",
+        commitmentType: "architecture",
+        tone: "optimistic",
+        riskSignals: ["internal_api_leak", "unreleased_feature"],
+        extractedData: {},
+        confidence: 0.9,
+      },
+    });
+
+    const mockTier4Response = {
+      alertType: "policy_violation" as const,
+      severity: "high" as const,
+      message: "Proposed using an unreleased internal API with a client.",
+      surfaceReason: "Proposed using an unreleased internal API with a client.",
+      suggestion: "Steer the conversation back to public APIs.",
+      confidence: 0.9,
+      shouldSurface: true,
+      routing: "personal" as const,
+      reasoning:
+        "Speaker is offering an unreleased alpha API to an external client.",
+    };
+
+    const alert = buildAlertFromTier4Response({
+      response: mockTier4Response,
+      triggerUtteranceId: context.triggerUtteranceId,
+      speaker: context.speaker,
+      topicId: context.topicId,
+    });
+    expect(alert).toBeDefined();
+    expect(alert?.category).toBe("policy_violation");
+    expect(alert?.severity).toBe("high");
+    expect(alert?.title).toBe("Policy risk");
+  });
 });

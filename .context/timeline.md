@@ -1083,33 +1083,33 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **apps/desktop**
 
-- [ ] Subscribe to shared alert channel + personal alert channel (via WebSocket)
-- [ ] Build alert queue in React state (max 2 visible, priority-ordered)
-- [ ] Implement auto-expire (10-30 seconds based on severity)
-- [ ] Create dismissible alert component with:
-  - [ ] Title (category-based)
-  - [ ] Message (actionable)
-  - [ ] Suggestion (optional)
-  - [ ] **Shared/Personal badge** (so user knows who sees the alert)
-  - [ ] Dismiss button
-- [ ] Alert animations (slide in, fade out)
-- [ ] **Style alerts by category** (12 distinct styles):
-  - [ ] Self-contradiction: Yellow border
-  - [ ] Team inconsistency: Orange border
-  - [ ] Risky commitment: Orange border, warning icon
-  - [ ] Scope creep: Blue border
-  - [ ] Client backtrack: Purple border
-  - [ ] Pressure detected: Red border
-  - [ ] Missing clarity: Gray border
-  - [ ] Information risk: Red border, lock icon
-  - [ ] Tone warning: Yellow border
-  - [ ] Policy violation: Red border, bold
-  - [ ] Client disengagement: Gray border, engagement icon
-  - [ ] Undiscussed agenda: Blue border (meeting end only)
-- [ ] **Cost threshold warning alert:** when `meeting:cost:{sessionId}` reaches 80% of cap ($1.60), publish a shared alert via `meeting.alert.{sessionId}.shared` with category `budget_warning`, severity `medium`, message `"Meeting nearing cost limit — Tier 4 deep analysis will be limited"`. At 100% cap ($2.00): publish a second alert `"Cost limit reached — deep analysis disabled for the rest of the meeting"`. These are informational alerts (not dismissible until acknowledged). Implementation builds on Day 28 cost cap infrastructure.
-- [ ] Add "Checking…" indicator for pending LLM calls — **content-free** (no preliminary text); replaced atomically when the final Tier 4 response arrives, or cleared if Tier 4 returns `shouldSurface: false` (B.8)
-- [ ] Alerts are **atomic** once rendered: no live mutation of an alert's text, severity, or category after first render. If the Tier 4 response would change the alert, it is a brand-new alert with its own id (the old "Checking…" indicator clears, the new alert slides in).
-- [ ] Hover-to-pause expiry
+- [x] Subscribe to shared alert channel + personal alert channel (via WebSocket)
+- [x] Build alert queue in React state (max 2 visible, priority-ordered)
+- [x] Implement auto-expire (10-30 seconds based on severity)
+- [x] Create dismissible alert component with:
+  - [x] Title (category-based)
+  - [x] Message (actionable)
+  - [x] Suggestion (optional)
+  - [x] **Shared/Personal badge** (so user knows who sees the alert)
+  - [x] Dismiss button
+- [x] Alert animations (slide in, fade out)
+- [x] **Style alerts by category** (12 distinct styles):
+  - [x] Self-contradiction: Yellow border
+  - [x] Team inconsistency: Orange border
+  - [x] Risky commitment: Orange border, warning icon
+  - [x] Scope creep: Blue border
+  - [x] Client backtrack: Purple border
+  - [x] Pressure detected: Red border
+  - [x] Missing clarity: Gray border
+  - [x] Information risk: Red border, lock icon
+  - [x] Tone warning: Yellow border
+  - [x] Policy violation: Red border, bold
+  - [x] Client disengagement: Gray border, engagement icon
+  - [x] Undiscussed agenda: Blue border (meeting end only)
+- [x] **Cost threshold warning alert:** when `meeting:cost:{sessionId}` reaches 80% of cap ($1.60), publish a shared alert via `meeting.alert.{sessionId}.shared` with category `budget_warning`, severity `medium`, message `"Meeting nearing cost limit — Tier 4 deep analysis will be limited"`. At 100% cap ($2.00): publish a second alert `"Cost limit reached — deep analysis disabled for the rest of the meeting"`. These are informational alerts (not dismissible until acknowledged). Implementation builds on Day 28 cost cap infrastructure.
+- [x] Add "Checking…" indicator for pending LLM calls — **content-free** (no preliminary text); replaced atomically when the final Tier 4 response arrives, or cleared if Tier 4 returns `shouldSurface: false` (B.8)
+- [x] Alerts are **atomic** once rendered: no live mutation of an alert's text, severity, or category after first render. If the Tier 4 response would change the alert, it is a brand-new alert with its own id (the old "Checking…" indicator clears, the new alert slides in).
+- [x] Hover-to-pause expiry
 
 **Deliverable:** All 12 alert categories render with distinct styling, shared/personal distinction, and an atomic alert lifecycle (no progressive/flickering alerts — see [meeting-mode.md §5.9](./meeting-mode.md#59-live-llm-invocation-non-streaming-atomic-alerts)).
 
@@ -1117,16 +1117,16 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **apps/desktop**
 
-- [ ] Build meeting mode main screen layout
-- [ ] Integrate all ambient UI components
-- [ ] Add meeting controls:
-  - [ ] **Start Meeting Mode** button (host)
-  - [ ] **Join Meeting Session** button (participant)
-  - [ ] End Meeting button
-- [ ] Display session state (connected, duration, participants, utterance count)
-- [ ] Basic live transcript viewer (scrolling, with speaker names and TEAM/EXTERNAL labels)
-- [ ] Show constraint/commitment counts
-- [ ] Alert category toggle (enable/disable specific categories)
+- [x] Build meeting mode main screen layout
+- [x] Integrate all ambient UI components
+- [x] Add meeting controls:
+  - [x] **Start Meeting Mode** button (host)
+  - [x] **Join Meeting Session** button (participant)
+  - [x] End Meeting button
+- [x] Display session state (connected, duration, participants, utterance count)
+- [x] Basic live transcript viewer (scrolling, with speaker names and TEAM/EXTERNAL labels)
+- [x] Show constraint/commitment counts
+- [x] Alert category toggle (enable/disable specific categories)
 
 **Deliverable:** Complete meeting mode UI with multi-user support and all alert categories.
 
@@ -1134,7 +1134,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **All apps**
 
-- [ ] Integration test: full pipeline
+- [x] Integration test: full pipeline
   ```
   Host dual-source capture (mic ch0 + loopback ch1) → **tagged mono** on WebSocket → Remote server →
   **Two** Deepgram mono streams (**diarize**) → host-channel short-circuit + VAD-correlation speaker identification →
@@ -1143,73 +1143,46 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   Tier 4 (large LLM) → Alert (with routing) → Shared/Personal channels →
   All connected Larity desktop instances
   ```
-- [ ] Test each alert category end-to-end (12 scenarios):
-  - [ ] Self-contradiction (same speaker, different times)
-  - [ ] Team inconsistency (two TEAM members contradict)
-  - [ ] Risky commitment (unconditional promise)
-  - [ ] Scope creep (client adds scope)
-  - [ ] Client backtrack (client changes terms)
-  - [ ] Pressure tactics (urgency, social proof)
-  - [ ] Missing clarity (topic ends without owner/deadline)
-  - [ ] Information risk (client name mentioned, API key)
-  - [ ] Tone warning (defensive response)
-  - [ ] Policy violation (blocklist term)
-  - [ ] Client disengagement (brief responses)
-  - [ ] Undiscussed agenda (meeting end)
-- [ ] Test multi-user scenario:
-  - [ ] Host + 2 participants connected
-  - [ ] Shared alerts visible to all
-  - [ ] Personal alerts visible only to target user
-  - [ ] Participant join/leave
-  - [ ] Host disconnect stops tracking
-- [ ] Test speaker identification (VAD correlation):
-  - [ ] 3+ speakers correctly identified (2 TEAM + 1 EXTERNAL at minimum)
-  - [ ] Host correctly mapped from channel 0 without VAD
-  - [ ] TEAM members correctly mapped from VAD signals → channel-1 diarization indices
-  - [ ] External speakers labeled correctly (fallthrough case)
-  - [ ] Retroactive reprocessing works when VAD arrives late
-  - [ ] Simultaneous TEAM speech → both stay EXTERNAL until unambiguous
-- [ ] Performance testing against latency budgets:
-  - [ ] Pre-filter: <10ms
-  - [ ] Tier 1: <50ms
-  - [ ] Tier 2 (small LLM): <200ms
-  - [ ] Tier 3 (embedding search): <100ms
-  - [ ] Tier 4 (large LLM): <500ms
-  - [ ] Voice identification: <100ms
-  - [ ] End-to-end: <800ms
-- [ ] Cost verification (~$1.22 per hour-long dual-channel meeting nominal, hard cap $2.00)
-- [ ] Add structured logging throughout pipeline (per-utterance JSON lines — see Day 28)
-- [ ] Implement basic observability (timing metrics, tier invocation counts, cost rollups)
-- [ ] Fix bugs and edge cases
+- [x] Test each alert category end-to-end (12 scenarios):
+  - [x] Self-contradiction (same speaker, different times)
+  - [x] Team inconsistency (two TEAM members contradict)
+  - [x] Risky commitment (unconditional promise)
+  - [x] Scope creep (client adds scope)
+  - [x] Client backtrack (client changes terms)
+  - [x] Pressure tactics (urgency, social proof)
+  - [x] Missing clarity (topic ends without owner/deadline)
+  - [x] Information risk (client name mentioned, API key)
+  - [x] Tone warning (defensive response)
+  - [x] Policy violation (blocklist term)
+  - [x] Client disengagement (brief responses)
+  - [x] Undiscussed agenda (meeting end)
+- [x] Test multi-user scenario:
+  - [x] Host + 2 participants connected
+  - [x] Shared alerts visible to all
+  - [x] Personal alerts visible only to target user
+  - [x] Participant join/leave
+  - [x] Host disconnect stops tracking
+- [x] Test speaker identification (VAD correlation):
+  - [x] 3+ speakers correctly identified (2 TEAM + 1 EXTERNAL at minimum)
+  - [x] Host correctly mapped from channel 0 without VAD
+  - [x] TEAM members correctly mapped from VAD signals → channel-1 diarization indices
+  - [x] External speakers labeled correctly (fallthrough case)
+  - [x] Retroactive reprocessing works when VAD arrives late
+  - [x] Simultaneous TEAM speech → both stay EXTERNAL until unambiguous
+- [x] Performance testing against latency budgets:
+  - [x] Pre-filter: <10ms
+  - [x] Tier 1: <50ms
+  - [x] Tier 2 (small LLM): <200ms
+  - [x] Tier 3 (embedding search): <100ms
+  - [x] Tier 4 (large LLM): <500ms
+  - [x] Voice identification: <100ms
+  - [x] End-to-end: <800ms
+- [x] Cost verification (~$1.22 per hour-long dual-channel meeting nominal, hard cap $2.00)
+- [x] Add structured logging throughout pipeline (per-utterance JSON lines — see Day 28)
+- [x] Implement basic observability (timing metrics, tier invocation counts, cost rollups)
+- [x] Fix bugs and edge cases
 
 **Deliverable:** Working multi-user meeting mode with all 12 alert categories, VAD-correlation speaker identification, and tiered LLM pipeline end-to-end.
-
-### Day 46+: Desktop Distribution & Auto-Update (B.10) — closes Week 6
-
-**apps/desktop (Tauri)**
-
-> A Tauri app is not a product until it can be signed, installed, and updated on end-user machines. This phase is explicitly called out because it was previously hidden inside "frontend polish" and consistently under-scoped in desktop projects.
-
-- [ ] **Windows:**
-  - [ ] Code-signing certificate procured (EV or OV); signing integrated into Tauri `bundle` step in CI
-  - [ ] Installer format: MSI via `tauri build --bundles msi`; verify SmartScreen reputation over first few releases
-- [ ] **macOS:**
-  - [ ] Apple Developer ID application certificate; Developer ID Installer certificate
-  - [ ] Signing + notarization via `notarytool` wired into CI
-  - [ ] Hardened runtime enabled; entitlements file lists microphone + screen-recording (required for ScreenCaptureKit audio) + network client
-  - [ ] Verify Gatekeeper pass on a clean machine before every release
-- [ ] **Linux:**
-  - [ ] `.deb` and `.rpm` packages via Tauri bundler
-  - [ ] `.AppImage` as the universal fallback
-  - [ ] Optional: publish to Flathub (longer timeline, post-MVP)
-- [ ] **Auto-update:**
-  - [ ] Tauri updater plugin configured with a signed update manifest
-  - [ ] Update manifest hosted on a static bucket (S3/MinIO/Cloudflare R2) with Ed25519 signature
-  - [ ] Staged rollout: 10% → 50% → 100% over 48h, controlled via manifest
-  - [ ] In-app prompt: "Update available — restart to install" (non-blocking; updates only apply on next launch, never mid-meeting)
-- [ ] **Crash reporting:** Sentry (or equivalent) wired on both Rust and JS sides with session-scrubbed breadcrumbs (never capture utterance text)
-
-**Deliverable:** Signed, notarized, auto-updating installers for Windows, macOS (Intel + Apple Silicon), and Linux — distributable to real users.
 
 ---
 
@@ -1395,6 +1368,33 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Deliverable:** Fully integrated assistant mode.
 
+### Day 46+: Desktop Distribution & Auto-Update (B.10) — moved after Week 8
+
+**apps/desktop (Tauri)**
+
+> A Tauri app is not a product until it can be signed, installed, and updated on end-user machines. This phase is explicitly called out because it was previously hidden inside "frontend polish" and consistently under-scoped in desktop projects.
+
+- [ ] **Windows:**
+  - [ ] Code-signing certificate procured (EV or OV); signing integrated into Tauri `bundle` step in CI
+  - [ ] Installer format: MSI via `tauri build --bundles msi`; verify SmartScreen reputation over first few releases
+- [ ] **macOS:**
+  - [ ] Apple Developer ID application certificate; Developer ID Installer certificate
+  - [ ] Signing + notarization via `notarytool` wired into CI
+  - [ ] Hardened runtime enabled; entitlements file lists microphone + screen-recording (required for ScreenCaptureKit audio) + network client
+  - [ ] Verify Gatekeeper pass on a clean machine before every release
+- [ ] **Linux:**
+  - [ ] `.deb` and `.rpm` packages via Tauri bundler
+  - [ ] `.AppImage` as the universal fallback
+  - [ ] Optional: publish to Flathub (longer timeline, post-MVP)
+- [ ] **Auto-update:**
+  - [ ] Tauri updater plugin configured with a signed update manifest
+  - [ ] Update manifest hosted on a static bucket (S3/MinIO/Cloudflare R2) with Ed25519 signature
+  - [ ] Staged rollout: 10% → 50% → 100% over 48h, controlled via manifest
+  - [ ] In-app prompt: "Update available — restart to install" (non-blocking; updates only apply on next launch, never mid-meeting)
+- [ ] **Crash reporting:** Sentry (or equivalent) wired on both Rust and JS sides with session-scrubbed breadcrumbs (never capture utterance text)
+
+**Deliverable:** Signed, notarized, auto-updating installers for Windows, macOS (Intel + Apple Silicon), and Linux — distributable to real users.
+
 ---
 
 ## Week 9: Web Dashboard (apps/web) — NEW
@@ -1456,14 +1456,15 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 | 3 | 15-21 | **State & Structural Detection** | Topic state, commitment ledger (**in-memory HNSW + Redis snapshot**, with embeddings), constraint ledger, pre-filter, Tier 1 structural |
 | 4 | 22-28 | **LLM Classification & Search** | Tier 2 small LLM (single semantic source replacing all regex), **Post-Day 23 dual-channel intake hardening before Tier 3**, Tier 3 embedding search + commitment ledger search (shared embedding reuse), Tier 4 deep reasoning, **parallel Tier 1/2/3 orchestration, async topic-summary refinement off hot path, Tier 2 semantic cache, per-meeting cost cap (w/ warning mode at 80% & hard cap at $2.00), structured observability** |
 | 5 | 29-36 | **Alert System & Speaker Tracking** | All 12 alert categories, alert routing (shared/personal), speaker state tracker, tone trajectory, client disengagement, speculative processing, **atomic alert UX (no progressive flicker)** |
-| 6 | 37-46+ | **Desktop Frontend, E2E & Distribution** | Desktop UI (tray + overlay + main), ambient components, alert UI (12 categories), meeting mode screen, multi-user end-to-end testing, **signed/notarized installers + auto-update across Win/macOS/Linux** |
+| 6 | 37-46 | **Desktop Frontend & E2E** | Desktop UI (tray + overlay + main), ambient components, alert UI (12 categories), meeting mode screen, multi-user end-to-end testing |
 | 7 | 47-55 | **Post-Meeting** | Workers, **MinIO raw audio persistence (30-day lifecycle)**, Whisper refinement, speaker-attributed transcripts, commitment ledger → pgvector, extraction, memory writes |
 | 8 | 56-68 | **Assistant** | Vector search, RAG, actions, auto-remembrance, UI (inside desktop app) |
+| — | — | **Distribution** (post-Week 8) | **signed/notarized installers + auto-update across Win/macOS/Linux** |
 | 9 | 69-76 | **Web Dashboard** | `apps/web` — meetings/transcripts/decisions/commitments/tasks review, team/client/policy admin, search, usage dashboard |
 
-**Total: 76 working days (~11 weeks at 7 days/week, or ~15 weeks with weekends)**
+**Total: 76 working days (~11 weeks at 7 days/week, or ~15 weeks without weekends)** (excl. distribution, which runs after Week 8)
 
-> Weeks 8 (Assistant) and 9 (Web Dashboard) are largely parallelizable with a second developer.
+> Weeks 8 (Assistant), Distribution (code-signing, CI, auto-update), and 9 (Web Dashboard) are largely parallelizable with a second developer.
 
 ---
 
@@ -1784,7 +1785,7 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 ## Notes
 
 - This timeline assumes 1 developer working full-time
-- 76 working days = ~11 weeks at 7 days/week, or ~15 weeks with weekends
+- 76 working days = ~11 weeks at 7 days/week, or ~15 weeks without weekends
 - Week 1 is primarily migration work (updating existing code to new architecture)
 - Audio intake is the biggest platform-specific workstream. Week 2 establishes the prototype capture path; **Post-Day 23 / B.12** aligns **server STT + desktop tagged per-source frames** (no client-side mic/sys mix). **Rust-native WebSocket** and **Win/mac loopback** remain the main follow-ups before calling desktop capture “fully production-grade” on every OS.
 - Pattern library work from the old timeline is completely removed (replaced by Tier 2 LLM)
