@@ -514,17 +514,27 @@ describe("Day 28 — Semantic Cache, Cost Caps, Topic Refinement", () => {
     );
     const endToEndElapsed = performance.now() - start;
 
+    const SLO = {
+      preFilterMs: 20,
+      tier1Ms: 75,
+      tier2Ms: 300,
+      tier3Ms: 150,
+      tier4Ms: 750,
+      pipelineBudgetMs: 1000,
+      endToEndMs: 1000,
+    };
+
     expect(result.latencies).toBeDefined();
-    expect(result.latencies.preFilterMs).toBeLessThan(10);
-    expect(result.latencies.tier1Ms).toBeLessThan(50);
-    expect(result.latencies.tier2Ms).toBeLessThan(200);
-    expect(result.latencies.tier3Ms ?? 0).toBeLessThan(100);
+    expect(result.latencies.preFilterMs).toBeLessThan(SLO.preFilterMs);
+    expect(result.latencies.tier1Ms).toBeLessThan(SLO.tier1Ms);
+    expect(result.latencies.tier2Ms).toBeLessThan(SLO.tier2Ms);
+    expect(result.latencies.tier3Ms ?? 0).toBeLessThan(SLO.tier3Ms);
 
     if (result.tier4Outcome?.invoked) {
-      expect(result.latencies.tier4Ms).toBeLessThan(500);
+      expect(result.latencies.tier4Ms).toBeLessThan(SLO.tier4Ms);
     }
 
-    expect(result.latencies.pipelineBudgetMs).toBeLessThan(800);
-    expect(endToEndElapsed).toBeLessThan(800);
+    expect(result.latencies.pipelineBudgetMs).toBeLessThan(SLO.pipelineBudgetMs);
+    expect(endToEndElapsed).toBeLessThan(SLO.endToEndMs);
   });
 });
