@@ -28,9 +28,11 @@ export async function startWorkersApp(): Promise<void> {
   // Instantiate and register stub workers
   const { TranscribeWorker } = await import("./transcribe.worker");
   const { SummaryWorker } = await import("./summary.worker");
+  const { AudioCleanupWorker } = await import("./audio-cleanup.worker");
 
   registerWorker(new TranscribeWorker());
   registerWorker(new SummaryWorker());
+  registerWorker(new AudioCleanupWorker());
 
   const app = new Elysia()
     .get("/health", async () => {
