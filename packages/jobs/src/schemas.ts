@@ -16,3 +16,11 @@ export const SummaryJobSchema = z.object({
 });
 
 export type SummaryJobData = z.infer<typeof SummaryJobSchema>;
+
+export const AudioCleanupJobSchema = z.object({
+  sessionId: z.string(),
+  orgId: z.string(),
+  s3Prefix: z.string(),
+});
+
+export type AudioCleanupJobData = z.infer<typeof AudioCleanupJobSchema>;

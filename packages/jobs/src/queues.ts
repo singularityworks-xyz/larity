@@ -36,3 +36,14 @@ export const summaryQueue = new Queue("meeting.summary", {
     },
   },
 });
+
+export const audioCleanupQueue = new Queue("meeting.cleanupAudio", {
+  connection: getRedisConnection(),
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 5000,
+    },
+  },
+});

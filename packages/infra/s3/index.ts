@@ -1,7 +1,7 @@
 import { S3Client } from "@aws-sdk/client-s3";
 
 // biome-ignore lint/performance/noBarrelFile: shared s3 entrypoint
-export { PutObjectCommand } from "@aws-sdk/client-s3";
+export { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 
 export interface S3Config {
   endpoint: string;
