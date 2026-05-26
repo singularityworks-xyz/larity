@@ -8,6 +8,7 @@ import { onMessage } from "./handlers/on-message";
 import { onOpen } from "./handlers/on-open";
 import { validateSession } from "./handlers/validate-session";
 import { createRealtimeLogger } from "./logger";
+import { addAdminRoutes } from "./routes/admin";
 import type { RealtimeSocket } from "./types";
 
 const log = createRealtimeLogger("server");
@@ -29,77 +30,82 @@ export function startServer(): Promise<any> {
           return new Response(metrics, {
             headers: { "Content-Type": "text/plain; version=0.0.4" },
           });
-        })
-        .ws("/*", {
-          // Schema validation for the connection URL query parameters
-          query: t.Object({
-            sessionId: t.String({ error: "Missing sessionId query parameter" }),
-            userId: t.String({ error: "Missing userId query parameter" }),
-            role: t.Union([t.Literal("host"), t.Literal("participant")], {
-              error: "Role must be 'host' or 'participant'",
-            }),
-            name: t.Optional(t.String()),
-          }),
-
-          // Payload and timeout configurations
-          maxPayloadLength: 64 * 1024,
-          idleTimeout: 600,
-
-          /**
-           * Runs before the WebSocket connection is established.
-           * We validate the session with the control plane here.
-           */
-          async beforeHandle({ query: { sessionId, userId, role }, set }) {
-            const isValid = await validateSession(sessionId, userId, role);
-            if (!isValid) {
-              set.status = 401;
-              return "Invalid or expired session";
-            }
-          },
-
-          /**
-           * Called when WebSocket connection is established
-           */
-          open(socket) {
-            const { sessionId, userId, role, name } = socket.data.query;
-            const now = Date.now();
-
-            Object.assign(socket.data, {
-              sessionId,
-              userId,
-              name: name ?? "",
-              role,
-              connectedAt: now,
-              lastFrameTs: now,
-            });
-
-            onOpen(socket as unknown as RealtimeSocket);
-          },
-
-          /**
-           * Called for every incoming message
-           */
-          message(socket, message) {
-            onMessage(
-              socket as unknown as RealtimeSocket,
-              message as string | Buffer | Uint8Array
-            );
-          },
-
-          /**
-           * Called when send buffer is draining after being full
-           */
-          drain(socket) {
-            onDrain(socket as unknown as RealtimeSocket);
-          },
-
-          /**
-           * Called when connection closes
-           */
-          close(socket, code, message) {
-            onClose(socket as unknown as RealtimeSocket, code, message);
-          },
         });
+
+      addAdminRoutes(app);
+
+      app.ws("/*", {
+        // Schema validation for the connection URL query parameters
+        query: t.Object({
+          sessionId: t.String({ error: "Missing sessionId query parameter" }),
+          userId: t.String({ error: "Missing userId query parameter" }),
+          role: t.Union([t.Literal("host"), t.Literal("participant")], {
+            error: "Role must be 'host' or 'participant'",
+          }),
+          name: t.Optional(t.String()),
+          orgId: t.Optional(t.String()),
+        }),
+
+        // Payload and timeout configurations
+        maxPayloadLength: 64 * 1024,
+        idleTimeout: 600,
+
+        /**
+         * Runs before the WebSocket connection is established.
+         * We validate the session with the control plane here.
+         */
+        async beforeHandle({ query: { sessionId, userId, role }, set }) {
+          const isValid = await validateSession(sessionId, userId, role);
+          if (!isValid) {
+            set.status = 401;
+            return "Invalid or expired session";
+          }
+        },
+
+        /**
+         * Called when WebSocket connection is established
+         */
+        open(socket) {
+          const { sessionId, userId, role, name, orgId } = socket.data.query;
+          const now = Date.now();
+
+          Object.assign(socket.data, {
+            sessionId,
+            userId,
+            name: name ?? "",
+            role,
+            orgId: orgId ?? "default",
+            connectedAt: now,
+            lastFrameTs: now,
+          });
+
+          onOpen(socket as unknown as RealtimeSocket);
+        },
+
+        /**
+         * Called for every incoming message
+         */
+        message(socket, message) {
+          onMessage(
+            socket as unknown as RealtimeSocket,
+            message as string | Buffer | Uint8Array
+          );
+        },
+
+        /**
+         * Called when send buffer is draining after being full
+         */
+        drain(socket) {
+          onDrain(socket as unknown as RealtimeSocket);
+        },
+
+        /**
+         * Called when connection closes
+         */
+        close(socket, code, message) {
+          onClose(socket as unknown as RealtimeSocket, code, message);
+        },
+      });
 
       // Bind to port
       app.listen(env.PORT, (server) => {

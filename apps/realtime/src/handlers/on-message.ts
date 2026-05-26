@@ -1,4 +1,5 @@
 import { sessionManager } from "@larity/stt";
+import { getStreamer } from "../audio/registry";
 import { createRealtimeLogger } from "../logger";
 import { publishVadSignal } from "../redis/publisher";
 import { updateLastFrameTs } from "../session";
@@ -106,6 +107,19 @@ function handleBinaryFrame(
   sessionManager.sendAudio(sessionId, frame).catch((err) => {
     log.error({ err, sessionId }, "Failed to relay frame to Deepgram");
   });
+
+  // Fire-and-forget S3 audio persistence — errors never block live processing
+  const streamer = getStreamer(sessionId);
+  if (streamer && !streamer.done) {
+    try {
+      streamer.write(frame);
+    } catch (error) {
+      log.error(
+        { err: error, sessionId },
+        "Failed to write frame to audio persistence — continuing without"
+      );
+    }
+  }
 }
 
 /**

@@ -1,4 +1,5 @@
 import { sessionManager } from "@larity/stt";
+import { closeStreamer } from "../audio/registry";
 import { createRealtimeLogger } from "../logger";
 import { publishParticipantLeave, publishSessionEnd } from "../redis/publisher";
 import { getSession, removeConnection } from "../session";
@@ -60,6 +61,15 @@ export function onClose(
       duration: sessionDuration,
     }).catch((err) => {
       log.error({ err, sessionId }, "Failed to publish session end");
+    });
+
+    // Close the audio persistence streamer asynchronously
+    // This completes the S3 multipart upload and writes the manifest
+    closeStreamer(sessionId).catch((err) => {
+      log.error(
+        { err, sessionId },
+        "Failed to close audio persistence streamer"
+      );
     });
   }
 }

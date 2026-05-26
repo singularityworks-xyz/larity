@@ -21,6 +21,8 @@
     "typescript": "^6"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1053.0",
+    "@aws-sdk/lib-storage": "^3.1053.0",
     "@elysiajs/opentelemetry": "^1.4.10",
     "@larity/infra": "workspace:*",
     "@larity/logger": "workspace:*",
