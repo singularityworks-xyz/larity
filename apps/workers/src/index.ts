@@ -25,6 +25,13 @@ export async function startWorkersApp(): Promise<void> {
   }
   rootLogger.info("Redis connected");
 
+  // Instantiate and register stub workers
+  const { TranscribeWorker } = await import("./transcribe.worker");
+  const { SummaryWorker } = await import("./summary.worker");
+
+  registerWorker(new TranscribeWorker());
+  registerWorker(new SummaryWorker());
+
   const app = new Elysia()
     .get("/health", async () => {
       const redisHealth = await checkRedisHealth();

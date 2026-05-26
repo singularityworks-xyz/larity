@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@larity/infra": "workspace:*",
+    "@larity/jobs": "workspace:*",
     "@larity/logger": "workspace:*",
     "@larity/telemetry": "workspace:*",
     "bullmq": "^5.48.1",
