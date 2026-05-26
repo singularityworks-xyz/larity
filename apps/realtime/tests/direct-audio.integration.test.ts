@@ -1,5 +1,5 @@
 process.env.REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
-process.env.LOG_LEVEL = "error";
+process.env.LOG_LEVEL = "debug";
 
 import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
 import { env } from "../src/env";

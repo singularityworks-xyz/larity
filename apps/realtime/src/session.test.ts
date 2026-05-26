@@ -1,5 +1,6 @@
-import { describe, expect, it } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import {
+  __test_only_reset,
   addConnection,
   getSession,
   getSessionCount,
@@ -10,6 +11,10 @@ import {
 import type { RealtimeSocket } from "./types";
 
 describe("Multi-User Session Management", () => {
+  beforeEach(() => {
+    __test_only_reset();
+  });
+
   const sessionId = "session-123";
   const hostId = "user-host";
   const participantId = "user-participant";
@@ -33,52 +38,53 @@ describe("Multi-User Session Management", () => {
     } as unknown as RealtimeSocket;
   };
 
-  it("should add a host connection", () => {
-    const socket = createMockSocket(hostId, "host");
-    addConnection(sessionId, socket);
+  it("should manage the complete multi-user session lifecycle", () => {
+    // 1. Add host connection
+    const hostSocket = createMockSocket(hostId, "host");
+    addConnection(sessionId, hostSocket);
 
     expect(hasSession(sessionId)).toBe(true);
     expect(getSessionCount()).toBe(1);
     expect(getTotalConnectionCount()).toBe(1);
 
-    const session = getSession(sessionId);
+    let session = getSession(sessionId);
     expect(session).toBeDefined();
     expect(session?.connections.size).toBe(1);
     expect(session?.connections.get(hostId)?.role).toBe("host");
-  });
 
-  it("should add a participant connection to the same session", () => {
-    const socket = createMockSocket(participantId, "participant");
-    addConnection(sessionId, socket);
+    // 2. Add participant connection to the same session
+    const participantSocket = createMockSocket(participantId, "participant");
+    addConnection(sessionId, participantSocket);
 
     expect(getSessionCount()).toBe(1); // Still 1 session
     expect(getTotalConnectionCount()).toBe(2); // 2 connections
 
-    const session = getSession(sessionId);
+    session = getSession(sessionId);
     expect(session?.connections.size).toBe(2);
     expect(session?.connections.get(participantId)?.role).toBe("participant");
-  });
 
-  it("should remove a participant connection", () => {
-    const removedSession = removeConnection(sessionId, participantId);
+    // 3. Remove participant connection
+    const removedParticipantSession = removeConnection(
+      sessionId,
+      participantId
+    );
 
-    // Session should NOT be removed yet
-    expect(removedSession).toBeUndefined();
+    // Session should NOT be removed yet (host still connected)
+    expect(removedParticipantSession).toBeUndefined();
 
     expect(getSessionCount()).toBe(1);
     expect(getTotalConnectionCount()).toBe(1);
 
-    const session = getSession(sessionId);
+    session = getSession(sessionId);
     expect(session?.connections.has(participantId)).toBe(false);
     expect(session?.connections.has(hostId)).toBe(true);
-  });
 
-  it("should remove the last connection and the session", () => {
-    const removedSession = removeConnection(sessionId, hostId);
+    // 4. Remove host connection (last connection)
+    const removedHostSession = removeConnection(sessionId, hostId);
 
     // Session SHOULD be removed and returned
-    expect(removedSession).toBeDefined();
-    expect(removedSession?.startedAt).toBeDefined();
+    expect(removedHostSession).toBeDefined();
+    expect(removedHostSession?.startedAt).toBeDefined();
 
     expect(getSessionCount()).toBe(0);
     expect(getTotalConnectionCount()).toBe(0);

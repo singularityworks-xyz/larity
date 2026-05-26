@@ -14,13 +14,11 @@ import { beforeEach, describe, expect, it, mock } from "bun:test";
 // Track S3 calls for assertion
 const s3Calls: Array<{ command: string; input: unknown }> = [];
 
-let uploadResolve: (value: unknown) => void = () => {
-  /* noop */
-};
+const uploadResolvers: Array<(value: unknown) => void> = [];
 const mockUploadDone = mock(
   () =>
     new Promise((resolve) => {
-      uploadResolve = resolve;
+      uploadResolvers.push(resolve);
     })
 );
 const mockUploadOn = mock();
@@ -60,9 +58,7 @@ describe("Audio Persistence Integration", () => {
     s3Calls.length = 0;
     mockUploadDone.mockClear();
     mockS3Send.mockClear();
-    uploadResolve = () => {
-      /* noop */
-    };
+    uploadResolvers.length = 0;
   });
 
   it("should persist PCM frames and generate manifest on close", async () => {
@@ -84,14 +80,17 @@ describe("Audio Persistence Integration", () => {
     }
 
     for (let i = 0; i < 5; i++) {
-      streamer.write(pcmFrame);
+      streamer.writeDemux(0, pcmFrame);
+      streamer.writeDemux(1, pcmFrame);
     }
 
     // Start end() — it will await the upload
     const endPromise = streamer.end();
 
-    // Resolve the upload from the mock
-    uploadResolve({});
+    // Resolve the uploads from the mock
+    for (const resolve of uploadResolvers) {
+      resolve({});
+    }
 
     // Now await the end
     const manifest = await endPromise;
@@ -100,9 +99,12 @@ describe("Audio Persistence Integration", () => {
     expect(manifest.orgId).toBe("org-42");
     expect(manifest.codec).toBe("pcm16");
     expect(manifest.sampleRate).toBe(16_000);
-    expect(manifest.audioFile).toBe("raw_audio.pcm16");
+    expect(manifest.channels.ch0.file).toBe("ch0.pcm16");
+    expect(manifest.channels.ch0.bytes).toBe(1600 * 5);
+    expect(manifest.channels.ch1.file).toBe("ch1.pcm16");
+    expect(manifest.channels.ch1.bytes).toBe(1600 * 5);
     expect(manifest.totalDurationMs).toBeGreaterThan(0);
-    expect(mockUploadDone).toHaveBeenCalled();
+    expect(mockUploadDone).toHaveBeenCalledTimes(2);
 
     const manifestCalls = s3Calls.filter(
       (c) =>
@@ -148,11 +150,13 @@ describe("Audio Persistence Integration", () => {
 
     const streamer = getStreamer("integration-session");
     if (streamer) {
-      streamer.write(Buffer.alloc(640));
+      streamer.writeDemux(0, Buffer.alloc(640));
     }
 
     const closePromise = closeStreamer("integration-session");
-    uploadResolve({});
+    for (const resolve of uploadResolvers) {
+      resolve({});
+    }
     await closePromise;
 
     expect(getStreamer("integration-session")).toBeUndefined();

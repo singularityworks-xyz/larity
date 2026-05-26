@@ -1,5 +1,5 @@
 process.env.REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
-process.env.LOG_LEVEL = "error";
+process.env.LOG_LEVEL = "debug";
 
 import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
 import { env } from "../src/env";
@@ -76,20 +76,26 @@ describe("Multi-user session lifecycle", () => {
     sendAudioMock.mockClear();
 
     const hostWs = new WebSocket(
-      `ws://127.0.0.1:${env.PORT}/?sessionId=multi-session-1&userId=host-1&role=host&name=HostUser`
+      `ws://127.0.0.1:${env.PORT}/?sessionId=test-session-multi&userId=host-1&role=host&name=HostUser`
     );
     const guestWs = new WebSocket(
-      `ws://127.0.0.1:${env.PORT}/?sessionId=multi-session-1&userId=guest-1&role=participant&name=GuestUser`
+      `ws://127.0.0.1:${env.PORT}/?sessionId=test-session-multi&userId=guest-1&role=participant&name=GuestUser`
     );
 
     await Promise.all([
       new Promise<void>((resolve, reject) => {
         hostWs.onopen = () => resolve();
-        hostWs.onerror = () => reject(new Error("Host WebSocket failed"));
+        hostWs.onerror = (e) => {
+          console.error("Host WS error:", e);
+          reject(new Error("Host WebSocket failed"));
+        };
       }),
       new Promise<void>((resolve, reject) => {
         guestWs.onopen = () => resolve();
-        guestWs.onerror = () => reject(new Error("Guest WebSocket failed"));
+        guestWs.onerror = (e) => {
+          console.error("Guest WS error:", e);
+          reject(new Error("Guest WebSocket failed"));
+        };
       }),
     ]);
 
@@ -130,7 +136,7 @@ describe("Multi-user session lifecycle", () => {
     // Expect sendAudio to only be called ONCE (from the host)
     expect(sendAudioMock.mock.calls.length).toBe(1);
     const [sessionId, frame] = sendAudioMock.mock.calls[0];
-    expect(sessionId).toBe("multi-session-1");
+    expect(sessionId).toBe("test-session-multi");
     expect(Buffer.from(frame as Uint8Array)).toEqual(Buffer.from([1, 1, 1]));
 
     hostWs.close();

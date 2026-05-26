@@ -1,7 +1,8 @@
 process.env.REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 process.env.LOG_LEVEL = "debug";
 
-import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { sessionManager } from "@larity/stt";
 import Redis from "ioredis";
 import { AlertPublisher } from "../../../packages/meeting-mode/src/alerts/publisher";
 import { MeetingPipelineEngine } from "../../../packages/meeting-mode/src/pipeline/engine";
@@ -22,42 +23,12 @@ import { startServer, stopServer } from "../src/server";
 let redisPub: Redis;
 let redisSub: Redis; // Tauri desktop IPC mock
 
-mock.module("@larity/stt", () => {
-  return {
-    env: {
-      DEEPGRAM_API_KEY: "test-key",
-      REDIS_URL: process.env.REDIS_URL || "redis://localhost:6379",
-    },
-    validateEnv: () => undefined,
-    sessionManager: {
-      createSession: mock(() => true),
-      hasSession: mock(() => true),
-      closeSession: mock(async () => undefined),
-      closeAll: mock(async () => undefined),
-      sendAudio: mock(async (sessionId: string, _frame: ArrayBuffer) => {
-        // Publish mock STT final result
-        const now = Date.now();
-        const sttResult = {
-          sessionId,
-          transcript:
-            "We absolutely must deliver this new feature by tomorrow.",
-          speechTimestamp: now - 3000,
-          ts: now,
-          isFinal: true,
-          diarizationIndex: 0,
-          confidence: 0.99,
-          channel: 0,
-          start: 0,
-          duration: 0.1,
-        };
-        await redisPub.publish(
-          `meeting.stt.${sessionId}`,
-          JSON.stringify(sttResult)
-        );
-      }),
-    },
-  };
-});
+// Store original sessionManager methods for restoration
+const originalCreateSession = sessionManager.createSession;
+const originalHasSession = sessionManager.hasSession;
+const originalCloseSession = sessionManager.closeSession;
+const originalCloseAll = sessionManager.closeAll;
+const originalSendAudio = sessionManager.sendAudio;
 
 // Create mocks for managers
 const mockConstraintManager = {
@@ -192,6 +163,39 @@ describe("Full Pipeline E2E Test", () => {
   const receivedAlerts: any[] = [];
 
   beforeAll(async () => {
+    // Override sessionManager methods
+    sessionManager.createSession = () => true;
+    sessionManager.hasSession = () => true;
+    sessionManager.closeSession = () => {
+      /* mock */
+    };
+    sessionManager.closeAll = () => {
+      /* mock */
+    };
+    sessionManager.sendAudio = async (
+      sessionId: string,
+      _frame: Buffer | Uint8Array
+    ) => {
+      // Publish mock STT final result
+      const now = Date.now();
+      const sttResult = {
+        sessionId,
+        transcript: "We absolutely must deliver this new feature by tomorrow.",
+        speechTimestamp: now - 3000,
+        ts: now,
+        isFinal: true,
+        diarizationIndex: 0,
+        confidence: 0.99,
+        channel: 0,
+        start: 0,
+        duration: 0.1,
+      };
+      await redisPub.publish(
+        `meeting.stt.${sessionId}`,
+        JSON.stringify(sttResult)
+      );
+    };
+
     const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
     redisPub = new Redis(redisUrl);
     redisSub = new Redis(redisUrl);
@@ -302,6 +306,13 @@ describe("Full Pipeline E2E Test", () => {
   });
 
   afterAll(async () => {
+    // Restore sessionManager methods
+    sessionManager.createSession = originalCreateSession;
+    sessionManager.hasSession = originalHasSession;
+    sessionManager.closeSession = originalCloseSession;
+    sessionManager.closeAll = originalCloseAll;
+    sessionManager.sendAudio = originalSendAudio;
+
     if (app) {
       stopServer(app);
     }

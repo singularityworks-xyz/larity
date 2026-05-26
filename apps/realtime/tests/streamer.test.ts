@@ -49,8 +49,8 @@ describe("AudioStreamer", () => {
     // Write some PCM frames
     const frame1 = Buffer.alloc(320, 0x00); // 10ms of 16kHz 16-bit mono silence
     const frame2 = Buffer.alloc(320, 0xff);
-    streamer.write(frame1);
-    streamer.write(frame2);
+    streamer.writeDemux(0, frame1);
+    streamer.writeDemux(1, frame2);
 
     expect(streamer.done).toBe(false);
   });
@@ -66,7 +66,8 @@ describe("AudioStreamer", () => {
       bucket: "larity-audio",
     });
 
-    streamer.write(Buffer.alloc(320));
+    streamer.writeDemux(0, Buffer.alloc(320));
+    streamer.writeDemux(1, Buffer.alloc(160));
 
     const manifest = await streamer.end();
 
@@ -75,11 +76,16 @@ describe("AudioStreamer", () => {
     expect(manifest.sessionId).toBe("session-2");
     expect(manifest.codec).toBe("pcm16");
     expect(manifest.sampleRate).toBe(16_000);
-    expect(manifest.audioFile).toBe("raw_audio.pcm16");
+    expect(manifest.channels.ch0.file).toBe("ch0.pcm16");
+    expect(manifest.channels.ch0.source).toBe("mic");
+    expect(manifest.channels.ch0.bytes).toBe(320);
+    expect(manifest.channels.ch1.file).toBe("ch1.pcm16");
+    expect(manifest.channels.ch1.source).toBe("system");
+    expect(manifest.channels.ch1.bytes).toBe(160);
     expect(manifest.totalDurationMs).toBeGreaterThanOrEqual(0);
 
-    // Should have completed the upload
-    expect(mockUploadDone).toHaveBeenCalled();
+    // Should have completed the upload for both channels
+    expect(mockUploadDone).toHaveBeenCalledTimes(2);
 
     // Should have written the manifest JSON
     expect(mockS3Send).toHaveBeenCalled();
@@ -99,7 +105,7 @@ describe("AudioStreamer", () => {
     await streamer.end();
 
     // Write after end should not throw but should be ignored
-    expect(() => streamer.write(Buffer.alloc(320))).not.toThrow();
+    expect(() => streamer.writeDemux(0, Buffer.alloc(320))).not.toThrow();
     expect(streamer.done).toBe(true);
   });
 });
