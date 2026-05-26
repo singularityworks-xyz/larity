@@ -1,0 +1,84 @@
+# Production stack for VPS deployment.
+# Object storage uses Cloudflare R2 (set S3_* env vars).
+# RabbitMQ is omitted — workers use BullMQ/Redis.
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: larity-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - larity-network
+    restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: larity-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - larity-network
+
+  control:
+    build:
+      context: .
+      dockerfile: apps/control/Dockerfile
+    container_name: larity-control
+    restart: unless-stopped
+    ports:
+      - "${CONTROL_PORT:-3000}:3000"
+    env_file: .env.production
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - larity-network
+
+  realtime:
+    build:
+      context: .
+      dockerfile: apps/realtime/Dockerfile
+    container_name: larity-realtime
+    restart: unless-stopped
+    ports:
+      - "${REALTIME_PORT:-9001}:9001"
+    env_file: .env.production
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - larity-network
+
+  workers:
+    build:
+      context: .
+      dockerfile: apps/workers/Dockerfile
+    container_name: larity-workers
+    restart: unless-stopped
+    env_file: .env.production
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - larity-network
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  larity-network:
+    name: larity-network
