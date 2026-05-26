@@ -9,9 +9,11 @@
     "./prisma/client": "./prisma/client.ts",
     "./redis": "./redis/index.ts",
     "./redis/keys": "./redis/keys.ts",
-    "./redis/ttl": "./redis/ttl.ts"
+    "./redis/ttl": "./redis/ttl.ts",
+    "./s3": "./s3/index.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1053.0",
     "@larity/logger": "workspace:*",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0"
