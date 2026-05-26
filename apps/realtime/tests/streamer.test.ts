@@ -16,6 +16,12 @@ mock.module("@aws-sdk/client-s3", () => ({
       this.input = input;
     }
   },
+  DeleteObjectCommand: class MockDeleteObjectCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
 }));
 
 mock.module("@aws-sdk/lib-storage", () => ({

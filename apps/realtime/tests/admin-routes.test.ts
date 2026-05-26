@@ -22,6 +22,12 @@ mock.module("@aws-sdk/client-s3", () => ({
       this.input = input;
     }
   },
+  DeleteObjectCommand: class MockDeleteObjectCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
 }));
 
 describe("Admin Routes - WAV Header", () => {
