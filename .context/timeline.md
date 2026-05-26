@@ -1224,30 +1224,30 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - `apps/realtime/tests/audio-registry.test.ts` — session → streamer management
   - `apps/realtime/tests/audio-persistence.integration.test.ts` — end-to-end PCM → S3 → manifest → WAV
 
-#### Track A: Fix Audio Persistence Format [ ]
+#### Track A: Fix Audio Persistence Format ✓ COMPLETED
 
 The live pipeline strips the `[tag:u8]` byte and routes each frame to a separate Deepgram connection via `dual-channel-session.ts`. The persistence path must do the same so batch STT can consume valid PCM.
 
-- [ ] **Strip tag byte** in `on-message.ts:handleBinaryFrame` before `streamer.write()` — extract `tag` and `pcm = frame.subarray(1)`, write only `pcm`. Use a per-streamer `writeDemux(tag, pcm)` that routes to the correct channel stream.
-- [ ] **Demux into two mono files per session** — replace single `raw_audio.pcm16` with `ch0.pcm16` (mic, tag 0) and `ch1.pcm16` (system, tag 1). Each is valid 16kHz mono linear16 PCM. Update `AudioManifest` to declare both channels with their source type, byte sizes, and durations.
-- [ ] **Fix admin WAV endpoint** — add orgId to route (`GET /admin/sessions/:orgId/:id/audio.wav`). Serve per-channel mono download or interleaved stereo on demand from the two files.
-- [ ] Update existing tests for the new two-file layout and tag-stripping behavior.
+- [x] **Strip tag byte** in `on-message.ts:handleBinaryFrame` before `streamer.write()` — extract `tag` and `pcm = frame.subarray(1)`, write only `pcm`. Use a per-streamer `writeDemux(tag, pcm)` that routes to the correct channel stream.
+- [x] **Demux into two mono files per session** — replace single `raw_audio.pcm16` with `ch0.pcm16` (mic, tag 0) and `ch1.pcm16` (system, tag 1). Each is valid 16kHz mono linear16 PCM. Update `AudioManifest` to declare both channels with their source type, byte sizes, and durations.
+- [x] **Fix admin WAV endpoint** — add orgId to route (`GET /admin/sessions/:orgId/:id/audio.wav`). Serve per-channel mono download or interleaved stereo on demand from the two files.
+- [x] Update existing tests for the new two-file layout and tag-stripping behavior.
 
-#### Track B: Session State Durability [ ]
+#### Track B: Session State Durability ✓ COMPLETED
 
 The commitment ledger, constraint ledger, speaker map, and topic states all live in Redis with TTLs ≤ 2 hours (from Day 7). The current `scheduleCleanup()` in `meeting-session.service.ts` sets a 5-minute grace TTL — useless if the worker hasn't started yet.
 
-- [ ] **Extend Redis TTLs on session close** — in `meeting-session.service.ts:scheduleCleanup()`, change the grace period from 5 minutes to 7 days on keys: `meeting.commitment.{sessionId}`, `meeting.constraint.{sessionId}`, `meeting.speaker.{sessionId}`, `meeting.context.{sessionId}`, `meeting.cost.{sessionId}`, topic/speaker-state keys. Do NOT extend high-volume ephemeral keys (`meeting.utterance.*`, `meeting.pipeline.*`).
-- [ ] **Write `session_state.json` to S3** — on session close, dump the final commitment ledger (full JSON from Redis), constraint ledger, speaker map (`channel:diarizationIndex → SpeakerIdentity`), VAD signal history (with per-client clock offsets), and topic state summaries to `{orgId}/{sessionId}/session_state.json`. Worker reads from Redis first, falls back to S3.
+- [x] **Extend Redis TTLs on session close** — in `meeting-session.service.ts:scheduleCleanup()`, change the grace period from 5 minutes to 7 days on keys: `meeting.commitment.{sessionId}`, `meeting.constraint.{sessionId}`, `meeting.speaker.{sessionId}`, `meeting.context.{sessionId}`, `meeting.cost.{sessionId}`, topic/speaker-state keys. Do NOT extend high-volume ephemeral keys (`meeting.utterance.*`, `meeting.pipeline.*`).
+- [x] **Write `session_state.json` to S3** — on session close, dump the final commitment ledger (full JSON from Redis), constraint ledger, speaker map (`channel:diarizationIndex → SpeakerIdentity`), VAD signal history (with per-client clock offsets), and topic state summaries to `{orgId}/{sessionId}/session_state.json`. Worker reads from Redis first, falls back to S3.
 
-#### Track C: BullMQ Producer + Session-End Trigger [ ]
+#### Track C: BullMQ Producer + Session-End Trigger ✓ COMPLETED
 
 > **Decision:** Use **BullMQ** (not RabbitMQ) for post-meeting jobs — already present in `apps/workers`. RabbitMQ infra stays defined but unused; no migration needed.
 
-- [ ] **Instantiate BullMQ `Queue`** for `meeting.transcribe` and `meeting.summary` in a shared producer module
-- [ ] **Wire session-end trigger** — in `apps/realtime/src/handlers/on-close.ts`, after `closeStreamer()` resolves, call `queue.add('meeting.transcribe', { sessionId, orgId, meetingId, s3Prefix })`
-- [ ] **Define job payload Zod schemas** for both queue types, validate on dequeue in the worker
-- [ ] **Register concrete worker stubs** — create placeholder `TranscribeWorker` and `SummaryWorker` classes extending `BaseWorker`, call `registerWorker()` in `apps/workers/src/index.ts` so `/health` surfaces their status (they will be fully implemented in Days 49+)
+- [x] **Instantiate BullMQ `Queue`** for `meeting.transcribe` and `meeting.summary` in a shared producer module
+- [x] **Wire session-end trigger** — in `apps/realtime/src/handlers/on-close.ts`, after `closeStreamer()` resolves, call `queue.add('meeting.transcribe', { sessionId, orgId, meetingId, s3Prefix })`
+- [x] **Define job payload Zod schemas** for both queue types, validate on dequeue in the worker
+- [x] **Register concrete worker stubs** — create placeholder `TranscribeWorker` and `SummaryWorker` classes extending `BaseWorker`, call `registerWorker()` in `apps/workers/src/index.ts` so `/health` surfaces their status (they will be fully implemented in Days 49+)
 
 **Deliverable:** Foundation intact — BaseWorker, AudioStreamer, health endpoint, graceful shutdown, manifest, admin auth all verified working. Audio now persists as two clean mono PCM16 files (tag-stripped). Meeting state survives 7 days in Redis + S3 backup. Session end triggers the first BullMQ job automatically.
 
