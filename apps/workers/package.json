@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "test": "LOG_LEVEL=fatal bun test --preload ./tests/setup.ts",
     "lint": "biome check --log-level=info --diagnostic-level=warn .",
     "lint:fix": "biome check --write --unsafe .",
     "format": "biome format --write .",
@@ -16,6 +17,11 @@
     "typescript": "^6"
   },
   "dependencies": {
-    "@larity/telemetry": "workspace:*"
+    "@larity/infra": "workspace:*",
+    "@larity/logger": "workspace:*",
+    "@larity/telemetry": "workspace:*",
+    "bullmq": "^5.48.1",
+    "elysia": "^1.4.25",
+    "ioredis": "^5.9.0"
   }
 }
