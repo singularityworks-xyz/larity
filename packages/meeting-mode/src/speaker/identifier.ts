@@ -1,3 +1,4 @@
+import { redis } from "@larity/infra/redis";
 import { createMeetingModeLogger } from "../logger";
 import {
   pipelineSpeakerFinalSourceTotal,
@@ -117,6 +118,29 @@ export class SpeakerIdentifier {
     this.clockTracker.addSample(userId, clientSendTs, serverReceiveTs);
     const medianOffset = this.clockTracker.getMedianOffset(userId);
     const adjustedTs = clientSendTs + medianOffset;
+
+    if (redis && typeof redis.hset === "function") {
+      redis
+        .hset(
+          `meeting.clock_offsets.${this.sessionId}`,
+          userId,
+          medianOffset.toString()
+        )
+        .then(() => {
+          if (typeof redis.expire === "function") {
+            return redis.expire(
+              `meeting.clock_offsets.${this.sessionId}`,
+              2 * 60 * 60
+            );
+          }
+        })
+        .catch((err) =>
+          log.error(
+            { err, sessionId: this.sessionId },
+            "Failed to persist clock offset to Redis"
+          )
+        );
+    }
 
     if (type === "vad_speaking") {
       this.vadState.set(userId, { isSpeaking: true, startTs: adjustedTs });

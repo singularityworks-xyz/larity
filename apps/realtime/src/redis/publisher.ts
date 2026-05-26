@@ -18,13 +18,23 @@ import {
 const log = createRealtimeLogger("publisher");
 
 /**
- * Publish a VAD signal to Redis
+ * Publish a VAD signal to Redis and append it to the history list
  */
 export async function publishVadSignal(payload: VadSignal): Promise<void> {
   const channel = vadChannel(payload.sessionId);
   try {
     const message = JSON.stringify(payload);
-    await redis.publish(channel, message);
+    if (redis && typeof redis.publish === "function") {
+      await redis.publish(channel, message);
+    }
+
+    const vadHistoryKey = `meeting.vad.${payload.sessionId}`;
+    if (redis && typeof redis.rpush === "function") {
+      await redis.rpush(vadHistoryKey, message);
+    }
+    if (redis && typeof redis.expire === "function") {
+      await redis.expire(vadHistoryKey, 2 * 60 * 60);
+    }
   } catch (error) {
     log.error(
       { err: error, sessionId: payload.sessionId, userId: payload.userId },
@@ -40,7 +50,9 @@ export async function publishSessionStart(
   event: SessionStartEvent
 ): Promise<void> {
   try {
-    await redis.publish(SESSION_START, JSON.stringify(event));
+    if (redis && typeof redis.publish === "function") {
+      await redis.publish(SESSION_START, JSON.stringify(event));
+    }
   } catch (error) {
     log.error(
       { err: error, sessionId: event.sessionId },
@@ -54,7 +66,9 @@ export async function publishSessionStart(
  */
 export async function publishSessionEnd(event: SessionEndEvent): Promise<void> {
   try {
-    await redis.publish(SESSION_END, JSON.stringify(event));
+    if (redis && typeof redis.publish === "function") {
+      await redis.publish(SESSION_END, JSON.stringify(event));
+    }
   } catch (error) {
     log.error(
       { err: error, sessionId: event.sessionId },
@@ -70,7 +84,9 @@ export async function publishParticipantJoin(
   event: ParticipantJoinEvent
 ): Promise<void> {
   try {
-    await redis.publish(PARTICIPANT_JOIN, JSON.stringify(event));
+    if (redis && typeof redis.publish === "function") {
+      await redis.publish(PARTICIPANT_JOIN, JSON.stringify(event));
+    }
   } catch (error) {
     log.error(
       { err: error, sessionId: event.sessionId },
@@ -86,7 +102,9 @@ export async function publishParticipantLeave(
   event: ParticipantLeaveEvent
 ): Promise<void> {
   try {
-    await redis.publish(PARTICIPANT_LEAVE, JSON.stringify(event));
+    if (redis && typeof redis.publish === "function") {
+      await redis.publish(PARTICIPANT_LEAVE, JSON.stringify(event));
+    }
   } catch (error) {
     log.error(
       { err: error, sessionId: event.sessionId },

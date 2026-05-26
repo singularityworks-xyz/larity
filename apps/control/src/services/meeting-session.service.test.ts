@@ -541,7 +541,7 @@ describe("MeetingSessionService", () => {
 
       expect(mockRedis.expire).toHaveBeenCalledWith(
         redisKeys.meetingContext(sessionId),
-        5 * 60
+        7 * 24 * 60 * 60
       );
     });
   });
