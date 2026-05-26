@@ -1,5 +1,5 @@
 import { createRealtimeLogger } from "../logger";
-import { AudioStreamer } from "./streamer";
+import { type AudioManifest, AudioStreamer } from "./streamer";
 
 const log = createRealtimeLogger("audio-registry");
 
@@ -27,16 +27,20 @@ export function createStreamer(
   return streamer;
 }
 
-export async function closeStreamer(sessionId: string): Promise<void> {
+export async function closeStreamer(
+  sessionId: string
+): Promise<AudioManifest | undefined> {
   const streamer = streamers.get(sessionId);
   if (!streamer) {
-    return;
+    return undefined;
   }
 
   try {
-    await streamer.end();
+    const manifest = await streamer.end();
+    return manifest;
   } catch (error) {
     log.error({ err: error, sessionId }, "Error closing AudioStreamer");
+    return undefined;
   } finally {
     streamers.delete(sessionId);
     log.info({ sessionId }, "AudioStreamer removed from registry");

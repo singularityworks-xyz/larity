@@ -39,6 +39,80 @@ export function createWavHeader(
 
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY ?? "";
 
+async function fetchS3File(
+  s3Client: S3Client,
+  bucket: string,
+  key: string
+): Promise<Buffer | null> {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    });
+    const response = await s3Client.send(command);
+    const bodyStream = response.Body;
+    if (!bodyStream) {
+      return null;
+    }
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of bodyStream as AsyncIterable<Uint8Array>) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+  } catch {
+    return null;
+  }
+}
+
+function interleaveStereo(ch0: Buffer, ch1: Buffer): Buffer {
+  const ch0Samples = ch0.length / 2;
+  const ch1Samples = ch1.length / 2;
+  const totalSamples = Math.max(ch0Samples, ch1Samples);
+  const stereoBuffer = Buffer.alloc(totalSamples * 4);
+
+  for (let i = 0; i < totalSamples; i++) {
+    const val0 = i < ch0Samples ? ch0.readInt16LE(i * 2) : 0;
+    const val1 = i < ch1Samples ? ch1.readInt16LE(i * 2) : 0;
+    stereoBuffer.writeInt16LE(val0, i * 4);
+    stereoBuffer.writeInt16LE(val1, i * 4 + 2);
+  }
+
+  return stereoBuffer;
+}
+
+async function getPcmDataForSession(
+  s3Client: S3Client,
+  bucket: string,
+  orgId: string,
+  sessionId: string,
+  channel: string
+): Promise<{ pcmData: Buffer | null; channelsCount: number }> {
+  if (channel === "stereo") {
+    const [ch0, ch1] = await Promise.all([
+      fetchS3File(s3Client, bucket, `${orgId}/${sessionId}/ch0.pcm16`),
+      fetchS3File(s3Client, bucket, `${orgId}/${sessionId}/ch1.pcm16`),
+    ]);
+
+    if (!(ch0 || ch1)) {
+      return { pcmData: null, channelsCount: 2 };
+    }
+
+    const pcmData = interleaveStereo(
+      ch0 ?? Buffer.alloc(0),
+      ch1 ?? Buffer.alloc(0)
+    );
+    return { pcmData, channelsCount: 2 };
+  }
+
+  const fileKey = channel === "1" ? "ch1.pcm16" : "ch0.pcm16";
+  const pcmData = await fetchS3File(
+    s3Client,
+    bucket,
+    `${orgId}/${sessionId}/${fileKey}`
+  );
+  return { pcmData, channelsCount: 1 };
+}
+
 export function addAdminRoutes(app: Elysia): void {
   const config = defaultAudioStreamerConfig();
 
@@ -60,8 +134,8 @@ export function addAdminRoutes(app: Elysia): void {
   });
 
   app.get(
-    "/admin/sessions/:id/audio.wav",
-    async ({ params: { id }, headers, set }) => {
+    "/admin/sessions/:orgId/:id/audio.wav",
+    async ({ params: { orgId, id }, query, headers, set }) => {
       const authHeader = headers.authorization;
       const apiKey = authHeader?.startsWith("Bearer ")
         ? authHeader.slice(7)
@@ -73,30 +147,28 @@ export function addAdminRoutes(app: Elysia): void {
       }
 
       const sessionId = id;
-      const key = `${sessionId}/raw_audio.pcm16`;
+      const channel = query?.channel ?? "0";
 
       try {
-        const command = new GetObjectCommand({
-          Bucket: config.bucket,
-          Key: key,
-        });
+        const { pcmData, channelsCount } = await getPcmDataForSession(
+          s3Client,
+          config.bucket,
+          orgId,
+          sessionId,
+          channel
+        );
 
-        const response = await s3Client.send(command);
-        const bodyStream = response.Body;
-        if (!bodyStream) {
+        if (!pcmData) {
           set.status = 404;
-          return { error: "Audio data not found" };
+          return { error: "Session audio not found" };
         }
 
-        const chunks: Uint8Array[] = [];
-        for await (const chunk of bodyStream as AsyncIterable<Uint8Array>) {
-          chunks.push(chunk);
-        }
-        const pcmData = Buffer.concat(chunks);
-        const contentLength = response.ContentLength ?? pcmData.length;
-
-        const wavHeader = createWavHeader(Number(contentLength), 16_000, 1, 16);
-
+        const wavHeader = createWavHeader(
+          pcmData.length,
+          16_000,
+          channelsCount,
+          16
+        );
         const wavBuffer = Buffer.concat([wavHeader, pcmData]);
 
         set.status = 200;
@@ -112,14 +184,20 @@ export function addAdminRoutes(app: Elysia): void {
         });
       } catch (error) {
         log.error({ err: error, sessionId }, "Failed to fetch audio from S3");
-        set.status = 404;
-        return { error: "Session audio not found" };
+        set.status = 500;
+        return { error: "Internal server error" };
       }
     },
     {
       params: t.Object({
+        orgId: t.String(),
         id: t.String(),
       }),
+      query: t.Optional(
+        t.Object({
+          channel: t.Optional(t.String()),
+        })
+      ),
     }
   );
 }

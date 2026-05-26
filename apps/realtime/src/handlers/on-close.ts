@@ -1,3 +1,4 @@
+import { redis } from "@larity/infra/redis";
 import { sessionManager } from "@larity/stt";
 import { closeStreamer } from "../audio/registry";
 import { createRealtimeLogger } from "../logger";
@@ -64,12 +65,56 @@ export function onClose(
     });
 
     // Close the audio persistence streamer asynchronously
-    // This completes the S3 multipart upload and writes the manifest
-    closeStreamer(sessionId).catch((err) => {
-      log.error(
-        { err, sessionId },
-        "Failed to close audio persistence streamer"
-      );
-    });
+    // This completes the S3 multipart upload and writes the manifest, then triggers the transcription job
+    closeStreamer(sessionId)
+      .then(async (manifest) => {
+        if (!manifest) {
+          log.warn(
+            { sessionId },
+            "No audio manifest generated. Post-meeting transcription job skipped."
+          );
+          return;
+        }
+        log.info(
+          { sessionId },
+          "Audio persistence streamer closed. Triggering transcription job..."
+        );
+        try {
+          const { transcribeQueue } = await import("@larity/jobs");
+          const meetingId = await redis.hget(
+            `meeting:session:${sessionId}`,
+            "meetingId"
+          );
+          if (!meetingId) {
+            log.error(
+              { sessionId },
+              "Cannot trigger transcribe job: meetingId not found in Redis"
+            );
+            return;
+          }
+          const payload = {
+            sessionId,
+            orgId: manifest.orgId,
+            meetingId,
+            s3Prefix: `${manifest.orgId}/${manifest.sessionId}`,
+          };
+          await transcribeQueue.add("meeting.transcribe", payload);
+          log.info(
+            { sessionId, meetingId },
+            "Transcription job triggered successfully"
+          );
+        } catch (jobErr) {
+          log.error(
+            { err: jobErr, sessionId },
+            "Failed to trigger post-meeting transcription job"
+          );
+        }
+      })
+      .catch((err) => {
+        log.error(
+          { err, sessionId },
+          "Failed to close audio persistence streamer"
+        );
+      });
   }
 }

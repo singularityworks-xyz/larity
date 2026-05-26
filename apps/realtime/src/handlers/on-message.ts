@@ -112,7 +112,11 @@ function handleBinaryFrame(
   const streamer = getStreamer(sessionId);
   if (streamer && !streamer.done) {
     try {
-      streamer.write(frame);
+      if (frame.length > 0) {
+        const tag = frame[0];
+        const pcm = frame.subarray(1);
+        streamer.writeDemux(tag, pcm);
+      }
     } catch (error) {
       log.error(
         { err: error, sessionId },
