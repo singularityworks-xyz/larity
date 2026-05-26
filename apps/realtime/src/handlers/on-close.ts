@@ -80,7 +80,9 @@ export function onClose(
           "Audio persistence streamer closed. Triggering transcription job..."
         );
         try {
-          const { transcribeQueue } = await import("@larity/jobs");
+          const { transcribeQueue, audioCleanupQueue } = await import(
+            "@larity/jobs"
+          );
           const meetingId = await redis.hget(
             `meeting:session:${sessionId}`,
             "meetingId"
@@ -102,6 +104,23 @@ export function onClose(
           log.info(
             { sessionId, meetingId },
             "Transcription job triggered successfully"
+          );
+
+          // Schedule a delayed audio cleanup job (TTL of 3 hours)
+          await audioCleanupQueue.add(
+            "meeting.cleanupAudio",
+            {
+              sessionId,
+              orgId: manifest.orgId,
+              s3Prefix: payload.s3Prefix,
+            },
+            {
+              delay: 3 * 60 * 60 * 1000, // 3 hours
+            }
+          );
+          log.info(
+            { sessionId },
+            "Audio cleanup job scheduled successfully (3-hour TTL)"
           );
         } catch (jobErr) {
           log.error(
