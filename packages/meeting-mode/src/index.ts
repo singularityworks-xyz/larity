@@ -186,6 +186,23 @@ async function main(): Promise<void> {
       return;
     }
 
+    // Append to Redis list for post-processing worker retrieval (with 7-day TTL)
+    const key = `meeting.utterance.${utterance.sessionId}`;
+    const payload = JSON.stringify(utterance, (k, val) =>
+      k === "embeddingPromise" ? undefined : val
+    );
+    redisClient
+      .rpush(key, payload)
+      .then(() => {
+        return redisClient.expire(key, 7 * 24 * 60 * 60); // 7 days TTL
+      })
+      .catch((err) => {
+        rootLogger.error(
+          { err, sessionId: utterance.sessionId },
+          "Failed to cache live utterance in Redis"
+        );
+      });
+
     pipelineEngine.evaluateUtteranceQueued(
       utterance,
       async (utt, evaluation) => {
