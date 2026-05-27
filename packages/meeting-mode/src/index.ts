@@ -42,6 +42,7 @@ export * from "./pipeline/tier4-alert";
 export * from "./pipeline/tier4-context";
 export * from "./pipeline/types";
 export { SpeakerIdentifier } from "./speaker/identifier";
+export * from "./speaker/offline-correlation";
 export * from "./speaker/types";
 export * from "./speculative";
 export * from "./utterance/types";
