@@ -1,31 +1,62 @@
-import { describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
 const mockS3Send = mock(() => Promise.resolve({}));
 const mockS3Destroy = mock();
+
+beforeEach(() => {
+  (globalThis as any).s3SendMock = mockS3Send;
+});
+
+afterEach(() => {
+  (globalThis as any).s3SendMock = undefined;
+});
 
 // The admin.ts module imports S3Client, GetObjectCommand, and PutObjectCommand
 // We must mock all of them so Bun doesn't try to resolve the real module
 mock.module("@aws-sdk/client-s3", () => ({
   S3Client: class MockS3Client {
-    send = mockS3Send;
+    send(cmd: any) {
+      if ((globalThis as any).s3SendMock) {
+        return (globalThis as any).s3SendMock(cmd);
+      }
+      return Promise.resolve({});
+    }
     destroy = mockS3Destroy;
   },
   GetObjectCommand: class MockGetObjectCommand {
     input: unknown;
     constructor(input: unknown) {
       this.input = input;
+      if ((globalThis as any).s3Calls) {
+        (globalThis as any).s3Calls.push({
+          command: "GetObjectCommand",
+          input,
+        });
+      }
     }
   },
   PutObjectCommand: class MockPutObjectCommand {
     input: unknown;
     constructor(input: unknown) {
       this.input = input;
+      if ((globalThis as any).s3Calls) {
+        (globalThis as any).s3Calls.push({
+          command: "PutObjectCommand",
+          input,
+        });
+      }
     }
   },
   DeleteObjectCommand: class MockDeleteObjectCommand {
     input: unknown;
     constructor(input: unknown) {
       this.input = input;
+      if ((globalThis as any).s3Calls) {
+        (globalThis as any).s3Calls.push({
+          command: "DeleteObjectCommand",
+          input,
+        });
+      }
     }
   },
 }));

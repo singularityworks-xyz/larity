@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
 const mockUploadDone = mock(() => Promise.resolve({}));
 const mockUploadOn = mock();
@@ -7,19 +7,36 @@ const mockS3Destroy = mock();
 
 mock.module("@aws-sdk/client-s3", () => ({
   S3Client: class MockS3Client {
-    send = mockS3Send;
+    send(cmd: any) {
+      if ((globalThis as any).s3SendMock) {
+        return (globalThis as any).s3SendMock(cmd);
+      }
+      return Promise.resolve({});
+    }
     destroy = mockS3Destroy;
   },
   PutObjectCommand: class MockPutObjectCommand {
     input: unknown;
     constructor(input: unknown) {
       this.input = input;
+      if ((globalThis as any).s3Calls) {
+        (globalThis as any).s3Calls.push({
+          command: "PutObjectCommand",
+          input,
+        });
+      }
     }
   },
   DeleteObjectCommand: class MockDeleteObjectCommand {
     input: unknown;
     constructor(input: unknown) {
       this.input = input;
+      if ((globalThis as any).s3Calls) {
+        (globalThis as any).s3Calls.push({
+          command: "DeleteObjectCommand",
+          input,
+        });
+      }
     }
   },
 }));
@@ -33,10 +50,15 @@ mock.module("@aws-sdk/lib-storage", () => ({
 
 describe("AudioStreamer", () => {
   beforeEach(() => {
+    (globalThis as any).s3SendMock = mockS3Send;
     mockUploadDone.mockClear();
     mockUploadOn.mockClear();
     mockS3Send.mockClear();
     mockS3Destroy.mockClear();
+  });
+
+  afterEach(() => {
+    (globalThis as any).s3SendMock = undefined;
   });
 
   it("should create a streamer and accept writes", async () => {

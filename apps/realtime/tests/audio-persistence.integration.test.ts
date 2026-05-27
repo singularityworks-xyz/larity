@@ -9,7 +9,7 @@
  * Uses mocked S3 — no real Cloudflare R2 credentials needed.
  */
 
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 
 // Track S3 calls for assertion
 const s3Calls: Array<{ command: string; input: unknown }> = [];
@@ -27,28 +27,48 @@ const mockS3Destroy = mock();
 
 mock.module("@aws-sdk/client-s3", () => ({
   S3Client: class MockS3Client {
-    send = mockS3Send;
+    send(cmd: any) {
+      if ((globalThis as any).s3SendMock) {
+        return (globalThis as any).s3SendMock(cmd);
+      }
+      return Promise.resolve({});
+    }
     destroy = mockS3Destroy;
   },
   PutObjectCommand: class MockPutObjectCommand {
     input: unknown;
     constructor(input: unknown) {
       this.input = input;
-      s3Calls.push({ command: "PutObjectCommand", input });
+      if ((globalThis as any).s3Calls) {
+        (globalThis as any).s3Calls.push({
+          command: "PutObjectCommand",
+          input,
+        });
+      }
     }
   },
   GetObjectCommand: class MockGetObjectCommand {
     input: unknown;
     constructor(input: unknown) {
       this.input = input;
-      s3Calls.push({ command: "GetObjectCommand", input });
+      if ((globalThis as any).s3Calls) {
+        (globalThis as any).s3Calls.push({
+          command: "GetObjectCommand",
+          input,
+        });
+      }
     }
   },
   DeleteObjectCommand: class MockDeleteObjectCommand {
     input: unknown;
     constructor(input: unknown) {
       this.input = input;
-      s3Calls.push({ command: "DeleteObjectCommand", input });
+      if ((globalThis as any).s3Calls) {
+        (globalThis as any).s3Calls.push({
+          command: "DeleteObjectCommand",
+          input,
+        });
+      }
     }
   },
 }));
@@ -63,9 +83,16 @@ mock.module("@aws-sdk/lib-storage", () => ({
 describe("Audio Persistence Integration", () => {
   beforeEach(() => {
     s3Calls.length = 0;
+    (globalThis as any).s3SendMock = mockS3Send;
+    (globalThis as any).s3Calls = s3Calls;
     mockUploadDone.mockClear();
     mockS3Send.mockClear();
     uploadResolvers.length = 0;
+  });
+
+  afterEach(() => {
+    (globalThis as any).s3SendMock = undefined;
+    (globalThis as any).s3Calls = undefined;
   });
 
   it("should persist PCM frames and generate manifest on close", async () => {
