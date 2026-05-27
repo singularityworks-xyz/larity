@@ -7,6 +7,7 @@
 
 // biome-ignore lint/performance/noBarrelFile: structure convention
 export * from "./channels";
+export * from "./deepgram/batch";
 export * from "./dual-channel-session";
 export * from "./env";
 export * from "./session-manager";
