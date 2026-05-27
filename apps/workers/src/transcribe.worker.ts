@@ -1,5 +1,6 @@
 import { prisma } from "@larity/infra/prisma/client";
 import { getRedisClient } from "@larity/infra/redis";
+import { redisKeys } from "@larity/infra/redis/keys";
 import {
   createS3Client,
   GetObjectCommand,
@@ -13,7 +14,17 @@ import {
   transcribeAudioBuffer,
 } from "@larity/stt";
 import type { Job } from "bullmq";
+import type { Redis } from "ioredis";
+import {
+  type BatchUtteranceSegment,
+  processOfflineCorrelation,
+  type SessionSpeakerStatePayload,
+  type Utterance,
+} from "meeting-mode";
+import type { createWorkerLogger } from "./logger";
 import { BaseWorker } from "./worker";
+
+type WorkerLogger = ReturnType<typeof createWorkerLogger>;
 
 interface NormalizedUtterance {
   id: string;
@@ -62,6 +73,163 @@ async function downloadS3File(
   }
 }
 
+/**
+ * Fetches the raw audio files from S3 and transcribes them using Deepgram.
+ */
+async function fetchAndTranscribeAudio(
+  s3Prefix: string,
+  log: WorkerLogger
+): Promise<{
+  ch0Result: BatchTranscriptionResult | null;
+  ch1Result: BatchTranscriptionResult | null;
+}> {
+  const s3 = createS3Client();
+  const s3Config = getS3Config();
+
+  log.info({ s3Prefix }, "Fetching audio channels from S3");
+  const ch0Buffer = await downloadS3File(
+    s3,
+    s3Config.bucket,
+    `${s3Prefix}/ch0.pcm16`
+  );
+  const ch1Buffer = await downloadS3File(
+    s3,
+    s3Config.bucket,
+    `${s3Prefix}/ch1.pcm16`
+  );
+
+  if (!(ch0Buffer || ch1Buffer)) {
+    throw new Error(
+      `No audio files found in S3 bucket for prefix: ${s3Prefix}`
+    );
+  }
+
+  const batchPromises: Promise<BatchTranscriptionResult | null>[] = [];
+
+  if (ch0Buffer) {
+    log.info("Submitting ch0 (mic) to Deepgram batch STT");
+    batchPromises.push(
+      transcribeAudioBuffer(ch0Buffer).catch((err) => {
+        log.error({ err }, "ch0 (mic) batch STT failed");
+        return null;
+      })
+    );
+  } else {
+    log.warn("ch0 (mic) audio is missing, skipping");
+    batchPromises.push(Promise.resolve(null));
+  }
+
+  if (ch1Buffer) {
+    log.info("Submitting ch1 (system) to Deepgram batch STT");
+    batchPromises.push(
+      transcribeAudioBuffer(ch1Buffer).catch((err) => {
+        log.error({ err }, "ch1 (system) batch STT failed");
+        return null;
+      })
+    );
+  } else {
+    log.warn("ch1 (system) audio is missing, skipping");
+    batchPromises.push(Promise.resolve(null));
+  }
+
+  const [ch0Result, ch1Result] = await Promise.all(batchPromises);
+
+  if (!(ch0Result || ch1Result)) {
+    throw new Error(
+      "Both batch transcription jobs failed or returned empty results"
+    );
+  }
+
+  return { ch0Result, ch1Result };
+}
+
+/**
+ * Fetches the live transcript and VAD history session state from Redis.
+ */
+async function fetchRedisState(
+  redis: Redis,
+  sessionId: string,
+  log: WorkerLogger
+): Promise<{
+  liveUtterances: Utterance[];
+  sessionState: SessionSpeakerStatePayload;
+}> {
+  log.info({ sessionId }, "Fetching live transcript from Redis");
+  const liveUtterancesJson = await redis.lrange(
+    `meeting.utterance.${sessionId}`,
+    0,
+    -1
+  );
+
+  const liveUtterances = liveUtterancesJson
+    .map((json: string) => {
+      try {
+        return JSON.parse(json) as Utterance;
+      } catch {
+        return null;
+      }
+    })
+    .filter((u: Utterance | null): u is Utterance => u !== null);
+
+  const stateKey = redisKeys.meetingSessionState(sessionId);
+  const sessionStateJson = await redis.get(stateKey);
+  let sessionState: SessionSpeakerStatePayload = {
+    vadHistory: [],
+    speakerMappings: {},
+    teamMembers: [],
+  };
+  if (sessionStateJson) {
+    try {
+      sessionState = JSON.parse(sessionStateJson) as SessionSpeakerStatePayload;
+    } catch {
+      log.warn("Invalid session state JSON in Redis");
+    }
+  }
+
+  return { liveUtterances, sessionState };
+}
+
+/**
+ * Builds batch utterance segments array from Deepgram results.
+ */
+function buildBatchSegments(
+  ch0Result: BatchTranscriptionResult | null,
+  ch1Result: BatchTranscriptionResult | null,
+  sessionId: string,
+  hostName: string
+): BatchUtteranceSegment[] {
+  const batchSegments: BatchUtteranceSegment[] = [];
+
+  if (ch0Result?.utterances) {
+    for (const u of ch0Result.utterances) {
+      batchSegments.push({
+        id: `${sessionId}:ch0:${u.start}-${u.end}`,
+        text: u.text,
+        timestamp: u.start,
+        duration: u.end - u.start,
+        channel: 0,
+        speaker: hostName,
+      });
+    }
+  }
+
+  if (ch1Result?.utterances) {
+    for (const u of ch1Result.utterances) {
+      batchSegments.push({
+        id: `${sessionId}:ch1:${u.start}-${u.end}`,
+        text: u.text,
+        timestamp: u.start,
+        duration: u.end - u.start,
+        channel: 1,
+        speaker: `Speaker ${u.speaker}`,
+      });
+    }
+  }
+
+  batchSegments.sort((a, b) => a.timestamp - b.timestamp);
+  return batchSegments;
+}
+
 export class TranscribeWorker extends BaseWorker<
   TranscribeJobData,
   { success: boolean }
@@ -90,92 +258,17 @@ export class TranscribeWorker extends BaseWorker<
     await redis.expire(statusKey, 7 * 24 * 60 * 60); // 7 days
 
     try {
-      const s3 = createS3Client();
-      const s3Config = getS3Config();
-
-      // 2. Fetch raw audio files from S3
-      this.log.info({ s3Prefix }, "Fetching audio channels from S3");
-      const ch0Buffer = await downloadS3File(
-        s3,
-        s3Config.bucket,
-        `${s3Prefix}/ch0.pcm16`
-      );
-      const ch1Buffer = await downloadS3File(
-        s3,
-        s3Config.bucket,
-        `${s3Prefix}/ch1.pcm16`
+      const { ch0Result, ch1Result } = await fetchAndTranscribeAudio(
+        s3Prefix,
+        this.log
       );
 
-      if (!(ch0Buffer || ch1Buffer)) {
-        throw new Error(
-          `No audio files found in S3 bucket for prefix: ${s3Prefix}`
-        );
-      }
-
-      // 3. Submit available channels to Deepgram Batch STT
-      const batchPromises: Promise<BatchTranscriptionResult | null>[] = [];
-
-      if (ch0Buffer) {
-        this.log.info("Submitting ch0 (mic) to Deepgram batch STT");
-        batchPromises.push(
-          transcribeAudioBuffer(ch0Buffer).catch((err) => {
-            this.log.error({ err }, "ch0 (mic) batch STT failed");
-            return null;
-          })
-        );
-      } else {
-        this.log.warn("ch0 (mic) audio is missing, skipping");
-        batchPromises.push(Promise.resolve(null));
-      }
-
-      if (ch1Buffer) {
-        this.log.info("Submitting ch1 (system) to Deepgram batch STT");
-        batchPromises.push(
-          transcribeAudioBuffer(ch1Buffer).catch((err) => {
-            this.log.error({ err }, "ch1 (system) batch STT failed");
-            return null;
-          })
-        );
-      } else {
-        this.log.warn("ch1 (system) audio is missing, skipping");
-        batchPromises.push(Promise.resolve(null));
-      }
-
-      const [ch0Result, ch1Result] = await Promise.all(batchPromises);
-
-      if (!(ch0Result || ch1Result)) {
-        throw new Error(
-          "Both batch transcription jobs failed or returned empty results"
-        );
-      }
-
-      // 4. Fetch the live transcript from Redis if available
-      this.log.info({ sessionId }, "Fetching live transcript from Redis");
-      const liveUtterancesJson = await redis.lrange(
-        `meeting.utterance.${sessionId}`,
-        0,
-        -1
+      const { liveUtterances, sessionState } = await fetchRedisState(
+        redis,
+        sessionId,
+        this.log
       );
 
-      interface LiveUtterance {
-        timestamp: number;
-        text: string;
-        speaker?: {
-          name?: string;
-        };
-      }
-
-      const liveUtterances: LiveUtterance[] = liveUtterancesJson
-        .map((json) => {
-          try {
-            return JSON.parse(json) as LiveUtterance;
-          } catch {
-            return null;
-          }
-        })
-        .filter((u): u is LiveUtterance => u !== null);
-
-      // 5. Fetch host identity from DB if possible
       const meeting = await prisma.meeting.findUnique({
         where: { id: meetingId },
         include: {
@@ -190,24 +283,49 @@ export class TranscribeWorker extends BaseWorker<
         meeting?.participants?.[0]?.externalName ||
         "Host";
 
-      const mergedUtterances: NormalizedUtterance[] = [];
+      // Reconstruct accurate connectionStartTime
+      let connectionStartTime = meeting?.startedAt
+        ? meeting.startedAt.getTime()
+        : Date.now();
+      if (liveUtterances.length > 0) {
+        for (const lu of liveUtterances) {
+          if (lu.timestamp && typeof lu.startOffset === "number") {
+            const luTime =
+              lu.timestamp > 1_000_000_000_000
+                ? lu.timestamp
+                : lu.timestamp * 1000;
+            connectionStartTime = luTime - lu.startOffset * 1000;
+            break;
+          }
+        }
+      }
 
-      this.processBatchResults(
+      const batchSegments = buildBatchSegments(
         ch0Result,
         ch1Result,
         sessionId,
-        hostName,
-        mergedUtterances
+        hostName
       );
 
-      // Reconcile with live transcript if available
-      if (liveUtterances.length > 0) {
-        this.log.info(
-          { liveCount: liveUtterances.length },
-          "Reconciling batch transcript with live utterances"
-        );
-        this.reconcileWithLiveTranscript(mergedUtterances, liveUtterances);
-      }
+      // Run advanced offline correlation engine
+      const refinedSegments = processOfflineCorrelation({
+        batchSegments,
+        sessionState,
+        liveUtterances,
+        connectionStartTime,
+        hostName,
+      });
+
+      const mergedUtterances: NormalizedUtterance[] = refinedSegments.map(
+        (seg) => ({
+          id: seg.id,
+          speaker: seg.speaker,
+          text: seg.text,
+          timestamp: seg.timestamp,
+          duration: seg.duration,
+          channel: seg.channel,
+        })
+      );
 
       // 6. Persist refined transcript in Postgres
       await this.saveTranscriptToPostgres(meetingId, mergedUtterances);
@@ -228,63 +346,6 @@ export class TranscribeWorker extends BaseWorker<
       this.log.error({ err: error }, "TranscribeWorker failed");
       await redis.set(statusKey, "failed");
       throw error;
-    }
-  }
-
-  private processBatchResults(
-    ch0Result: BatchTranscriptionResult | null,
-    ch1Result: BatchTranscriptionResult | null,
-    sessionId: string,
-    hostName: string,
-    mergedUtterances: NormalizedUtterance[]
-  ): void {
-    // Process ch0 (Host / Mic)
-    if (ch0Result?.utterances) {
-      for (const u of ch0Result.utterances) {
-        mergedUtterances.push({
-          id: `${sessionId}:ch0:${u.start}-${u.end}`,
-          speaker: hostName,
-          text: u.text,
-          timestamp: u.start,
-          duration: u.end - u.start,
-          channel: 0,
-        });
-      }
-    }
-
-    // Process ch1 (Remote / System Audio)
-    if (ch1Result?.utterances) {
-      for (const u of ch1Result.utterances) {
-        mergedUtterances.push({
-          id: `${sessionId}:ch1:${u.start}-${u.end}`,
-          speaker: `Speaker ${u.speaker}`,
-          text: u.text,
-          timestamp: u.start,
-          duration: u.end - u.start,
-          channel: 1,
-        });
-      }
-    }
-
-    // Sort chronologically by start time
-    mergedUtterances.sort((a, b) => a.timestamp - b.timestamp);
-  }
-
-  private reconcileWithLiveTranscript(
-    mergedUtterances: NormalizedUtterance[],
-    liveUtterances: Array<{ timestamp: number; speaker?: { name?: string } }>
-  ): void {
-    for (const bu of mergedUtterances) {
-      // Find overlapping live utterance (within 3 seconds)
-      const matchedLiveUtt = liveUtterances.find((lu) => {
-        const luTimeSec =
-          lu.timestamp > 1_000_000_000_000 ? lu.timestamp / 1000 : lu.timestamp;
-        return Math.abs(bu.timestamp - luTimeSec) <= 3.0;
-      });
-
-      if (matchedLiveUtt?.speaker?.name) {
-        bu.speaker = matchedLiveUtt.speaker.name;
-      }
     }
   }
 

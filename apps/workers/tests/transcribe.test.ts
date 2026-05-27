@@ -4,6 +4,7 @@ const mockS3Send = mock();
 const mockRedisSet = mock();
 const mockRedisExpire = mock();
 const mockRedisLrange = mock();
+const mockRedisGet = mock();
 const mockPrismaMeetingFindUnique = mock();
 const mockPrismaTranscriptUpsert = mock();
 const mockSummaryQueueAdd = mock();
@@ -57,13 +58,23 @@ mock.module("@aws-sdk/client-s3", () => ({
   },
 }));
 
-mock.module("@larity/infra/redis", () => ({
-  getRedisClient: () => ({
+mock.module("@larity/infra/redis", () => {
+  const r = {
     set: mockRedisSet,
     expire: mockRedisExpire,
     lrange: mockRedisLrange,
-  }),
-}));
+    get: mockRedisGet,
+    hset: mock().mockImplementation(() => Promise.resolve()),
+  };
+  return {
+    redis: r,
+    getRedisClient: () => r,
+    connectRedis: () => Promise.resolve(true),
+    disconnectRedis: () => {
+      // noop
+    },
+  };
+});
 
 mock.module("@larity/infra/prisma/client", () => ({
   prisma: {
@@ -120,6 +131,7 @@ describe("TranscribeWorker", () => {
     mockRedisSet.mockClear();
     mockRedisExpire.mockClear();
     mockRedisLrange.mockClear();
+    mockRedisGet.mockClear();
     mockPrismaMeetingFindUnique.mockClear();
     mockPrismaTranscriptUpsert.mockClear();
     mockSummaryQueueAdd.mockClear();
@@ -129,6 +141,7 @@ describe("TranscribeWorker", () => {
     mockRedisSet.mockResolvedValue("OK");
     mockRedisExpire.mockResolvedValue(1);
     mockRedisLrange.mockResolvedValue([]);
+    mockRedisGet.mockResolvedValue(null);
     mockPrismaMeetingFindUnique.mockResolvedValue({
       id: "meeting-1",
       participants: [
@@ -137,6 +150,7 @@ describe("TranscribeWorker", () => {
           user: { name: "Host Member" },
         },
       ],
+      startedAt: new Date(0),
     });
     mockPrismaTranscriptUpsert.mockResolvedValue({});
     mockSummaryQueueAdd.mockResolvedValue({});
@@ -214,7 +228,7 @@ describe("TranscribeWorker", () => {
     const content = JSON.parse(dbArgs.create.content);
     expect(content.length).toBe(2);
     expect(content[0].speaker).toBe("Host Member");
-    expect(content[1].speaker).toBe("Speaker 0");
+    expect(content[1].speaker).toBe("Speaker A");
 
     // Verify BullMQ chain
     expect(mockSummaryQueueAdd).toHaveBeenCalledWith("meeting.summary", {
@@ -257,7 +271,8 @@ describe("TranscribeWorker", () => {
       JSON.stringify({
         timestamp: 1.5,
         text: "Hello from remote",
-        speaker: { name: "Alice Participant" },
+        startOffset: 1.5,
+        speaker: { name: "Alice Participant", type: "TEAM" },
       }),
     ]);
 
