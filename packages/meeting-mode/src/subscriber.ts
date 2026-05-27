@@ -1,3 +1,6 @@
+import { redis } from "@larity/infra/redis";
+import { redisKeys } from "@larity/infra/redis/keys";
+import { TTL } from "@larity/infra/redis/ttl";
 import Redis from "ioredis";
 import type { SessionEndEvent, SttResult } from "../../stt/src/types";
 import {
@@ -59,6 +62,31 @@ async function handleSessionEnd(message: string): Promise<void> {
     const event = JSON.parse(message) as SessionEndEvent;
 
     if (speakerManagerRef) {
+      try {
+        const identifier = speakerManagerRef.getIdentifier(event.sessionId);
+        if (identifier) {
+          const sessionState = identifier.exportSessionState();
+          const stateKey = redisKeys.meetingSessionState(event.sessionId);
+          const client = _redisClientRef ?? redis;
+          if (client && typeof client.set === "function") {
+            await client.set(
+              stateKey,
+              JSON.stringify(sessionState),
+              "EX",
+              TTL.SESSION_STATE
+            );
+            log.info(
+              { sessionId: event.sessionId },
+              "Exported and saved session speaker state to Redis"
+            );
+          }
+        }
+      } catch (err) {
+        log.error(
+          { err, sessionId: event.sessionId },
+          "Failed to export session speaker state to Redis"
+        );
+      }
       speakerManagerRef.removeSession(event.sessionId);
     }
 

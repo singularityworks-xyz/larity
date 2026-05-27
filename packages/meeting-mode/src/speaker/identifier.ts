@@ -44,6 +44,14 @@ export class SpeakerIdentifier {
   > = new Map();
 
   private readonly clockTracker = new ClockOffsetTracker();
+  private readonly vadHistory: Array<{
+    userId: string;
+    type: "vad_speaking" | "vad_silence";
+    clientSendTs: number;
+    serverReceiveTs: number;
+    adjustedTs: number;
+    role?: "host" | "participant";
+  }> = [];
 
   constructor(sessionId: string, config?: Partial<SpeakerIdentifierConfig>) {
     this.sessionId = sessionId;
@@ -118,6 +126,15 @@ export class SpeakerIdentifier {
     this.clockTracker.addSample(userId, clientSendTs, serverReceiveTs);
     const medianOffset = this.clockTracker.getMedianOffset(userId);
     const adjustedTs = clientSendTs + medianOffset;
+
+    this.vadHistory.push({
+      userId,
+      type,
+      clientSendTs,
+      serverReceiveTs,
+      adjustedTs,
+      role,
+    });
 
     if (redis && typeof redis.hset === "function") {
       redis
@@ -445,6 +462,39 @@ export class SpeakerIdentifier {
     };
   }
 
+  exportSessionState(): {
+    vadHistory: Array<{
+      userId: string;
+      type: "vad_speaking" | "vad_silence";
+      clientSendTs: number;
+      serverReceiveTs: number;
+      adjustedTs: number;
+      role?: "host" | "participant";
+    }>;
+    speakerMappings: Record<string, SpeakerMapping>;
+    teamMembers: Array<{
+      userId: string;
+      name: string;
+      role?: "host" | "participant";
+    }>;
+  } {
+    const mappings: Record<string, SpeakerMapping> = {};
+    for (const [index, speakerId] of this.indexToSpeakerId) {
+      const mapping = this.speakerMappings.get(speakerId);
+      if (mapping) {
+        mappings[index.toString()] = mapping;
+      }
+    }
+
+    const members = Array.from(this.teamMembers.values());
+
+    return {
+      vadHistory: [...this.vadHistory],
+      speakerMappings: mappings,
+      teamMembers: members,
+    };
+  }
+
   reset(): void {
     this.vadState.clear();
     this.vadIntervalsByUser.clear();
@@ -452,6 +502,7 @@ export class SpeakerIdentifier {
     this.speakerMappings.clear();
     this.provisionalIndexToUser.clear();
     this.confirmationCounts.clear();
+    this.vadHistory.length = 0;
     log.info({ sessionId: this.sessionId }, "Speaker identifier reset");
   }
 
