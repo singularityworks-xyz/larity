@@ -1282,9 +1282,12 @@ The commitment ledger, constraint ledger, speaker map, and topic states all live
 - [ ] Implement re-correlation in the worker:
   1. For each channel's batch transcript, extract speaker segments with start/end timestamps
   2. Run the same VAD correlation logic from `packages/meeting-mode/src/speaker-identification/correlation.ts` but offline: compare batch segment time windows against the exported VAD signals (offset-corrected)
-  3. On match → assign `SpeakerIdentity` (TEAM member with name, or EXTERNAL)
-  4. This produces a `batchDiarizationIndex → SpeakerIdentity` mapping derived from the audio evidence, independent of the live indices
+  3. **VAD Hardening (Spike Filter):** Compare the duration of the VAD signal to the duration of the batch transcript segment. Reject the correlation if the VAD signal is short/spiky (e.g., keyboard typing, coughing) and doesn't cover a significant percentage (e.g., > 60%) of the spoken segment.
+  4. On match → assign `SpeakerIdentity` (TEAM member with name, or EXTERNAL)
+  5. This produces a `batchDiarizationIndex → SpeakerIdentity` mapping derived from the audio evidence, independent of the live indices
+- [ ] **Live Transcript Cross-Check:** If the batch VAD correlation assigns a segment to a TEAM member, but the live transcript (from Redis) flagged that exact timestamp as EXTERNAL, flag the match as weak and require stricter similarity validation.
 - [ ] **Textual fallback:** if VAD re-correlation is ambiguous for a segment, use DTW or n-gram overlap between the batch segment text and the live transcript segments to transfer speaker labels from the live transcript where speaker identity is known
+- [ ] **(Future/Client-Side) Pre-Filtering:** Implement a lightweight noise-suppression filter (e.g., RNNoise) in the desktop app before the VAD engine to ensure non-vocal noises don't trigger VAD events.
 - [ ] Update the `Transcript` content with confirmed speaker names (TEAM names from `User` records, EXTERNAL with best-effort names or "External Speaker A"/"External Speaker B")
 - [ ] Handle remaining unidentified speakers: mark as "Speaker A", "Speaker B" etc.
 - [ ] Store final speaker mapping in Redis + session_state.json for downstream consumers
