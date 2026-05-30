@@ -1253,44 +1253,44 @@ The commitment ledger, constraint ledger, speaker map, and topic states all live
 
 ---
 
-### Day 49-50: Transcript Processing Worker
+### Day 49-50: Transcript Processing Worker ✓ COMPLETED
 
 **apps/workers**
 
-- [ ] Implement `TranscribeWorker extends BaseWorker` consuming `meeting.transcribe` jobs
-- [ ] On dequeue: fetch `ch0.pcm16` and `ch1.pcm16` from R2 using the manifest
-- [ ] Submit each channel to **Deepgram batch STT REST API** (Prerecorded endpoint — not live WebSocket) as separate jobs, preserving per-source diarization
-- [ ] Receive refined transcripts per channel with diarization indices and timestamps
-- [ ] Merge/reconcile with the live transcript from Redis (`meeting.utterance.{sessionId}`) if still available; otherwise proceed from batch output alone
-- [ ] Store the refined transcript to the `Transcript` model in PostgreSQL (format: `NORMALIZED`, linked to `meetingId` via 1:1 relation)
-- [ ] On success, chain the extraction job: `queue.add('meeting.summary', { sessionId, orgId, meetingId })`
-- [ ] Handle edge cases: missing audio files (log, mark job failed), partial S3 uploads (graceful skip of missing channel), Deepgram API failures (retry with backoff), empty transcripts (skip extraction, mark meeting with warning)
-- [ ] Write job status to Redis (`meeting.job.{sessionId}.transcribe.status` → `"processing"|"done"|"failed"`) for observability
+- [x] Implement `TranscribeWorker extends BaseWorker` consuming `meeting.transcribe` jobs
+- [x] On dequeue: fetch `ch0.pcm16` and `ch1.pcm16` from R2 using the manifest
+- [x] Submit each channel to **Deepgram batch STT REST API** (Prerecorded endpoint — not live WebSocket) as separate jobs, preserving per-source diarization
+- [x] Receive refined transcripts per channel with diarization indices and timestamps
+- [x] Merge/reconcile with the live transcript from Redis (`meeting.utterance.{sessionId}`) if still available; otherwise proceed from batch output alone
+- [x] Store the refined transcript to the `Transcript` model in PostgreSQL (format: `NORMALIZED`, linked to `meetingId` via 1:1 relation)
+- [x] On success, chain the extraction job: `queue.add('meeting.summary', { sessionId, orgId, meetingId })`
+- [x] Handle edge cases: missing audio files (log, mark job failed), partial S3 uploads (graceful skip of missing channel), Deepgram API failures (retry with backoff), empty transcripts (skip extraction, mark meeting with warning)
+- [x] Write job status to Redis (`meeting.job.{sessionId}.transcribe.status` → `"processing"|"done"|"failed"`) for observability
 
 **Deliverable:** High-quality refined transcript with per-channel diarization, stored in PostgreSQL. Extraction job chained automatically on success.
 
 ---
 
-### Day 51: Speaker Diarization Refinement
+### Day 51: Speaker Diarization Refinement ✓ COMPLETED
 
 **apps/workers**
 
 > **Why this is non-trivial:** Deepgram's batch STT produces entirely new diarization indices unrelated to the live stream's indices. You cannot simply "map diarized segments to identified speakers" — the indices are different. The strategy below re-runs the same VAD-correlation algorithm the live pipeline used, but offline against the batch transcript's timestamps.
 
-- [ ] **Export VAD signal history on session close** (in Track B above): timestamped `{ userId, ts, type: "speaking"|"silence", role, clockOffset }` events per session participant. Include per-client clock offsets from `ClockOffsetManager` so the worker can reconstruct corrected timestamps identically to the live correlation.
-- [ ] **Export final speaker map** from `meeting.speaker.{sessionId}` into `session_state.json`: the live pipeline's `channel:diarizationIndex → SpeakerIdentity` mapping (ground truth reference).
-- [ ] Implement re-correlation in the worker:
+- [x] **Export VAD signal history on session close** (in Track B above): timestamped `{ userId, ts, type: "speaking"|"silence", role, clockOffset }` events per session participant. Include per-client clock offsets from `ClockOffsetManager` so the worker can reconstruct corrected timestamps identically to the live correlation.
+- [x] **Export final speaker map** from `meeting.speaker.{sessionId}` into `session_state.json`: the live pipeline's `channel:diarizationIndex → SpeakerIdentity` mapping (ground truth reference).
+- [x] Implement re-correlation in the worker:
   1. For each channel's batch transcript, extract speaker segments with start/end timestamps
   2. Run the same VAD correlation logic from `packages/meeting-mode/src/speaker-identification/correlation.ts` but offline: compare batch segment time windows against the exported VAD signals (offset-corrected)
   3. **VAD Hardening (Spike Filter):** Compare the duration of the VAD signal to the duration of the batch transcript segment. Reject the correlation if the VAD signal is short/spiky (e.g., keyboard typing, coughing) and doesn't cover a significant percentage (e.g., > 60%) of the spoken segment.
   4. On match → assign `SpeakerIdentity` (TEAM member with name, or EXTERNAL)
   5. This produces a `batchDiarizationIndex → SpeakerIdentity` mapping derived from the audio evidence, independent of the live indices
-- [ ] **Live Transcript Cross-Check:** If the batch VAD correlation assigns a segment to a TEAM member, but the live transcript (from Redis) flagged that exact timestamp as EXTERNAL, flag the match as weak and require stricter similarity validation.
-- [ ] **Textual fallback:** if VAD re-correlation is ambiguous for a segment, use DTW or n-gram overlap between the batch segment text and the live transcript segments to transfer speaker labels from the live transcript where speaker identity is known
-- [ ] **(Future/Client-Side) Pre-Filtering:** Implement a lightweight noise-suppression filter (e.g., RNNoise) in the desktop app before the VAD engine to ensure non-vocal noises don't trigger VAD events.
-- [ ] Update the `Transcript` content with confirmed speaker names (TEAM names from `User` records, EXTERNAL with best-effort names or "External Speaker A"/"External Speaker B")
-- [ ] Handle remaining unidentified speakers: mark as "Speaker A", "Speaker B" etc.
-- [ ] Store final speaker mapping in Redis + session_state.json for downstream consumers
+- [x] **Live Transcript Cross-Check:** If the batch VAD correlation assigns a segment to a TEAM member, but the live transcript (from Redis) flagged that exact timestamp as EXTERNAL, flag the match as weak and require stricter similarity validation.
+- [x] **Textual fallback:** if VAD re-correlation is ambiguous for a segment, use DTW or n-gram overlap between the batch segment text and the live transcript segments to transfer speaker labels from the live transcript where speaker identity is known
+- [x] **(Future/Client-Side) Pre-Filtering:** Implement a lightweight noise-suppression filter (e.g., RNNoise) in the desktop app before the VAD engine to ensure non-vocal noises don't trigger VAD events.
+- [x] Update the `Transcript` content with confirmed speaker names (TEAM names from `User` records, EXTERNAL with best-effort names or "External Speaker A"/"External Speaker B")
+- [x] Handle remaining unidentified speakers: mark as "Speaker A", "Speaker B" etc.
+- [x] Store final speaker mapping in Redis + session_state.json for downstream consumers
 
 **Deliverable:** Refined transcript has accurate, named speaker attribution derived from re-running VAD correlation against the batch STT's timestamps — not from trying to naively map live diarization indices to batch ones.
 
