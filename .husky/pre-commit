@@ -3,7 +3,10 @@
 set -e
 
 # Run only unit tests (exclude *.integration.test.ts and *.e2e.test.ts which require setup/infra)
-find packages apps -name '*.test.ts' ! -name '*.integration.test.ts' ! -name '*.e2e.test.ts' -not -path '*/node_modules/*' -type f | xargs bun test
+TEST_FILES=$(find packages apps -name '*.test.ts' ! -name '*.integration.test.ts' ! -name '*.e2e.test.ts' -not -path '*/node_modules/*' -type f)
+if [ -n "$TEST_FILES" ]; then
+  echo "$TEST_FILES" | xargs bun test
+fi
 
 # Type-check desktop app if any of its source files are staged
 if echo "$(git diff --cached --name-only)" | grep -q "^apps/desktop/src/"; then
