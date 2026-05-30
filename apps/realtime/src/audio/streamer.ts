@@ -190,60 +190,65 @@ export class AudioStreamer {
       "Ending dual channel audio streams, waiting for S3 uploads to complete"
     );
 
-    await Promise.all([this.ch0Upload.done(), this.ch1Upload.done()]);
-    log.info({ sessionId: this.sessionId }, "S3 dual channel uploads complete");
-
-    const now = Date.now();
-    const totalDurationMs = now - this.startedAt;
-    const ch0DurationMs = this.ch0StartedAt ? now - this.ch0StartedAt : 0;
-    const ch1DurationMs = this.ch1StartedAt ? now - this.ch1StartedAt : 0;
-
-    const manifest: AudioManifest = {
-      sessionId: this.sessionId,
-      orgId: this.orgId,
-      codec: "pcm16",
-      sampleRate: 16_000,
-      totalDurationMs,
-      channels: {
-        ch0: {
-          file: "ch0.pcm16",
-          source: "mic",
-          bytes: this.ch0Bytes,
-          durationMs: ch0DurationMs,
-        },
-        ch1: {
-          file: "ch1.pcm16",
-          source: "system",
-          bytes: this.ch1Bytes,
-          durationMs: ch1DurationMs,
-        },
-      },
-    };
-
-    const manifestKey = `${this.orgId}/${this.sessionId}/manifest.json`;
     try {
-      await this.s3Client.send(
-        new PutObjectCommand({
-          Bucket: this.config.bucket,
-          Key: manifestKey,
-          Body: JSON.stringify(manifest, null, 2),
-          ContentType: "application/json",
-          ServerSideEncryption: "AES256",
-        })
-      );
+      await Promise.all([this.ch0Upload.done(), this.ch1Upload.done()]);
       log.info(
-        { sessionId: this.sessionId, manifestKey },
-        "Manifest written to S3"
+        { sessionId: this.sessionId },
+        "S3 dual channel uploads complete"
       );
-    } catch (error) {
-      log.error(
-        { err: error, sessionId: this.sessionId },
-        "Failed to write manifest to S3"
-      );
+
+      const now = Date.now();
+      const totalDurationMs = now - this.startedAt;
+      const ch0DurationMs = this.ch0StartedAt ? now - this.ch0StartedAt : 0;
+      const ch1DurationMs = this.ch1StartedAt ? now - this.ch1StartedAt : 0;
+
+      const manifest: AudioManifest = {
+        sessionId: this.sessionId,
+        orgId: this.orgId,
+        codec: "pcm16",
+        sampleRate: 16_000,
+        totalDurationMs,
+        channels: {
+          ch0: {
+            file: "ch0.pcm16",
+            source: "mic",
+            bytes: this.ch0Bytes,
+            durationMs: ch0DurationMs,
+          },
+          ch1: {
+            file: "ch1.pcm16",
+            source: "system",
+            bytes: this.ch1Bytes,
+            durationMs: ch1DurationMs,
+          },
+        },
+      };
+
+      const manifestKey = `${this.orgId}/${this.sessionId}/manifest.json`;
+      try {
+        await this.s3Client.send(
+          new PutObjectCommand({
+            Bucket: this.config.bucket,
+            Key: manifestKey,
+            Body: JSON.stringify(manifest, null, 2),
+            ContentType: "application/json",
+            ServerSideEncryption: "AES256",
+          })
+        );
+        log.info(
+          { sessionId: this.sessionId, manifestKey },
+          "Manifest written to S3"
+        );
+      } catch (error) {
+        log.error(
+          { err: error, sessionId: this.sessionId },
+          "Failed to write manifest to S3"
+        );
+      }
+
+      return manifest;
+    } finally {
+      this.s3Client.destroy();
     }
-
-    this.s3Client.destroy();
-
-    return manifest;
   }
 }

@@ -37,13 +37,12 @@ export async function closeStreamer(
 
   try {
     const manifest = await streamer.end();
+    streamers.delete(sessionId);
+    log.info({ sessionId }, "AudioStreamer removed from registry");
     return manifest;
   } catch (error) {
     log.error({ err: error, sessionId }, "Error closing AudioStreamer");
     return undefined;
-  } finally {
-    streamers.delete(sessionId);
-    log.info({ sessionId }, "AudioStreamer removed from registry");
   }
 }
 
