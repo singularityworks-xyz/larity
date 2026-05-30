@@ -1,7 +1,16 @@
 process.env.REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 process.env.LOG_LEVEL = "debug";
 
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  spyOn,
+} from "bun:test";
 import { sessionManager } from "@larity/stt";
 import Redis from "ioredis";
 import { AlertPublisher } from "../../../packages/meeting-mode/src/alerts/publisher";
@@ -22,13 +31,6 @@ import { startServer, stopServer } from "../src/server";
 
 let redisPub: Redis;
 let redisSub: Redis; // Tauri desktop IPC mock
-
-// Store original sessionManager methods for restoration
-const originalCreateSession = sessionManager.createSession;
-const originalHasSession = sessionManager.hasSession;
-const originalCloseSession = sessionManager.closeSession;
-const originalCloseAll = sessionManager.closeAll;
-const originalSendAudio = sessionManager.sendAudio;
 
 // Create mocks for managers
 const mockConstraintManager = {
@@ -162,40 +164,62 @@ describe("Full Pipeline E2E Test", () => {
   let app: ReturnType<typeof startServer> extends Promise<infer T> ? T : never;
   const receivedAlerts: any[] = [];
 
-  beforeAll(async () => {
-    // Override sessionManager methods
-    sessionManager.createSession = () => true;
-    sessionManager.hasSession = () => true;
-    sessionManager.closeSession = () => {
-      /* mock */
-    };
-    sessionManager.closeAll = () => {
-      /* mock */
-    };
-    sessionManager.sendAudio = async (
-      sessionId: string,
-      _frame: Buffer | Uint8Array
-    ) => {
-      // Publish mock STT final result
-      const now = Date.now();
-      const sttResult = {
-        sessionId,
-        transcript: "We absolutely must deliver this new feature by tomorrow.",
-        speechTimestamp: now - 3000,
-        ts: now,
-        isFinal: true,
-        diarizationIndex: 0,
-        confidence: 0.99,
-        channel: 0,
-        start: 0,
-        duration: 0.1,
-      };
-      await redisPub.publish(
-        `meeting.stt.${sessionId}`,
-        JSON.stringify(sttResult)
-      );
-    };
+  let createSessionSpy: any;
+  let hasSessionSpy: any;
+  let closeSessionSpy: any;
+  let closeAllSpy: any;
+  let sendAudioSpy: any;
 
+  beforeEach(() => {
+    createSessionSpy = spyOn(
+      sessionManager,
+      "createSession"
+    ).mockImplementation(() => true);
+    hasSessionSpy = spyOn(sessionManager, "hasSession").mockImplementation(
+      () => true
+    );
+    closeSessionSpy = spyOn(sessionManager, "closeSession").mockImplementation(
+      () => {
+        /* mock */
+      }
+    );
+    closeAllSpy = spyOn(sessionManager, "closeAll").mockImplementation(() => {
+      /* mock */
+    });
+    sendAudioSpy = spyOn(sessionManager, "sendAudio").mockImplementation(
+      async (sessionId: string, _frame: Buffer | Uint8Array) => {
+        // Publish mock STT final result
+        const now = Date.now();
+        const sttResult = {
+          sessionId,
+          transcript:
+            "We absolutely must deliver this new feature by tomorrow.",
+          speechTimestamp: now - 3000,
+          ts: now,
+          isFinal: true,
+          diarizationIndex: 0,
+          confidence: 0.99,
+          channel: 0,
+          start: 0,
+          duration: 0.1,
+        };
+        await redisPub.publish(
+          `meeting.stt.${sessionId}`,
+          JSON.stringify(sttResult)
+        );
+      }
+    );
+  });
+
+  afterEach(() => {
+    createSessionSpy.mockRestore();
+    hasSessionSpy.mockRestore();
+    closeSessionSpy.mockRestore();
+    closeAllSpy.mockRestore();
+    sendAudioSpy.mockRestore();
+  });
+
+  beforeAll(async () => {
     const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
     redisPub = new Redis(redisUrl);
     redisSub = new Redis(redisUrl);
@@ -306,13 +330,6 @@ describe("Full Pipeline E2E Test", () => {
   });
 
   afterAll(async () => {
-    // Restore sessionManager methods
-    sessionManager.createSession = originalCreateSession;
-    sessionManager.hasSession = originalHasSession;
-    sessionManager.closeSession = originalCloseSession;
-    sessionManager.closeAll = originalCloseAll;
-    sessionManager.sendAudio = originalSendAudio;
-
     if (app) {
       stopServer(app);
     }
