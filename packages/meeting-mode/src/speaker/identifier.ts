@@ -21,6 +21,41 @@ import {
 
 const log = createMeetingModeLogger("speaker-identifier");
 
+const CLOCK_OFFSET_TTL_SECONDS = 2 * 60 * 60;
+
+interface ClockOffsetRedisClient {
+  hset(key: string, field: string, value: string): Promise<unknown>;
+  expire?(key: string, seconds: number): Promise<unknown>;
+}
+
+interface ClockOffsetLogger {
+  error(obj: { err: unknown; sessionId: string }, msg: string): void;
+}
+
+async function persistClockOffset(
+  redisClient: ClockOffsetRedisClient,
+  sessionId: string,
+  userId: string,
+  medianOffset: number,
+  logger: ClockOffsetLogger
+): Promise<void> {
+  try {
+    await redisClient.hset(
+      `meeting.clock_offsets.${sessionId}`,
+      userId,
+      medianOffset.toString()
+    );
+    if (typeof redisClient.expire === "function") {
+      await redisClient.expire(
+        `meeting.clock_offsets.${sessionId}`,
+        CLOCK_OFFSET_TTL_SECONDS
+      );
+    }
+  } catch (err) {
+    logger.error({ err, sessionId }, "Failed to persist clock offset to Redis");
+  }
+}
+
 export class SpeakerIdentifier {
   private readonly sessionId: string;
   private readonly config: SpeakerIdentifierConfig;
@@ -137,26 +172,7 @@ export class SpeakerIdentifier {
     });
 
     if (redis && typeof redis.hset === "function") {
-      redis
-        .hset(
-          `meeting.clock_offsets.${this.sessionId}`,
-          userId,
-          medianOffset.toString()
-        )
-        .then(() => {
-          if (typeof redis.expire === "function") {
-            return redis.expire(
-              `meeting.clock_offsets.${this.sessionId}`,
-              2 * 60 * 60
-            );
-          }
-        })
-        .catch((err) =>
-          log.error(
-            { err, sessionId: this.sessionId },
-            "Failed to persist clock offset to Redis"
-          )
-        );
+      persistClockOffset(redis, this.sessionId, userId, medianOffset, log);
     }
 
     if (type === "vad_speaking") {

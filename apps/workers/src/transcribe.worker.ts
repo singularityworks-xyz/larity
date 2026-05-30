@@ -44,6 +44,9 @@ interface S3Error {
 
 const WHITESPACE_REGEX = /\s+/;
 
+const DEFAULT_SEGMENT_TTL_SECONDS = 7 * 24 * 60 * 60;
+const MAX_TIME_WINDOW_NANOS = 1_000_000_000_000;
+
 /**
  * Downloads a file from S3 and returns its contents as a Buffer.
  * Returns null if the file does not exist.
@@ -255,7 +258,7 @@ export class TranscribeWorker extends BaseWorker<
 
     const statusKey = `meeting.job.${sessionId}.transcribe.status`;
     await redis.set(statusKey, "processing");
-    await redis.expire(statusKey, 7 * 24 * 60 * 60); // 7 days
+    await redis.expire(statusKey, DEFAULT_SEGMENT_TTL_SECONDS); // 7 days
 
     try {
       const { ch0Result, ch1Result } = await fetchAndTranscribeAudio(
@@ -291,7 +294,7 @@ export class TranscribeWorker extends BaseWorker<
         for (const lu of liveUtterances) {
           if (lu.timestamp && typeof lu.startOffset === "number") {
             const luTime =
-              lu.timestamp > 1_000_000_000_000
+              lu.timestamp > MAX_TIME_WINDOW_NANOS
                 ? lu.timestamp
                 : lu.timestamp * 1000;
             connectionStartTime = luTime - lu.startOffset * 1000;

@@ -12,6 +12,9 @@ const NON_WORD_REGEX = /[^\w\s]/g;
 const WHITESPACE_SPLIT_REGEX = /\s+/;
 const DIGIT_REGEX = /\d+/;
 
+const RECONCILIATION_WINDOW_SECONDS = 3.0;
+const TIMESTAMP_MS_THRESHOLD = 1_000_000_000_000;
+
 export interface VadInterval {
   userId: string;
   startTs: number;
@@ -264,9 +267,14 @@ function textualFallback(
 ): string | null {
   const candidates = liveUtterances.filter((lu) => {
     const luTimeSec =
-      lu.timestamp > 1_000_000_000_000 ? lu.timestamp / 1000 : lu.timestamp;
+      lu.timestamp > TIMESTAMP_MS_THRESHOLD
+        ? lu.timestamp / 1000
+        : lu.timestamp;
     const luRelativeSec = luTimeSec - connectionStartTimeSec;
-    return Math.abs(segment.timestamp - luRelativeSec) <= 3.0;
+    return (
+      Math.abs(segment.timestamp - luRelativeSec) <=
+      RECONCILIATION_WINDOW_SECONDS
+    );
   });
 
   let bestMatch: Utterance | null = null;
@@ -325,9 +333,14 @@ function correlateSingleSegment(
       // Live Transcript Cross-Check
       const matchedLiveUtt = liveUtterances.find((lu) => {
         const luTimeSec =
-          lu.timestamp > 1_000_000_000_000 ? lu.timestamp / 1000 : lu.timestamp;
+          lu.timestamp > TIMESTAMP_MS_THRESHOLD
+            ? lu.timestamp / 1000
+            : lu.timestamp;
         const luRelativeSec = luTimeSec - connectionStartTimeSec;
-        return Math.abs(segment.timestamp - luRelativeSec) <= 3.0;
+        return (
+          Math.abs(segment.timestamp - luRelativeSec) <=
+          RECONCILIATION_WINDOW_SECONDS
+        );
       });
 
       if (matchedLiveUtt?.speaker?.type === "EXTERNAL") {
