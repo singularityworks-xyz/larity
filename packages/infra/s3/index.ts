@@ -16,12 +16,36 @@ export interface S3Config {
 }
 
 export function getS3Config(): S3Config {
+  const endpoint = (process.env.S3_ENDPOINT ?? "").trim();
+  const region = (process.env.S3_REGION ?? "auto").trim();
+  const accessKeyId = (process.env.S3_ACCESS_KEY_ID ?? "").trim();
+  const secretAccessKey = (process.env.S3_SECRET_ACCESS_KEY ?? "").trim();
+  const bucket = (process.env.S3_AUDIO_BUCKET ?? "larity-audio").trim();
+
+  const missing: string[] = [];
+  if (!endpoint) {
+    missing.push("S3_ENDPOINT");
+  }
+  if (!accessKeyId) {
+    missing.push("S3_ACCESS_KEY_ID");
+  }
+  if (!secretAccessKey) {
+    missing.push("S3_SECRET_ACCESS_KEY");
+  }
+  if (!bucket) {
+    missing.push("S3_AUDIO_BUCKET");
+  }
+
+  if (missing.length > 0) {
+    throw new Error(`Missing S3 config: ${missing.join(" and ")}`);
+  }
+
   return {
-    endpoint: process.env.S3_ENDPOINT ?? "",
-    region: process.env.S3_REGION ?? "auto",
-    accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
-    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
-    bucket: process.env.S3_AUDIO_BUCKET ?? "larity-audio",
+    endpoint,
+    region,
+    accessKeyId,
+    secretAccessKey,
+    bucket,
   };
 }
 
