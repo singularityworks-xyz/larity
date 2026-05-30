@@ -390,9 +390,15 @@ describe("TranscribeWorker", () => {
       },
     };
 
-    await expect((worker as any).process(mockJob)).rejects.toThrow(
-      "No audio files found in S3"
-    );
+    let thrownError: Error | null = null;
+    try {
+      await (worker as any).process(mockJob);
+    } catch (err: any) {
+      thrownError = err as Error;
+    }
+
+    expect(thrownError).not.toBeNull();
+    expect(thrownError?.message).toContain("No audio files found in S3");
 
     expect(mockRedisSet).toHaveBeenCalledWith(
       "meeting.job.session-1.transcribe.status",
