@@ -5,39 +5,71 @@ import { createRealtimeLogger } from "../logger";
 
 const log = createRealtimeLogger("admin-routes");
 
+// WAV header constants
+const WAV_HEADER_SIZE = 44;
+const RIFF_OFFSET = 0;
+const FILE_SIZE_OFFSET = 4;
+const WAVE_OFFSET = 8;
+const FMT_CHUNK_OFFSET = 12;
+const FMT_CHUNK_SIZE_OFFSET = 16;
+const AUDIO_FORMAT_OFFSET = 20;
+const CHANNELS_OFFSET = 22;
+const SAMPLE_RATE_OFFSET = 24;
+const BYTE_RATE_OFFSET = 28;
+const BLOCK_ALIGN_OFFSET = 32;
+const BITS_PER_SAMPLE_OFFSET = 34;
+const DATA_LABEL_OFFSET = 36;
+const DATA_SIZE_OFFSET = 40;
+
 export function createWavHeader(
   dataLength: number,
   sampleRate: number,
   channels: number,
   bitsPerSample: number
 ): Buffer {
-  const header = Buffer.alloc(44);
+  const header = Buffer.alloc(WAV_HEADER_SIZE);
   const byteRate = (sampleRate * channels * bitsPerSample) / 8;
   const blockAlign = (channels * bitsPerSample) / 8;
 
   // RIFF header
-  header.write("RIFF", 0);
-  header.writeUInt32LE(36 + dataLength, 4);
-  header.write("WAVE", 8);
+  header.write("RIFF", RIFF_OFFSET);
+  header.writeUInt32LE(36 + dataLength, FILE_SIZE_OFFSET);
+  header.write("WAVE", WAVE_OFFSET);
 
   // fmt chunk
-  header.write("fmt ", 12);
-  header.writeUInt32LE(16, 16); // chunk size
-  header.writeUInt16LE(1, 20); // PCM format
-  header.writeUInt16LE(channels, 22);
-  header.writeUInt32LE(sampleRate, 24);
-  header.writeUInt32LE(byteRate, 28);
-  header.writeUInt16LE(blockAlign, 32);
-  header.writeUInt16LE(bitsPerSample, 34);
+  header.write("fmt ", FMT_CHUNK_OFFSET);
+  header.writeUInt32LE(16, FMT_CHUNK_SIZE_OFFSET); // chunk size
+  header.writeUInt16LE(1, AUDIO_FORMAT_OFFSET); // PCM format
+  header.writeUInt16LE(channels, CHANNELS_OFFSET);
+  header.writeUInt32LE(sampleRate, SAMPLE_RATE_OFFSET);
+  header.writeUInt32LE(byteRate, BYTE_RATE_OFFSET);
+  header.writeUInt16LE(blockAlign, BLOCK_ALIGN_OFFSET);
+  header.writeUInt16LE(bitsPerSample, BITS_PER_SAMPLE_OFFSET);
 
   // data chunk
-  header.write("data", 36);
-  header.writeUInt32LE(dataLength, 40);
+  header.write("data", DATA_LABEL_OFFSET);
+  header.writeUInt32LE(dataLength, DATA_SIZE_OFFSET);
 
   return header;
 }
 
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY ?? "";
+
+function isS3NotFoundError(err: unknown): boolean {
+  if (!err || typeof err !== "object") {
+    return false;
+  }
+  const error = err as Record<string, unknown>;
+  return (
+    error.name === "NoSuchKey" ||
+    error.name === "NotFound" ||
+    error.code === "NoSuchKey" ||
+    error.code === "NotFound" ||
+    error.statusCode === 404 ||
+    (error.$metadata &&
+      (error.$metadata as Record<string, unknown>).httpStatusCode === 404)
+  );
+}
 
 async function fetchS3File(
   s3Client: S3Client,
@@ -59,8 +91,11 @@ async function fetchS3File(
       chunks.push(chunk);
     }
     return Buffer.concat(chunks);
-  } catch {
-    return null;
+  } catch (error) {
+    if (isS3NotFoundError(error)) {
+      return null;
+    }
+    throw error;
   }
 }
 
@@ -113,6 +148,105 @@ async function getPcmDataForSession(
   return { pcmData, channelsCount: 1 };
 }
 
+async function handleStereoDownload(
+  s3Client: S3Client,
+  bucket: string,
+  orgId: string,
+  sessionId: string,
+  set: Record<string, unknown>
+): Promise<Response | { error: string }> {
+  const { pcmData, channelsCount } = await getPcmDataForSession(
+    s3Client,
+    bucket,
+    orgId,
+    sessionId,
+    "stereo"
+  );
+
+  if (!pcmData) {
+    set.status = 404;
+    return { error: "Session audio not found" };
+  }
+
+  const wavHeader = createWavHeader(pcmData.length, 16_000, channelsCount, 16);
+  const wavBuffer = Buffer.concat([wavHeader, pcmData]);
+
+  set.status = 200;
+  // biome-ignore lint/suspicious/noExplicitAny: Elysia headers type
+  (set as any).headers["Content-Type"] = "audio/wav";
+  // biome-ignore lint/suspicious/noExplicitAny: Elysia headers type
+  (set as any).headers["Content-Disposition"] =
+    `attachment; filename="session_${sessionId}.wav"`;
+
+  return new Response(wavBuffer, {
+    headers: {
+      "Content-Type": "audio/wav",
+      "Content-Disposition": `attachment; filename="session_${sessionId}.wav"`,
+    },
+  });
+}
+
+async function handleMonoStreaming(
+  s3Client: S3Client,
+  bucket: string,
+  orgId: string,
+  sessionId: string,
+  channel: string,
+  set: Record<string, unknown>
+): Promise<Response | { error: string }> {
+  const fileKey = channel === "1" ? "ch1.pcm16" : "ch0.pcm16";
+  const key = `${orgId}/${sessionId}/${fileKey}`;
+
+  let response: import("@aws-sdk/client-s3").GetObjectCommandOutput;
+  try {
+    response = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      })
+    );
+  } catch (error) {
+    if (isS3NotFoundError(error)) {
+      set.status = 404;
+      return { error: "Session audio not found" };
+    }
+    throw error;
+  }
+
+  const bodyStream = response.Body;
+  if (!bodyStream) {
+    set.status = 404;
+    return { error: "Session audio not found" };
+  }
+
+  const dataLength = Number(response.ContentLength ?? 0);
+  const wavHeader = createWavHeader(dataLength, 16_000, 1, 16);
+
+  set.status = 200;
+  // biome-ignore lint/suspicious/noExplicitAny: Elysia headers type
+  (set as any).headers["Content-Type"] = "audio/wav";
+  // biome-ignore lint/suspicious/noExplicitAny: Elysia headers type
+  (set as any).headers["Content-Disposition"] =
+    `attachment; filename="session_${sessionId}.wav"`;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      controller.enqueue(wavHeader);
+      for await (const chunk of bodyStream as AsyncIterable<Uint8Array>) {
+        controller.enqueue(chunk);
+      }
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "audio/wav",
+      "Content-Disposition": `attachment; filename="session_${sessionId}.wav"`,
+    },
+  });
+}
+
 export function addAdminRoutes(app: Elysia): void {
   const config = defaultAudioStreamerConfig();
 
@@ -150,42 +284,32 @@ export function addAdminRoutes(app: Elysia): void {
       const channel = query?.channel ?? "0";
 
       try {
-        const { pcmData, channelsCount } = await getPcmDataForSession(
+        if (channel === "stereo") {
+          return await handleStereoDownload(
+            s3Client,
+            config.bucket,
+            orgId,
+            sessionId,
+            set
+          );
+        }
+
+        return await handleMonoStreaming(
           s3Client,
           config.bucket,
           orgId,
           sessionId,
-          channel
+          channel,
+          set
         );
-
-        if (!pcmData) {
+      } catch (error) {
+        if (isS3NotFoundError(error)) {
           set.status = 404;
           return { error: "Session audio not found" };
         }
-
-        const wavHeader = createWavHeader(
-          pcmData.length,
-          16_000,
-          channelsCount,
-          16
-        );
-        const wavBuffer = Buffer.concat([wavHeader, pcmData]);
-
-        set.status = 200;
-        set.headers["Content-Type"] = "audio/wav";
-        set.headers["Content-Disposition"] =
-          `attachment; filename="session_${sessionId}.wav"`;
-
-        return new Response(wavBuffer, {
-          headers: {
-            "Content-Type": "audio/wav",
-            "Content-Disposition": `attachment; filename="session_${sessionId}.wav"`,
-          },
-        });
-      } catch (error) {
         log.error({ err: error, sessionId }, "Failed to fetch audio from S3");
-        set.status = 500;
-        return { error: "Internal server error" };
+        set.status = 502;
+        return { error: "Failed to fetch session audio" };
       }
     },
     {
