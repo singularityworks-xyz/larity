@@ -38,7 +38,18 @@ export async function startWorkersApp(): Promise<void> {
     .get("/health", async () => {
       const redisHealth = await checkRedisHealth();
       const workerHealths = await Promise.all(
-        activeWorkers.map((w) => w.getHealth())
+        activeWorkers.map(async (w) => {
+          try {
+            return await w.getHealth();
+          } catch (error) {
+            return {
+              name: w.constructor.name,
+              active: false,
+              uptimeMs: 0,
+              lastError: error instanceof Error ? error.message : String(error),
+            };
+          }
+        })
       );
       const allWorkersHealthy = workerHealths.every((h) => h.active);
 

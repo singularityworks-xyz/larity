@@ -21,6 +21,7 @@ export abstract class BaseWorker<TJobData = unknown, TJobResult = unknown> {
   protected readonly worker: Worker<TJobData, TJobResult>;
   protected readonly log: ReturnType<typeof createWorkerLogger>;
   private readonly connection: IORedis;
+  private readonly _ownsRedis: boolean;
   private readonly startedAt: number;
   private lastError: string | undefined;
 
@@ -35,6 +36,7 @@ export abstract class BaseWorker<TJobData = unknown, TJobResult = unknown> {
     this.startedAt = Date.now();
     this.log = createWorkerLogger(`${queueName}-worker`);
     this.lastError = undefined;
+    this._ownsRedis = !options?.connection;
 
     this.connection =
       options?.connection ??
@@ -109,7 +111,9 @@ export abstract class BaseWorker<TJobData = unknown, TJobResult = unknown> {
   async close(): Promise<void> {
     this.log.info("Closing worker...");
     await this.worker.close();
-    await this.connection.quit();
+    if (this._ownsRedis) {
+      await this.connection.quit();
+    }
     this.log.info("Worker closed");
   }
 
