@@ -1,26 +1,26 @@
 import { z } from "zod";
 
 export const TranscribeJobSchema = z.object({
-  sessionId: z.string(),
-  orgId: z.string(),
-  meetingId: z.string(),
-  s3Prefix: z.string(),
+  sessionId: z.string().min(1),
+  orgId: z.string().min(1),
+  meetingId: z.string().min(1),
+  s3Prefix: z.string().min(1),
 });
 
 export type TranscribeJobData = z.infer<typeof TranscribeJobSchema>;
 
 export const SummaryJobSchema = z.object({
-  sessionId: z.string(),
-  orgId: z.string(),
-  meetingId: z.string(),
+  sessionId: z.string().min(1),
+  orgId: z.string().min(1),
+  meetingId: z.string().min(1),
 });
 
 export type SummaryJobData = z.infer<typeof SummaryJobSchema>;
 
 export const AudioCleanupJobSchema = z.object({
-  sessionId: z.string(),
-  orgId: z.string(),
-  s3Prefix: z.string(),
+  sessionId: z.string().min(1),
+  orgId: z.string().min(1),
+  s3Prefix: z.string().min(1),
 });
 
 export type AudioCleanupJobData = z.infer<typeof AudioCleanupJobSchema>;
