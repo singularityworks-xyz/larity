@@ -108,12 +108,12 @@ describe("Audio Persistence Integration", () => {
 
     // Simulate 100ms of PCM16 audio (1600 bytes at 16kHz, 16-bit mono)
     const pcmFrame = Buffer.alloc(1600);
-    for (let i = 0; i < pcmFrame.length; i++) {
+    for (const i of pcmFrame.keys()) {
       // biome-ignore lint/suspicious/noBitwiseOperators: test pattern fill
       pcmFrame[i] = i & 0xff;
     }
 
-    for (let i = 0; i < 5; i++) {
+    for (const _ of Array.from({ length: 5 })) {
       streamer.writeDemux(0, pcmFrame);
       streamer.writeDemux(1, pcmFrame);
     }
