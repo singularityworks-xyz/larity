@@ -25,10 +25,36 @@ export interface BatchTranscriptionResult {
 /**
  * Transcribe an audio buffer using Deepgram's Prerecorded batch API
  */
+interface DeepgramResponse {
+  result?: {
+    results?: {
+      channels?: Array<{
+        alternatives?: Array<{
+          utterances?: Array<{
+            start: number;
+            end: number;
+            transcript: string;
+            speaker: number;
+            confidence: number;
+            words?: BatchUtterance["words"];
+          }>;
+        }>;
+      }>;
+    };
+  };
+}
+
 export async function transcribeAudioBuffer(
   buffer: Buffer,
   mimeType = "audio/x-pcm"
 ): Promise<BatchTranscriptionResult> {
+  const allowedMimeTypes = ["audio/pcm", "audio/x-pcm", "audio/L16"];
+  if (!allowedMimeTypes.includes(mimeType)) {
+    throw new Error(
+      `Unsupported mimeType: ${mimeType}. Only PCM types are allowed.`
+    );
+  }
+
   const deepgram = getDeepgramClient();
 
   log.info(
@@ -36,27 +62,27 @@ export async function transcribeAudioBuffer(
     "Sending batch STT request to Deepgram"
   );
 
-  const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
-    buffer,
-    {
+  let response: DeepgramResponse | null = null;
+  try {
+    response = (await deepgram.listen.prerecorded.transcribeFile(buffer, {
       model: "nova-3",
       diarize: true,
       diarize_model: "latest",
       smart_format: true,
       utterances: true,
-      // For pcm16, we need to supply sample_rate and encoding if not defined by the mimeType.
-      // But standard REST API accepts raw PCM if we pass encoding and sample_rate.
-      // Since ch0.pcm16/ch1.pcm16 are 16kHz linear16 PCM, let's specify those parameter options.
       encoding: "linear16",
       sample_rate: 16_000,
-    }
-  );
-
-  if (error) {
-    log.error({ err: error }, "Deepgram batch STT failed");
-    throw error;
+    })) as DeepgramResponse;
+  } catch (err) {
+    log.error({ err }, "Deepgram batch STT failed");
+    throw err;
   }
 
+  if (!response) {
+    throw new Error("Deepgram returned empty response");
+  }
+
+  const result = response.result;
   if (!result) {
     throw new Error("Deepgram returned empty result");
   }
