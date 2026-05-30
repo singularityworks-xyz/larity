@@ -13,9 +13,15 @@ interface DockerContainer {
 class RedisTestContainer {
   private container: DockerContainer | null = null;
   private readonly redisUrl = "redis://localhost:6379";
+  private started = false;
+
+  wasStarted(): boolean {
+    return this.started;
+  }
 
   start(): Promise<void> {
     console.log("Starting Redis test container...");
+    this.started = true;
 
     const dockerProcess = spawn(
       "docker-compose",
@@ -135,8 +141,21 @@ describe("Redis Integration Tests", () => {
     process.env.REDIS_URL = testContainer.getRedisUrl();
 
     try {
-      await testContainer.start();
-      await testContainer.waitForReady();
+      let isAlreadyRunning = false;
+      try {
+        const testRedis = new Redis(testContainer.getRedisUrl());
+        await testRedis.ping();
+        await testRedis.quit();
+        isAlreadyRunning = true;
+        console.log("Redis is already running, skipping docker-compose start.");
+      } catch {
+        console.log("Redis is not running, will start a test container.");
+      }
+
+      if (!isAlreadyRunning) {
+        await testContainer.start();
+        await testContainer.waitForReady();
+      }
 
       redis = new Redis(testContainer.getRedisUrl());
     } catch (error) {
@@ -154,7 +173,9 @@ describe("Redis Integration Tests", () => {
       console.error("Error disconnecting Redis client:", error);
     }
 
-    await testContainer.stop();
+    if (testContainer.wasStarted()) {
+      await testContainer.stop();
+    }
   }, 60_000);
 
   describe("Client Integration", () => {
