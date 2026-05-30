@@ -119,7 +119,7 @@ describe("AudioStreamer", () => {
     expect(mockS3Send).toHaveBeenCalled();
   });
 
-  it("should reject writes after end", async () => {
+  it("should ignore writes after end", async () => {
     const { AudioStreamer } = await import("../src/audio/streamer");
 
     const streamer = new AudioStreamer("org-1", "session-3", {
