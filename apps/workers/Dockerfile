@@ -13,4 +13,4 @@ COPY . .
 ENV NODE_ENV=production
 EXPOSE 8080
 USER bun
-ENTRYPOINT [ "bun", "run", "apps/workers/src/index.ts" ]
+ENTRYPOINT [ "bun", "run", "apps/workers/index.ts" ]
