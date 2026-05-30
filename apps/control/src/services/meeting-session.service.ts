@@ -731,7 +731,7 @@ export const meetingSessionService = {
     await redis.del(redisKeys.meetingToSession(meetingId));
 
     // Fetch orgId from DB
-    let orgId = "default-org";
+    let orgId: string | undefined;
     try {
       const meeting = await prisma.meeting.findUnique({
         where: { id: meetingId },
@@ -746,79 +746,95 @@ export const meetingSessionService = {
       if (meeting?.client?.orgId) {
         orgId = meeting.client.orgId;
       }
-    } catch (_err) {
-      // Ignore database errors, fallback to default-org
+    } catch (err) {
+      console.error(
+        `Failed to fetch orgId from DB for meeting ${meetingId}, aborting session S3 dump:`,
+        err
+      );
     }
 
-    // Dump session state to S3
-    try {
-      const commitmentsRaw = await redis.get(
-        redisKeys.meetingCommitment(sessionId)
-      );
-      const finalCommitments = commitmentsRaw
-        ? JSON.parse(commitmentsRaw)
-        : null;
+    if (orgId) {
+      // Dump session state to S3
+      try {
+        const commitmentsRaw = await redis.get(
+          redisKeys.meetingCommitment(sessionId)
+        );
+        const finalCommitments = commitmentsRaw
+          ? JSON.parse(commitmentsRaw)
+          : null;
 
-      const constraintsRaw = await redis.get(
-        redisKeys.meetingConstraintLedger(sessionId)
-      );
-      const finalConstraints = constraintsRaw
-        ? JSON.parse(constraintsRaw)
-        : null;
+        const constraintsRaw = await redis.get(
+          redisKeys.meetingConstraintLedger(sessionId)
+        );
+        const finalConstraints = constraintsRaw
+          ? JSON.parse(constraintsRaw)
+          : null;
 
-      const speakerMap = await redis.hgetall(
-        redisKeys.meetingSpeaker(sessionId)
-      );
+        const speakerMap = await redis.hgetall(
+          redisKeys.meetingSpeaker(sessionId)
+        );
 
-      const topicsRaw = await redis.get(redisKeys.meetingTopic(sessionId));
-      const finalTopics = topicsRaw ? JSON.parse(topicsRaw) : null;
+        const topicsRaw = await redis.get(redisKeys.meetingTopic(sessionId));
+        const finalTopics = topicsRaw ? JSON.parse(topicsRaw) : null;
 
-      const vadHistoryRaw = await redis.lrange(
-        `meeting.vad.${sessionId}`,
-        0,
-        -1
-      );
-      const vadHistory = vadHistoryRaw.map((item) => {
+        const vadHistoryRaw = await redis.lrange(
+          `meeting.vad.${sessionId}`,
+          0,
+          -1
+        );
+        const vadHistory = vadHistoryRaw.map((item) => {
+          try {
+            return JSON.parse(item);
+          } catch {
+            return item;
+          }
+        });
+
+        const clockOffsets = await redis.hgetall(
+          `meeting.clock_offsets.${sessionId}`
+        );
+
+        const sessionState = {
+          sessionId,
+          meetingId,
+          orgId,
+          commitments: finalCommitments,
+          constraints: finalConstraints,
+          speakerMap,
+          topics: finalTopics,
+          vadHistory,
+          clockOffsets,
+          timestamp: Date.now(),
+        };
+
+        const s3Client = createS3Client();
         try {
-          return JSON.parse(item);
-        } catch {
-          return item;
+          const config = getS3Config();
+          const key = `${orgId}/${sessionId}/session_state.json`;
+
+          await s3Client.send(
+            new PutObjectCommand({
+              Bucket: config.bucket,
+              Key: key,
+              Body: JSON.stringify(sessionState, null, 2),
+              ContentType: "application/json",
+              ServerSideEncryption: "AES256",
+            })
+          );
+        } finally {
+          s3Client.destroy();
         }
-      });
-
-      const clockOffsets = await redis.hgetall(
-        `meeting.clock_offsets.${sessionId}`
+      } catch (err) {
+        // Fail-safe: do not crash if S3 upload fails, but log it
+        console.error(
+          `Session cleanup S3 dump failed for session ${sessionId}:`,
+          err
+        );
+      }
+    } else {
+      console.warn(
+        `Aborting session S3 dump for session ${sessionId}: missing or empty orgId`
       );
-
-      const sessionState = {
-        sessionId,
-        meetingId,
-        orgId,
-        commitments: finalCommitments,
-        constraints: finalConstraints,
-        speakerMap,
-        topics: finalTopics,
-        vadHistory,
-        clockOffsets,
-        timestamp: Date.now(),
-      };
-
-      const s3Client = createS3Client();
-      const config = getS3Config();
-      const key = `${orgId}/${sessionId}/session_state.json`;
-
-      await s3Client.send(
-        new PutObjectCommand({
-          Bucket: config.bucket,
-          Key: key,
-          Body: JSON.stringify(sessionState, null, 2),
-          ContentType: "application/json",
-          ServerSideEncryption: "AES256",
-        })
-      );
-      s3Client.destroy();
-    } catch (_err) {
-      // Fail-safe: do not crash if S3 upload fails, but log it
     }
 
     // Extend TTL of specified keys to 7 days
