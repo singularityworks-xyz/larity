@@ -13,6 +13,12 @@ import type { RealtimeSocket } from "./types";
 
 const log = createRealtimeLogger("server");
 
+// WebSocket configuration constants
+/** Maximum payload length in bytes (64 KB) */
+const WEBSOCKET_MAX_PAYLOAD_BYTES = 64 * 1024;
+/** Idle timeout in seconds (10 minutes) */
+const WEBSOCKET_IDLE_TIMEOUT_SECONDS = 600;
+
 /**
  * Start the WebSocket server
  * Returns a promise that resolves when the server is listening
@@ -30,6 +36,18 @@ export function startServer(): Promise<any> {
           return new Response(metrics, {
             headers: { "Content-Type": "text/plain; version=0.0.4" },
           });
+        })
+        .derive(async ({ query }) => {
+          const sessionId = query?.sessionId;
+          if (sessionId) {
+            const validation = await validateSession(
+              sessionId,
+              query.userId,
+              query.role
+            );
+            return { sessionValidation: validation };
+          }
+          return { sessionValidation: { isValid: false } };
         });
 
       addAdminRoutes(app);
@@ -43,20 +61,18 @@ export function startServer(): Promise<any> {
             error: "Role must be 'host' or 'participant'",
           }),
           name: t.Optional(t.String()),
-          orgId: t.Optional(t.String()),
         }),
 
         // Payload and timeout configurations
-        maxPayloadLength: 64 * 1024,
-        idleTimeout: 600,
+        maxPayloadLength: WEBSOCKET_MAX_PAYLOAD_BYTES,
+        idleTimeout: WEBSOCKET_IDLE_TIMEOUT_SECONDS,
 
         /**
          * Runs before the WebSocket connection is established.
          * We validate the session with the control plane here.
          */
-        async beforeHandle({ query: { sessionId, userId, role }, set }) {
-          const isValid = await validateSession(sessionId, userId, role);
-          if (!isValid) {
+        beforeHandle({ sessionValidation, set }) {
+          if (!sessionValidation.isValid) {
             set.status = 401;
             return "Invalid or expired session";
           }
@@ -66,7 +82,8 @@ export function startServer(): Promise<any> {
          * Called when WebSocket connection is established
          */
         open(socket) {
-          const { sessionId, userId, role, name, orgId } = socket.data.query;
+          const { sessionId, userId, role, name } = socket.data.query;
+          const orgId = socket.data.sessionValidation?.orgId || "default";
           const now = Date.now();
 
           Object.assign(socket.data, {
@@ -74,7 +91,7 @@ export function startServer(): Promise<any> {
             userId,
             name: name ?? "",
             role,
-            orgId: orgId ?? "default",
+            orgId,
             connectedAt: now,
             lastFrameTs: now,
           });

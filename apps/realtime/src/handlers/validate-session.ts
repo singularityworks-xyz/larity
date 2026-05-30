@@ -9,6 +9,7 @@ interface ValidationResponse {
   success: boolean;
   data?: {
     valid: boolean;
+    orgId?: string;
   };
 }
 
@@ -21,12 +22,12 @@ export async function validateSession(
   sessionId: string,
   userId?: string,
   role?: string
-): Promise<boolean> {
+): Promise<{ isValid: boolean; orgId?: string }> {
   const isDev = process.env.NODE_ENV !== "production";
 
   // Bypass only local test sessions in non-production environments
   if (isDev && sessionId.includes("test-session")) {
-    return true;
+    return { isValid: true, orgId: "default" };
   }
 
   try {
@@ -42,7 +43,7 @@ export async function validateSession(
     );
 
     if (!response.ok) {
-      return false;
+      return { isValid: false };
     }
 
     const data = (await response.json()) as unknown;
@@ -53,12 +54,15 @@ export async function validateSession(
       (data as ValidationResponse).success
     ) {
       const validationData = data as ValidationResponse;
-      return validationData.success && validationData.data?.valid === true;
+      return {
+        isValid: validationData.success && validationData.data?.valid === true,
+        orgId: validationData.data?.orgId,
+      };
     }
   } catch (error) {
     log.error({ err: error, sessionId }, "Session validation failed");
     // CRITICAL: Fail closed. Do not allow access if validation fails.
-    return false;
+    return { isValid: false };
   }
-  return false;
+  return { isValid: false };
 }
