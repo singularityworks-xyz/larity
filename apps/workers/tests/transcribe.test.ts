@@ -114,9 +114,14 @@ mock.module("bullmq", () => ({
   },
 }));
 
+const mockAudioCleanupQueueAdd = mock();
+
 mock.module("@larity/jobs", () => ({
   summaryQueue: {
     add: mockSummaryQueueAdd,
+  },
+  audioCleanupQueue: {
+    add: mockAudioCleanupQueueAdd,
   },
 }));
 
@@ -135,6 +140,7 @@ describe("TranscribeWorker", () => {
     mockPrismaMeetingFindUnique.mockClear();
     mockPrismaTranscriptUpsert.mockClear();
     mockSummaryQueueAdd.mockClear();
+    mockAudioCleanupQueueAdd.mockClear();
     mockTranscribeAudioBuffer.mockClear();
 
     // Default mocks
@@ -384,17 +390,9 @@ describe("TranscribeWorker", () => {
       },
     };
 
-    expect((worker as any).process(mockJob)).rejects.toThrow(
+    await expect((worker as any).process(mockJob)).rejects.toThrow(
       "No audio files found in S3"
     );
-
-    // Verify status tracking sets "failed"
-    // Wait for the async process to run and reject to ensure set is called
-    try {
-      await (worker as any).process(mockJob);
-    } catch {
-      // expected
-    }
 
     expect(mockRedisSet).toHaveBeenCalledWith(
       "meeting.job.session-1.transcribe.status",

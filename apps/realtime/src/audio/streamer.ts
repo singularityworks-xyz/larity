@@ -1,5 +1,5 @@
 import { PassThrough } from "node:stream";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, type S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { createS3Client, getS3Config } from "@larity/infra/s3";
 import { createRealtimeLogger } from "../logger";

@@ -8,7 +8,7 @@ import {
   type S3Client,
 } from "@larity/infra/s3";
 import type { TranscribeJobData } from "@larity/jobs";
-import { summaryQueue } from "@larity/jobs";
+import { audioCleanupQueue, summaryQueue } from "@larity/jobs";
 import {
   type BatchTranscriptionResult,
   transcribeAudioBuffer,
@@ -340,6 +340,20 @@ export class TranscribeWorker extends BaseWorker<
         orgId,
         meetingId,
       });
+
+      // 9. Schedule a delayed audio cleanup job (TTL of 3 hours)
+      this.log.info({ sessionId }, "Scheduling audio cleanup job (3-hour TTL)");
+      await audioCleanupQueue.add(
+        "meeting.cleanupAudio",
+        {
+          sessionId,
+          orgId,
+          s3Prefix,
+        },
+        {
+          delay: 3 * 60 * 60 * 1000, // 3 hours
+        }
+      );
 
       return { success: true };
     } catch (error) {
