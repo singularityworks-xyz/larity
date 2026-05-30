@@ -1,5 +1,16 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
+// Mock ioredis default export before any imports to prevent real network calls
+const mockRedisQuit = mock(() => Promise.resolve());
+
+class MockIORedis {
+  quit = mockRedisQuit;
+}
+
+mock.module("ioredis", () => ({
+  default: MockIORedis,
+}));
+
 // Mock bullmq Worker before any imports
 const mockWorkerOn = mock();
 const mockWorkerClose = mock(() => Promise.resolve());
@@ -23,8 +34,18 @@ class MockWorker {
   }
 }
 
+const mockWorkerConstructor = mock(
+  (
+    queueName: string,
+    handler: (job: unknown) => Promise<unknown>,
+    options?: Record<string, unknown>
+  ) => {
+    return new MockWorker(queueName, handler, options);
+  }
+);
+
 mock.module("bullmq", () => ({
-  Worker: MockWorker,
+  Worker: mockWorkerConstructor,
 }));
 
 describe("BaseWorker", () => {
@@ -32,6 +53,8 @@ describe("BaseWorker", () => {
     mockWorkerOn.mockClear();
     mockWorkerClose.mockClear();
     mockGetJobCounts.mockClear();
+    mockWorkerConstructor.mockClear();
+    mockRedisQuit.mockClear();
   });
 
   it("should create a worker and delegate process to subclass", async () => {
@@ -67,6 +90,15 @@ describe("BaseWorker", () => {
 
     const worker = new ConcWorker("conc-queue", { concurrency: 10 });
     expect(worker).toBeDefined();
+
+    expect(mockWorkerConstructor).toHaveBeenCalled();
+    const calls = mockWorkerConstructor.mock.calls;
+    const lastCall = calls.at(-1);
+    expect(lastCall).toBeDefined();
+    expect(lastCall?.[0]).toBe("conc-queue");
+    expect(lastCall?.[2]).toBeDefined();
+    expect(lastCall?.[2]?.concurrency).toBe(10);
+
     await worker.close();
   });
 
