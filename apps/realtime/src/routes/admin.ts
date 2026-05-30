@@ -60,15 +60,7 @@ function isS3NotFoundError(err: unknown): boolean {
     return false;
   }
   const error = err as Record<string, unknown>;
-  return (
-    error.name === "NoSuchKey" ||
-    error.name === "NotFound" ||
-    error.code === "NoSuchKey" ||
-    error.code === "NotFound" ||
-    error.statusCode === 404 ||
-    (error.$metadata &&
-      (error.$metadata as Record<string, unknown>).httpStatusCode === 404)
-  );
+  return error.name === "NoSuchKey" || error.code === "NoSuchKey";
 }
 
 async function fetchS3File(
@@ -319,7 +311,9 @@ export function addAdminRoutes(app: Elysia): void {
       }),
       query: t.Optional(
         t.Object({
-          channel: t.Optional(t.String()),
+          channel: t.Optional(
+            t.Union([t.Literal("0"), t.Literal("1"), t.Literal("stereo")])
+          ),
         })
       ),
     }
