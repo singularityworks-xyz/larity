@@ -1,4 +1,5 @@
 import { redis } from "@larity/infra/redis";
+import { redisKeys } from "@larity/infra/redis/keys";
 import { sessionManager } from "@larity/stt";
 import { closeStreamer } from "../audio/registry";
 import { createRealtimeLogger } from "../logger";
@@ -82,7 +83,7 @@ export function onClose(
         try {
           const { transcribeQueue } = await import("@larity/jobs");
           const meetingId = await redis.hget(
-            `meeting:session:${sessionId}`,
+            redisKeys.meetingSession(sessionId),
             "meetingId"
           );
           if (!meetingId) {
