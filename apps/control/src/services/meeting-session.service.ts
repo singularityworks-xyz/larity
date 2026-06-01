@@ -8,6 +8,7 @@ import {
   PutObjectCommand,
 } from "@larity/infra/s3";
 import { prisma } from "../lib/prisma";
+import { createControlLogger } from "../logger";
 import type {
   ActiveSession,
   EndSessionInput,
@@ -97,6 +98,8 @@ interface SessionData {
  * - Getting session status
  */
 export const meetingSessionService = {
+  logger: createControlLogger("meeting-session-service"),
+
   /**
    * Start a new meeting session
    *
@@ -747,9 +750,9 @@ export const meetingSessionService = {
         orgId = meeting.client.orgId;
       }
     } catch (err) {
-      console.error(
-        `Failed to fetch orgId from DB for meeting ${meetingId}, aborting session S3 dump:`,
-        err
+      this.logger.error(
+        { err, meetingId, sessionId },
+        `Failed to fetch orgId from DB for meeting ${meetingId}, aborting session S3 dump`
       );
     }
 
@@ -826,13 +829,14 @@ export const meetingSessionService = {
         }
       } catch (err) {
         // Fail-safe: do not crash if S3 upload fails, but log it
-        console.error(
-          `Session cleanup S3 dump failed for session ${sessionId}:`,
-          err
+        this.logger.error(
+          { err, sessionId, meetingId, orgId },
+          `Session cleanup S3 dump failed for session ${sessionId}`
         );
       }
     } else {
-      console.warn(
+      this.logger.warn(
+        { sessionId, meetingId },
         `Aborting session S3 dump for session ${sessionId}: missing or empty orgId`
       );
     }
