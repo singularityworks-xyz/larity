@@ -11,15 +11,18 @@ const mockSummaryQueueAdd = mock();
 const mockTranscribeAudioBuffer = mock();
 
 // Mock modules
-mock.module("@aws-sdk/client-s3", () => ({
-  S3Client: class MockS3Client {
-    send(cmd: any) {
+mock.module("@larity/infra/s3", () => ({
+  createS3Client: () => ({
+    send: (cmd: any) => {
       if ((globalThis as any).s3SendMock) {
         return (globalThis as any).s3SendMock(cmd);
       }
       return Promise.resolve({});
-    }
-  },
+    },
+    destroy: () => {
+      // noop
+    },
+  }),
   GetObjectCommand: class MockGetObjectCommand {
     input: unknown;
     constructor(input: unknown) {
@@ -32,30 +35,13 @@ mock.module("@aws-sdk/client-s3", () => ({
       }
     }
   },
-  PutObjectCommand: class MockPutObjectCommand {
-    input: unknown;
-    constructor(input: unknown) {
-      this.input = input;
-      if ((globalThis as any).s3Calls) {
-        (globalThis as any).s3Calls.push({
-          command: "PutObjectCommand",
-          input,
-        });
-      }
-    }
-  },
-  DeleteObjectCommand: class MockDeleteObjectCommand {
-    input: unknown;
-    constructor(input: unknown) {
-      this.input = input;
-      if ((globalThis as any).s3Calls) {
-        (globalThis as any).s3Calls.push({
-          command: "DeleteObjectCommand",
-          input,
-        });
-      }
-    }
-  },
+  getS3Config: () => ({
+    bucket: "test-bucket",
+    endpoint: "http://localhost:9000",
+    region: "us-east-1",
+    accessKeyId: "test-access-key",
+    secretAccessKey: "test-secret-key",
+  }),
 }));
 
 mock.module("@larity/infra/redis", () => {
