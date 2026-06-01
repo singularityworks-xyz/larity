@@ -5,6 +5,7 @@ const mockRedisQuit = mock(() => Promise.resolve());
 
 class MockIORedis {
   quit = mockRedisQuit;
+  on = mock(() => this);
 }
 
 mock.module("ioredis", () => ({
