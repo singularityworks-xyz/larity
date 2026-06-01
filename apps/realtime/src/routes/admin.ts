@@ -164,11 +164,6 @@ async function handleStereoDownload(
   const wavBuffer = Buffer.concat([wavHeader, pcmData]);
 
   set.status = 200;
-  // biome-ignore lint/suspicious/noExplicitAny: Elysia headers type
-  (set as any).headers["Content-Type"] = "audio/wav";
-  // biome-ignore lint/suspicious/noExplicitAny: Elysia headers type
-  (set as any).headers["Content-Disposition"] =
-    `attachment; filename="session_${sessionId}.wav"`;
 
   return new Response(wavBuffer, {
     headers: {
