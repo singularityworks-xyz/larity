@@ -16,10 +16,17 @@ export interface S3Config {
 }
 
 export function getS3Config(): S3Config {
-  const endpoint = (process.env.S3_ENDPOINT ?? "").trim();
+  const isTest = process.env.NODE_ENV === "test";
+  const endpoint = (
+    process.env.S3_ENDPOINT ?? (isTest ? "http://localhost:9000" : "")
+  ).trim();
   const region = (process.env.S3_REGION ?? "auto").trim();
-  const accessKeyId = (process.env.S3_ACCESS_KEY_ID ?? "").trim();
-  const secretAccessKey = (process.env.S3_SECRET_ACCESS_KEY ?? "").trim();
+  const accessKeyId = (
+    process.env.S3_ACCESS_KEY_ID ?? (isTest ? "mock-access-key" : "")
+  ).trim();
+  const secretAccessKey = (
+    process.env.S3_SECRET_ACCESS_KEY ?? (isTest ? "mock-secret-key" : "")
+  ).trim();
   const bucket = (process.env.S3_AUDIO_BUCKET ?? "larity-audio").trim();
 
   const missing: string[] = [];
