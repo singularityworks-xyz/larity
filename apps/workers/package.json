@@ -17,14 +17,16 @@
     "typescript": "^6"
   },
   "dependencies": {
+    "@google/genai": "^2.7.0",
     "@larity/infra": "workspace:*",
     "@larity/jobs": "workspace:*",
     "@larity/logger": "workspace:*",
     "@larity/stt": "workspace:*",
     "@larity/telemetry": "workspace:*",
-    "meeting-mode": "workspace:*",
     "bullmq": "^5.48.1",
     "elysia": "^1.4.25",
-    "ioredis": "^5.9.0"
+    "ioredis": "^5.9.0",
+    "meeting-mode": "workspace:*",
+    "zod": "^4.4.3"
   }
 }
