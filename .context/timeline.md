@@ -1302,19 +1302,20 @@ The commitment ledger, constraint ledger, speaker map, and topic states all live
 
 > **Architectural note:** The timeline previously planned a dedicated `Commitment` Prisma model. The existing DB uses `ImportantPoint` with `category: "COMMITMENT"`. We commit to this approach — no new Prisma model. The `ImportantPoint` table already has `content`, `speakerId`, `transcriptEvidence`, `category`, and `embedding` (pgvector). Contradiction/supersession chains are tracked in the in-memory `CommitmentLedger` (`contradicts`, `supersedes`, `relatedCommitments`) and can be reconstructed from the historical record via embedding similarity search.
 
-- [ ] Implement `SummaryWorker extends BaseWorker` consuming `meeting.summary` jobs
-- [ ] Build LLM extraction prompts using `@google/genai` (Gemini) — reuse existing LLM client patterns from `packages/meeting-mode/src/pipeline/tier4.ts` and `packages/meeting-mode/src/llm/`:
-  - [ ] Decision extraction prompt → `{ title, content, rationale, evidence, tags, speakerAttribution }` with transcript line references
-  - [ ] Task extraction prompt → `{ title, description, assigneeHint, dueAt, priority }` with inferred deadlines and ownership
-  - [ ] Open question extraction prompt → `{ question, context, assigneeHint, dueAt }`
-  - [ ] Important point extraction prompt → `{ content, category, speakerHint, transcriptEvidence }` for commitments, constraints, insights, warnings, risks
-- [ ] Define Zod schemas for all extraction outputs — validate every LLM response before writing to DB. Reuse existing output shapes from `apps/control/src/validators/meeting.ts` where applicable.
-- [ ] Implement **chunking strategy**: split the refined transcript into overlapping ~15-minute windows with ~2-minute context overlap. Run extraction per-window, deduplicate results across windows by content similarity (embedding cosine ≥ 0.95). This keeps LLM prompts within context limits and avoids dilution from 60+ minute transcripts.
-- [ ] Commitment ledger export:
-  - [ ] Read the commitment ledger from Redis (`meeting.commitment.{sessionId}`) — safe with 7-day TTL. Fallback: `session_state.json` on S3.
-  - [ ] For each commitment, create an `ImportantPoint` with `category: "COMMITMENT"`, `content: statement`, `speakerId` from `SpeakerIdentity.userId`, `transcriptEvidence` from `utteranceId`
-  - [ ] Generate Gemini embedding (768-dim) via `@google/genai` and store in `ImportantPoint.embedding`
-- [ ] Write all extracted data to PostgreSQL transactionally via Prisma
+- [x] Implement `SummaryWorker extends BaseWorker` consuming `meeting.summary` jobs
+- [x] Build LLM extraction prompts using `@google/genai` (Gemini) — reuse existing LLM client patterns from `packages/meeting-mode/src/pipeline/tier4.ts` and `packages/meeting-mode/src/llm/`:
+  - [x] Decision extraction prompt → `{ title, content, rationale, evidence, tags, speakerAttribution }` with transcript line references
+  - [x] Task extraction prompt → `{ title, description, assigneeHint, dueAt, priority }` with inferred deadlines and ownership
+  - [x] Open question extraction prompt → `{ question, context, assigneeHint, dueAt }`
+  - [x] Important point extraction prompt → `{ content, category, speakerHint, transcriptEvidence }` for commitments, constraints, insights, warnings, risks
+- [x] Define Zod schemas for all extraction outputs — validate every LLM response before writing to DB. Reuse existing output shapes from `apps/control/src/validators/meeting.ts` where applicable.
+- [x] Implement **chunking strategy**: split the refined transcript into overlapping ~15-minute windows with ~2-minute context overlap. Run extraction per-window, deduplicate results across windows by content similarity (embedding cosine ≥ 0.95). This keeps LLM prompts within context limits and avoids dilution from 60+ minute transcripts.
+- [x] Commitment ledger export:
+  - [x] Read the commitment ledger from Redis (`meeting.commitment.{sessionId}`) — safe with 7-day TTL. Fallback: `session_state.json` on S3.
+  - [x] For each commitment, create an `ImportantPoint` with `category: "COMMITMENT"`, `content: statement`, `speakerId` from `SpeakerIdentity.userId`, `transcriptEvidence` from `utteranceId`
+  - [x] Generate Gemini embedding (768-dim) via `@google/genai` and store in `ImportantPoint.embedding`
+- [x] Write all extracted data to PostgreSQL transactionally via Prisma
+
 
 **Deliverable:** Structured decisions, tasks, questions, and commitments extracted from the refined transcript and persisted with embeddings for semantic search.
 
