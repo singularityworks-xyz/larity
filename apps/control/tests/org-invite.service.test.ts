@@ -29,11 +29,11 @@ const mockPrisma = {
   }),
 };
 
-mock.module("../lib/prisma", () => ({
+mock.module("../src/lib/prisma", () => ({
   prisma: mockPrisma,
 }));
 
-import { orgInviteService } from "./org-invite.service";
+import { orgInviteService } from "../src/services/org-invite.service";
 
 describe("OrgInviteService", () => {
   const orgId = "org-123";

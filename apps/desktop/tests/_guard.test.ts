@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 const getSessionMock = mock();
 
-mock.module("../lib/auth-client", () => ({
+mock.module("../src/lib/auth-client", () => ({
   authClient: {
     getSession: getSessionMock,
   },
@@ -13,7 +13,7 @@ import {
   guestOnlyLoader,
   onboardingLoader,
   rootIndexLoader,
-} from "./_guard";
+} from "../src/routes/_guard";
 
 interface SessionPayload {
   data: {

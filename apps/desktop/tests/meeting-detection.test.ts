@@ -3,7 +3,7 @@ import {
   findCalendarPrompt,
   formatMeetingCountdown,
   getMockCalendarMeetings,
-} from "./meeting-detection";
+} from "../src/services/meeting-detection";
 
 describe("meeting detection calendar prompts", () => {
   it("returns the earliest meeting inside lookahead window", () => {

@@ -18,7 +18,7 @@ const mockOrgService = {
   isOwner: mock(),
 };
 
-mock.module("../lib/auth", () => {
+mock.module("../src/lib/auth", () => {
   return {
     auth: {
       api: {
@@ -35,15 +35,15 @@ mock.module("../lib/auth", () => {
   };
 });
 
-mock.module("../services", () => ({
+mock.module("../src/services", () => ({
   OrgService: mockOrgService,
 }));
 
+import { orgsRoutes } from "../src/routes/orgs.routes";
 import {
   OrgInviteError,
   orgInviteService,
-} from "../services/org-invite.service";
-import { orgsRoutes } from "./orgs.routes";
+} from "../src/services/org-invite.service";
 
 describe("orgsRoutes invite endpoints integration", () => {
   const app = new Elysia().use(orgsRoutes);

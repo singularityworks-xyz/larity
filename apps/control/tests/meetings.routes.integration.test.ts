@@ -9,7 +9,7 @@ import {
 } from "bun:test";
 import { Elysia } from "elysia";
 
-mock.module("../lib/auth", () => {
+mock.module("../src/lib/auth", () => {
   return {
     auth: {
       api: {
@@ -26,8 +26,8 @@ mock.module("../lib/auth", () => {
   };
 });
 
-import { MeetingInsightsService, MeetingService } from "../services";
-import { meetingsRoutes } from "./meetings.routes";
+import { meetingsRoutes } from "../src/routes/meetings.routes";
+import { MeetingInsightsService, MeetingService } from "../src/services";
 
 describe("meetingsRoutes integration for insights, processing status, and reprocessing", () => {
   const app = new Elysia().use(meetingsRoutes);

@@ -4,7 +4,7 @@ import {
   buildRealtimeSocketUrl,
   ensureTaggedAudioFrame,
   shouldDropFrame,
-} from "./audio-streaming";
+} from "../src/services/audio-streaming";
 
 describe("audio streaming backpressure", () => {
   it("drops oldest frame when websocket buffer is over threshold", () => {

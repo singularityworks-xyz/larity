@@ -7,8 +7,8 @@ import {
   getTotalConnectionCount,
   hasSession,
   removeConnection,
-} from "./session";
-import type { RealtimeSocket } from "./types";
+} from "../src/session";
+import type { RealtimeSocket } from "../src/types";
 
 describe("Multi-User Session Management", () => {
   beforeEach(() => {

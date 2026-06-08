@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { Elysia } from "elysia";
-import { meetingSessionService } from "../services/meeting-session.service";
-import { internalSessionRoutes } from "./internal-session.routes";
+import { internalSessionRoutes } from "../src/routes/internal-session.routes";
+import { meetingSessionService } from "../src/services/meeting-session.service";
 
 describe("internalSessionRoutes integration", () => {
   const app = new Elysia().use(internalSessionRoutes);

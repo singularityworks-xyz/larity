@@ -39,7 +39,7 @@ mock.module("@tanstack/react-query", () => ({
   }),
 }));
 
-mock.module("../../lib/api", () => ({
+mock.module("../src/lib/api", () => ({
   api: {
     get: getMock,
     post: postMock,
@@ -47,7 +47,7 @@ mock.module("../../lib/api", () => ({
   },
 }));
 
-import { useOrgInvites } from "./use-org-invites";
+import { useOrgInvites } from "../src/features/org-invites/use-org-invites";
 
 describe("useOrgInvites", () => {
   beforeEach(() => {

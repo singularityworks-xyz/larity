@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-
-import type { ClientSummary } from "../meetings/types";
-import type { CreateClientInput } from "./use-create-client";
+import type { CreateClientInput } from "../src/features/clients/use-create-client";
+import type { ClientSummary } from "../src/features/meetings/types";
 
 interface MutationConfig<TInput> {
   mutationFn: (input: TInput) => Promise<unknown> | unknown;
@@ -30,13 +29,13 @@ mock.module("@tanstack/react-query", () => ({
   }),
 }));
 
-mock.module("../../lib/api", () => ({
+mock.module("../src/lib/api", () => ({
   api: {
     post: postMock,
   },
 }));
 
-import { useCreateClient } from "./use-create-client";
+import { useCreateClient } from "../src/features/clients/use-create-client";
 
 describe("useCreateClient", () => {
   beforeEach(() => {

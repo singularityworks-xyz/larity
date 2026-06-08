@@ -25,7 +25,7 @@ const mockClientMemberService = {
   delete: mock(),
 };
 
-mock.module("../lib/auth", () => {
+mock.module("../src/lib/auth", () => {
   return {
     auth: {
       api: {
@@ -35,12 +35,12 @@ mock.module("../lib/auth", () => {
   };
 });
 
-mock.module("../services", () => ({
+mock.module("../src/services", () => ({
   ClientService: mockClientService,
   ClientMemberService: mockClientMemberService,
 }));
 
-import { clientsRoutes } from "./clients.routes";
+import { clientsRoutes } from "../src/routes/clients.routes";
 
 describe("clientsRoutes integration", () => {
   const app = new Elysia().use(clientsRoutes);
