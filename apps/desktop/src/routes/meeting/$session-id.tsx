@@ -162,6 +162,10 @@ export function MeetingPage() {
   const [devices, setDevices] = useState<AudioDevice[]>([]);
   const [micDeviceId, setMicDeviceId] = useState<string | null>(null);
   const [sysDeviceId, setSysDeviceId] = useState<string | null>(null);
+  // meetingId received from the meeting_processed WebSocket event after pipeline completes
+  const [postProcessingMeetingId, setPostProcessingMeetingId] = useState<
+    string | null
+  >(null);
 
   const alertQueue = useAlertQueue();
   const addAlertRef = useRef(alertQueue.addAlert);
@@ -305,9 +309,21 @@ export function MeetingPage() {
       });
       streamingClient.disconnect();
       setIsBusy(false);
-      navigate("/home");
+      // Navigate to meeting review if processing has already completed; otherwise home
+      if (postProcessingMeetingId) {
+        navigate(`/meeting-post/${postProcessingMeetingId}`);
+      } else {
+        navigate("/home");
+      }
     }
-  }, [sessionId, isHost, stopCapture, navigate, streamingClient]);
+  }, [
+    sessionId,
+    isHost,
+    stopCapture,
+    navigate,
+    streamingClient,
+    postProcessingMeetingId,
+  ]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -354,6 +370,22 @@ export function MeetingPage() {
       vadManager.destroy();
     };
   }, [vadManager, streamingClient, sessionId]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setPendingFinals((prev) => {
+        const active = prev.filter((p) => now - p.ts <= 5000);
+        if (active.length === prev.length) {
+          return prev;
+        }
+        return active;
+      });
+    }, 1000);
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     const unsubUtterance = streamingClient.subscribe("utterance", (data) => {
@@ -547,6 +579,17 @@ export function MeetingPage() {
       }
     );
 
+    const unsubProcessed = streamingClient.subscribe(
+      "meeting_processed",
+      (data: Record<string, unknown>) => {
+        const meetingId =
+          typeof data.meetingId === "string" ? data.meetingId : null;
+        if (meetingId) {
+          setPostProcessingMeetingId(meetingId);
+        }
+      }
+    );
+
     return () => {
       unsubUtterance();
       unsubTopic();
@@ -555,6 +598,7 @@ export function MeetingPage() {
       unsubSttFinal();
       unsubAlert();
       unsubParticipantEvent();
+      unsubProcessed();
     };
   }, [streamingClient, userId]);
 

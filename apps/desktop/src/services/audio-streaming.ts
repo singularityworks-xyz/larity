@@ -39,6 +39,7 @@ export type IncomingMessageType =
   | "participant_event"
   | "stt_partial"
   | "stt_final"
+  | "meeting_processed"
   | "unknown";
 
 export type IncomingMessageHandler = (data: Record<string, unknown>) => void;
@@ -486,6 +487,9 @@ function detectIncomingMessageType(
   }
   if (dataType === "stt_final") {
     return "stt_final";
+  }
+  if (dataType === "meeting_processed") {
+    return "meeting_processed";
   }
   if (dataType === "alert") {
     return "alert";
