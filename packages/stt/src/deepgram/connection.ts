@@ -83,8 +83,6 @@ export class DeepgramConnection {
   private accumulatedStart = 0;
   private accumulatedEnd = 0;
   private accumulatedDiarizationIndex = -1;
-  private speechFinalFlushTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly SPEECH_FINAL_FLUSH_MS = 5000;
 
   // Reconnection state
   private retryCount = 0;
@@ -165,9 +163,16 @@ export class DeepgramConnection {
     });
 
     this.connection.on("message", (data: unknown) => {
-      const result = data as TranscriptResult;
+      const result = data as TranscriptResult | { type: "UtteranceEnd" };
       if (result.type === "Results") {
-        this.handleTranscript(result);
+        this.handleTranscript(result as TranscriptResult);
+      } else if (result.type === "UtteranceEnd") {
+        // UtteranceEnd fires after utterance_end_ms of post-speech silence.
+        // This is our primary accumulator flush signal: more reliable than the
+        // old setTimeout-based safety timer because it originates from Deepgram's
+        // own VAD rather than a local clock heuristic.
+        log.info(`UtteranceEnd received for ${this.sessionId}`);
+        this.flushAccumulatedFinal();
       }
     });
   }
@@ -298,7 +303,6 @@ export class DeepgramConnection {
     }
 
     // --- speech_final=true: combine with accumulated text, publish as final ---
-    this.clearSpeechFinalFlushTimer();
 
     const finalTranscript = this.accumulatedText
       ? `${this.accumulatedText} ${transcript}`
@@ -364,32 +368,9 @@ export class DeepgramConnection {
   }
 
   /**
-   * Reset the safety flush timer for accumulated intermediate finals.
-   * If speech_final doesn't arrive within the timeout, the accumulated
-   * text is flushed as a standalone final utterance.
-   */
-  private resetSpeechFinalFlushTimer(): void {
-    this.clearSpeechFinalFlushTimer();
-    this.speechFinalFlushTimer = setTimeout(() => {
-      this.flushAccumulatedFinal();
-    }, this.SPEECH_FINAL_FLUSH_MS);
-  }
-
-  /**
-   * Clear the safety flush timer without flushing.
-   */
-  private clearSpeechFinalFlushTimer(): void {
-    if (this.speechFinalFlushTimer !== null) {
-      clearTimeout(this.speechFinalFlushTimer);
-      this.speechFinalFlushTimer = null;
-    }
-  }
-
-  /**
    * Flush any accumulated intermediate finals as a standalone final utterance.
-   * This serves as a safety net: if Deepgram never sends speech_final=true
-   * (e.g., due to connection loss or unusual audio), accumulated text is
-   * still published rather than silently dropped.
+   * Called on UtteranceEnd events (primary path) and on connection close (safety path).
+   * If the accumulator is empty, this is a no-op.
    */
   private async flushAccumulatedFinal(): Promise<void> {
     const text = this.accumulatedText;
@@ -407,7 +388,6 @@ export class DeepgramConnection {
       this.accumulatedEnd > start ? this.accumulatedEnd - start : 0;
 
     this.resetAccumulation();
-    this.clearSpeechFinalFlushTimer();
 
     const anchorTs =
       this.streamStartServerTs > 0
@@ -428,7 +408,7 @@ export class DeepgramConnection {
     };
 
     log.info(
-      `Safety flush: "${text}" | session=${this.sessionId} ` +
+      `Utterance flush: "${text}" | session=${this.sessionId} ` +
         `capture_ch=${this.logicalChannel} ` +
         `dg_speaker=${diarizationIndex}`
     );
@@ -438,7 +418,6 @@ export class DeepgramConnection {
   /**
    * Accumulate an intermediate final segment (is_final=true, speech_final=false).
    * Concatenates text and tracks confidence, start time, and diarization index.
-   * Resets the safety flush timer.
    */
   private accumulateSegment(
     transcript: string,
@@ -460,7 +439,6 @@ export class DeepgramConnection {
     if (diarizationIndex >= 0) {
       this.accumulatedDiarizationIndex = diarizationIndex;
     }
-    this.resetSpeechFinalFlushTimer();
     log.debug(
       `Accumulated final segment: "${transcript}" ` +
         `(total: "${this.accumulatedText}")`
@@ -528,14 +506,12 @@ export class DeepgramConnection {
    * Close the connection permanently
    */
   async close(): Promise<void> {
-    this.clearSpeechFinalFlushTimer();
-
     try {
       await this.flushAccumulatedFinal();
     } catch (error) {
       log.error(
-        `Error flushing accumulated on close for ${this.sessionId}:`,
-        error
+        error as Error,
+        `Error flushing accumulated on close for ${this.sessionId}`
       );
     }
 
