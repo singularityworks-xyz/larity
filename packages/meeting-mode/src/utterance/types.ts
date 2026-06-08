@@ -34,6 +34,9 @@ export interface SpeakerIdentity {
 
   /** Confidence of the speaker identification (0-1) */
   confidence: number;
+
+  /** Is this speaker the host? */
+  isHost?: boolean;
 }
 
 export interface Utterance {

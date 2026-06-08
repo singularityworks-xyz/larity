@@ -23,6 +23,17 @@ const log = createMeetingModeLogger("speaker-identifier");
 
 const CLOCK_OFFSET_TTL_SECONDS = 2 * 60 * 60;
 
+/**
+ * Maximum duration of a live VAD interval that was never closed by a
+ * `vad_silence` packet. When `openInterval` receives a new speak signal more
+ * than this many milliseconds after the existing open interval started, it
+ * treats the old interval as implicitly ended and opens a fresh one. This
+ * matches the cap applied in `getActiveMembersAt` (which uses the same value
+ * to bound the effective end of any unclosed interval at query time), so the
+ * two code paths stay consistent.
+ */
+const MAX_VAD_INTERVAL_MS = 10_000;
+
 interface ClockOffsetRedisClient {
   hset(key: string, field: string, value: string): Promise<unknown>;
   expire?(key: string, seconds: number): Promise<unknown>;
@@ -122,7 +133,10 @@ export class SpeakerIdentifier {
         this.teamMembers.set(mapping.speaker.userId, {
           userId: mapping.speaker.userId,
           name: mapping.speaker.name,
-          role: mapping.speaker.isCurrentUser ? "host" : "participant",
+          role:
+            mapping.speaker.isHost || mapping.speaker.isCurrentUser
+              ? "host"
+              : "participant",
         });
         this.userIdToSpeakerId.set(mapping.speaker.userId, speakerId);
 
@@ -221,6 +235,10 @@ export class SpeakerIdentifier {
       const mapping = this.speakerMappings.get(existingSpeakerId);
       if (mapping && mapping.speaker.type === "TEAM") {
         mapping.lastUtteranceTs = utteranceTimestamp;
+        if (mapping.speaker.isHost === undefined && mapping.speaker.userId) {
+          mapping.speaker.isHost =
+            this.teamMembers.get(mapping.speaker.userId)?.role === "host";
+        }
         return mapping.speaker;
       }
     }
@@ -534,6 +552,7 @@ export class SpeakerIdentifier {
     }
 
     const isCurrentUser = false;
+    const isHost = this.teamMembers.get(userId)?.role === "host";
 
     return {
       speakerId,
@@ -543,6 +562,7 @@ export class SpeakerIdentifier {
       diarizationIndices: [diarizationIndex],
       isCurrentUser,
       confidence: 1,
+      isHost,
     };
   }
 
@@ -566,8 +586,15 @@ export class SpeakerIdentifier {
         if (!interval) {
           continue;
         }
-        const endTs = interval.endTs ?? Number.POSITIVE_INFINITY;
-        const overlaps = interval.startTs <= upper && endTs >= lower;
+        // Cap open VAD intervals at MAX_VAD_INTERVAL_MS to prevent a missed
+        // vad_silence from bleeding the speaker's active state indefinitely.
+        const isClosed = interval.endTs !== undefined;
+        const endTs = interval.endTs ?? interval.startTs + MAX_VAD_INTERVAL_MS;
+        const effectiveLower = isClosed
+          ? timestamp - this.config.vadTrailingCooldownMs
+          : lower;
+
+        const overlaps = interval.startTs <= upper && endTs >= effectiveLower;
         if (overlaps) {
           speakingMembers.push(userId);
           break;
@@ -596,8 +623,13 @@ export class SpeakerIdentifier {
     if (targetSpeakerId) {
       const existingMapping = this.speakerMappings.get(targetSpeakerId);
       if (existingMapping) {
-        const gap = utteranceTimestamp - existingMapping.lastUtteranceTs;
-        if (gap > 15_000) {
+        // Channel-aware merge guard: only merge if the new diarizationIndex
+        // belongs to the same channel class (mic vs system) as the existing indices of this mapping.
+        const isSameChannelClass =
+          existingMapping.speaker.diarizationIndices.every(
+            (idx) => idx >= 1000 === diarizationIndex >= 1000
+          );
+        if (isSameChannelClass) {
           if (
             !existingMapping.speaker.diarizationIndices.includes(
               diarizationIndex
@@ -605,13 +637,29 @@ export class SpeakerIdentifier {
           ) {
             existingMapping.speaker.diarizationIndices.push(diarizationIndex);
           }
-          existingMapping.lastUtteranceTs = utteranceTimestamp;
+          existingMapping.lastUtteranceTs = Math.max(
+            existingMapping.lastUtteranceTs,
+            utteranceTimestamp
+          );
           existingMapping.source = source;
-          existingMapping.confidence = confidence;
+          existingMapping.confidence = Math.max(
+            existingMapping.confidence,
+            confidence
+          );
           this.indexToSpeakerId.set(diarizationIndex, targetSpeakerId);
           this.provisionalIndexToUser.delete(diarizationIndex);
           return existingMapping.speaker;
         }
+
+        log.warn(
+          {
+            diarizationIndex,
+            correlatedUserId,
+            existingIndices: existingMapping.speaker.diarizationIndices,
+          },
+          "Channel class mismatch: refusing to merge diarization index into existing user mapping"
+        );
+        return createUnidentifiedSpeaker(diarizationIndex);
       }
     }
 
@@ -648,7 +696,17 @@ export class SpeakerIdentifier {
     const intervals = this.vadIntervalsByUser.get(userId) ?? [];
     const latest = intervals.at(-1);
     if (latest && latest.endTs === undefined) {
-      latest.startTs = Math.min(latest.startTs, adjustedTs);
+      if (adjustedTs > latest.startTs + MAX_VAD_INTERVAL_MS) {
+        // The previous interval was never closed and has now exceeded the
+        // maximum allowed duration. Implicitly close it at the cap boundary
+        // and start a fresh interval for this new speak event.
+        latest.endTs = latest.startTs + MAX_VAD_INTERVAL_MS;
+        intervals.push({ userId, startTs: adjustedTs });
+      } else {
+        // Duplicate or out-of-order speak signal within the same interval;
+        // keep the earliest known start time.
+        latest.startTs = Math.min(latest.startTs, adjustedTs);
+      }
     } else {
       intervals.push({ userId, startTs: adjustedTs });
     }
@@ -694,18 +752,13 @@ function isChannelRoleMatch(
   diarizationIndex: number,
   role?: "host" | "participant"
 ): boolean {
-  if (!role) {
-    return true; // Default to permissive if role unknown
-  }
-
   const isSystemChannel = diarizationIndex >= 1000;
-  if (role === "host") {
+  const effectiveRole = role || "host"; // Default to host if role is unknown
+
+  if (effectiveRole === "host") {
     // Host must NOT be on a system channel
     return !isSystemChannel;
   }
-  if (role === "participant") {
-    // Participant MUST be on a system channel (as their audio is captured via system loopback)
-    return isSystemChannel;
-  }
-  return true;
+  // Participant MUST be on a system channel
+  return isSystemChannel;
 }

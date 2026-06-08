@@ -58,6 +58,56 @@ describe("Offline Speaker Correlation Engine", () => {
       expect(intervals[0].startTs).toBe(1050);
       expect(intervals[0].endTs).toBe(2050); // lastTs + 1000
     });
+
+    it("should cap open intervals to a maximum of 10 seconds even when lastTs is much later", () => {
+      // user-2's signal at 50_050 ms makes lastTs = 50_050 ms.
+      // Without the cap, user-1's interval would be closed at lastTs (50_050),
+      // creating a ~49 s interval that bleeds over the entire meeting.
+      // With the cap it must be clamped at startTs + 10_000 = 11_050 ms.
+      const history = [
+        {
+          userId: "user-1",
+          type: "vad_speaking" as const,
+          clientSendTs: 1000,
+          serverReceiveTs: 1100,
+          adjustedTs: 1050,
+          role: "host" as const,
+        },
+        {
+          userId: "user-2",
+          type: "vad_speaking" as const,
+          clientSendTs: 50_000,
+          serverReceiveTs: 50_100,
+          adjustedTs: 50_050,
+          role: "participant" as const,
+        },
+      ];
+
+      const intervals = reconstructVadIntervals(history);
+      const user1Interval = intervals.find((i) => i.userId === "user-1");
+      expect(user1Interval).toBeDefined();
+      // 1050 + 10_000 = 11_050; must NOT be 50_050
+      expect(user1Interval?.endTs).toBe(11_050);
+    });
+
+    it("should produce a minimum-1s interval when the only signal is close to lastTs", () => {
+      // Single speak signal — lastTs equals startTs. The interval must still be
+      // at least MIN_VAD_INTERVAL_DURATION_MS (1 s) long.
+      const history = [
+        {
+          userId: "user-1",
+          type: "vad_speaking" as const,
+          clientSendTs: 5000,
+          serverReceiveTs: 5000,
+          adjustedTs: 5000,
+          role: "host" as const,
+        },
+      ];
+
+      const intervals = reconstructVadIntervals(history);
+      expect(intervals).toHaveLength(1);
+      expect(intervals[0].endTs).toBe(6000); // 5000 + 1000
+    });
   });
 
   describe("isChannelRoleMatchOffline", () => {
@@ -287,6 +337,153 @@ describe("Offline Speaker Correlation Engine", () => {
       });
 
       expect(results[0].speaker).toBe("Speaker A");
+    });
+
+    it("should discard channel 0 segments that are echoes of channel 1 segments", () => {
+      // seg-mic-1 overlaps seg-sys-1 in time AND has high text similarity →
+      // it is an acoustic echo and must be discarded.
+      // seg-mic-clean has no overlap with any system segment → must be kept.
+      const batchSegments = [
+        {
+          id: "seg-sys-1",
+          text: "Listen. I get it. You're a young startup, and frankly, this is a big break for you.",
+          timestamp: 84.0,
+          duration: 10.0,
+          channel: 1,
+          speaker: "Speaker 0",
+        },
+        {
+          id: "seg-mic-1",
+          text: "Listen, I get it. You're a young startup, and frankly, this is a big break.",
+          timestamp: 84.5,
+          duration: 8.0,
+          channel: 0,
+          speaker: "Host",
+        },
+        {
+          id: "seg-mic-clean",
+          text: "This is a clean mic utterance that is not an echo.",
+          timestamp: 100.0,
+          duration: 5.0,
+          channel: 0,
+          speaker: "Host",
+        },
+      ];
+
+      const results = processOfflineCorrelation({
+        batchSegments,
+        sessionState: defaultState,
+        liveUtterances: [],
+        connectionStartTime: baseTime + 10_000,
+        hostName: "Alice Host",
+      });
+
+      expect(results).toHaveLength(2);
+      expect(results.some((r) => r.id === "seg-mic-1")).toBe(false);
+      expect(results.some((r) => r.id === "seg-sys-1")).toBe(true);
+      expect(results.some((r) => r.id === "seg-mic-clean")).toBe(true);
+    });
+
+    it("should NOT discard a channel-0 segment that is similar but does not overlap in time", () => {
+      // The host acknowledges the client's point with almost identical phrasing
+      // 30 seconds later. The two segments do not overlap and must both be kept.
+      // This is the false-positive scenario that the removed `closeStart` guard
+      // would have incorrectly triggered.
+      const batchSegments = [
+        {
+          id: "seg-client",
+          text: "We need the full scope delivered by Friday no excuses.",
+          timestamp: 10.0,
+          duration: 4.0,
+          channel: 1,
+          speaker: "Speaker 0",
+        },
+        {
+          id: "seg-host-response",
+          text: "We need full scope delivered by Friday, no excuses at all.",
+          timestamp: 40.0, // 30 seconds later — no overlap even with 1s grace
+          duration: 3.0,
+          channel: 0,
+          speaker: "Host",
+        },
+      ];
+
+      const results = processOfflineCorrelation({
+        batchSegments,
+        sessionState: defaultState,
+        liveUtterances: [],
+        connectionStartTime: baseTime + 10_000,
+        hostName: "Alice Host",
+      });
+
+      expect(results).toHaveLength(2);
+      expect(results.some((r) => r.id === "seg-client")).toBe(true);
+      expect(results.some((r) => r.id === "seg-host-response")).toBe(true);
+    });
+
+    it("should fall back to host team member name for channel 0", () => {
+      const batchSegments = [
+        {
+          id: "seg-host-fallback",
+          text: "random host talk",
+          timestamp: 5.0,
+          duration: 2.0,
+          channel: 0,
+          speaker: "Host",
+        },
+      ];
+
+      const sessionStateWithHost: SessionSpeakerStatePayload = {
+        ...defaultState,
+        teamMembers: [
+          {
+            userId: "host-user-id",
+            name: "Aman",
+            role: "host",
+          },
+        ],
+      };
+
+      const results = processOfflineCorrelation({
+        batchSegments,
+        sessionState: sessionStateWithHost,
+        liveUtterances: [],
+        connectionStartTime: baseTime + 10_000,
+        hostName: "test", // stale Postgres fallback — must be overridden by team member
+      });
+
+      expect(results[0].speaker).toBe("Aman");
+    });
+
+    it("should fall back to the hostName parameter when no host-role team member is registered", () => {
+      // Simulates a session where VAD team-member data is unavailable (e.g.,
+      // participant.join was never received). The Postgres hostName must be used.
+      const batchSegments = [
+        {
+          id: "seg-no-host",
+          text: "talking without vad data",
+          timestamp: 5.0,
+          duration: 2.0,
+          channel: 0,
+          speaker: "Host",
+        },
+      ];
+
+      const stateWithNoHost: SessionSpeakerStatePayload = {
+        vadHistory: [],
+        speakerMappings: {},
+        teamMembers: [], // no team members at all
+      };
+
+      const results = processOfflineCorrelation({
+        batchSegments,
+        sessionState: stateWithNoHost,
+        liveUtterances: [],
+        connectionStartTime: baseTime + 10_000,
+        hostName: "Fallback Host",
+      });
+
+      expect(results[0].speaker).toBe("Fallback Host");
     });
   });
 });

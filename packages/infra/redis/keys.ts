@@ -36,4 +36,8 @@ export const redisKeys = {
     `meeting:session:${sessionId}:config` as const,
   meetingSessionState: (sessionId: string) =>
     `meeting.session_state.${sessionId}` as const,
+  meetingJobStatus: (sessionId: string, step: "transcribe" | "summary") =>
+    `meeting.job.${sessionId}.${step}.status` as const,
+  meetingProcessingComplete: (sessionId: string) =>
+    `meeting.processed.${sessionId}` as const,
 };

@@ -15,6 +15,40 @@ const DIGIT_REGEX = /\d+/;
 const RECONCILIATION_WINDOW_SECONDS = 3.0;
 const TIMESTAMP_MS_THRESHOLD = 1_000_000_000_000;
 
+/**
+ * Maximum duration to assign to a VAD interval whose `vad_silence` packet was
+ * never received (lost, delayed, or the session ended abruptly). Keeping this
+ * short prevents a missed silence from making a speaker appear active for the
+ * rest of the meeting and corrupting all subsequent speaker correlations.
+ */
+const MAX_UNCLOSED_VAD_INTERVAL_MS = 10_000;
+
+/**
+ * Minimum enforced duration for an auto-closed VAD interval. Protects against
+ * a degenerate zero-length interval when the only signal for a user is a
+ * `vad_speaking` at the exact same timestamp as the last history entry.
+ */
+const MIN_VAD_INTERVAL_DURATION_MS = 1000;
+
+/**
+ * Seconds added to each boundary of a mic segment's time window when testing
+ * for overlap with a system segment during acoustic-echo suppression. This
+ * grace period absorbs utterance-boundary jitter that arises because Deepgram
+ * may return slightly different start/end times for the same audio on the two
+ * channels. Kept small (1 s) so that genuinely distinct, close-in-time
+ * utterances are never accidentally suppressed.
+ */
+const ECHO_OVERLAP_GRACE_SEC = 1.0;
+
+/**
+ * Minimum bigram-Jaccard similarity between a mic segment and an overlapping
+ * system segment for the mic segment to be classified as an acoustic echo and
+ * discarded. A score of 0.4 tolerates minor transcription differences between
+ * the two channels while remaining high enough to avoid suppressing speech
+ * that merely touches the same topic.
+ */
+const ECHO_SIMILARITY_THRESHOLD = 0.4;
+
 export interface VadInterval {
   userId: string;
   startTs: number;
@@ -29,6 +63,7 @@ export interface BatchUtteranceSegment {
   duration: number; // seconds
   channel: number; // 0 or 1
   speaker: string; // initial speaker name
+  speakerType?: "TEAM" | "EXTERNAL"; // Added type
 }
 
 /**
@@ -72,15 +107,32 @@ export function reconstructVadIntervals(
     }
   }
 
-  // Close any open intervals
+  // Auto-close any intervals whose vad_silence was never received.
   if (sortedHistory.length > 0) {
-    const lastTs =
-      sortedHistory.at(-1)?.adjustedTs ?? sortedHistory[0].adjustedTs;
+    const firstTs = sortedHistory[0]?.adjustedTs ?? 0;
+    const lastTs = sortedHistory.at(-1)?.adjustedTs ?? firstTs;
+
     for (const [userId, active] of activeIntervals.entries()) {
+      // Step 1 — natural ceiling: the interval cannot extend past the last
+      //           known event in the history (lastTs), but must be at least
+      //           MIN_VAD_INTERVAL_DURATION_MS long to stay non-trivial.
+      const naturalEnd = Math.max(
+        active.startTs + MIN_VAD_INTERVAL_DURATION_MS,
+        lastTs
+      );
+
+      // Step 2 — hard cap: if the natural end overshoots the maximum allowed
+      //           duration, clamp it. This prevents a missed silence from
+      //           bleeding a speaker's VAD state across the rest of the meeting.
+      const cappedEnd = Math.min(
+        active.startTs + MAX_UNCLOSED_VAD_INTERVAL_MS,
+        naturalEnd
+      );
+
       intervals.push({
         userId,
         startTs: active.startTs,
-        endTs: Math.max(active.startTs + 1000, lastTs),
+        endTs: cappedEnd,
         role: active.role,
       });
     }
@@ -125,9 +177,12 @@ function getOverlapDuration(
 }
 
 /**
- * Computes Jaccard similarity of 2-gram sets of two strings.
+ * Computes Jaccard similarity and containment of 2-gram sets of two strings.
  */
-export function calculateTextSimilarity(str1: string, str2: string): number {
+export function calculateTextMetrics(
+  str1: string,
+  str2: string
+): { jaccard: number; containment: number } {
   const tokenize = (s: string): string[] => {
     return s
       .toLowerCase()
@@ -152,10 +207,10 @@ export function calculateTextSimilarity(str1: string, str2: string): number {
   const w2 = tokenize(str2);
 
   if (w1.length === 0 && w2.length === 0) {
-    return 1.0;
+    return { jaccard: 1.0, containment: 1.0 };
   }
   if (w1.length === 0 || w2.length === 0) {
-    return 0.0;
+    return { jaccard: 0.0, containment: 0.0 };
   }
 
   const b1 = new Set(getBigrams(w1));
@@ -170,10 +225,20 @@ export function calculateTextSimilarity(str1: string, str2: string): number {
 
   const unionSize = b1.size + b2.size - intersectionSize;
   if (unionSize === 0) {
-    return 0.0;
+    return { jaccard: 0.0, containment: 0.0 };
   }
 
-  return intersectionSize / unionSize;
+  const jaccard = intersectionSize / unionSize;
+  const containment = b1.size === 0 ? 0 : intersectionSize / b1.size;
+
+  return { jaccard, containment };
+}
+
+/**
+ * Computes Jaccard similarity of 2-gram sets of two strings.
+ */
+export function calculateTextSimilarity(str1: string, str2: string): number {
+  return calculateTextMetrics(str1, str2).jaccard;
 }
 
 /**
@@ -182,7 +247,9 @@ export function calculateTextSimilarity(str1: string, str2: string): number {
  */
 export function translateBatchSpeakerName(
   speakerLabel: string,
-  speakerMappings: Record<string, SessionStateSpeakerMapping>
+  channel: number,
+  speakerMappings: Record<string, SessionStateSpeakerMapping>,
+  clientName?: string
 ): string {
   const match = speakerLabel.match(DIGIT_REGEX);
   if (!match) {
@@ -191,13 +258,22 @@ export function translateBatchSpeakerName(
 
   const idxNum = Number.parseInt(match[0], 10);
 
+  const expectedLiveIndex = idxNum + channel * 1000;
+
   for (const mapping of Object.values(speakerMappings)) {
     if (
-      mapping.diarizationIndex === idxNum &&
+      mapping.diarizationIndex === expectedLiveIndex &&
       mapping.speaker.type === "EXTERNAL"
     ) {
+      if (clientName) {
+        return `${clientName} - ${idxNum + 1}`;
+      }
       return mapping.speaker.name;
     }
+  }
+
+  if (clientName && channel === 1) {
+    return `${clientName} - ${idxNum + 1}`;
   }
 
   const charCode = 65 + (idxNum % 26);
@@ -245,7 +321,8 @@ function correlateVAD(
   );
 
   if (passingCandidates.length === 1) {
-    const userId = passingCandidates[0].userId;
+    // biome-ignore lint/style/noNonNullAssertion: guaranteed by length === 1 check
+    const userId = passingCandidates[0]!.userId;
     const name = userToNameMap.get(userId) || userId;
     return { name, isAmbiguous: false, userId };
   }
@@ -288,7 +365,8 @@ function textualFallback(
     }
   }
 
-  if (bestMatch && bestSim >= 0.7) {
+  const threshold = segment.channel === 1 ? 0.3 : 0.7;
+  if (bestMatch && bestSim >= threshold) {
     return bestMatch.speaker.name;
   }
 
@@ -306,8 +384,9 @@ function correlateSingleSegment(
   liveUtterances: Utterance[],
   connectionStartTime: number,
   connectionStartTimeSec: number,
-  hostName: string,
-  speakerMappings: Record<string, SessionStateSpeakerMapping>
+  effectiveHostName: string,
+  speakerMappings: Record<string, SessionStateSpeakerMapping>,
+  clientName?: string
 ): string {
   const segmentStartMs = connectionStartTime + segment.timestamp * 1000;
   const segmentEndMs = segmentStartMs + segment.duration * 1000;
@@ -366,11 +445,13 @@ function correlateSingleSegment(
   // Channel-based defaults fallback
   if (!correlatedSpeakerName) {
     if (segment.channel === 0) {
-      correlatedSpeakerName = hostName;
+      correlatedSpeakerName = effectiveHostName;
     } else {
       correlatedSpeakerName = translateBatchSpeakerName(
         segment.speaker,
-        speakerMappings
+        segment.channel,
+        speakerMappings,
+        clientName
       );
     }
   }
@@ -387,6 +468,7 @@ export function processOfflineCorrelation(options: {
   liveUtterances: Utterance[];
   connectionStartTime: number;
   hostName: string;
+  clientName?: string;
 }): BatchUtteranceSegment[] {
   const {
     batchSegments,
@@ -394,6 +476,7 @@ export function processOfflineCorrelation(options: {
     liveUtterances,
     connectionStartTime,
     hostName,
+    clientName,
   } = options;
 
   log.info(
@@ -406,8 +489,8 @@ export function processOfflineCorrelation(options: {
   );
 
   const vadIntervals = reconstructVadIntervals(sessionState.vadHistory);
-  const teamMemberMap = new Map(
-    sessionState.teamMembers.map((m) => [m.userId, m])
+  const teamMemberMap = new Map<string, SessionStateTeamMember>(
+    sessionState.teamMembers.map((m: SessionStateTeamMember) => [m.userId, m])
   );
 
   const userToNameMap = new Map<string, string>();
@@ -416,9 +499,86 @@ export function processOfflineCorrelation(options: {
   }
 
   const connectionStartTimeSec = connectionStartTime / 1000;
+
+  // Resolve the effective host name from authenticated VAD team-member data
+  // rather than from the `hostName` Postgres parameter, which may be stale or
+  // set to a generic default at the time the offline transcription job runs.
+  // If the session somehow registered more than one host-role member (should
+  // not occur in practice) we log a diagnostic warning and use the first one.
+  const hostMembers = sessionState.teamMembers.filter(
+    (m: SessionStateTeamMember) => m.role === "host"
+  );
+  if (hostMembers.length > 1) {
+    log.warn(
+      { hostCount: hostMembers.length },
+      "Multiple host-role team members in session state; using first for channel-0 fallback"
+    );
+  }
+  const effectiveHostName = hostMembers[0]?.name ?? hostName;
+
+  // Acoustic-echo suppression pass.
+  //
+  // When the host uses speakers instead of headphones, the remote client's
+  // voice leaks back into the microphone. Deepgram then transcribes the same
+  // speech on both channel 0 (mic) and channel 1 (system), producing duplicate
+  // lines in the transcript. We discard the channel-0 copy when it satisfies
+  // both conditions:
+  //
+  //   1. Temporal overlap: the mic segment's audio window (with a small grace
+  //      extension for channel-boundary jitter) overlaps the system segment's
+  //      audio window. Proximity alone is NOT sufficient — only actual overlap
+  //      triggers the similarity test. This prevents suppression of genuine
+  //      host speech that merely follows or precedes the client on the same
+  //      topic.
+  //
+  //   2. Text similarity ≥ ECHO_SIMILARITY_THRESHOLD: the two transcriptions
+  //      are similar enough to be the same utterance. A Jaccard bigram score
+  //      of 0.4 tolerates minor STT variance between channels.
+  const nonEchoSegments = batchSegments.filter((seg0) => {
+    if (seg0.channel !== 0) {
+      return true;
+    }
+
+    // Extend the mic segment's window by ECHO_OVERLAP_GRACE_SEC on each side
+    // to absorb minor timing discrepancies between the two Deepgram channels.
+    const micExtStart = seg0.timestamp - ECHO_OVERLAP_GRACE_SEC;
+    const micExtEnd = seg0.timestamp + seg0.duration + ECHO_OVERLAP_GRACE_SEC;
+
+    const isEcho = batchSegments.some((seg1) => {
+      if (seg1.channel !== 1) {
+        return false;
+      }
+
+      // Condition 1: temporal overlap (with grace extension on the mic side).
+      const hasOverlap =
+        micExtStart < seg1.timestamp + seg1.duration &&
+        seg1.timestamp < micExtEnd;
+
+      if (!hasOverlap) {
+        return false;
+      }
+
+      // Condition 2: text similarity or containment.
+      const metrics = calculateTextMetrics(seg0.text, seg1.text);
+      return (
+        metrics.jaccard >= ECHO_SIMILARITY_THRESHOLD ||
+        metrics.containment >= 0.85
+      );
+    });
+
+    if (isEcho) {
+      log.info(
+        { id: seg0.id, text: seg0.text, timestamp: seg0.timestamp },
+        "Discarding client-to-mic echo segment in offline correlation"
+      );
+      return false;
+    }
+    return true;
+  });
+
   const resultSegments: BatchUtteranceSegment[] = [];
 
-  for (const segment of batchSegments) {
+  for (const segment of nonEchoSegments) {
     const correlatedName = correlateSingleSegment(
       segment,
       vadIntervals,
@@ -427,13 +587,15 @@ export function processOfflineCorrelation(options: {
       liveUtterances,
       connectionStartTime,
       connectionStartTimeSec,
-      hostName,
-      sessionState.speakerMappings
+      effectiveHostName,
+      sessionState.speakerMappings,
+      clientName
     );
 
     resultSegments.push({
       ...segment,
       speaker: correlatedName,
+      speakerType: segment.channel === 0 ? "TEAM" : "EXTERNAL",
     });
   }
 
