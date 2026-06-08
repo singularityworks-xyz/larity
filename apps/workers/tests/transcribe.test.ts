@@ -1,4 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test";
+// biome-ignore lint/performance/noNamespaceImport: needed for spyOn mocking
+import * as infraRedis from "@larity/infra/redis";
+// biome-ignore lint/performance/noNamespaceImport: needed for spyOn mocking
+import * as stt from "@larity/stt";
 
 const mockS3Send = mock();
 const mockRedisSet = mock();
@@ -43,24 +55,6 @@ mock.module("@larity/infra/s3", () => ({
     secretAccessKey: "test-secret-key",
   }),
 }));
-
-mock.module("@larity/infra/redis", () => {
-  const r = {
-    set: mockRedisSet,
-    expire: mockRedisExpire,
-    lrange: mockRedisLrange,
-    get: mockRedisGet,
-    hset: mock().mockImplementation(() => Promise.resolve()),
-  };
-  return {
-    redis: r,
-    getRedisClient: () => r,
-    connectRedis: () => Promise.resolve(true),
-    disconnectRedis: () => {
-      // noop
-    },
-  };
-});
 
 mock.module("@larity/infra/prisma/client", () => ({
   prisma: {
@@ -109,14 +103,60 @@ mock.module("@larity/jobs", () => ({
   audioCleanupQueue: {
     add: mockAudioCleanupQueueAdd,
   },
-}));
-
-mock.module("@larity/stt", () => ({
-  transcribeAudioBuffer: mockTranscribeAudioBuffer,
+  transcribeQueue: {
+    add: mock(),
+  },
 }));
 
 describe("TranscribeWorker", () => {
+  let transcribeAudioBufferSpy: any;
+  let getRedisClientSpy: any;
+  let connectRedisSpy: any;
+  let disconnectRedisSpy: any;
+  let redisSetSpy: any;
+  let redisExpireSpy: any;
+  let redisLrangeSpy: any;
+  let redisGetSpy: any;
+  let redisHsetSpy: any;
+
   beforeEach(() => {
+    transcribeAudioBufferSpy = spyOn(
+      stt,
+      "transcribeAudioBuffer"
+    ).mockImplementation(mockTranscribeAudioBuffer);
+
+    const r = {
+      set: mockRedisSet,
+      expire: mockRedisExpire,
+      lrange: mockRedisLrange,
+      get: mockRedisGet,
+      hset: mock().mockImplementation(() => Promise.resolve()),
+    };
+
+    getRedisClientSpy = spyOn(infraRedis, "getRedisClient").mockReturnValue(
+      r as any
+    );
+    connectRedisSpy = spyOn(infraRedis, "connectRedis").mockResolvedValue(true);
+    disconnectRedisSpy = spyOn(
+      infraRedis,
+      "disconnectRedis"
+    ).mockImplementation(() => undefined);
+    redisSetSpy = spyOn(infraRedis.redis, "set").mockImplementation(
+      mockRedisSet
+    );
+    redisExpireSpy = spyOn(infraRedis.redis, "expire").mockImplementation(
+      mockRedisExpire
+    );
+    redisLrangeSpy = spyOn(infraRedis.redis, "lrange").mockImplementation(
+      mockRedisLrange
+    );
+    redisGetSpy = spyOn(infraRedis.redis, "get").mockImplementation(
+      mockRedisGet
+    );
+    redisHsetSpy = spyOn(infraRedis.redis, "hset").mockImplementation(
+      () => Promise.resolve() as any
+    );
+
     (globalThis as any).s3SendMock = mockS3Send;
     mockS3Send.mockClear();
     mockRedisSet.mockClear();
@@ -149,6 +189,15 @@ describe("TranscribeWorker", () => {
   });
 
   afterEach(() => {
+    transcribeAudioBufferSpy.mockRestore();
+    getRedisClientSpy.mockRestore();
+    connectRedisSpy.mockRestore();
+    disconnectRedisSpy.mockRestore();
+    redisSetSpy.mockRestore();
+    redisExpireSpy.mockRestore();
+    redisLrangeSpy.mockRestore();
+    redisGetSpy.mockRestore();
+    redisHsetSpy.mockRestore();
     (globalThis as any).s3SendMock = undefined;
   });
 
@@ -164,13 +213,15 @@ describe("TranscribeWorker", () => {
     });
 
     // Deepgram mock
+    let callCount1 = 0;
     mockTranscribeAudioBuffer.mockImplementation((_buffer: Buffer) => {
+      callCount1++;
       return Promise.resolve({
         utterances: [
           {
             start: 0,
             end: 2,
-            text: "Hello from buffer",
+            text: callCount1 === 1 ? "Hello from mic" : "Hello from system",
             speaker: 0,
             confidence: 0.95,
           },
@@ -203,11 +254,15 @@ describe("TranscribeWorker", () => {
     // Verify status tracking in Redis
     expect(mockRedisSet).toHaveBeenCalledWith(
       "meeting.job.session-1.transcribe.status",
-      "processing"
+      "processing",
+      "EX",
+      86_400
     );
     expect(mockRedisSet).toHaveBeenCalledWith(
       "meeting.job.session-1.transcribe.status",
-      "done"
+      "done",
+      "EX",
+      86_400
     );
 
     // Verify DB write
@@ -244,13 +299,15 @@ describe("TranscribeWorker", () => {
     });
 
     // Deepgram mock for ch1 (remote)
+    let callCount2 = 0;
     mockTranscribeAudioBuffer.mockImplementation((_buffer: Buffer) => {
+      callCount2++;
       return Promise.resolve({
         utterances: [
           {
-            start: 1.5,
-            end: 3.5,
-            text: "Hello from remote",
+            start: callCount2 === 1 ? 0 : 1.5,
+            end: callCount2 === 1 ? 2 : 3.5,
+            text: callCount2 === 1 ? "Hello from mic" : "Hello from remote",
             speaker: 0,
             confidence: 0.95,
           },
@@ -388,7 +445,9 @@ describe("TranscribeWorker", () => {
 
     expect(mockRedisSet).toHaveBeenCalledWith(
       "meeting.job.session-1.transcribe.status",
-      "failed"
+      "failed",
+      "EX",
+      86_400
     );
 
     await worker.close();

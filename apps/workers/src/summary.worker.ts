@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@larity/infra/prisma/client";
 import type { SummaryJobData } from "@larity/jobs";
-import type { Prisma } from "@prisma/client";
 import type { Job } from "bullmq";
+import { Prisma } from "../../../packages/infra/prisma/generated/prisma/client";
 import { chunkUtterances } from "./lib/chunking";
 import {
   getCommitmentEmbedding,
   getSessionCommitments,
-  type RedisCommitment,
 } from "./lib/commitments";
 import { cosineSimilarity, deduplicateItems } from "./lib/deduplication";
 import { generateEmbedding } from "./lib/embeddings";
@@ -20,6 +19,11 @@ import {
   extractInsightsFromTranscriptChunk,
 } from "./lib/extraction-llm";
 import { ai } from "./lib/gemini";
+import {
+  cleanupMeetingStateKeys,
+  publishMeetingProcessed,
+  setJobStatus,
+} from "./lib/job-status";
 import { BaseWorker } from "./worker";
 
 interface Utterance {
@@ -49,6 +53,8 @@ export class SummaryWorker extends BaseWorker<
       "Starting post-meeting insights extraction"
     );
 
+    await setJobStatus(sessionId, "summary", "processing");
+
     try {
       const meeting = await prisma.meeting.findUnique({
         where: { id: meetingId },
@@ -75,6 +81,7 @@ export class SummaryWorker extends BaseWorker<
           { meetingId },
           "No transcript found for meeting, extraction skipped"
         );
+        await setJobStatus(sessionId, "summary", "failed");
         return { success: false };
       }
 
@@ -92,6 +99,7 @@ export class SummaryWorker extends BaseWorker<
           { meetingId },
           "Transcript content is empty, extraction skipped"
         );
+        await setJobStatus(sessionId, "summary", "failed");
         return { success: false };
       }
 
@@ -211,97 +219,200 @@ export class SummaryWorker extends BaseWorker<
         return null;
       };
 
-      // 7. Prisma transactional write (modularized to satisfy complexity limits)
+      // 7. Date parsing helper
+      const parseOptionalDate = (
+        dateStr: string | undefined | null
+      ): Date | null => {
+        if (!dateStr) {
+          return null;
+        }
+        const parsed = new Date(dateStr);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      };
+
+      // 8. Pre-generate embeddings for decisions (network call outside transaction)
+      const decisionsWithEmbeddings = await Promise.all(
+        decisions.map(async (d) => {
+          const text = `${d.title} ${d.content}`;
+          const embedding = await generateEmbedding(text);
+          return { d, embedding };
+        })
+      );
+
+      // 9. Pre-generate embeddings for important points (network call outside transaction)
+      const pointsWithEmbeddings = await Promise.all(
+        importantPoints.map(async (p) => {
+          const embedding = await generateEmbedding(p.content);
+          return { p, embedding };
+        })
+      );
+
+      // 10. Pre-generate embeddings for commitments (network call outside transaction)
+      const commitmentsWithEmbeddings = await Promise.all(
+        commitments.map(async (c) => {
+          let embedding = getCommitmentEmbedding(c);
+          if (embedding.length === 0) {
+            embedding = await generateEmbedding(c.statement);
+          }
+          return { c, embedding };
+        })
+      );
+
+      // 11. Generate meeting summary overview (network call outside transaction)
+      let summaryText: string | null = null;
+      const overviewPrompt = `Draft a concise 2-3 sentence overview summary of the meeting based on the following transcript segments:\n\n${utterances
+        .slice(0, 10)
+        .map((u) => `[${u.speaker}]: ${u.text}`)
+        .join("\n")}\n...\n${utterances
+        .slice(-10)
+        .map((u) => `[${u.speaker}]: ${u.text}`)
+        .join("\n")}`;
+
+      try {
+        const overviewResponse = await ai.models.generateContent({
+          model: EXTRACTION_MODEL,
+          contents: overviewPrompt,
+          config: {
+            temperature: 0.2,
+          },
+        });
+        summaryText = overviewResponse.text?.trim() || null;
+      } catch (err) {
+        this.log.error({ err }, "Failed to generate meeting summary overview");
+      }
+
+      // 12. Prisma transactional write (modularized to satisfy complexity limits)
       await prisma.$transaction(async (tx) => {
-        await this.persistDecisions(tx, meeting.clientId, meetingId, decisions);
+        // Query existing decisions and their embeddings in a single batch
+        const existingDecisions = await tx.decision.findMany({
+          where: { meetingId },
+          orderBy: { version: "desc" },
+        });
+
+        const existingIds = existingDecisions.map((d) => d.id);
+        const oldEmbeddings =
+          existingIds.length > 0
+            ? await tx.$queryRaw<{ id: string; embedding: string | null }[]>(
+                Prisma.sql`SELECT id, embedding::text FROM decisions WHERE id IN (${Prisma.join(existingIds)})`
+              )
+            : [];
+
+        const oldEmbeddingMap = new Map<string, number[]>();
+        for (const row of oldEmbeddings) {
+          if (row.embedding) {
+            const values = row.embedding
+              .replace(/[[\]]/g, "")
+              .split(",")
+              .map(Number);
+            oldEmbeddingMap.set(row.id, values);
+          }
+        }
+
+        await this.persistDecisionsTx(
+          tx,
+          meeting.clientId,
+          meetingId,
+          decisionsWithEmbeddings,
+          existingDecisions,
+          oldEmbeddingMap
+        );
 
         // Delete old items for idempotency
         await tx.task.deleteMany({ where: { meetingId } });
         await tx.openQuestion.deleteMany({ where: { meetingId } });
         await tx.importantPoint.deleteMany({ where: { meetingId } });
 
-        await this.persistTasks(
+        await this.persistTasksTx(
           tx,
           meeting.clientId,
           meetingId,
           tasks,
-          resolveUserOrParticipant
+          resolveUserOrParticipant,
+          parseOptionalDate
         );
-        await this.persistOpenQuestions(
+
+        await this.persistOpenQuestionsTx(
           tx,
           meeting.clientId,
           meetingId,
           openQuestions,
-          resolveUserOrParticipant
+          resolveUserOrParticipant,
+          parseOptionalDate
         );
-        await this.persistImportantPoints(
+
+        await this.persistImportantPointsTx(
           tx,
           meeting.clientId,
           meetingId,
-          importantPoints,
-          resolveUserOrParticipant
-        );
-        await this.persistCommitments(
-          tx,
-          meeting.clientId,
-          meetingId,
-          commitments,
+          pointsWithEmbeddings,
           resolveUserOrParticipant
         );
 
-        await this.updateMeetingSummary(tx, meetingId, utterances);
+        await this.persistCommitmentsTx(
+          tx,
+          meeting.clientId,
+          meetingId,
+          commitmentsWithEmbeddings,
+          resolveUserOrParticipant
+        );
+
+        // Update Meeting Summary
+        if (summaryText) {
+          await tx.meeting.update({
+            where: { id: meetingId },
+            data: { summary: summaryText },
+          });
+        }
       });
 
       this.log.info(
         { meetingId },
         "Insights extraction and persistence finished successfully"
       );
+
+      // Write job status done, publish completed event, and clean up Redis keys
+      await setJobStatus(sessionId, "summary", "done");
+      await publishMeetingProcessed(meetingId, sessionId);
+      await cleanupMeetingStateKeys(meetingId, sessionId);
+
       return { success: true };
     } catch (error) {
       this.log.error({ err: error, meetingId }, "Insights extraction failed");
+      await setJobStatus(sessionId, "summary", "failed");
       throw error;
     }
   }
 
-  /**
-   * Deduplicates, versions, and saves decisions.
-   */
-  private async persistDecisions(
+  private async persistDecisionsTx(
     tx: Prisma.TransactionClient,
     clientId: string,
     meetingId: string,
-    decisions: ExtractedDecision[]
+    decisionsWithEmbeddings: Array<{
+      d: ExtractedDecision;
+      embedding: number[];
+    }>,
+    existingDecisions: Array<{
+      id: string;
+      decisionRef: string;
+      version: number;
+    }>,
+    oldEmbeddingMap: Map<string, number[]>
   ): Promise<void> {
-    const existing = await tx.decision.findMany({
-      where: { meetingId },
-      orderBy: { version: "desc" },
-    });
-
     const updatedRefs = new Set<string>();
 
-    for (const d of decisions) {
+    for (const { d, embedding } of decisionsWithEmbeddings) {
       let decisionRef = randomUUID();
       let version = 1;
       let matchedOldId: string | null = null;
 
-      const currentText = `${d.title} ${d.content}`;
-      const currentEmbedding = await generateEmbedding(currentText);
-
-      for (const old of existing) {
+      for (const old of existingDecisions) {
         if (updatedRefs.has(old.decisionRef)) {
           continue;
         }
 
-        const oldEmbeddingResult = await tx.$queryRaw`
-          SELECT embedding::text FROM decisions WHERE id = ${old.id} LIMIT 1;
-        `;
-        const rawVector = oldEmbeddingResult[0]?.embedding;
-        if (rawVector) {
-          const oldEmbedding = rawVector
-            .replace(/[[\]]/g, "")
-            .split(",")
-            .map(Number);
-          const similarity = cosineSimilarity(currentEmbedding, oldEmbedding);
+        const oldEmbedding = oldEmbeddingMap.get(old.id);
+        if (oldEmbedding) {
+          const similarity = cosineSimilarity(embedding, oldEmbedding);
 
           if (similarity >= 0.85) {
             decisionRef = old.decisionRef;
@@ -335,7 +446,7 @@ export class SummaryWorker extends BaseWorker<
         },
       });
 
-      const vectorStr = `[${currentEmbedding.join(",")}]`;
+      const vectorStr = `[${embedding.join(",")}]`;
       await tx.$executeRawUnsafe(
         "UPDATE decisions SET embedding = $1::vector WHERE id = $2",
         vectorStr,
@@ -344,18 +455,16 @@ export class SummaryWorker extends BaseWorker<
     }
   }
 
-  /**
-   * Persists extracted tasks.
-   */
-  private async persistTasks(
+  private async persistTasksTx(
     tx: Prisma.TransactionClient,
     clientId: string,
     meetingId: string,
     tasks: ExtractedTask[],
-    resolver: (hint: string | undefined) => string | null
+    resolveUserOrParticipant: (hint: string | undefined) => string | null,
+    parseOptionalDate: (dateStr: string | undefined | null) => Date | null
   ): Promise<void> {
     for (const t of tasks) {
-      const assigneeId = resolver(t.assigneeHint);
+      const assigneeId = resolveUserOrParticipant(t.assigneeHint);
       await tx.task.create({
         data: {
           clientId,
@@ -364,25 +473,23 @@ export class SummaryWorker extends BaseWorker<
           description: t.description || null,
           assigneeId,
           priority: t.priority,
-          dueAt: t.dueAt ? new Date(t.dueAt) : null,
+          dueAt: parseOptionalDate(t.dueAt),
           status: "OPEN",
         },
       });
     }
   }
 
-  /**
-   * Persists open questions.
-   */
-  private async persistOpenQuestions(
+  private async persistOpenQuestionsTx(
     tx: Prisma.TransactionClient,
     clientId: string,
     meetingId: string,
     questions: ExtractedOpenQuestion[],
-    resolver: (hint: string | undefined) => string | null
+    resolveUserOrParticipant: (hint: string | undefined) => string | null,
+    parseOptionalDate: (dateStr: string | undefined | null) => Date | null
   ): Promise<void> {
     for (const q of questions) {
-      const assigneeId = resolver(q.assigneeHint);
+      const assigneeId = resolveUserOrParticipant(q.assigneeHint);
       await tx.openQuestion.create({
         data: {
           clientId,
@@ -390,25 +497,25 @@ export class SummaryWorker extends BaseWorker<
           question: q.question,
           context: q.context || null,
           assigneeId,
-          dueAt: q.dueAt ? new Date(q.dueAt) : null,
+          dueAt: parseOptionalDate(q.dueAt),
           status: "OPEN",
         },
       });
     }
   }
 
-  /**
-   * Persists important points.
-   */
-  private async persistImportantPoints(
+  private async persistImportantPointsTx(
     tx: Prisma.TransactionClient,
     clientId: string,
     meetingId: string,
-    points: ExtractedImportantPoint[],
-    resolver: (hint: string | undefined) => string | null
+    pointsWithEmbeddings: Array<{
+      p: ExtractedImportantPoint;
+      embedding: number[];
+    }>,
+    resolveUserOrParticipant: (hint: string | undefined) => string | null
   ): Promise<void> {
-    for (const p of points) {
-      const speakerId = resolver(p.speakerHint);
+    for (const { p, embedding } of pointsWithEmbeddings) {
+      const speakerId = resolveUserOrParticipant(p.speakerHint);
       const created = await tx.importantPoint.create({
         data: {
           clientId,
@@ -420,7 +527,6 @@ export class SummaryWorker extends BaseWorker<
         },
       });
 
-      const embedding = await generateEmbedding(p.content);
       const vectorStr = `[${embedding.join(",")}]`;
       await tx.$executeRawUnsafe(
         "UPDATE important_points SET embedding = $1::vector WHERE id = $2",
@@ -430,18 +536,19 @@ export class SummaryWorker extends BaseWorker<
     }
   }
 
-  /**
-   * Persists Redis commitments as ImportantPoint entries.
-   */
-  private async persistCommitments(
+  private async persistCommitmentsTx(
     tx: Prisma.TransactionClient,
     clientId: string,
     meetingId: string,
-    commitments: RedisCommitment[],
-    resolver: (hint: string | undefined) => string | null
+    commitmentsWithEmbeddings: Array<{
+      c: RedisCommitment;
+      embedding: number[];
+    }>,
+    resolveUserOrParticipant: (hint: string | undefined) => string | null
   ): Promise<void> {
-    for (const c of commitments) {
-      const speakerId = c.speaker.userId || resolver(c.speaker.name);
+    for (const { c, embedding } of commitmentsWithEmbeddings) {
+      const speakerId =
+        c.speaker.userId || resolveUserOrParticipant(c.speaker.name);
       const created = await tx.importantPoint.create({
         data: {
           clientId,
@@ -453,11 +560,6 @@ export class SummaryWorker extends BaseWorker<
         },
       });
 
-      let embedding = getCommitmentEmbedding(c);
-      if (embedding.length === 0) {
-        embedding = await generateEmbedding(c.statement);
-      }
-
       if (embedding.length > 0) {
         const vectorStr = `[${embedding.join(",")}]`;
         await tx.$executeRawUnsafe(
@@ -466,42 +568,6 @@ export class SummaryWorker extends BaseWorker<
           created.id
         );
       }
-    }
-  }
-
-  /**
-   * Generates a meeting summary overview and updates the meeting record.
-   */
-  private async updateMeetingSummary(
-    tx: Prisma.TransactionClient,
-    meetingId: string,
-    utterances: Utterance[]
-  ): Promise<void> {
-    const overviewPrompt = `Draft a concise 2-3 sentence overview summary of the meeting based on the following transcript segments:\n\n${utterances
-      .slice(0, 10)
-      .map((u) => `[${u.speaker}]: ${u.text}`)
-      .join("\n")}\n...\n${utterances
-      .slice(-10)
-      .map((u) => `[${u.speaker}]: ${u.text}`)
-      .join("\n")}`;
-
-    try {
-      const overviewResponse = await ai.models.generateContent({
-        model: EXTRACTION_MODEL,
-        contents: overviewPrompt,
-        config: {
-          temperature: 0.2,
-        },
-      });
-      const summaryText = overviewResponse.text?.trim() || null;
-      if (summaryText) {
-        await tx.meeting.update({
-          where: { id: meetingId },
-          data: { summary: summaryText },
-        });
-      }
-    } catch (err) {
-      this.log.error({ err }, "Failed to generate meeting summary overview");
     }
   }
 }

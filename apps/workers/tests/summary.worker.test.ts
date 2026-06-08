@@ -60,9 +60,19 @@ mock.module("@larity/infra/prisma/client", () => ({
 
 // Mock Redis client
 const mockRedisGet = mock();
+const mockRedisSet = mock().mockResolvedValue("OK");
+const mockRedisPublish = mock().mockResolvedValue(1);
+const mockRedisDel = mock().mockResolvedValue(1);
+const mockRedisSrem = mock().mockResolvedValue(1);
+
 mock.module("@larity/infra/redis", () => {
   const r = {
     get: mockRedisGet,
+    set: mockRedisSet,
+    publish: mockRedisPublish,
+    del: mockRedisDel,
+    srem: mockRedisSrem,
+    expire: mock().mockResolvedValue(1),
   };
   return {
     redis: r,

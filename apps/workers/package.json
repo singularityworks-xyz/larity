@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "dev": "bun --env-file=../../.env --watch index.ts",
     "test": "LOG_LEVEL=fatal bun test --preload ./tests/setup.ts",
     "lint": "biome check --log-level=info --diagnostic-level=warn .",
     "lint:fix": "biome check --write --unsafe .",

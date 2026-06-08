@@ -21,6 +21,7 @@ import {
   type SessionSpeakerStatePayload,
   type Utterance,
 } from "meeting-mode";
+import { setJobStatus } from "./lib/job-status";
 import type { createWorkerLogger } from "./logger";
 import { BaseWorker } from "./worker";
 
@@ -33,6 +34,7 @@ interface NormalizedUtterance {
   timestamp: number; // in seconds
   duration: number; // in seconds
   channel: number;
+  type?: "TEAM" | "EXTERNAL";
 }
 
 interface S3Error {
@@ -44,7 +46,6 @@ interface S3Error {
 
 const WHITESPACE_REGEX = /\s+/;
 
-const DEFAULT_SEGMENT_TTL_SECONDS = 7 * 24 * 60 * 60;
 const MAX_TIME_WINDOW_NANOS = 1_000_000_000_000;
 
 /**
@@ -260,9 +261,7 @@ export class TranscribeWorker extends BaseWorker<
       throw new Error("Redis client is not available");
     }
 
-    const statusKey = `meeting.job.${sessionId}.transcribe.status`;
-    await redis.set(statusKey, "processing");
-    await redis.expire(statusKey, DEFAULT_SEGMENT_TTL_SECONDS); // 7 days
+    await setJobStatus(sessionId, "transcribe", "processing");
 
     try {
       const { ch0Result, ch1Result } = await fetchAndTranscribeAudio(
@@ -279,12 +278,14 @@ export class TranscribeWorker extends BaseWorker<
       const meeting = await prisma.meeting.findUnique({
         where: { id: meetingId },
         include: {
+          client: true,
           participants: {
             where: { role: "HOST" },
             include: { user: true },
           },
         },
       });
+      const clientName = meeting?.client?.name;
       const hostName =
         meeting?.participants?.[0]?.user?.name ||
         meeting?.participants?.[0]?.externalName ||
@@ -321,6 +322,7 @@ export class TranscribeWorker extends BaseWorker<
         liveUtterances,
         connectionStartTime,
         hostName,
+        clientName,
       });
 
       const mergedUtterances: NormalizedUtterance[] = refinedSegments.map(
@@ -331,6 +333,7 @@ export class TranscribeWorker extends BaseWorker<
           timestamp: seg.timestamp,
           duration: seg.duration,
           channel: seg.channel,
+          type: seg.speakerType,
         })
       );
 
@@ -338,7 +341,7 @@ export class TranscribeWorker extends BaseWorker<
       await this.saveTranscriptToPostgres(meetingId, mergedUtterances);
 
       // 7. Update status to done
-      await redis.set(statusKey, "done");
+      await setJobStatus(sessionId, "transcribe", "done");
 
       // 8. Chain summary extraction job
       this.log.info({ meetingId }, "Chaining summary extraction job");
@@ -365,7 +368,7 @@ export class TranscribeWorker extends BaseWorker<
       return { success: true };
     } catch (error) {
       this.log.error({ err: error }, "TranscribeWorker failed");
-      await redis.set(statusKey, "failed");
+      await setJobStatus(sessionId, "transcribe", "failed");
       throw error;
     }
   }
