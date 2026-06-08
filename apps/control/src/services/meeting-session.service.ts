@@ -730,9 +730,6 @@ export const meetingSessionService = {
     // Remove from active sessions
     await redis.srem(redisKeys.activeSessions(), sessionId);
 
-    // Remove meeting-to-session mapping
-    await redis.del(redisKeys.meetingToSession(meetingId));
-
     // Fetch orgId from DB
     let orgId: string | undefined;
     try {
@@ -844,6 +841,7 @@ export const meetingSessionService = {
     // Extend TTL of specified keys to 7 days
     const keysToExtend = [
       redisKeys.meetingSession(sessionId),
+      redisKeys.meetingToSession(meetingId),
       redisKeys.meetingCommitment(sessionId),
       redisKeys.meetingConstraintLedger(sessionId),
       redisKeys.meetingSpeaker(sessionId),
