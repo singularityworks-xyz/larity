@@ -74,6 +74,7 @@ import { onOpen } from "../src/handlers/on-open";
 import {
   __test_only_handleAlertChannel,
   __test_only_handleBroadcastSessionChannel,
+  __test_only_handleProcessedChannel,
 } from "../src/redis/subscriber";
 import {
   __test_only_reset,
@@ -235,6 +236,19 @@ describe("WebSocket Handlers Unit Tests", () => {
         __test_only_handleAlertChannel(
           "meeting.alert.session-1.user.user-1",
           JSON.stringify({ id: "a2" })
+        );
+      }).not.toThrow();
+    });
+
+    it("parses processed status channel without throwing", () => {
+      expect(() => {
+        __test_only_handleProcessedChannel(
+          "meeting.processed.session-1",
+          JSON.stringify({
+            meetingId: "m1",
+            sessionId: "session-1",
+            status: "complete",
+          })
         );
       }).not.toThrow();
     });

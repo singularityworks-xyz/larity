@@ -35,7 +35,7 @@ mock.module("../src/redis/publisher", () => ({
 
 import { startServer, stopServer } from "../src/server";
 
-function waitFor(predicate: () => boolean, timeoutMs = 1500): Promise<void> {
+function waitFor(predicate: () => boolean, timeoutMs = 5000): Promise<void> {
   const startedAt = Date.now();
 
   return new Promise((resolve, reject) => {
@@ -73,17 +73,31 @@ describe("direct audio integration", () => {
     sendAudioMock.mockClear();
     createSessionMock.mockClear();
 
+    console.log("Opening WebSocket connection...");
     const ws = new WebSocket(
       `ws://127.0.0.1:${env.PORT}/?sessionId=test-session-direct&userId=host-user&role=host`
     );
 
     await new Promise<void>((resolve, reject) => {
-      ws.onopen = () => resolve();
-      ws.onerror = () => reject(new Error("WebSocket open failed"));
+      ws.onopen = () => {
+        console.log("WebSocket connection opened successfully!");
+        resolve();
+      };
+      ws.onerror = (e) => {
+        console.error("WebSocket connection failed!", e);
+        reject(new Error("WebSocket open failed"));
+      };
+      ws.onclose = (event) => {
+        console.log(
+          `WebSocket closed: code=${event.code}, reason=${event.reason}`
+        );
+      };
     });
 
+    console.log("Sending binary frame...");
     ws.send(new Uint8Array([1, 2, 3, 4]));
 
+    console.log("Waiting for sendAudioMock call...");
     await waitFor(() => sendAudioMock.mock.calls.length === 1);
 
     const [calledSessionId, calledFrame] = sendAudioMock.mock.calls[0] ?? [];

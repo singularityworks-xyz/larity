@@ -56,6 +56,13 @@ export function topicChannel(sessionId: string): string {
 }
 
 /**
+ * Channel for processed meeting status updates
+ */
+export function meetingProcessedChannel(sessionId: string): string {
+  return `meeting.processed.${sessionId}`;
+}
+
+/**
  * Global session start event channel
  * Published when a new WebSocket connection is established
  */
@@ -85,6 +92,7 @@ export const channels = {
   sharedAlertChannel,
   personalAlertChannel,
   topicChannel,
+  meetingProcessedChannel,
   vadChannel,
   SESSION_START,
   SESSION_END,

@@ -55,7 +55,8 @@ export async function startSubscriber(): Promise<void> {
     "meeting.alert.*",
     "meeting.ledger.*",
     "meeting.pipeline.*",
-    "meeting.stt.*"
+    "meeting.stt.*",
+    "meeting.processed.*"
   );
 
   subscriber.on("pmessage", (pattern, channel, message) => {
@@ -81,6 +82,10 @@ function handleMessage(
     }
 
     if (handleSttChannel(channel, message)) {
+      return;
+    }
+
+    if (handleProcessedChannel(channel, message)) {
       return;
     }
 
@@ -134,6 +139,35 @@ function handleSttChannel(channel: string, message: string): boolean {
     broadcast(sessionId, wrapped);
   } catch (error) {
     log.warn({ err: error, channel }, "Invalid STT JSON from Redis");
+  }
+
+  return true;
+}
+
+/**
+ * Forward meeting processed events to WebSocket clients.
+ * Channel shape: `meeting.processed.{sessionId}`.
+ */
+function handleProcessedChannel(channel: string, message: string): boolean {
+  if (!channel.startsWith("meeting.processed.")) {
+    return false;
+  }
+
+  const parts = channel.split(".");
+  const sessionId = parts[2];
+  if (!sessionId) {
+    return true;
+  }
+
+  try {
+    const payload = JSON.parse(message) as Record<string, unknown>;
+    const wrapped = JSON.stringify({ ...payload, type: "meeting_processed" });
+    broadcast(sessionId, wrapped);
+  } catch (error) {
+    log.warn(
+      { err: error, channel },
+      "Invalid meeting processed JSON from Redis"
+    );
   }
 
   return true;
@@ -278,6 +312,7 @@ export const __test_only_handleBroadcastSessionChannel =
   handleBroadcastSessionChannel;
 export const __test_only_handleAlertChannel = handleAlertChannel;
 export const __test_only_handleSttChannel = handleSttChannel;
+export const __test_only_handleProcessedChannel = handleProcessedChannel;
 
 /**
  * Stop the Redis subscriber

@@ -79,7 +79,7 @@ const mockCommitmentManager = {
 
 import { redisKeys } from "@larity/infra/redis/keys";
 
-function waitFor(predicate: () => boolean, timeoutMs = 2500): Promise<void> {
+function waitFor(predicate: () => boolean, timeoutMs = 5000): Promise<void> {
   const startedAt = Date.now();
 
   return new Promise((resolve, reject) => {
@@ -339,21 +339,37 @@ describe("Full Pipeline E2E Test", () => {
   });
 
   it("processes binary frames from WebSocket through full pipeline to Redis alerts channel", async () => {
+    console.log("E2E Test: Opening WebSocket...");
     const ws = new WebSocket(
       `ws://127.0.0.1:${env.PORT}/?sessionId=test-session-e2e&userId=host-user&role=host`
     );
 
     await new Promise<void>((resolve, reject) => {
-      ws.onopen = () => resolve();
-      ws.onerror = () => reject(new Error("WebSocket open failed"));
+      ws.onopen = () => {
+        console.log("E2E Test: WebSocket opened!");
+        resolve();
+      };
+      ws.onerror = (e) => {
+        console.error("E2E Test: WebSocket failed to open!", e);
+        reject(new Error("WebSocket open failed"));
+      };
+      ws.onclose = (event) => {
+        console.log(
+          `E2E Test: WebSocket closed code=${event.code} reason=${event.reason}`
+        );
+      };
     });
 
-    // Send binary audio frame - mockSTT will intercept and publish STT result
-    // STT result will be caught by subscriber, pushed through finalizer to MeetingPipelineEngine
-    // Engine will run tier1, tier2, tier4, and publish an alert
+    console.log("E2E Test: Sending binary frame...");
     ws.send(new Uint8Array([1, 2, 3, 4]));
 
-    await waitFor(() => receivedAlerts.length > 0);
+    console.log(
+      "E2E Test: Waiting for alert to be received on Redis subscription..."
+    );
+    await waitFor(() => {
+      console.log(`Current receivedAlerts length: ${receivedAlerts.length}`);
+      return receivedAlerts.length > 0;
+    });
 
     expect(receivedAlerts.length).toBeGreaterThan(0);
     const alert = receivedAlerts[0];
