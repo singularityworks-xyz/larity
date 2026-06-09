@@ -289,6 +289,7 @@ export class SummaryWorker extends BaseWorker<
             { err: error, chunkIndex: i },
             `Failed to extract insights from chunk ${i}`
           );
+          throw error;
         }
       }
 
