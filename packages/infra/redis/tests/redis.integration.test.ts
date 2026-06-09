@@ -138,12 +138,13 @@ let redis: RedisInstance;
 
 describe("Redis Integration Tests", () => {
   beforeAll(async () => {
-    process.env.REDIS_URL = testContainer.getRedisUrl();
+    const redisUrl = process.env.REDIS_URL || testContainer.getRedisUrl();
+    process.env.REDIS_URL = redisUrl;
 
     try {
       let isAlreadyRunning = false;
       try {
-        const testRedis = new Redis(testContainer.getRedisUrl());
+        const testRedis = new Redis(redisUrl);
         await testRedis.ping();
         await testRedis.quit();
         isAlreadyRunning = true;
@@ -153,11 +154,13 @@ describe("Redis Integration Tests", () => {
       }
 
       if (!isAlreadyRunning) {
+        // Fall back to starting the docker-compose test container if no Redis is detected
         await testContainer.start();
         await testContainer.waitForReady();
+        process.env.REDIS_URL = testContainer.getRedisUrl();
       }
 
-      redis = new Redis(testContainer.getRedisUrl());
+      redis = new Redis(process.env.REDIS_URL);
     } catch (error) {
       console.error("Failed to setup Redis test environment:", error);
       throw error;
