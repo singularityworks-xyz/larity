@@ -8,6 +8,7 @@ const mockPrismaExecuteRawUnsafe = mock();
 const mockDecisionFindMany = mock();
 const mockDecisionUpdate = mock();
 const mockDecisionCreate = mock();
+const mockDecisionDeleteMany = mock();
 const mockTaskDeleteMany = mock();
 const mockTaskCreate = mock();
 const mockOpenQuestionDeleteMany = mock();
@@ -21,6 +22,7 @@ const txMock = {
     findMany: mockDecisionFindMany,
     update: mockDecisionUpdate,
     create: mockDecisionCreate,
+    deleteMany: mockDecisionDeleteMany,
   },
   task: {
     deleteMany: mockTaskDeleteMany,
@@ -142,6 +144,7 @@ describe("SummaryWorker Integration", () => {
     mockDecisionFindMany.mockClear();
     mockDecisionUpdate.mockClear();
     mockDecisionCreate.mockClear();
+    mockDecisionDeleteMany.mockClear();
     mockTaskDeleteMany.mockClear();
     mockTaskCreate.mockClear();
     mockOpenQuestionDeleteMany.mockClear();
@@ -252,50 +255,53 @@ describe("SummaryWorker Integration", () => {
 
     // 3. Execute Worker
     const worker = new SummaryWorker();
-    const result = await (worker as any).process({
-      id: "job-summary-1",
-      data: {
-        meetingId: "meeting-1",
-        sessionId: "session-1",
-        orgId: "org-1",
-      },
-    });
+    try {
+      const result = await (worker as any).process({
+        id: "job-summary-1",
+        data: {
+          meetingId: "meeting-1",
+          sessionId: "session-1",
+          orgId: "org-1",
+        },
+      });
 
-    expect(result.success).toBe(true);
+      expect(result.success).toBe(true);
 
-    // Verify DB deletes & inserts
-    expect(mockPrismaMeetingFindUnique).toHaveBeenCalledWith({
-      where: { id: "meeting-1" },
-      include: {
-        participants: { include: { user: true } },
-        client: true,
-      },
-    });
+      // Verify DB deletes & inserts
+      expect(mockPrismaMeetingFindUnique).toHaveBeenCalledWith({
+        where: { id: "meeting-1" },
+        include: {
+          participants: { include: { user: true } },
+          client: true,
+        },
+      });
 
-    expect(mockDecisionCreate).toHaveBeenCalledTimes(1);
-    expect(mockTaskCreate).toHaveBeenCalledTimes(1);
-    expect(mockOpenQuestionCreate).toHaveBeenCalledTimes(0); // none returned
-    expect(mockImportantPointCreate).toHaveBeenCalledTimes(1); // constraint
+      expect(mockDecisionDeleteMany).toHaveBeenCalledTimes(1);
+      expect(mockDecisionCreate).toHaveBeenCalledTimes(1);
+      expect(mockTaskCreate).toHaveBeenCalledTimes(1);
+      expect(mockOpenQuestionCreate).toHaveBeenCalledTimes(0); // none returned
+      expect(mockImportantPointCreate).toHaveBeenCalledTimes(1); // constraint
 
-    // Verify the task matches the resolved assigneeId ("user-1" for Alice)
-    const taskCall = mockTaskCreate.mock.calls[0][0];
-    expect(taskCall.data.assigneeId).toBe("user-1");
-    expect(taskCall.data.title).toBe("Database migration");
+      // Verify the task matches the resolved assigneeId ("user-1" for Alice)
+      const taskCall = mockTaskCreate.mock.calls[0][0];
+      expect(taskCall.data.assigneeId).toBe("user-1");
+      expect(taskCall.data.title).toBe("Database migration");
 
-    // Verify raw pgvector updates
-    expect(mockPrismaExecuteRawUnsafe).toHaveBeenCalled();
+      // Verify raw pgvector updates
+      expect(mockPrismaExecuteRawUnsafe).toHaveBeenCalled();
 
-    // Verify meeting summary update
-    expect(mockMeetingUpdate).toHaveBeenCalledWith({
-      where: { id: "meeting-1" },
-      data: {
-        summary:
-          "The team agreed to build the product with TypeScript and scheduled a database migration.",
-      },
-    });
-
-    // Cleanup mock overrides
-    ai.models.generateContent = originalGenerateContent;
-    await worker.close();
+      // Verify meeting summary update
+      expect(mockMeetingUpdate).toHaveBeenCalledWith({
+        where: { id: "meeting-1" },
+        data: {
+          summary:
+            "The team agreed to build the product with TypeScript and scheduled a database migration.",
+        },
+      });
+    } finally {
+      // Cleanup mock overrides
+      ai.models.generateContent = originalGenerateContent;
+      await worker.close();
+    }
   });
 });

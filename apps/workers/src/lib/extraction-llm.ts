@@ -163,7 +163,7 @@ export async function extractInsightsFromTranscriptChunk(
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
         responseSchema: getGeminiExtractionSchema(),
-        signal: controller.signal,
+        abortSignal: controller.signal,
       },
     });
 

@@ -308,6 +308,12 @@ export class SummaryWorker extends BaseWorker<
           }
         }
 
+        // Delete old items for idempotency
+        await tx.decision.deleteMany({ where: { meetingId } });
+        await tx.task.deleteMany({ where: { meetingId } });
+        await tx.openQuestion.deleteMany({ where: { meetingId } });
+        await tx.importantPoint.deleteMany({ where: { meetingId } });
+
         await this.persistDecisionsTx(
           tx,
           meeting.clientId,
@@ -316,11 +322,6 @@ export class SummaryWorker extends BaseWorker<
           existingDecisions,
           oldEmbeddingMap
         );
-
-        // Delete old items for idempotency
-        await tx.task.deleteMany({ where: { meetingId } });
-        await tx.openQuestion.deleteMany({ where: { meetingId } });
-        await tx.importantPoint.deleteMany({ where: { meetingId } });
 
         await this.persistTasksTx(
           tx,
@@ -402,8 +403,7 @@ export class SummaryWorker extends BaseWorker<
 
     for (const { d, embedding } of decisionsWithEmbeddings) {
       let decisionRef = randomUUID();
-      let version = 1;
-      let matchedOldId: string | null = null;
+      const version = 1;
 
       for (const old of existingDecisions) {
         if (updatedRefs.has(old.decisionRef)) {
@@ -416,19 +416,10 @@ export class SummaryWorker extends BaseWorker<
 
           if (similarity >= 0.85) {
             decisionRef = old.decisionRef;
-            version = old.version + 1;
-            matchedOldId = old.id;
             updatedRefs.add(decisionRef);
             break;
           }
         }
-      }
-
-      if (matchedOldId) {
-        await tx.decision.update({
-          where: { id: matchedOldId },
-          data: { status: "SUPERSEDED" },
-        });
       }
 
       const created = await tx.decision.create({

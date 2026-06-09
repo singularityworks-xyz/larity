@@ -21,7 +21,8 @@ export async function generateEmbedding(text: string): Promise<number[]> {
       throw new Error("Empty embedding returned from Gemini API");
     }
 
-    return response.embeddings[0].values as number[];
+    const values = response.embeddings[0].values;
+    return values;
   } catch (error) {
     console.error("Failed to generate embedding:", error);
     throw error;

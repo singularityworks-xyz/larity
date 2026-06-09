@@ -51,7 +51,7 @@ async function getCommitmentsFromS3(
 
     const bytes = await response.Body.transformToByteArray();
     const payload = JSON.parse(new TextDecoder().decode(bytes));
-    return payload.commitments || null;
+    return Array.isArray(payload.commitments) ? payload.commitments : null;
   } catch (error) {
     console.warn(`Failed to retrieve commitments from S3 (${key}):`, error);
     return null;
