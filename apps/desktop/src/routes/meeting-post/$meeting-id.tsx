@@ -347,7 +347,8 @@ function TranscriptTab({ meetingId }: { meetingId: string }) {
 // ── Tab: Decisions ───────────────────────────────────────────────────────────
 
 function DecisionsTab({ decisions }: { decisions: Decision[] }) {
-  if (decisions.length === 0) {
+  const safeDecisions = Array.isArray(decisions) ? decisions : [];
+  if (safeDecisions.length === 0) {
     return (
       <p className="py-4 text-center text-[12px] text-fg-muted">
         No decisions were extracted from this meeting.
@@ -357,7 +358,7 @@ function DecisionsTab({ decisions }: { decisions: Decision[] }) {
 
   return (
     <div className="flex flex-col gap-2.5">
-      {decisions.map((d) => (
+      {safeDecisions.map((d) => (
         <div
           className={cx(
             panelClass,
@@ -407,7 +408,8 @@ function DecisionsTab({ decisions }: { decisions: Decision[] }) {
 // ── Tab: Tasks ───────────────────────────────────────────────────────────────
 
 function TasksTab({ tasks }: { tasks: Task[] }) {
-  if (tasks.length === 0) {
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+  if (safeTasks.length === 0) {
     return (
       <p className="py-4 text-center text-[12px] text-fg-muted">
         No tasks were extracted from this meeting.
@@ -417,7 +419,7 @@ function TasksTab({ tasks }: { tasks: Task[] }) {
 
   return (
     <div className="flex flex-col gap-2">
-      {tasks.map((t) => (
+      {safeTasks.map((t) => (
         <div className={cx(panelClass, "grid gap-2")} key={t.id}>
           <div className="flex flex-wrap items-center gap-2">
             <PriorityChip priority={t.priority} />
@@ -445,7 +447,8 @@ function TasksTab({ tasks }: { tasks: Task[] }) {
 // ── Tab: Open Questions ──────────────────────────────────────────────────────
 
 function OpenQuestionsTab({ questions }: { questions: OpenQuestion[] }) {
-  if (questions.length === 0) {
+  const safeQuestions = Array.isArray(questions) ? questions : [];
+  if (safeQuestions.length === 0) {
     return (
       <p className="py-4 text-center text-[12px] text-fg-muted">
         No open questions were extracted from this meeting.
@@ -455,7 +458,7 @@ function OpenQuestionsTab({ questions }: { questions: OpenQuestion[] }) {
 
   return (
     <div className="flex flex-col gap-2.5">
-      {questions.map((q) => (
+      {safeQuestions.map((q) => (
         <div className={cx(panelClass, "grid gap-2")} key={q.id}>
           <div className="flex flex-wrap items-center gap-2">
             <span
@@ -493,6 +496,7 @@ function OpenQuestionsTab({ questions }: { questions: OpenQuestion[] }) {
 // ── Tab: Important Points ────────────────────────────────────────────────────
 
 function ImportantPointsTab({ points }: { points: ImportantPoint[] }) {
+  const safePoints = Array.isArray(points) ? points : [];
   const ORDER: ImportantPointCategory[] = [
     "WARNING",
     "RISK",
@@ -507,16 +511,16 @@ function ImportantPointsTab({ points }: { points: ImportantPoint[] }) {
     for (const cat of ORDER) {
       map.set(cat, []);
     }
-    for (const p of points) {
+    for (const p of safePoints) {
       const arr = map.get(p.category);
       if (arr) {
         arr.push(p);
       }
     }
     return map;
-  }, [points]);
+  }, [safePoints]);
 
-  if (points.length === 0) {
+  if (safePoints.length === 0) {
     return (
       <p className="py-4 text-center text-[12px] text-fg-muted">
         No important points were extracted from this meeting.
@@ -564,9 +568,82 @@ function ImportantPointsTab({ points }: { points: ImportantPoint[] }) {
   );
 }
 
+// ── Tab: Brief ───────────────────────────────────────────────────────────────
+
+import type { MeetingAnalysis } from "@larity/infra/prisma/meeting-analysis.types";
+
+function BriefTab({
+  analysis,
+}: {
+  analysis: MeetingAnalysis | null | undefined;
+}) {
+  if (!analysis) {
+    return (
+      <p className="py-4 text-center text-[12px] text-fg-muted">
+        No brief available for this meeting.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Prose / Main Summary */}
+      <div className={cx(panelClass, "grid gap-2")}>
+        <h3 className="m-0 font-semibold text-[13px] text-fg">Summary</h3>
+        <p className="m-0 whitespace-pre-wrap text-[12.5px] text-fg-subtle leading-relaxed">
+          {analysis.prose}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        {/* Purpose */}
+        {analysis.purpose && (
+          <div className={cx(panelClass, "grid gap-1.5")}>
+            <h4 className="m-0 font-medium text-[11px] text-fg-muted uppercase tracking-wider">
+              Purpose
+            </h4>
+            <p className="m-0 text-[12px] text-fg leading-relaxed">
+              {analysis.purpose}
+            </p>
+          </div>
+        )}
+
+        {/* Outcome */}
+        {analysis.outcome && (
+          <div className={cx(panelClass, "grid gap-1.5")}>
+            <h4 className="m-0 font-medium text-[11px] text-fg-muted uppercase tracking-wider">
+              Outcome
+            </h4>
+            <p className="m-0 text-[12px] text-fg leading-relaxed">
+              {analysis.outcome}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        {/* Tone Chip */}
+        <span className="inline-flex h-[20px] items-center rounded border border-border-subtle bg-bg-subtle px-2 font-medium text-[10px] text-fg-subtle">
+          Tone: {analysis.tone}
+        </span>
+        {/* Client Sentiment Chip */}
+        <span className="inline-flex h-[20px] items-center rounded border border-border-subtle bg-bg-subtle px-2 font-medium text-[10px] text-fg-subtle">
+          Client Sentiment: {analysis.clientSentiment}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ── Tab definitions ──────────────────────────────────────────────────────────
 
-type TabId = "transcript" | "decisions" | "tasks" | "questions" | "points";
+type TabId =
+  | "brief"
+  | "transcript"
+  | "decisions"
+  | "tasks"
+  | "questions"
+  | "points";
 
 interface Tab {
   id: TabId;
@@ -579,7 +656,7 @@ interface Tab {
 export function MeetingPostPage() {
   const { meetingId = "" } = useParams<{ meetingId: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabId>("decisions");
+  const [activeTab, setActiveTab] = useState<TabId>("brief");
   const queryClient = useQueryClient();
 
   const { data: insights, isLoading: insightsLoading } =
@@ -607,6 +684,10 @@ export function MeetingPostPage() {
   }, [complete, meetingId, queryClient]);
 
   const tabs: Tab[] = [
+    {
+      id: "brief",
+      label: "Brief",
+    },
     {
       id: "transcript",
       label: "Transcript",
@@ -724,6 +805,13 @@ export function MeetingPostPage() {
 
         {/* Tab content */}
         <div aria-labelledby={`tab-${activeTab}`} role="tabpanel">
+          {activeTab === "brief" &&
+            (insightsLoading ? (
+              <SkeletonRows count={4} />
+            ) : (
+              <BriefTab analysis={insights?.analysis} />
+            ))}
+
           {activeTab === "transcript" && (
             <TranscriptTab meetingId={meetingId} />
           )}

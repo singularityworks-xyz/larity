@@ -2,6 +2,7 @@
  * Types for the post-meeting insights view.
  * These mirror the Prisma models returned by the control app endpoints.
  */
+import type { MeetingAnalysis } from "@larity/infra/prisma/meeting-analysis.types";
 
 export type DecisionStatus = "ACTIVE" | "SUPERSEDED" | "REVOKED";
 
@@ -79,6 +80,7 @@ export interface ImportantPoint {
 }
 
 export interface MeetingInsights {
+  analysis: MeetingAnalysis | null;
   decisions: Decision[];
   tasks: Task[];
   openQuestions: OpenQuestion[];
