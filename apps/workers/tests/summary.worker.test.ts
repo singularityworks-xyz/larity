@@ -250,7 +250,20 @@ describe("SummaryWorker Integration", () => {
     const { ai } = await import("../src/lib/gemini");
     const originalGenerateContent = ai.models.generateContent;
     ai.models.generateContent = mock().mockResolvedValue({
-      text: "The team agreed to build the product with TypeScript and scheduled a database migration.",
+      text: JSON.stringify({
+        purpose: "Define the implementation timeline.",
+        outcome: "Approved the plan.",
+        prose: "A detailed paragraph summarizing what happened.",
+        tone: "POSITIVE",
+        clientSentiment: "ENTHUSIASTIC",
+        keyMoments: [
+          {
+            timestamp: 45,
+            description: "Richard agreed to plan",
+            category: "DECISION",
+          },
+        ],
+      }),
     }) as any;
 
     // 3. Execute Worker
@@ -294,8 +307,18 @@ describe("SummaryWorker Integration", () => {
       expect(mockMeetingUpdate).toHaveBeenCalledWith({
         where: { id: "meeting-1" },
         data: {
-          summary:
-            "The team agreed to build the product with TypeScript and scheduled a database migration.",
+          summary: expect.objectContaining({
+            purpose: "Define the implementation timeline.",
+            outcome: "Approved the plan.",
+            prose: "A detailed paragraph summarizing what happened.",
+            tone: "POSITIVE",
+            clientSentiment: "ENTHUSIASTIC",
+            keyMoments: expect.any(Array),
+            speakers: expect.any(Array),
+            durationSeconds: expect.any(Number),
+            participantCount: expect.any(Number),
+            generatedAt: expect.any(String),
+          }),
         },
       });
     } finally {

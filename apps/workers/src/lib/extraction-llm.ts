@@ -132,8 +132,12 @@ const SYSTEM_INSTRUCTION = `You are a world-class executive assistant and busine
 Specifically, extract:
 1. Decisions: Formal resolutions, choices, or agreements made during the discussion.
 2. Tasks (Action Items): Explicit or implicit tasks assigned to a specific person or team.
+   - MANDATORY: Every task title must start with an action verb (e.g., "Send", "Schedule", "Review", "Prepare", "Write", "Investigate"). If no assignee is mentioned, set "assigneeHint" to null.
 3. Open Questions: Questions raised during the meeting that were left unresolved or tabled for later.
 4. Important Points: High-signal statements classified as COMMITMENT (promises made), CONSTRAINT (limitations/requirements), INSIGHT (valuable takeaways), WARNING (threats or alerts), RISK (potential failures), or OPPORTUNITY (potential gains).
+   - MANDATORY for COMMITMENT important points: always write "content" as a clean, concise first-person statement of the promise (e.g., "We will send the benchmark report by EOD" or "I will check the logs"). Never paste raw transcript text. Always populate "speakerHint" with the person making the commitment.
+
+MANDATORY FOR ALL EXTRACTED ITEMS: Always populate "transcriptEvidence" with the exact speaker turn that triggered the item (e.g., "[Richard Sterling]: I need proof you've stress tested"). Keep this evidence to exactly one sentence.
 
 Extract hints for assignees/speakers/evidence exactly as they appear in the transcript (e.g. speaker names or speaker labels). For dates, try to parse relative dates into ISO format based on the context, or leave them blank. Ensure your output is highly professional and ready for a dashboard. Keep titles clear and concise.`;
 
@@ -182,7 +186,6 @@ export async function extractInsightsFromTranscriptChunk(
     if (controller.signal.aborted) {
       throw new Error("Gemini meeting extraction timed out");
     }
-    console.error("Gemini extraction failed:", error);
     throw error;
   } finally {
     clearTimeout(timeoutHandle);

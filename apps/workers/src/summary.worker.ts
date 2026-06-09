@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "@larity/infra/prisma/client";
+import type { MeetingAnalysis } from "@larity/infra/prisma/meeting-analysis.types";
 import type { SummaryJobData } from "@larity/jobs";
 import type { Job } from "bullmq";
 import { Prisma } from "../../../packages/infra/prisma/generated/prisma/client";
@@ -7,23 +8,24 @@ import { chunkUtterances } from "./lib/chunking";
 import {
   getCommitmentEmbedding,
   getSessionCommitments,
+  type RedisCommitment,
 } from "./lib/commitments";
 import { cosineSimilarity, deduplicateItems } from "./lib/deduplication";
 import { generateEmbedding } from "./lib/embeddings";
 import {
-  EXTRACTION_MODEL,
   type ExtractedDecision,
   type ExtractedImportantPoint,
   type ExtractedOpenQuestion,
   type ExtractedTask,
   extractInsightsFromTranscriptChunk,
 } from "./lib/extraction-llm";
-import { ai } from "./lib/gemini";
+import { generateMeetingAnalysis } from "./lib/final-analysis-llm";
 import {
   cleanupMeetingStateKeys,
   publishMeetingProcessed,
   setJobStatus,
 } from "./lib/job-status";
+import { computeTalkTime } from "./lib/talk-time";
 import { BaseWorker } from "./worker";
 
 interface Utterance {
@@ -35,12 +37,141 @@ interface Utterance {
   channel: number;
 }
 
+const SPEAKER_LABEL_CLEANUP_REGEX = /\s*-\s*\d+$/;
+const WORD_SPLIT_REGEX = /\s+/;
+const MIN_UTTERANCE_WORDS = 4;
+const UTTERANCE_EMBED_BATCH = 20;
+
+type MeetingWithRelations = Prisma.MeetingGetPayload<{
+  include: {
+    participants: {
+      include: {
+        user: true;
+      };
+    };
+    client: true;
+  };
+}>;
+
 export class SummaryWorker extends BaseWorker<
   SummaryJobData,
   { success: boolean }
 > {
   constructor() {
     super("meeting.summary");
+  }
+
+  private async generateMeetingAnalysisWrapper(
+    meeting: MeetingWithRelations,
+    utterances: Utterance[],
+    decisions: ExtractedDecision[],
+    tasks: ExtractedTask[],
+    openQuestions: ExtractedOpenQuestion[],
+    importantPoints: ExtractedImportantPoint[],
+    commitments: RedisCommitment[]
+  ): Promise<MeetingAnalysis | null> {
+    try {
+      const durationSeconds =
+        meeting.endedAt && meeting.startedAt
+          ? Math.round(
+              (meeting.endedAt.getTime() - meeting.startedAt.getTime()) / 1000
+            )
+          : 0;
+
+      const talkTimeStats = computeTalkTime(utterances);
+      const participantsForLLM = meeting.participants.map((p) => {
+        const name = p.user?.name || p.externalName || "Unknown";
+        const role = p.userId
+          ? ("TEAM_MEMBER" as const)
+          : ("EXTERNAL" as const);
+        return { name, role };
+      });
+
+      const partialAnalysis = await generateMeetingAnalysis({
+        meetingTitle: meeting.title,
+        clientName: meeting.client.name,
+        participants: participantsForLLM,
+        decisions,
+        tasks,
+        openQuestions,
+        importantPoints,
+        talkTimeStats,
+        durationSeconds,
+        utterances,
+      });
+
+      // Compute speaker stats using talkTimeStats, commitments and open questions counts
+      const commitmentCounts: Record<string, number> = {};
+      for (const c of commitments) {
+        const name = c.speaker.name || "Unknown";
+        commitmentCounts[name] = (commitmentCounts[name] || 0) + 1;
+      }
+
+      const questionCounts: Record<string, number> = {};
+      for (const q of openQuestions) {
+        const name = q.assigneeHint || "Unknown";
+        questionCounts[name] = (questionCounts[name] || 0) + 1;
+      }
+
+      const speakers: MeetingAnalysis["speakers"] = Object.entries(
+        talkTimeStats
+      ).map(([speakerLabel, stats]) => {
+        const participant = meeting.participants.find((p) => {
+          const pName = (p.user?.name || p.externalName || "").toLowerCase();
+          const sClean = speakerLabel
+            .replace(SPEAKER_LABEL_CLEANUP_REGEX, "")
+            .toLowerCase()
+            .trim();
+
+          if (pName === sClean) {
+            return true;
+          }
+          if (sClean.length >= 5 && pName.startsWith(sClean)) {
+            return true;
+          }
+          if (pName.length >= 5 && sClean.startsWith(pName)) {
+            return true;
+          }
+          return false;
+        });
+
+        let role: "TEAM_MEMBER" | "EXTERNAL" | "UNKNOWN" = "UNKNOWN";
+        if (participant) {
+          role = participant.userId ? "TEAM_MEMBER" : "EXTERNAL";
+        }
+
+        return {
+          speakerLabel,
+          participantId: participant?.userId || undefined,
+          name:
+            participant?.user?.name ||
+            participant?.externalName ||
+            speakerLabel,
+          role,
+          talkTimePercent: stats.talkTimePercent,
+          utteranceCount: stats.utteranceCount,
+          commitmentCount:
+            commitmentCounts[
+              participant?.user?.name || participant?.externalName || ""
+            ] || 0,
+          assignedQuestionCount:
+            questionCounts[
+              participant?.user?.name || participant?.externalName || ""
+            ] || 0,
+        };
+      });
+
+      return {
+        ...partialAnalysis,
+        speakers,
+        durationSeconds,
+        participantCount: meeting.participants.length,
+        generatedAt: new Date().toISOString(),
+      };
+    } catch (err) {
+      this.log.error({ err }, "Failed to generate structured meeting analysis");
+      return null;
+    }
   }
 
   protected async process(
@@ -258,28 +389,16 @@ export class SummaryWorker extends BaseWorker<
         })
       );
 
-      // 11. Generate meeting summary overview (network call outside transaction)
-      let summaryText: string | null = null;
-      const overviewPrompt = `Draft a concise 2-3 sentence overview summary of the meeting based on the following transcript segments:\n\n${utterances
-        .slice(0, 10)
-        .map((u) => `[${u.speaker}]: ${u.text}`)
-        .join("\n")}\n...\n${utterances
-        .slice(-10)
-        .map((u) => `[${u.speaker}]: ${u.text}`)
-        .join("\n")}`;
-
-      try {
-        const overviewResponse = await ai.models.generateContent({
-          model: EXTRACTION_MODEL,
-          contents: overviewPrompt,
-          config: {
-            temperature: 0.2,
-          },
-        });
-        summaryText = overviewResponse.text?.trim() || null;
-      } catch (err) {
-        this.log.error({ err }, "Failed to generate meeting summary overview");
-      }
+      // 11. Generate structured meeting analysis (Tier 3 network call outside transaction)
+      const analysis = await this.generateMeetingAnalysisWrapper(
+        meeting,
+        utterances,
+        decisions,
+        tasks,
+        openQuestions,
+        importantPoints,
+        commitments
+      );
 
       // 12. Prisma transactional write (modularized to satisfy complexity limits)
       await prisma.$transaction(async (tx) => {
@@ -358,10 +477,10 @@ export class SummaryWorker extends BaseWorker<
         );
 
         // Update Meeting Summary
-        if (summaryText) {
+        if (analysis) {
           await tx.meeting.update({
             where: { id: meetingId },
-            data: { summary: summaryText },
+            data: { summary: analysis as unknown as Prisma.InputJsonValue },
           });
         }
       });
@@ -370,6 +489,17 @@ export class SummaryWorker extends BaseWorker<
         { meetingId },
         "Insights extraction and persistence finished successfully"
       );
+
+      // 13. Tier 4: Persist and embed raw utterances for Assistant RAG (outside main transaction)
+      try {
+        await this.persistUtterances(meeting.clientId, meetingId, utterances);
+      } catch (err) {
+        this.log.error(
+          { err, meetingId },
+          "Failed to embed and persist utterances for Assistant"
+        );
+        // Non-fatal, do not throw
+      }
 
       // Write job status done, publish completed event, and clean up Redis keys
       await setJobStatus(sessionId, "summary", "done");
@@ -560,5 +690,71 @@ export class SummaryWorker extends BaseWorker<
         );
       }
     }
+  }
+
+  private async persistUtterances(
+    clientId: string,
+    meetingId: string,
+    utterances: Utterance[]
+  ): Promise<void> {
+    await prisma.transcriptUtterance.deleteMany({ where: { meetingId } });
+
+    const eligible = utterances.filter(
+      (u) => u.text.trim().split(WORD_SPLIT_REGEX).length >= MIN_UTTERANCE_WORDS
+    );
+
+    if (eligible.length === 0) {
+      this.log.info({ meetingId }, "No eligible utterances for embedding");
+      return;
+    }
+
+    this.log.info(
+      {
+        meetingId,
+        totalUtterances: utterances.length,
+        eligible: eligible.length,
+      },
+      "Embedding utterances for assistant compatibility"
+    );
+
+    const rows = await Promise.all(
+      eligible.map((u) =>
+        prisma.transcriptUtterance.create({
+          data: {
+            meetingId,
+            clientId,
+            speaker: u.speaker,
+            text: u.text,
+            timestamp: u.timestamp,
+            duration: u.duration,
+            channel: u.channel,
+          },
+        })
+      )
+    );
+
+    for (let i = 0; i < rows.length; i += UTTERANCE_EMBED_BATCH) {
+      const batch = rows.slice(i, i + UTTERANCE_EMBED_BATCH);
+      await Promise.all(
+        batch.map(async (row) => {
+          const embedding = await generateEmbedding(row.text);
+          const vectorStr = `[${embedding.join(",")}]`;
+          await prisma.$executeRawUnsafe(
+            "UPDATE transcript_utterances SET embedding = $1::vector WHERE id = $2",
+            vectorStr,
+            row.id
+          );
+        })
+      );
+      this.log.info(
+        { meetingId, batchIndex: i / UTTERANCE_EMBED_BATCH },
+        "Utterance embedding batch complete"
+      );
+    }
+
+    this.log.info(
+      { meetingId, embeddedCount: rows.length },
+      "Utterance embedding complete"
+    );
   }
 }

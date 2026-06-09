@@ -1,4 +1,7 @@
+import { createWorkerLogger } from "../logger";
 import { generateEmbedding } from "./embeddings";
+
+const log = createWorkerLogger("deduplication");
 
 /**
  * Computes the cosine similarity between two numeric vectors.
@@ -46,7 +49,10 @@ export async function deduplicateItems<T extends DeduplicatableItem>(
         const embedding = await generateEmbedding(item.textToEmbed);
         return { item, embedding };
       } catch (error) {
-        console.error("Failed to generate embedding for deduplication:", error);
+        log.warn(
+          { err: error },
+          "Failed to generate embedding; item kept without deduplication"
+        );
         // Return null embedding on failure, which will prevent similarity matches
         return { item, embedding: null as number[] | null };
       }
