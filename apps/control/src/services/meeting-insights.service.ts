@@ -38,29 +38,15 @@ export const MeetingInsightsService = {
         }),
       ]);
 
-    const commitments = importantPoints.filter(
-      (p) => p.category === "COMMITMENT"
-    );
-    const otherPoints = importantPoints.filter(
-      (p) => p.category !== "COMMITMENT"
-    );
-
     const rawSummary = meeting?.summary;
     const analysis = isMeetingAnalysis(rawSummary) ? rawSummary : null;
 
     return {
       analysis,
       decisions,
-      commitments,
       tasks,
       openQuestions,
-      importantPoints: {
-        risks: otherPoints.filter((p) => p.category === "RISK"),
-        constraints: otherPoints.filter((p) => p.category === "CONSTRAINT"),
-        insights: otherPoints.filter((p) => p.category === "INSIGHT"),
-        warnings: otherPoints.filter((p) => p.category === "WARNING"),
-        opportunities: otherPoints.filter((p) => p.category === "OPPORTUNITY"),
-      },
+      importantPoints,
     };
   },
 };
