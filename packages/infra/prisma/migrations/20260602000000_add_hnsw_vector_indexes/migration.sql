@@ -6,6 +6,11 @@
 -- Enable pgvector if not already enabled (this is a precaution)
 CREATE EXTENSION IF NOT EXISTS vector;
 
+-- Add embedding columns if they do not exist
+ALTER TABLE decisions ADD COLUMN IF NOT EXISTS embedding vector(768);
+ALTER TABLE important_points ADD COLUMN IF NOT EXISTS embedding vector(768);
+ALTER TABLE policy_guardrails ADD COLUMN IF NOT EXISTS embedding vector(768);
+
 -- HNSW index on decisions.embedding
 CREATE INDEX IF NOT EXISTS decisions_embedding_hnsw_idx
   ON decisions
