@@ -68,7 +68,8 @@ export const ModelName = {
   ImportantPoint: 'ImportantPoint',
   PolicyGuardrail: 'PolicyGuardrail',
   Document: 'Document',
-  Reminder: 'Reminder'
+  Reminder: 'Reminder',
+  TranscriptUtterance: 'TranscriptUtterance'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -377,6 +378,21 @@ export const ReminderScalarFieldEnum = {
 } as const
 
 export type ReminderScalarFieldEnum = (typeof ReminderScalarFieldEnum)[keyof typeof ReminderScalarFieldEnum]
+
+
+export const TranscriptUtteranceScalarFieldEnum = {
+  id: 'id',
+  meetingId: 'meetingId',
+  clientId: 'clientId',
+  speaker: 'speaker',
+  text: 'text',
+  timestamp: 'timestamp',
+  duration: 'duration',
+  channel: 'channel',
+  createdAt: 'createdAt'
+} as const
+
+export type TranscriptUtteranceScalarFieldEnum = (typeof TranscriptUtteranceScalarFieldEnum)[keyof typeof TranscriptUtteranceScalarFieldEnum]
 
 
 export const SortOrder = {
