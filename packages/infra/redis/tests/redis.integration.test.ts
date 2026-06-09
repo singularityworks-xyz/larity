@@ -12,7 +12,7 @@ interface DockerContainer {
 
 class RedisTestContainer {
   private container: DockerContainer | null = null;
-  private readonly redisUrl = "redis://localhost:6379";
+  private readonly redisUrl = "redis://127.0.0.1:6379";
   private started = false;
 
   wasStarted(): boolean {
