@@ -9,8 +9,6 @@ import {
 } from "bun:test";
 // biome-ignore lint/performance/noNamespaceImport: needed for spyOn mocking
 import * as infraRedis from "@larity/infra/redis";
-// biome-ignore lint/performance/noNamespaceImport: needed for spyOn mocking
-import * as stt from "@larity/stt";
 
 const mockS3Send = mock();
 const mockRedisSet = mock();
@@ -21,6 +19,10 @@ const mockPrismaMeetingFindUnique = mock();
 const mockPrismaTranscriptUpsert = mock();
 const mockSummaryQueueAdd = mock();
 const mockTranscribeAudioBuffer = mock();
+
+mock.module("@larity/stt", () => ({
+  transcribeAudioBuffer: mockTranscribeAudioBuffer,
+}));
 
 // Mock modules
 mock.module("@larity/infra/s3", () => ({
@@ -109,7 +111,6 @@ mock.module("@larity/jobs", () => ({
 }));
 
 describe("TranscribeWorker", () => {
-  let transcribeAudioBufferSpy: any;
   let getRedisClientSpy: any;
   let connectRedisSpy: any;
   let disconnectRedisSpy: any;
@@ -120,11 +121,6 @@ describe("TranscribeWorker", () => {
   let redisHsetSpy: any;
 
   beforeEach(() => {
-    transcribeAudioBufferSpy = spyOn(
-      stt,
-      "transcribeAudioBuffer"
-    ).mockImplementation(mockTranscribeAudioBuffer);
-
     const r = {
       set: mockRedisSet,
       expire: mockRedisExpire,
@@ -189,7 +185,6 @@ describe("TranscribeWorker", () => {
   });
 
   afterEach(() => {
-    transcribeAudioBufferSpy.mockRestore();
     getRedisClientSpy.mockRestore();
     connectRedisSpy.mockRestore();
     disconnectRedisSpy.mockRestore();

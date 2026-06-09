@@ -39,6 +39,18 @@ mock.module("@aws-sdk/client-s3", () => ({
       }
     }
   },
+  GetObjectCommand: class MockGetObjectCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+      if ((globalThis as any).s3Calls) {
+        (globalThis as any).s3Calls.push({
+          command: "GetObjectCommand",
+          input,
+        });
+      }
+    }
+  },
 }));
 
 mock.module("@aws-sdk/lib-storage", () => ({
