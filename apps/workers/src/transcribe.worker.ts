@@ -285,6 +285,11 @@ export class TranscribeWorker extends BaseWorker<
           },
         },
       });
+
+      if (meeting?.speakerMappings) {
+        Object.assign(sessionState.speakerMappings, meeting.speakerMappings);
+      }
+
       const clientName = meeting?.client?.name;
       const hostName =
         meeting?.participants?.[0]?.user?.name ||

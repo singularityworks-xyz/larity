@@ -35,6 +35,7 @@ interface Utterance {
   timestamp: number; // in seconds
   duration: number; // in seconds
   channel: number;
+  type?: "TEAM" | "EXTERNAL";
 }
 
 const SPEAKER_LABEL_CLEANUP_REGEX = /\s*-\s*\d+$/;
@@ -79,11 +80,32 @@ export class SummaryWorker extends BaseWorker<
           : 0;
 
       const talkTimeStats = computeTalkTime(utterances);
+      const speakerRolesFromUtterances = new Map<
+        string,
+        "TEAM_MEMBER" | "EXTERNAL"
+      >();
+      for (const u of utterances) {
+        if (u.type) {
+          const roleVal = u.type === "TEAM" ? "TEAM_MEMBER" : "EXTERNAL";
+          speakerRolesFromUtterances.set(
+            u.speaker.toLowerCase().trim(),
+            roleVal
+          );
+        }
+      }
+
       const participantsForLLM = meeting.participants.map((p) => {
         const name = p.user?.name || p.externalName || "Unknown";
-        const role = p.userId
+        const cleanName = name.toLowerCase().trim();
+        let role: "TEAM_MEMBER" | "EXTERNAL" = p.userId
           ? ("TEAM_MEMBER" as const)
           : ("EXTERNAL" as const);
+
+        const overrideRole = speakerRolesFromUtterances.get(cleanName);
+        if (overrideRole) {
+          role = overrideRole;
+        }
+
         return { name, role };
       });
 
@@ -136,7 +158,17 @@ export class SummaryWorker extends BaseWorker<
         });
 
         let role: "TEAM_MEMBER" | "EXTERNAL" | "UNKNOWN" = "UNKNOWN";
-        if (participant) {
+        const uClean = speakerLabel
+          .replace(SPEAKER_LABEL_CLEANUP_REGEX, "")
+          .toLowerCase()
+          .trim();
+        const uttType = utterances.find(
+          (u) => u.speaker.toLowerCase().trim() === uClean
+        )?.type;
+
+        if (uttType) {
+          role = uttType === "TEAM" ? "TEAM_MEMBER" : "EXTERNAL";
+        } else if (participant) {
           role = participant.userId ? "TEAM_MEMBER" : "EXTERNAL";
         }
 

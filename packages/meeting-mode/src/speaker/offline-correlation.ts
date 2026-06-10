@@ -250,10 +250,10 @@ export function translateBatchSpeakerName(
   channel: number,
   speakerMappings: Record<string, SessionStateSpeakerMapping>,
   clientName?: string
-): string {
+): { name: string; type: "TEAM" | "EXTERNAL" } {
   const match = speakerLabel.match(DIGIT_REGEX);
   if (!match) {
-    return speakerLabel;
+    return { name: speakerLabel, type: channel === 0 ? "TEAM" : "EXTERNAL" };
   }
 
   const idxNum = Number.parseInt(match[0], 10);
@@ -261,23 +261,26 @@ export function translateBatchSpeakerName(
   const expectedLiveIndex = idxNum + channel * 1000;
 
   for (const mapping of Object.values(speakerMappings)) {
-    if (
-      mapping.diarizationIndex === expectedLiveIndex &&
-      mapping.speaker.type === "EXTERNAL"
-    ) {
-      if (clientName) {
-        return `${clientName} - ${idxNum + 1}`;
+    if (mapping.diarizationIndex === expectedLiveIndex) {
+      if (clientName && mapping.speaker.type === "EXTERNAL") {
+        return {
+          name: `${clientName} - ${idxNum + 1}`,
+          type: mapping.speaker.type,
+        };
       }
-      return mapping.speaker.name;
+      return { name: mapping.speaker.name, type: mapping.speaker.type };
     }
   }
 
   if (clientName && channel === 1) {
-    return `${clientName} - ${idxNum + 1}`;
+    return { name: `${clientName} - ${idxNum + 1}`, type: "EXTERNAL" };
   }
 
   const charCode = 65 + (idxNum % 26);
-  return `Speaker ${String.fromCharCode(charCode)}`;
+  return {
+    name: `Speaker ${String.fromCharCode(charCode)}`,
+    type: channel === 0 ? "TEAM" : "EXTERNAL",
+  };
 }
 
 /**
@@ -341,7 +344,7 @@ function textualFallback(
   segment: BatchUtteranceSegment,
   liveUtterances: Utterance[],
   connectionStartTimeSec: number
-): string | null {
+): Utterance | null {
   const candidates = liveUtterances.filter((lu) => {
     const luTimeSec =
       lu.timestamp > TIMESTAMP_MS_THRESHOLD
@@ -367,7 +370,7 @@ function textualFallback(
 
   const threshold = segment.channel === 1 ? 0.3 : 0.7;
   if (bestMatch && bestSim >= threshold) {
-    return bestMatch.speaker.name;
+    return bestMatch;
   }
 
   return null;
@@ -376,6 +379,59 @@ function textualFallback(
 /**
  * Core speaker correlation engine for a single segment.
  */
+function checkVadCorrelation(
+  segment: BatchUtteranceSegment,
+  segmentStartMs: number,
+  segmentEndMs: number,
+  segmentDurationMs: number,
+  vadIntervals: VadInterval[],
+  teamMemberMap: Map<string, SessionStateTeamMember>,
+  userToNameMap: Map<string, string>,
+  liveUtterances: Utterance[],
+  connectionStartTimeSec: number
+): {
+  name: string | null;
+  type: "TEAM" | "EXTERNAL" | null;
+  isAmbiguous: boolean;
+} {
+  const vadResult = correlateVAD(
+    segment,
+    segmentStartMs,
+    segmentEndMs,
+    segmentDurationMs,
+    vadIntervals,
+    teamMemberMap,
+    userToNameMap
+  );
+
+  if (vadResult.name) {
+    let correlatedSpeakerType: "TEAM" | "EXTERNAL" = "TEAM";
+    let isAmbiguous = false;
+
+    // Live Transcript Cross-Check
+    const matchedLiveUtt = liveUtterances.find((lu) => {
+      const luTimeSec =
+        lu.timestamp > TIMESTAMP_MS_THRESHOLD
+          ? lu.timestamp / 1000
+          : lu.timestamp;
+      const luRelativeSec = luTimeSec - connectionStartTimeSec;
+      return (
+        Math.abs(segment.timestamp - luRelativeSec) <=
+        RECONCILIATION_WINDOW_SECONDS
+      );
+    });
+
+    if (matchedLiveUtt?.speaker?.type === "EXTERNAL") {
+      isAmbiguous = true;
+      correlatedSpeakerType = "EXTERNAL";
+    }
+
+    return { name: vadResult.name, type: correlatedSpeakerType, isAmbiguous };
+  }
+
+  return { name: null, type: null, isAmbiguous: vadResult.isAmbiguous };
+}
+
 function correlateSingleSegment(
   segment: BatchUtteranceSegment,
   vadIntervals: VadInterval[],
@@ -387,58 +443,57 @@ function correlateSingleSegment(
   effectiveHostName: string,
   speakerMappings: Record<string, SessionStateSpeakerMapping>,
   clientName?: string
-): string {
+): { name: string; type: "TEAM" | "EXTERNAL" } {
+  const match = segment.speaker.match(DIGIT_REGEX);
+  const idxNum = match ? Number.parseInt(match[0], 10) : -1;
+  const expectedLiveIndex =
+    idxNum !== -1 ? idxNum + segment.channel * 1000 : -1;
+
+  if (expectedLiveIndex !== -1) {
+    const manualMapping = speakerMappings[expectedLiveIndex.toString()];
+    if (manualMapping) {
+      return {
+        name: manualMapping.speaker.name,
+        type: manualMapping.speaker.type,
+      };
+    }
+  }
+
   const segmentStartMs = connectionStartTime + segment.timestamp * 1000;
   const segmentEndMs = segmentStartMs + segment.duration * 1000;
   const segmentDurationMs = segment.duration * 1000;
 
   let correlatedSpeakerName: string | null = null;
+  let correlatedSpeakerType: "TEAM" | "EXTERNAL" | null = null;
   let isAmbiguous = false;
 
   if (segmentDurationMs > 0) {
-    const vadResult = correlateVAD(
+    const vadCheck = checkVadCorrelation(
       segment,
       segmentStartMs,
       segmentEndMs,
       segmentDurationMs,
       vadIntervals,
       teamMemberMap,
-      userToNameMap
+      userToNameMap,
+      liveUtterances,
+      connectionStartTimeSec
     );
-
-    if (vadResult.name) {
-      correlatedSpeakerName = vadResult.name;
-
-      // Live Transcript Cross-Check
-      const matchedLiveUtt = liveUtterances.find((lu) => {
-        const luTimeSec =
-          lu.timestamp > TIMESTAMP_MS_THRESHOLD
-            ? lu.timestamp / 1000
-            : lu.timestamp;
-        const luRelativeSec = luTimeSec - connectionStartTimeSec;
-        return (
-          Math.abs(segment.timestamp - luRelativeSec) <=
-          RECONCILIATION_WINDOW_SECONDS
-        );
-      });
-
-      if (matchedLiveUtt?.speaker?.type === "EXTERNAL") {
-        isAmbiguous = true;
-      }
-    } else if (vadResult.isAmbiguous) {
-      isAmbiguous = true;
-    }
+    correlatedSpeakerName = vadCheck.name;
+    correlatedSpeakerType = vadCheck.type;
+    isAmbiguous = vadCheck.isAmbiguous;
   }
 
   // Textual Fallback
   if (!correlatedSpeakerName || isAmbiguous) {
-    const fallbackName = textualFallback(
+    const fallbackMatch = textualFallback(
       segment,
       liveUtterances,
       connectionStartTimeSec
     );
-    if (fallbackName) {
-      correlatedSpeakerName = fallbackName;
+    if (fallbackMatch) {
+      correlatedSpeakerName = fallbackMatch.speaker.name;
+      correlatedSpeakerType = fallbackMatch.speaker.type;
     }
   }
 
@@ -446,17 +501,22 @@ function correlateSingleSegment(
   if (!correlatedSpeakerName) {
     if (segment.channel === 0) {
       correlatedSpeakerName = effectiveHostName;
+      correlatedSpeakerType = "TEAM";
     } else {
-      correlatedSpeakerName = translateBatchSpeakerName(
+      const translated = translateBatchSpeakerName(
         segment.speaker,
         segment.channel,
         speakerMappings,
         clientName
       );
+      correlatedSpeakerName = translated.name;
+      correlatedSpeakerType = translated.type;
     }
   }
 
-  return correlatedSpeakerName;
+  const finalType =
+    correlatedSpeakerType ?? (segment.channel === 0 ? "TEAM" : "EXTERNAL");
+  return { name: correlatedSpeakerName, type: finalType };
 }
 
 /**
@@ -579,7 +639,7 @@ export function processOfflineCorrelation(options: {
   const resultSegments: BatchUtteranceSegment[] = [];
 
   for (const segment of nonEchoSegments) {
-    const correlatedName = correlateSingleSegment(
+    const correlated = correlateSingleSegment(
       segment,
       vadIntervals,
       teamMemberMap,
@@ -594,8 +654,8 @@ export function processOfflineCorrelation(options: {
 
     resultSegments.push({
       ...segment,
-      speaker: correlatedName,
-      speakerType: segment.channel === 0 ? "TEAM" : "EXTERNAL",
+      speaker: correlated.name,
+      speakerType: correlated.type,
     });
   }
 
