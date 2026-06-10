@@ -1,12 +1,16 @@
-import Groq from "groq-sdk";
-import { GROQ_API_KEY, GROQ_TIER2_MODEL, GROQ_TIER2_TIMEOUT_MS } from "../env";
+import OpenAI from "openai";
+import {
+  SAMBANOVA_API_KEY,
+  SAMBANOVA_TIER2_MODEL,
+  SAMBANOVA_TIER2_TIMEOUT_MS,
+} from "../env";
 import { createMeetingModeLogger } from "../logger";
 import type { Tier2Classification, Tier2Input, Tier2Outcome } from "./types";
 import { tier2ClassificationSchema } from "./types";
 
 const log = createMeetingModeLogger("tier2-classifier");
 
-/** Groq strict `json_schema` can spend many tokens before a valid doc; 400 was too low (intermittent `max completion tokens reached`). */
+/** OpenAI strict `json_schema` can spend many tokens before a valid doc; 400 was too low (intermittent `max completion tokens reached`). */
 const TIER2_MAX_COMPLETION_TOKENS = 1024;
 
 export interface Tier2InvokeResult {
@@ -21,7 +25,7 @@ export interface Tier2ClassifierOptions {
 }
 
 export class Tier2Classifier {
-  private readonly groq: Groq | undefined;
+  private readonly openai: OpenAI | undefined;
   private readonly timeoutMs: number;
   private readonly invoke: (
     input: Tier2Input,
@@ -29,14 +33,18 @@ export class Tier2Classifier {
   ) => Promise<Tier2InvokeResult>;
 
   constructor(options: Tier2ClassifierOptions = {}) {
-    this.timeoutMs = options.timeoutMs ?? GROQ_TIER2_TIMEOUT_MS;
+    this.timeoutMs = options.timeoutMs ?? SAMBANOVA_TIER2_TIMEOUT_MS;
     if (options.invoke) {
-      this.groq = undefined;
+      this.openai = undefined;
       this.invoke = options.invoke;
     } else {
-      this.groq = new Groq({ apiKey: GROQ_API_KEY, maxRetries: 0 });
+      this.openai = new OpenAI({
+        apiKey: SAMBANOVA_API_KEY,
+        baseURL: "https://api.sambanova.ai/v1",
+        maxRetries: 0,
+      });
       this.invoke = (input, timeoutMs) =>
-        this.invokeGroqTier2(input, timeoutMs);
+        this.invokeSambaNovaTier2(input, timeoutMs);
     }
   }
 
@@ -79,17 +87,17 @@ export class Tier2Classifier {
     }
   }
 
-  private async invokeGroqTier2(
+  private async invokeSambaNovaTier2(
     input: Tier2Input,
     timeoutMs: number
   ): Promise<Tier2InvokeResult> {
-    if (!this.groq) {
-      throw new Error("Tier2 Groq client not initialized");
+    if (!this.openai) {
+      throw new Error("Tier2 SambaNova client not initialized");
     }
 
-    const completion = await this.groq.chat.completions.create(
+    const completion = await this.openai.chat.completions.create(
       {
-        model: GROQ_TIER2_MODEL,
+        model: SAMBANOVA_TIER2_MODEL,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: buildUserMessage(input) },
@@ -110,7 +118,7 @@ export class Tier2Classifier {
 
     const text = completion.choices[0]?.message?.content;
     if (!text?.trim()) {
-      throw new Error("Groq tier2 returned empty content");
+      throw new Error("SambaNova tier2 returned empty content");
     }
 
     return {
@@ -253,7 +261,7 @@ function parseTier2Response(raw: string): unknown {
   return JSON.parse(trimmed);
 }
 
-/** Groq strict JSON Schema: every key under `properties` must appear in `required`; use null for unused fields. */
+/** OpenAI strict JSON Schema: every key under `properties` must appear in `required`; use null for unused fields. */
 function nullableString(): { anyOf: [{ type: "string" }, { type: "null" }] } {
   return { anyOf: [{ type: "string" }, { type: "null" }] };
 }
@@ -262,7 +270,7 @@ function nullableNumber(): { anyOf: [{ type: "number" }, { type: "null" }] } {
   return { anyOf: [{ type: "number" }, { type: "null" }] };
 }
 
-/** JSON Schema for Groq `response_format.json_schema` (strict). */
+/** JSON Schema for OpenAI `response_format.json_schema` (strict). */
 function getTier2JsonSchema(): Record<string, unknown> {
   const topicDeltaObject = {
     type: "object",
