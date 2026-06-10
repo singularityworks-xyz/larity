@@ -3,7 +3,7 @@ import { createAlert } from "../alerts/types";
 import type { Commitment } from "../commitment/types";
 import type { Constraint, PreloadedContextPayload } from "../constraint/types";
 import { CostManager } from "../cost/manager";
-import { GEMINI_TIER4_MODEL, GROQ_TIER2_MODEL } from "../env";
+import { GEMINI_TIER4_MODEL, SAMBANOVA_TIER2_MODEL } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import { SpeakerStateTracker } from "../speaker-state/tracker";
 import type { SpeakerStateAlert } from "../speaker-state/types";
@@ -897,7 +897,7 @@ export class MeetingPipelineEngine {
           sessionId,
           tier2.promptTokens || 0,
           tier2.completionTokens || 0,
-          GROQ_TIER2_MODEL
+          SAMBANOVA_TIER2_MODEL
         )
         .catch((err) =>
           log.warn(

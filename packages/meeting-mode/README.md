@@ -16,7 +16,7 @@ Realtime meeting intelligence worker: STT finals â†’ **`UtteranceFinalizer`** â†
 | `MERGE_PUBLISH_GAP_MS` | Pending utterance publish flush after audio end |
 | `LEDGER_SNAPSHOT_DEBOUNCE_MS` | Coalesce ledger snapshot `SET`s |
 | `COST_CAP_CACHE_TTL_MS` | Cost gate read hot-cache TTL |
-| `GROQ_TIER2_MODEL` / `GROQ_API_KEY` | Tier 2 classifier |
+| `SAMBANOVA_TIER2_MODEL` / `SAMBANOVA_API_KEY` | Tier 2 classifier |
 
 ## Commands
 
