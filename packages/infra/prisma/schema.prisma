@@ -225,6 +225,7 @@ model Meeting {
   endedAt       DateTime?
   calendarEventId String?
   summary       Json?
+  speakerMappings Json?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

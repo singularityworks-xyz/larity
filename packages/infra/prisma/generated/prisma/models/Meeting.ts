@@ -66,6 +66,7 @@ export type MeetingCountAggregateOutputType = {
   endedAt: number
   calendarEventId: number
   summary: number
+  speakerMappings: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -114,6 +115,7 @@ export type MeetingCountAggregateInputType = {
   endedAt?: true
   calendarEventId?: true
   summary?: true
+  speakerMappings?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -203,6 +205,7 @@ export type MeetingGroupByOutputType = {
   endedAt: Date | null
   calendarEventId: string | null
   summary: runtime.JsonValue | null
+  speakerMappings: runtime.JsonValue | null
   createdAt: Date
   updatedAt: Date
   _count: MeetingCountAggregateOutputType | null
@@ -240,6 +243,7 @@ export type MeetingWhereInput = {
   endedAt?: Prisma.DateTimeNullableFilter<"Meeting"> | Date | string | null
   calendarEventId?: Prisma.StringNullableFilter<"Meeting"> | string | null
   summary?: Prisma.JsonNullableFilter<"Meeting">
+  speakerMappings?: Prisma.JsonNullableFilter<"Meeting">
   createdAt?: Prisma.DateTimeFilter<"Meeting"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Meeting"> | Date | string
   client?: Prisma.XOR<Prisma.ClientScalarRelationFilter, Prisma.ClientWhereInput>
@@ -264,6 +268,7 @@ export type MeetingOrderByWithRelationInput = {
   endedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   calendarEventId?: Prisma.SortOrderInput | Prisma.SortOrder
   summary?: Prisma.SortOrderInput | Prisma.SortOrder
+  speakerMappings?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   client?: Prisma.ClientOrderByWithRelationInput
@@ -291,6 +296,7 @@ export type MeetingWhereUniqueInput = Prisma.AtLeast<{
   endedAt?: Prisma.DateTimeNullableFilter<"Meeting"> | Date | string | null
   calendarEventId?: Prisma.StringNullableFilter<"Meeting"> | string | null
   summary?: Prisma.JsonNullableFilter<"Meeting">
+  speakerMappings?: Prisma.JsonNullableFilter<"Meeting">
   createdAt?: Prisma.DateTimeFilter<"Meeting"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Meeting"> | Date | string
   client?: Prisma.XOR<Prisma.ClientScalarRelationFilter, Prisma.ClientWhereInput>
@@ -315,6 +321,7 @@ export type MeetingOrderByWithAggregationInput = {
   endedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   calendarEventId?: Prisma.SortOrderInput | Prisma.SortOrder
   summary?: Prisma.SortOrderInput | Prisma.SortOrder
+  speakerMappings?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.MeetingCountOrderByAggregateInput
@@ -337,6 +344,7 @@ export type MeetingScalarWhereWithAggregatesInput = {
   endedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Meeting"> | Date | string | null
   calendarEventId?: Prisma.StringNullableWithAggregatesFilter<"Meeting"> | string | null
   summary?: Prisma.JsonNullableWithAggregatesFilter<"Meeting">
+  speakerMappings?: Prisma.JsonNullableWithAggregatesFilter<"Meeting">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Meeting"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Meeting"> | Date | string
 }
@@ -352,6 +360,7 @@ export type MeetingCreateInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   client: Prisma.ClientCreateNestedOneWithoutMeetingsInput
@@ -376,6 +385,7 @@ export type MeetingUncheckedCreateInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput
@@ -398,6 +408,7 @@ export type MeetingUpdateInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput
@@ -422,6 +433,7 @@ export type MeetingUncheckedUpdateInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput
@@ -445,6 +457,7 @@ export type MeetingCreateManyInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -460,6 +473,7 @@ export type MeetingUpdateManyMutationInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -476,6 +490,7 @@ export type MeetingUncheckedUpdateManyInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -502,6 +517,7 @@ export type MeetingCountOrderByAggregateInput = {
   endedAt?: Prisma.SortOrder
   calendarEventId?: Prisma.SortOrder
   summary?: Prisma.SortOrder
+  speakerMappings?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -709,6 +725,7 @@ export type MeetingCreateWithoutClientInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   participants?: Prisma.MeetingParticipantCreateNestedManyWithoutMeetingInput
@@ -731,6 +748,7 @@ export type MeetingUncheckedCreateWithoutClientInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput
@@ -783,6 +801,7 @@ export type MeetingScalarWhereInput = {
   endedAt?: Prisma.DateTimeNullableFilter<"Meeting"> | Date | string | null
   calendarEventId?: Prisma.StringNullableFilter<"Meeting"> | string | null
   summary?: Prisma.JsonNullableFilter<"Meeting">
+  speakerMappings?: Prisma.JsonNullableFilter<"Meeting">
   createdAt?: Prisma.DateTimeFilter<"Meeting"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Meeting"> | Date | string
 }
@@ -798,6 +817,7 @@ export type MeetingCreateWithoutParticipantsInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   client: Prisma.ClientCreateNestedOneWithoutMeetingsInput
@@ -821,6 +841,7 @@ export type MeetingUncheckedCreateWithoutParticipantsInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   transcript?: Prisma.TranscriptUncheckedCreateNestedOneWithoutMeetingInput
@@ -858,6 +879,7 @@ export type MeetingUpdateWithoutParticipantsInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput
@@ -881,6 +903,7 @@ export type MeetingUncheckedUpdateWithoutParticipantsInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   transcript?: Prisma.TranscriptUncheckedUpdateOneWithoutMeetingNestedInput
@@ -902,6 +925,7 @@ export type MeetingCreateWithoutTranscriptInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   client: Prisma.ClientCreateNestedOneWithoutMeetingsInput
@@ -925,6 +949,7 @@ export type MeetingUncheckedCreateWithoutTranscriptInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput
@@ -962,6 +987,7 @@ export type MeetingUpdateWithoutTranscriptInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput
@@ -985,6 +1011,7 @@ export type MeetingUncheckedUpdateWithoutTranscriptInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput
@@ -1006,6 +1033,7 @@ export type MeetingCreateWithoutDecisionsInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   client: Prisma.ClientCreateNestedOneWithoutMeetingsInput
@@ -1029,6 +1057,7 @@ export type MeetingUncheckedCreateWithoutDecisionsInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput
@@ -1066,6 +1095,7 @@ export type MeetingUpdateWithoutDecisionsInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput
@@ -1089,6 +1119,7 @@ export type MeetingUncheckedUpdateWithoutDecisionsInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput
@@ -1110,6 +1141,7 @@ export type MeetingCreateWithoutTasksInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   client: Prisma.ClientCreateNestedOneWithoutMeetingsInput
@@ -1133,6 +1165,7 @@ export type MeetingUncheckedCreateWithoutTasksInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput
@@ -1170,6 +1203,7 @@ export type MeetingUpdateWithoutTasksInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput
@@ -1193,6 +1227,7 @@ export type MeetingUncheckedUpdateWithoutTasksInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput
@@ -1214,6 +1249,7 @@ export type MeetingCreateWithoutOpenQuestionsInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   client: Prisma.ClientCreateNestedOneWithoutMeetingsInput
@@ -1237,6 +1273,7 @@ export type MeetingUncheckedCreateWithoutOpenQuestionsInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput
@@ -1274,6 +1311,7 @@ export type MeetingUpdateWithoutOpenQuestionsInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput
@@ -1297,6 +1335,7 @@ export type MeetingUncheckedUpdateWithoutOpenQuestionsInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput
@@ -1318,6 +1357,7 @@ export type MeetingCreateWithoutImportantPointsInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   client: Prisma.ClientCreateNestedOneWithoutMeetingsInput
@@ -1341,6 +1381,7 @@ export type MeetingUncheckedCreateWithoutImportantPointsInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput
@@ -1378,6 +1419,7 @@ export type MeetingUpdateWithoutImportantPointsInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput
@@ -1401,6 +1443,7 @@ export type MeetingUncheckedUpdateWithoutImportantPointsInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput
@@ -1422,6 +1465,7 @@ export type MeetingCreateWithoutUtterancesInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   client: Prisma.ClientCreateNestedOneWithoutMeetingsInput
@@ -1445,6 +1489,7 @@ export type MeetingUncheckedCreateWithoutUtterancesInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   participants?: Prisma.MeetingParticipantUncheckedCreateNestedManyWithoutMeetingInput
@@ -1482,6 +1527,7 @@ export type MeetingUpdateWithoutUtterancesInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   client?: Prisma.ClientUpdateOneRequiredWithoutMeetingsNestedInput
@@ -1505,6 +1551,7 @@ export type MeetingUncheckedUpdateWithoutUtterancesInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput
@@ -1526,6 +1573,7 @@ export type MeetingCreateManyClientInput = {
   endedAt?: Date | string | null
   calendarEventId?: string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1541,6 +1589,7 @@ export type MeetingUpdateWithoutClientInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   participants?: Prisma.MeetingParticipantUpdateManyWithoutMeetingNestedInput
@@ -1563,6 +1612,7 @@ export type MeetingUncheckedUpdateWithoutClientInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   participants?: Prisma.MeetingParticipantUncheckedUpdateManyWithoutMeetingNestedInput
@@ -1585,6 +1635,7 @@ export type MeetingUncheckedUpdateManyWithoutClientInput = {
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   calendarEventId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   summary?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  speakerMappings?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1677,6 +1728,7 @@ export type MeetingSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   endedAt?: boolean
   calendarEventId?: boolean
   summary?: boolean
+  speakerMappings?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
@@ -1702,6 +1754,7 @@ export type MeetingSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   endedAt?: boolean
   calendarEventId?: boolean
   summary?: boolean
+  speakerMappings?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
@@ -1719,6 +1772,7 @@ export type MeetingSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   endedAt?: boolean
   calendarEventId?: boolean
   summary?: boolean
+  speakerMappings?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
@@ -1736,11 +1790,12 @@ export type MeetingSelectScalar = {
   endedAt?: boolean
   calendarEventId?: boolean
   summary?: boolean
+  speakerMappings?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type MeetingOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clientId" | "title" | "description" | "agenda" | "status" | "scheduledAt" | "startedAt" | "endedAt" | "calendarEventId" | "summary" | "createdAt" | "updatedAt", ExtArgs["result"]["meeting"]>
+export type MeetingOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clientId" | "title" | "description" | "agenda" | "status" | "scheduledAt" | "startedAt" | "endedAt" | "calendarEventId" | "summary" | "speakerMappings" | "createdAt" | "updatedAt", ExtArgs["result"]["meeting"]>
 export type MeetingInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
   participants?: boolean | Prisma.Meeting$participantsArgs<ExtArgs>
@@ -1783,6 +1838,7 @@ export type $MeetingPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     endedAt: Date | null
     calendarEventId: string | null
     summary: runtime.JsonValue | null
+    speakerMappings: runtime.JsonValue | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["meeting"]>
@@ -2227,6 +2283,7 @@ export interface MeetingFieldRefs {
   readonly endedAt: Prisma.FieldRef<"Meeting", 'DateTime'>
   readonly calendarEventId: Prisma.FieldRef<"Meeting", 'String'>
   readonly summary: Prisma.FieldRef<"Meeting", 'Json'>
+  readonly speakerMappings: Prisma.FieldRef<"Meeting", 'Json'>
   readonly createdAt: Prisma.FieldRef<"Meeting", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Meeting", 'DateTime'>
 }

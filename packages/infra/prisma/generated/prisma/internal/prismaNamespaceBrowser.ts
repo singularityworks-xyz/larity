@@ -221,6 +221,7 @@ export const MeetingScalarFieldEnum = {
   endedAt: 'endedAt',
   calendarEventId: 'calendarEventId',
   summary: 'summary',
+  speakerMappings: 'speakerMappings',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
