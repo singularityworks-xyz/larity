@@ -278,6 +278,13 @@ export function MeetingPage() {
     setScrollTargetId(utteranceId);
   }, []);
 
+  const handleRoleChange = useCallback(
+    (speakerId: string, role: "TEAM" | "EXTERNAL") => {
+      streamingClient.changeParticipantRole(sessionId, speakerId, role);
+    },
+    [streamingClient, sessionId]
+  );
+
   useEffect(() => {
     streamingClient.setIdentity(userId, role, displayName);
   }, [role, streamingClient, userId, displayName]);
@@ -821,6 +828,7 @@ export function MeetingPage() {
         <MeetingSidebar
           commitments={commitments}
           meetingStartedAtMs={meetingStartedAtMs}
+          onChangeRole={handleRoleChange}
           onEvidenceClick={handleEvidenceClick}
           participants={participants}
           sessionId={sessionId || "unknown"}

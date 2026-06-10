@@ -476,6 +476,26 @@ export class AudioStreamingClient {
       })
     );
   }
+
+  changeParticipantRole(
+    sessionId: string,
+    speakerId: string,
+    role: "TEAM" | "EXTERNAL"
+  ): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    this.socket.send(
+      JSON.stringify({
+        type: "participant_role_change",
+        sessionId,
+        speakerId,
+        role,
+        clientSendTs: Date.now(),
+      })
+    );
+  }
 }
 
 function detectIncomingMessageType(

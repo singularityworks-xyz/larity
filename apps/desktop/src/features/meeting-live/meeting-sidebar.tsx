@@ -103,6 +103,7 @@ interface MeetingSidebarProps {
   commitments: LiveCommitment[];
   meetingStartedAtMs: number;
   onEvidenceClick: (utteranceId: string) => void;
+  onChangeRole?: (speakerId: string, role: "TEAM" | "EXTERNAL") => void;
 }
 
 export function MeetingSidebar({
@@ -111,6 +112,7 @@ export function MeetingSidebar({
   commitments,
   meetingStartedAtMs,
   onEvidenceClick,
+  onChangeRole,
 }: MeetingSidebarProps) {
   const storageKey = `larity-meeting-notes-${sessionId}`;
   const [notes, setNotes] = useState("");
@@ -221,9 +223,31 @@ export function MeetingSidebar({
           )}
 
           <div className="flex items-center gap-1.5 pt-0.5">
-            <span className="font-medium text-[9px] text-fg-subtle uppercase tracking-[0.05em]">
-              {p.type}
-            </span>
+            <select
+              aria-label={`Change role for ${display}`}
+              className={cx(
+                "bg-transparent font-medium text-[9px] text-fg-subtle uppercase tracking-[0.05em]",
+                "cursor-pointer border-none p-0 hover:text-fg focus:border-none focus:outline-none focus:ring-0"
+              )}
+              onChange={(e) => {
+                const nextRole = e.target.value as "TEAM" | "EXTERNAL";
+                onChangeRole?.(p.id, nextRole);
+              }}
+              value={p.type}
+            >
+              <option
+                className="bg-bg-elevated font-sans text-fg uppercase"
+                value="TEAM"
+              >
+                Team
+              </option>
+              <option
+                className="bg-bg-elevated font-sans text-fg uppercase"
+                value="EXTERNAL"
+              >
+                External
+              </option>
+            </select>
             <span aria-hidden className="h-2.5 w-px bg-border-subtle" />
 
             <span
