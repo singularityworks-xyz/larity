@@ -1,5 +1,5 @@
 import type { CostManager } from "../cost/manager";
-import { GROQ_TIER2_MODEL } from "../env";
+import { SAMBANOVA_TIER2_MODEL } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import {
   type Tier1StructuralDetector,
@@ -153,7 +153,7 @@ export class SpeculativeProcessor {
           partial.sessionId,
           tier2Outcome.promptTokens ?? 0,
           tier2Outcome.completionTokens ?? 0,
-          GROQ_TIER2_MODEL
+          SAMBANOVA_TIER2_MODEL
         )
         .catch((err) =>
           log.warn(
