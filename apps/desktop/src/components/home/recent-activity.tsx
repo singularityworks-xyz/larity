@@ -74,7 +74,7 @@ function renderContent(
         <li key={item.id}>
           <button
             className="flex w-full items-center gap-3 rounded-lg px-1.5 py-1.5 text-left transition-colors duration-150 ease-out hover:bg-bg-subtle"
-            onClick={() => navigate(`/meetings/${item.id}`)}
+            onClick={() => navigate(`/meeting-post/${item.id}`)}
             type="button"
           >
             <span className="w-14 shrink-0 font-medium text-[10.5px] text-fg-subtle tabular-nums leading-none">

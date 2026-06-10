@@ -30,8 +30,8 @@ describe("Deepgram Types", () => {
       expect(DEFAULT_DG_CONFIG.interim_results).toBe("true");
     });
 
-    it("should use multi language", () => {
-      expect(DEFAULT_DG_CONFIG.language).toBe("multi");
+    it("should use english language as primary", () => {
+      expect(DEFAULT_DG_CONFIG.language).toBe("en");
     });
   });
 

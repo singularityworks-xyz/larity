@@ -11,4 +11,5 @@ export const TTL = {
   CONSTRAINT_LEDGER: 7200,
   MEETING_CONTEXT: 14_400,
   SPEAKER_STATE: 7200,
+  SESSION_STATE: 7 * 24 * 60 * 60, // 7 days in seconds
 };

@@ -1,14 +1,55 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
 
+// Set mock flag for this test file
+(globalThis as any).__use_redis_mock = true;
+
 // Must mock BEFORE imports to prevent real Redis/STT module init
-mock.module("@larity/infra/redis", () => ({
-  redis: {
+mock.module("@larity/infra/redis", () => {
+  const Redis = require("ioredis");
+  const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
+  const realRedis = new Redis(REDIS_URL, {
+    lazyConnect: true,
+    maxRetriesPerRequest: 2,
+    enableReadyCheck: true,
+  });
+
+  const mockRedis: any = {
     publish: mock(() => Promise.resolve(1)),
     connect: mock(() => Promise.resolve()),
     disconnect: mock(() => undefined),
-  },
-  connectRedis: mock(() => Promise.resolve(true)),
-}));
+  };
+
+  const redisProxy = new Proxy(
+    {},
+    {
+      get(_target, prop) {
+        if ((globalThis as any).__use_redis_mock) {
+          if (prop in mockRedis) {
+            return mockRedis[prop];
+          }
+          return mock(() => Promise.resolve());
+        }
+        return realRedis[prop];
+      },
+    }
+  );
+
+  return {
+    redis: redisProxy,
+    connectRedis: () => {
+      if ((globalThis as any).__use_redis_mock) {
+        return Promise.resolve(true);
+      }
+      return Promise.resolve(true);
+    },
+    getRedisClient: () => redisProxy,
+    disconnectRedis: () => {
+      if (!(globalThis as any).__use_redis_mock) {
+        realRedis.disconnect();
+      }
+    },
+  };
+});
 
 mock.module("@larity/stt", () => ({
   env: {
@@ -33,6 +74,7 @@ import { onOpen } from "../src/handlers/on-open";
 import {
   __test_only_handleAlertChannel,
   __test_only_handleBroadcastSessionChannel,
+  __test_only_handleProcessedChannel,
 } from "../src/redis/subscriber";
 import {
   __test_only_reset,
@@ -194,6 +236,19 @@ describe("WebSocket Handlers Unit Tests", () => {
         __test_only_handleAlertChannel(
           "meeting.alert.session-1.user.user-1",
           JSON.stringify({ id: "a2" })
+        );
+      }).not.toThrow();
+    });
+
+    it("parses processed status channel without throwing", () => {
+      expect(() => {
+        __test_only_handleProcessedChannel(
+          "meeting.processed.session-1",
+          JSON.stringify({
+            meetingId: "m1",
+            sessionId: "session-1",
+            status: "complete",
+          })
         );
       }).not.toThrow();
     });

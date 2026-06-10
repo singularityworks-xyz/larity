@@ -23,6 +23,8 @@ import { SpeakerManager } from "./speaker/manager";
 import { startSubscriber, stopSubscriber } from "./subscriber";
 import { UtteranceFinalizer } from "./utterance/finalizer";
 
+const UTTERANCE_CACHE_TTL = 7 * 24 * 60 * 60;
+
 // biome-ignore lint/performance/noBarrelFile: structure convention
 export { AlertPublisher, createAlertChannelKeys } from "./alerts/publisher";
 export { AlertQueueManager } from "./alerts/queue";
@@ -42,6 +44,7 @@ export * from "./pipeline/tier4-alert";
 export * from "./pipeline/tier4-context";
 export * from "./pipeline/types";
 export { SpeakerIdentifier } from "./speaker/identifier";
+export * from "./speaker/offline-correlation";
 export * from "./speaker/types";
 export * from "./speculative";
 export * from "./utterance/types";
@@ -181,9 +184,24 @@ async function main(): Promise<void> {
       finalizer?.getTopicLabel(sessionId, topicId),
   });
 
-  finalizer.onUtterancePublished((utterance) => {
+  finalizer.onUtterancePublished(async (utterance) => {
     if (!pipelineEngine) {
       return;
+    }
+
+    // Append to Redis list for post-processing worker retrieval (with 7-day TTL)
+    const key = `meeting.utterance.${utterance.sessionId}`;
+    const payload = JSON.stringify(utterance, (k, val) =>
+      k === "embeddingPromise" ? undefined : val
+    );
+    try {
+      await redisClient.rpush(key, payload);
+      await redisClient.expire(key, UTTERANCE_CACHE_TTL);
+    } catch (err) {
+      rootLogger.error(
+        { err, sessionId: utterance.sessionId },
+        "Failed to cache live utterance in Redis"
+      );
     }
 
     pipelineEngine.evaluateUtteranceQueued(

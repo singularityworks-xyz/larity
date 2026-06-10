@@ -539,4 +539,47 @@ describe("DeepgramConnection Diarization", () => {
     expect(payload.isFinal).toBe(true);
     expect(payload.transcript).toBe("This text was never speech_final");
   });
+
+  it("should flush accumulated text as final on UtteranceEnd event", async () => {
+    const connection = createConnection();
+
+    const seg1: TranscriptResult = {
+      type: "Results",
+      channel_index: [0],
+      duration: 2.0,
+      start: 0,
+      is_final: true,
+      speech_final: false,
+      channel: {
+        alternatives: [
+          {
+            transcript: "This ended by utterance end",
+            confidence: 0.95,
+            words: [
+              {
+                word: "This",
+                start: 0,
+                end: 0.1,
+                confidence: 0.95,
+                speaker: 0,
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    await (connection as any).handleTranscript(seg1);
+    expect(redis.publish).not.toHaveBeenCalled();
+
+    // Simulate UtteranceEnd signal from Deepgram
+    await (connection as any).flushAccumulatedFinal();
+
+    expect(redis.publish).toHaveBeenCalledTimes(1);
+    const call = (redis.publish as any).mock.calls[0];
+    const payload = JSON.parse(call[1]);
+
+    expect(payload.isFinal).toBe(true);
+    expect(payload.transcript).toBe("This ended by utterance end");
+  });
 });

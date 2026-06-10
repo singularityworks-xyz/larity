@@ -8,6 +8,7 @@ import {
 } from "../pipeline/metrics";
 import type { Tier2TopicDelta } from "../pipeline/types";
 import type { SpeakerIdentifier } from "../speaker/identifier";
+import { calculateTextSimilarity } from "../speaker/offline-correlation";
 import { GoogleGenAIEmbedder } from "../topic/embedder";
 import {
   TopicManager,
@@ -24,6 +25,23 @@ const log = createMeetingModeLogger("utterance-finalizer");
 const PERF = {
   now: () => performance.now(),
 };
+
+/**
+ * Maximum age difference (ms) between an incoming mic-channel utterance and a
+ * recently published system-channel utterance for the two to be considered
+ * potential acoustic-echo candidates. The window is wider here than in offline
+ * processing because live utterances carry additional pipeline latency on top
+ * of the acoustic delay (STT streaming, merger flush, publish round-trip).
+ */
+const LIVE_ECHO_TIME_WINDOW_MS = 4000;
+
+/**
+ * Minimum bigram-Jaccard similarity between a mic utterance and a system
+ * utterance for the mic utterance to be classified as an acoustic echo and
+ * discarded. Mirrors the offline threshold; see ECHO_SIMILARITY_THRESHOLD in
+ * offline-correlation.ts for the full rationale.
+ */
+const LIVE_ECHO_SIMILARITY_THRESHOLD = 0.4;
 
 export interface UtterancePublisher extends TopicPublisher {
   publish(channel: string, message: string): Promise<number>;
@@ -142,6 +160,48 @@ export class UtteranceFinalizer {
     }
   }
 
+  async processRetroactiveRoleChange(
+    sessionId: string,
+    speakerId: string,
+    newSpeaker: Utterance["speaker"]
+  ): Promise<void> {
+    const ringBuffer = this.ringBuffers.get(sessionId);
+    if (!ringBuffer) {
+      return;
+    }
+
+    const utterances = ringBuffer.getBySpeakerId(speakerId);
+
+    for (const utterance of utterances) {
+      const oldType = utterance.speaker.type;
+      if (
+        utterance.speaker.type === newSpeaker.type &&
+        utterance.speaker.userId === newSpeaker.userId
+      ) {
+        continue;
+      }
+
+      utterance.speaker = { ...newSpeaker };
+
+      await this.publishUtterance(utterance);
+
+      for (const handler of this.retroactiveHandlers) {
+        await handler(utterance, oldType);
+      }
+
+      log.info(
+        {
+          sessionId,
+          utteranceId: utterance.utteranceId,
+          speakerId,
+          newType: newSpeaker.type,
+          oldType,
+        },
+        "Retroactive manual role change applied"
+      );
+    }
+  }
+
   async process(result: SttResult): Promise<void> {
     const { sessionId, isFinal } = result;
 
@@ -173,14 +233,62 @@ export class UtteranceFinalizer {
 
     const finalizeStart = PERF.now();
 
+    const speaker = this.resolveSpeaker(
+      sessionId,
+      result.diarizationIndex,
+      result.speechTimestamp
+    );
+
+    if (speaker.isHost && result.diarizationIndex >= 1000) {
+      log.info(
+        {
+          sessionId,
+          diarizationIndex: result.diarizationIndex,
+          speakerId: speaker.speakerId,
+          userId: speaker.userId,
+        },
+        "Discarding dual-channel host-echo utterance from sys channel"
+      );
+      return;
+    }
+
+    if (result.diarizationIndex < 1000) {
+      const ringBuffer = this.ringBuffers.get(sessionId);
+      if (ringBuffer) {
+        const recent = ringBuffer.getRecent(10);
+        const isEcho = recent.some((u) => {
+          const isSystem = u.speaker.diarizationIndices.some(
+            (idx) => idx >= 1000
+          );
+          if (!isSystem) {
+            return false;
+          }
+          const timeDiff = Math.abs(result.speechTimestamp - u.timestamp);
+          if (timeDiff > LIVE_ECHO_TIME_WINDOW_MS) {
+            return false;
+          }
+          const sim = calculateTextSimilarity(normalizedText, u.text);
+          return sim >= LIVE_ECHO_SIMILARITY_THRESHOLD;
+        });
+
+        if (isEcho) {
+          log.info(
+            {
+              sessionId,
+              diarizationIndex: result.diarizationIndex,
+              text: normalizedText,
+            },
+            "Discarding client-to-mic echo utterance"
+          );
+          return;
+        }
+      }
+    }
+
     const utterance: Utterance = {
       utteranceId: this.generateUtteranceId(sessionId),
       sessionId,
-      speaker: this.resolveSpeaker(
-        sessionId,
-        result.diarizationIndex,
-        result.speechTimestamp
-      ),
+      speaker,
       text: normalizedText,
       timestamp: result.speechTimestamp,
       confidenceScore: finalized.confidence,

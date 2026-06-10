@@ -10,6 +10,7 @@ export { HomeService } from "./home.service";
 export { ImportantPointService } from "./important-point.service";
 // Meeting domain
 export { MeetingService } from "./meeting.service";
+export { MeetingInsightsService } from "./meeting-insights.service";
 export { MeetingParticipantService } from "./meeting-participant.service";
 export { OpenQuestionService } from "./open-question.service";
 export { OrgService } from "./org.service";

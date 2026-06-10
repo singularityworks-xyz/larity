@@ -273,4 +273,25 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
     expect(speaker.type).toBe("TEAM");
     expect(speaker.userId).toBe(aliceId);
   });
+
+  it("should support manual role overrides", () => {
+    const identifier = new SpeakerIdentifier(sessionId);
+    identifier.registerTeamMember(aliceId, "Alice");
+
+    const base = Date.now();
+
+    // 1. Participant starts as EXTERNAL
+    const speaker = identifier.identifySpeaker(0, base);
+    expect(speaker.type).toBe("EXTERNAL");
+
+    // 2. Override role manually to TEAM
+    identifier.changeParticipantRole("spk_0", "TEAM");
+    const speakerOverridden = identifier.identifySpeaker(0, base + 1000);
+    expect(speakerOverridden.type).toBe("TEAM");
+
+    // 3. Override role manually back to EXTERNAL
+    identifier.changeParticipantRole("spk_0", "EXTERNAL");
+    const speakerReverted = identifier.identifySpeaker(0, base + 2000);
+    expect(speakerReverted.type).toBe("EXTERNAL");
+  });
 });

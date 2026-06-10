@@ -86,14 +86,15 @@ The decisions below (B.1–B.19) were adopted after audits of the pipeline for l
 - **Decision:** One atomic alert per Tier 4 invocation, or none. A content-free "Checking…" indicator signals that the system is thinking — nothing actionable renders until the full structured Tier 4 response is validated. Streaming is still used *inside* the LLM call to reduce TTFB; only the UI is non-progressive.
 - **Where:** [meeting-mode.md §5.9](./meeting-mode.md#59-live-llm-invocation-non-streaming-atomic-alerts), timeline Day 41-42.
 
-### B.9 Raw audio persistence to MinIO
+### B.9 Raw audio persistence to Cloudflare R2
 - **Context:** Whisper refinement and post-meeting diarization both want raw audio. The previous design implicitly assumed it was available but never specified where.
-- **Decision:** `apps/realtime` streams each PCM chunk in parallel to both Deepgram (live) and MinIO (cold), fire-and-forget on the MinIO side. Object layout `{orgId}/{sessionId}/{chunkIndex}.pcm16` (or Opus), manifest emitted on close, 30-day lifecycle with per-org SSE keys. Admin-only restore endpoint stitches chunks into a WAV for debugging.
-- **Where:** timeline Day 47-48.
+- **Decision:** `apps/realtime` streams PCM frames **in parallel** to both Deepgram (live path) and Cloudflare R2 (cold path) using fire-and-forget semantics — failures never block live processing. Object layout is a **single file per session** (`{orgId}/{sessionId}/raw_audio.pcm16`) assembled via `@aws-sdk/lib-storage` `Upload` (multipart upload over a Node.js `PassThrough` stream). On session close, a `manifest.json` is written alongside the audio. Admin-only restore endpoint (`GET /admin/sessions/:id/audio.wav`) streams the raw PCM back with a prepended 44-byte WAV header.
+- **Provider:** Cloudflare R2 (zero egress fees). The SDK (`@aws-sdk/client-s3` + `@aws-sdk/lib-storage`) is provider-agnostic. SSE uses `ServerSideEncryption: "AES256"` on all writes. R2 region is always `"auto"`.
+- **Where:** `apps/realtime/src/audio/streamer.ts`, `apps/realtime/src/routes/admin.ts`, timeline Day 47-48 (implemented).
 
 ### B.10 Desktop distribution & auto-update
 - **Context:** A Tauri app is not a product until end users can install and update it safely. This was previously buried inside "frontend polish" and chronically under-scoped.
-- **Decision:** A dedicated phase ("Day 46+"): Windows code-signed MSI, macOS Developer ID + notarization + hardened runtime with microphone/screen-recording entitlements, Linux .deb/.rpm/.AppImage, Tauri signed auto-update manifest on S3/MinIO/R2 with staged rollout (10 → 50 → 100% over 48h), Sentry crash reporting with scrubbed breadcrumbs. Updates only apply on next launch — never mid-meeting.
+- **Decision:** A dedicated phase ("Day 46+"): Windows code-signed MSI, macOS Developer ID + notarization + hardened runtime with microphone/screen-recording entitlements, Linux .deb/.rpm/.AppImage, Tauri signed auto-update manifest on Cloudflare R2 with staged rollout (10 → 50 → 100% over 48h), Sentry crash reporting with scrubbed breadcrumbs. Updates only apply on next launch — never mid-meeting.
 - **Where:** timeline Day 46+.
 
 ### B.11 Structured pipeline observability

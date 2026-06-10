@@ -22,6 +22,7 @@
     "noImplicitOverride": true,
 
     // Some stricter flags (disabled by default)
+    "types": ["bun"],
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,

@@ -15,6 +15,7 @@ import { AddClientPage } from "./routes/clients/add";
 import { HomePage } from "./routes/home";
 import { LoginPage } from "./routes/login";
 import { MeetingPage } from "./routes/meeting/$session-id";
+import { MeetingPostPage } from "./routes/meeting-post/$meeting-id";
 import { JoinMeetingPage } from "./routes/meetings/join";
 import { StartMeetingPage } from "./routes/meetings/start";
 import { OnboardingPage } from "./routes/onboarding";
@@ -80,6 +81,11 @@ const router = createBrowserRouter([
         path: "meeting/:sessionId",
         loader: authGateLoader,
         element: <MeetingPage />,
+      },
+      {
+        path: "meeting-post/:meetingId",
+        loader: authGateLoader,
+        element: <MeetingPostPage />,
       },
       {
         path: "settings",

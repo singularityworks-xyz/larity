@@ -1190,94 +1190,167 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Goal:** Process completed meetings, extract insights, and write to persistent memory.
 
-### Day 47-48: Worker Infrastructure + Audio Persistence
+---
 
-**apps/workers + apps/realtime**
+### Day 47-48: Audio Persistence Fixups + Worker Trigger Wiring
 
-- [ ] Set up worker app structure
-- [ ] Implement RabbitMQ consumer base class
-- [ ] Create worker lifecycle management (graceful shutdown)
-- [ ] Add health check endpoints
-- [ ] Implement job retry logic with exponential backoff
-- [ ] Set up worker logging and metrics
-- [ ] **Audio persistence for post-meeting Whisper refinement (B.9):**
-  - [ ] Stand up MinIO (S3-compatible) in the dev/staging compose stack, bucket `larity-audio`
-  - [ ] `apps/realtime` streams each session's PCM frames **in parallel** to both Deepgram (live path) and MinIO (cold path) — the MinIO write is fire-and-forget, failures never block live processing
-  - [ ] Chunk object layout: `s3://larity-audio/{orgId}/{sessionId}/{chunkIndex}.pcm16` (or Opus-encoded, if CPU budget allows — ~10× smaller)
-  - [ ] Object lifecycle policy: auto-expire raw audio after 30 days unless the meeting is flagged for retention (org policy / legal hold)
-  - [ ] Encryption: SSE-S3 / MinIO server-side encryption with per-org key
-  - [ ] Manifest object on session close: `{sessionId}/manifest.json` with chunk list, codec, sample rate, total duration — consumed by the Whisper refinement worker
-  - [ ] Quick-restore path for debugging: `/admin/sessions/:id/audio.wav` endpoint (admin-only) that stitches chunks back together
+> **Status:** The infrastructure below was built ahead of schedule and is verified working (BaseWorker, health endpoint, graceful shutdown, AudioStreamer multipart upload, session lifecycle wiring, 17 tests). Three output-format bugs and two missing wiring steps were found during audit. The fixup tracks below are additive on top of the completed foundation — not a rewrite.
 
-**Deliverable:** Worker infrastructure ready to consume jobs; raw session audio persisted to object storage for Whisper refinement, debugging, and selective long-term retention — without touching the live latency budget.
+**apps/realtime + apps/control + apps/workers**
 
-### Day 49-50: Transcript Processing Worker
+#### ✓ Completed Infrastructure (keep as-is)
+
+- [x] Set up worker app structure (`apps/workers`) with BullMQ, base `BaseWorker` abstract class
+- [x] Implement graceful shutdown (SIGTERM/SIGINT handler closes active workers)
+- [x] Add Elysia `/health` check endpoint (Redis status + worker health + uptime, port `WORKERS_PORT` / `8080`)
+- [x] **Raw audio persistence (B.9):**
+  - [x] Implement `AudioStreamer` class in `apps/realtime/src/audio/streamer.ts`:
+    - Uses `@aws-sdk/lib-storage` `Upload` over a Node.js `PassThrough` stream for R2 Multipart Upload (region `"auto"`, S3-compatible SDK)
+    - Fire-and-forget `streamer.write(frame)` in the Deepgram relay hot path — never blocks live processing
+    - Configurable via env vars (`S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_AUDIO_BUCKET`)
+    - SSE: `ServerSideEncryption: "AES256"` on all S3 writes
+  - [x] Wire into session lifecycle (`apps/realtime/src/handlers/`):
+    - `on-open.ts` — creates streamer for host connections
+    - `on-message.ts` — writes binary frames to streamer (fire-and-forget)
+    - `on-close.ts` — closes streamer, completes S3 multipart upload, writes manifest
+  - [x] Object layout: `{orgId}/{sessionId}/raw_audio.pcm16` (single file, all tagged frames — **format includes `[tag:u8]` byte per frame; see Track A for fix**)
+  - [x] Manifest on session close: `manifest.json` with codec, sample rate, total duration
+  - [x] Quick-restore endpoint: `GET /admin/sessions/:id/audio.wav` in `apps/realtime/src/routes/admin.ts` — prepends 44-byte WAV header (**path missing orgId, WAV corrupted by tag bytes; see Track A for fix**)
+  - [x] Admin auth via `Bearer ADMIN_API_KEY`
+- [x] Full unit and mock-based integration test suites (17 tests):
+  - `apps/workers/tests/worker.test.ts` — BaseWorker construction, health, lifecycle
+  - `apps/realtime/tests/streamer.test.ts` — AudioStreamer write/end/manifest
+  - `apps/realtime/tests/admin-routes.test.ts` — WAV header generation
+  - `apps/realtime/tests/audio-registry.test.ts` — session → streamer management
+  - `apps/realtime/tests/audio-persistence.integration.test.ts` — end-to-end PCM → S3 → manifest → WAV
+
+#### Track A: Fix Audio Persistence Format ✓ COMPLETED
+
+The live pipeline strips the `[tag:u8]` byte and routes each frame to a separate Deepgram connection via `dual-channel-session.ts`. The persistence path must do the same so batch STT can consume valid PCM.
+
+- [x] **Strip tag byte** in `on-message.ts:handleBinaryFrame` before `streamer.write()` — extract `tag` and `pcm = frame.subarray(1)`, write only `pcm`. Use a per-streamer `writeDemux(tag, pcm)` that routes to the correct channel stream.
+- [x] **Demux into two mono files per session** — replace single `raw_audio.pcm16` with `ch0.pcm16` (mic, tag 0) and `ch1.pcm16` (system, tag 1). Each is valid 16kHz mono linear16 PCM. Update `AudioManifest` to declare both channels with their source type, byte sizes, and durations.
+- [x] **Fix admin WAV endpoint** — add orgId to route (`GET /admin/sessions/:orgId/:id/audio.wav`). Serve per-channel mono download or interleaved stereo on demand from the two files.
+- [x] Update existing tests for the new two-file layout and tag-stripping behavior.
+
+#### Track B: Session State Durability ✓ COMPLETED
+
+The commitment ledger, constraint ledger, speaker map, and topic states all live in Redis with TTLs ≤ 2 hours (from Day 7). The current `scheduleCleanup()` in `meeting-session.service.ts` sets a 5-minute grace TTL — useless if the worker hasn't started yet.
+
+- [x] **Extend Redis TTLs on session close** — in `meeting-session.service.ts:scheduleCleanup()`, change the grace period from 5 minutes to 7 days on keys: `meeting.commitment.{sessionId}`, `meeting.constraint.{sessionId}`, `meeting.speaker.{sessionId}`, `meeting.context.{sessionId}`, `meeting.cost.{sessionId}`, topic/speaker-state keys. Do NOT extend high-volume ephemeral keys (`meeting.utterance.*`, `meeting.pipeline.*`).
+- [x] **Write `session_state.json` to S3** — on session close, dump the final commitment ledger (full JSON from Redis), constraint ledger, speaker map (`channel:diarizationIndex → SpeakerIdentity`), VAD signal history (with per-client clock offsets), and topic state summaries to `{orgId}/{sessionId}/session_state.json`. Worker reads from Redis first, falls back to S3.
+
+#### Track C: BullMQ Producer + Session-End Trigger ✓ COMPLETED
+
+> **Decision:** Use **BullMQ** (not RabbitMQ) for post-meeting jobs — already present in `apps/workers`. RabbitMQ infra stays defined but unused; no migration needed.
+
+- [x] **Instantiate BullMQ `Queue`** for `meeting.transcribe` and `meeting.summary` in a shared producer module
+- [x] **Wire session-end trigger** — in `apps/realtime/src/handlers/on-close.ts`, after `closeStreamer()` resolves, call `queue.add('meeting.transcribe', { sessionId, orgId, meetingId, s3Prefix })`
+- [x] **Define job payload Zod schemas** for both queue types, validate on dequeue in the worker
+- [x] **Register concrete worker stubs** — create placeholder `TranscribeWorker` and `SummaryWorker` classes extending `BaseWorker`, call `registerWorker()` in `apps/workers/src/index.ts` so `/health` surfaces their status (they will be fully implemented in Days 49+)
+
+**Deliverable:** Foundation intact — BaseWorker, AudioStreamer, health endpoint, graceful shutdown, manifest, admin auth all verified working. Audio now persists as two clean mono PCM16 files (tag-stripped). Meeting state survives 7 days in Redis + S3 backup. Session end triggers the first BullMQ job automatically.
+
+---
+
+### Day 49-50: Transcript Processing Worker ✓ COMPLETED
 
 **apps/workers**
 
-- [ ] Implement `q.meeting.transcribe` consumer
-- [ ] Pull the session's audio manifest from MinIO and feed the chunks into the Whisper API for batch STT refinement
-- [ ] Compare Whisper output with Deepgram live transcript
-- [ ] Merge/reconcile transcripts (prefer Whisper accuracy)
-- [ ] **Preserve speaker identity attribution** (SpeakerIdentity, not binary)
-- [ ] Store refined transcript to database
-- [ ] Publish `transcript.ready` event
+- [x] Implement `TranscribeWorker extends BaseWorker` consuming `meeting.transcribe` jobs
+- [x] On dequeue: fetch `ch0.pcm16` and `ch1.pcm16` from R2 using the manifest
+- [x] Submit each channel to **Deepgram batch STT REST API** (Prerecorded endpoint — not live WebSocket) as separate jobs, preserving per-source diarization
+- [x] Receive refined transcripts per channel with diarization indices and timestamps
+- [x] Merge/reconcile with the live transcript from Redis (`meeting.utterance.{sessionId}`) if still available; otherwise proceed from batch output alone
+- [x] Store the refined transcript to the `Transcript` model in PostgreSQL (format: `NORMALIZED`, linked to `meetingId` via 1:1 relation)
+- [x] On success, chain the extraction job: `queue.add('meeting.summary', { sessionId, orgId, meetingId })`
+- [x] Handle edge cases: missing audio files (log, mark job failed), partial S3 uploads (graceful skip of missing channel), Deepgram API failures (retry with backoff), empty transcripts (skip extraction, mark meeting with warning)
+- [x] Write job status to Redis (`meeting.job.{sessionId}.transcribe.status` → `"processing"|"done"|"failed"`) for observability
 
-**Deliverable:** High-quality refined transcripts with multi-speaker attribution, sourced from the persisted raw audio.
+**Deliverable:** High-quality refined transcript with per-channel diarization, stored in PostgreSQL. Extraction job chained automatically on success.
 
-### Day 51: Speaker Diarization Refinement
+---
+
+### Day 51: Speaker Diarization Refinement ✓ COMPLETED
 
 **apps/workers**
 
-- [ ] Use meeting's voice identification data to refine post-meeting speaker attribution
-- [ ] Map diarized segments to identified speakers
-- [ ] Update transcript with confirmed speaker identities (TEAM with names, EXTERNAL with best-effort names)
-- [ ] Handle any remaining unidentified speakers
-- [ ] Store final speaker mapping
+> **Why this is non-trivial:** Deepgram's batch STT produces entirely new diarization indices unrelated to the live stream's indices. You cannot simply "map diarized segments to identified speakers" — the indices are different. The strategy below re-runs the same VAD-correlation algorithm the live pipeline used, but offline against the batch transcript's timestamps.
 
-**Deliverable:** Transcripts have accurate, named speaker attribution.
+- [x] **Export VAD signal history on session close** (in Track B above): timestamped `{ userId, ts, type: "speaking"|"silence", role, clockOffset }` events per session participant. Include per-client clock offsets from `ClockOffsetManager` so the worker can reconstruct corrected timestamps identically to the live correlation.
+- [x] **Export final speaker map** from `meeting.speaker.{sessionId}` into `session_state.json`: the live pipeline's `channel:diarizationIndex → SpeakerIdentity` mapping (ground truth reference).
+- [x] Implement re-correlation in the worker:
+  1. For each channel's batch transcript, extract speaker segments with start/end timestamps
+  2. Run the same VAD correlation logic from `packages/meeting-mode/src/speaker-identification/correlation.ts` but offline: compare batch segment time windows against the exported VAD signals (offset-corrected)
+  3. **VAD Hardening (Spike Filter):** Compare the duration of the VAD signal to the duration of the batch transcript segment. Reject the correlation if the VAD signal is short/spiky (e.g., keyboard typing, coughing) and doesn't cover a significant percentage (e.g., > 60%) of the spoken segment.
+  4. On match → assign `SpeakerIdentity` (TEAM member with name, or EXTERNAL)
+  5. This produces a `batchDiarizationIndex → SpeakerIdentity` mapping derived from the audio evidence, independent of the live indices
+- [x] **Live Transcript Cross-Check:** If the batch VAD correlation assigns a segment to a TEAM member, but the live transcript (from Redis) flagged that exact timestamp as EXTERNAL, flag the match as weak and require stricter similarity validation.
+- [x] **Textual fallback:** if VAD re-correlation is ambiguous for a segment, use DTW or n-gram overlap between the batch segment text and the live transcript segments to transfer speaker labels from the live transcript where speaker identity is known
+- [x] **(Future/Client-Side) Pre-Filtering:** Implement a lightweight noise-suppression filter (e.g., RNNoise) in the desktop app before the VAD engine to ensure non-vocal noises don't trigger VAD events.
+- [x] Update the `Transcript` content with confirmed speaker names (TEAM names from `User` records, EXTERNAL with best-effort names or "External Speaker A"/"External Speaker B")
+- [x] Handle remaining unidentified speakers: mark as "Speaker A", "Speaker B" etc.
+- [x] Store final speaker mapping in Redis + session_state.json for downstream consumers
+
+**Deliverable:** Refined transcript has accurate, named speaker attribution derived from re-running VAD correlation against the batch STT's timestamps — not from trying to naively map live diarization indices to batch ones.
+
+---
 
 ### Day 52-53: Decision, Task & Commitment Extraction
 
 **apps/workers**
 
-- [ ] Implement extraction worker for `q.meeting.summary`
-- [ ] Create LLM prompts for:
-  - [ ] Decision extraction (with evidence + speaker attribution)
-  - [ ] Task extraction (with assignee, deadline inference)
-  - [ ] Open question extraction
-  - [ ] Important point extraction
-- [ ] **Commitment ledger export:**
-  - [ ] Read commitment ledger from Redis
-  - [ ] Write to `Commitment` model in PostgreSQL (new Prisma model)
-  - [ ] Generate embeddings and store in pgvector
-  - [ ] These become searchable organizational memory for future meetings
-- [ ] Define extraction schemas (Zod)
-- [ ] Validate LLM outputs against schemas
+> **Architectural note:** The timeline previously planned a dedicated `Commitment` Prisma model. The existing DB uses `ImportantPoint` with `category: "COMMITMENT"`. We commit to this approach — no new Prisma model. The `ImportantPoint` table already has `content`, `speakerId`, `transcriptEvidence`, `category`, and `embedding` (pgvector). Contradiction/supersession chains are tracked in the in-memory `CommitmentLedger` (`contradicts`, `supersedes`, `relatedCommitments`) and can be reconstructed from the historical record via embedding similarity search.
 
-**Deliverable:** Structured data extracted from transcripts, commitment ledger persisted as organizational memory.
+- [x] Implement `SummaryWorker extends BaseWorker` consuming `meeting.summary` jobs
+- [x] Build LLM extraction prompts using `@google/genai` (Gemini) — reuse existing LLM client patterns from `packages/meeting-mode/src/pipeline/tier4.ts` and `packages/meeting-mode/src/llm/`:
+  - [x] Decision extraction prompt → `{ title, content, rationale, evidence, tags, speakerAttribution }` with transcript line references
+  - [x] Task extraction prompt → `{ title, description, assigneeHint, dueAt, priority }` with inferred deadlines and ownership
+  - [x] Open question extraction prompt → `{ question, context, assigneeHint, dueAt }`
+  - [x] Important point extraction prompt → `{ content, category, speakerHint, transcriptEvidence }` for commitments, constraints, insights, warnings, risks
+- [x] Define Zod schemas for all extraction outputs — validate every LLM response before writing to DB. Reuse existing output shapes from `apps/control/src/validators/meeting.ts` where applicable.
+- [x] Implement **chunking strategy**: split the refined transcript into overlapping ~15-minute windows with ~2-minute context overlap. Run extraction per-window, deduplicate results across windows by content similarity (embedding cosine ≥ 0.95). This keeps LLM prompts within context limits and avoids dilution from 60+ minute transcripts.
+- [x] Commitment ledger export:
+  - [x] Read the commitment ledger from Redis (`meeting.commitment.{sessionId}`) — safe with 7-day TTL. Fallback: `session_state.json` on S3.
+  - [x] For each commitment, create an `ImportantPoint` with `category: "COMMITMENT"`, `content: statement`, `speakerId` from `SpeakerIdentity.userId`, `transcriptEvidence` from `utteranceId`
+  - [x] Generate Gemini embedding (768-dim) via `@google/genai` and store in `ImportantPoint.embedding`
+- [x] Write all extracted data to PostgreSQL transactionally via Prisma
 
-### Day 54-55: Memory Writes & Integration
 
-**apps/workers + apps/control**
+**Deliverable:** Structured decisions, tasks, questions, and commitments extracted from the refined transcript and persisted with embeddings for semantic search.
 
-- [ ] Write extracted decisions to PostgreSQL (versioned)
-- [ ] Write tasks with inferred owners/deadlines
-- [ ] Write open questions
-- [ ] Write important points with categories
-- [ ] Update meeting summary field
-- [ ] Generate embeddings for vector search (pgvector):
-  - [ ] Decisions
-  - [ ] Commitments (from ledger)
-  - [ ] Important points
-  - [ ] Policy guardrails
-- [ ] Publish `meeting.processed` event
-- [ ] Add `/meetings/:id/insights` endpoint (decisions, tasks, questions, commitments)
-- [ ] Add `/meetings/:id/transcript` endpoint (refined, speaker-attributed)
-- [ ] Wire session end to trigger post-meeting jobs
-- [ ] Add job status tracking in Redis
+---
 
-**Deliverable:** Meeting insights and commitments persisted to database, searchable via pgvector for future meetings.
+### Day 54-55: Memory Writes, Indexes & Client Notification
+
+**apps/workers + apps/control + apps/realtime**
+
+- [ ] Transactional batch write to PostgreSQL:
+  - [ ] Decisions → `Decision` table (versioned, with `decisionRef`)
+  - [ ] Tasks → `Task` table (with inferred `assigneeId` by resolving assignee names against team roster, linked to `decisionId`/`meetingId`)
+  - [ ] Open questions → `OpenQuestion` table (with inferred `assigneeId`)
+  - [ ] Important points → `ImportantPoint` table (with `category`, `speakerId`, `transcriptEvidence`)
+  - [ ] Commitments → `ImportantPoint` table (`category: "COMMITMENT"`)
+  - [ ] Update `Meeting.summary` with a concise LLM-generated overview of extracted items
+- [ ] Generate embeddings for pgvector (reuse Gemini embedder from `meeting-mode`):
+  - [ ] `Decision.embedding` — embed `title + " " + content`
+  - [ ] `ImportantPoint.embedding` — embed `content` (for COMMITMENT and other categories)
+- [ ] Create pgvector index migrations (raw SQL migrations in `packages/infra/prisma/`):
+  - [ ] HNSW index on `decisions.embedding` (`vector_cosine_ops`)
+  - [ ] HNSW index on `important_points.embedding` (`vector_cosine_ops`)
+  - [ ] HNSW index on `policy_guardrails.embedding` (`vector_cosine_ops`)
+- [ ] Add API endpoints in `apps/control`:
+  - [ ] `GET /meetings/:id/insights` — returns decisions, tasks, questions, important points (filterable by category)
+  - [ ] `GET /meetings/:id/transcript` — returns the refined, speaker-attributed transcript
+- [ ] Add job status tracking in Redis (per-meeting): `meeting.job.{sessionId}.transcribe.status`, `meeting.job.{sessionId}.summary.status` → `"queued"|"processing"|"done"|"failed"`. Expose via `GET /meetings/:id/processing-status`.
+- [ ] **Client notification transport:**
+  - [ ] On successful completion, publish `meeting.processed` event to Redis pub/sub channel (`meeting.processed.{sessionId}`) with payload `{ meetingId, sessionId, status: "complete" }`
+  - [ ] `apps/realtime` subscribes to `meeting.processed.*` and forwards to connected desktop clients via WebSocket
+  - [ ] Web dashboard (`apps/web`, Week 9) polls `GET /meetings/:id/processing-status` or subscribes via SSE
+- [ ] Add manual retry: `POST /meetings/:id/reprocess` (triggers new BullMQ job chain from transcript step)
+- [ ] Clean up Redis meeting-state keys after successful PostgreSQL persistence (delete 7-day TTL keys — data is now in the DB)
+
+**Deliverable:** All meeting insights and commitments persisted to PostgreSQL with HNSW-indexed pgvector embeddings, searchable for future meetings. Desktop and web clients receive real-time notification on processing completion. Job status is observable, retryable, and self-cleaning.
 
 ---
 
@@ -1457,7 +1530,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 | 4 | 22-28 | **LLM Classification & Search** | Tier 2 small LLM (single semantic source replacing all regex), **Post-Day 23 dual-channel intake hardening before Tier 3**, Tier 3 embedding search + commitment ledger search (shared embedding reuse), Tier 4 deep reasoning, **parallel Tier 1/2/3 orchestration, async topic-summary refinement off hot path, Tier 2 semantic cache, per-meeting cost cap (w/ warning mode at 80% & hard cap at $2.00), structured observability** |
 | 5 | 29-36 | **Alert System & Speaker Tracking** | All 12 alert categories, alert routing (shared/personal), speaker state tracker, tone trajectory, client disengagement, speculative processing, **atomic alert UX (no progressive flicker)** |
 | 6 | 37-46 | **Desktop Frontend & E2E** | Desktop UI (tray + overlay + main), ambient components, alert UI (12 categories), meeting mode screen, multi-user end-to-end testing |
-| 7 | 47-55 | **Post-Meeting** | Workers, **MinIO raw audio persistence (30-day lifecycle)**, Whisper refinement, speaker-attributed transcripts, commitment ledger → pgvector, extraction, memory writes |
+| 7 | 47-55 | **Post-Meeting** | Fix dual-channel audio persistence (two tag-stripped mono PCM16 files per session), Redis TTL extension + S3 state dump, BullMQ job trigger, Deepgram batch STT transcript refinement, VAD re-correlation speaker attribution, LLM extraction (decisions/tasks/questions/points), commitment ledger → `ImportantPoint` + pgvector HNSW indexes, client notification |
 | 8 | 56-68 | **Assistant** | Vector search, RAG, actions, auto-remembrance, UI (inside desktop app) |
 | — | — | **Distribution** (post-Week 8) | **signed/notarized installers + auto-update across Win/macOS/Linux** |
 | 9 | 69-76 | **Web Dashboard** | `apps/web` — meetings/transcripts/decisions/commitments/tasks review, team/client/policy admin, search, usage dashboard |
@@ -1543,15 +1616,7 @@ packages/
 │   │   ├── context-assembler.ts     # CHANGE: use SpeakerIdentity not YOU/THEM
 │   │   └── preloader.ts            # NEW — Context preload on session start
 │   └── index.ts
-├── extraction/               # Week 7
-│   ├── decisions.ts
-│   ├── tasks.ts
-│   ├── questions.ts
-│   ├── points.ts
-│   ├── commitments.ts        # NEW — Commitment ledger → PostgreSQL export
-│   ├── prompts.ts
-│   ├── schemas.ts
-│   └── index.ts
+├── extraction/               # Week 7 — extraction prompts, schemas, and logic live in apps/workers/src/extraction/, not as a standalone package. The Zod output schemas are shared with apps/control/src/validators/meeting.ts.
 └── assistant/                # Week 8
     ├── intent/
     ├── rag/
@@ -1577,8 +1642,11 @@ apps/
 ├── desktop/                  # Host capture: dual-source tagged mono (mic+sys forwarder); VAD - Tauri + React
 │   └── Needs: Rust-native WS (optional), per-session audio metrics, true Win/macOS loopback,
 │              React meeting UI polish (Week 6), assistant (Week 8)
-├── workers/                  # SCAFFOLD ONLY
-│   └── Needs: Everything (Week 7)
+├── workers/                  # INFRASTRUCTURE DONE — BaseWorker (BullMQ), health endpoint, graceful shutdown
+│   └── Needs: Fix audio persistence (tag-stripping, dual-file demux, admin WAV path),
+│              Redis TTL extension (7d) + session_state.json S3 dump,
+│              BullMQ Queue producer + Wire session-end trigger,
+│              TranscribeWorker, SpeakerRefinementWorker, SummaryWorker (Days 49-55)
 └── web/                      # NOT YET CREATED
     └── Needs: Everything (Week 9 — dashboard / logs / admin)
 ```
@@ -1612,7 +1680,7 @@ apps/
 | Redis pub/sub message loss | Accept loss for non-critical data; alerts use reliable delivery where possible |
 | Speculative processing low hit rate | Monitor hit rate, adjust confidence threshold dynamically |
 | Topic clustering inaccurate | Start with simple embedding, tune threshold iteratively |
-| Whisper API latency | Async processing, user doesn't wait |
+| Deepgram batch STT latency | Async processing via BullMQ — user doesn't wait; job status surfaced via `/meetings/:id/processing-status` |
 | Vector search slow | Add indexes, limit result count, cache frequent queries |
 | **Commitment ledger grows large** | In-memory HNSW handles hundreds of commitments per session in sub-ms; cap at 500 per meeting; oldest low-priority ones archived |
 | **Worker crash mid-meeting** | Redis snapshot of commitment ledger (Day 17-18) lets a replacement worker rehydrate the session's HNSW index on reconnect; ring buffer and topic state rehydrate from Redis too |
@@ -1620,7 +1688,7 @@ apps/
 | **Redundant Tier 2 LLM calls on repeated fillers** | Per-session semantic cache (Day 28) on utterance embedding similarity ≥ 0.97, ~30% hit rate on boilerplate confirmations |
 | **Alert flicker / progressive alerts confusing users** | Single atomic alert per Tier 4 invocation (Day 41-42); "Checking…" indicator is content-free |
 | **Alert fatigue** | Max 2 visible, priority queue, per-category confidence thresholds, Silent Collaborator mode |
-| **Raw audio lost if realtime worker dies** | Parallel MinIO streaming (Day 47-48) persists every PCM chunk independently of the live pipeline |
+| **Raw audio lost if realtime worker dies** | Parallel streaming to Cloudflare R2 (Day 47-48) persists frames via fire-and-forget multipart upload independently of the live pipeline |
 | **Desktop auto-update installs during a live meeting** | Auto-update prompt only applies on next launch; installer never runs while a session is active |
 
 ---
@@ -1726,7 +1794,7 @@ apps/
 - **Redis** — Already configured in packages/infra. Needs new key patterns for multi-user, commitment ledger snapshots, per-meeting cost counters, and pub/sub channels for ledger updates. **Not on the audio path.**
 - **PostgreSQL + pgvector** — Already configured with Prisma. Needs pgvector extension + new `Commitment` model (no `Voiceprint` — speaker ID is VAD-based).
 - **RabbitMQ** — Already configured for worker queues.
-- **MinIO (S3-compatible object storage)** — Added Day 47-48 for raw audio persistence (Whisper refinement source + debugging). 30-day lifecycle; per-org encryption keys.
+- **Cloudflare R2** — S3-compatible object storage, zero egress fees. Added Day 47-48 for raw audio persistence (Whisper refinement source + debugging). Single `raw_audio.pcm16` object per session via `@aws-sdk/lib-storage` Multipart Upload. SSE: `AES256`. Region always `"auto"`.
 - **In-memory HNSW** (`hnswlib-node` or equivalent) — pulled into `packages/meeting-mode` for the commitment ledger hot path.
 
 ### Rust-Side Runtime Dependencies (Day 12-13 onwards)
@@ -1769,7 +1837,7 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 | **Host speaker attribution** | VAD correlation like everyone else | **Channel 0 short-circuit maps directly to host identity; VAD correlation runs on channel 1 for non-host TEAM members** |
 | **Client clock drift** | Fixed ±300ms tolerance | **Per-client rolling-median offset + 1500ms window** |
 | **Alert UX** | Progressive / preliminary alerts | **Single atomic alert per Tier 4; content-free "Checking…" indicator only** |
-| **Raw audio persistence** | Not specified | **Parallel fire-and-forget stream to MinIO, 30-day lifecycle** |
+| **Raw audio persistence** | Not specified | **Fire-and-forget streaming to Cloudflare R2, single `raw_audio.pcm16` per session via multipart upload** |
 | **Desktop distribution** | "Tauri build" | **Code-signed Win MSI + notarized macOS universal + Linux .deb/.rpm/.AppImage; signed auto-update** |
 | **Observability** | Ad-hoc smoke script | **Per-utterance JSON metrics + per-session rollups + optional Prometheus histograms** |
 | **Alert categories** | 6-9 categories | 12 categories (added team_inconsistency, client_disengagement, undiscussed_agenda) |

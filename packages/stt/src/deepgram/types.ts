@@ -16,12 +16,22 @@
  */
 export const DEFAULT_DG_CONFIG = {
   model: "nova-3",
-  language: "multi",
+  // "en" gives better-calibrated VAD and endpointing than "multi".
+  // Deepgram nova-3 still auto-detects other languages when they appear;
+  // "en" only sets the primary/default language.
+  language: "en",
   punctuate: "true",
   interim_results: "true",
   smart_format: "true",
-  endpointing: "800", // 800ms silence = end of utterance
+  // 450ms silence reliably captures natural sentence-ending pauses without
+  // eating into mid-sentence breaths (which are typically 200-400ms), while
+  // avoiding false cutoffs on dramatic pauses.
+  endpointing: "450",
   vad_events: "true",
+  // UtteranceEnd fires after this many ms of silence following a speech segment.
+  // Acts as the primary flush signal for the accumulator, replacing the old
+  // safety-timer approach which was fragile and could delay output by 5 seconds.
+  utterance_end_ms: "1000",
   encoding: "linear16",
   sample_rate: "16000",
   channels: "1",

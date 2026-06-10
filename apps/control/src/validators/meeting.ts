@@ -116,3 +116,19 @@ export type CreateMeetingInput = z.infer<typeof createMeetingSchema>;
 export type UpdateMeetingInput = z.infer<typeof updateMeetingSchema>;
 export type MeetingExtractionInput = z.infer<typeof meetingExtractionSchema>;
 export type MeetingQueryInput = z.infer<typeof meetingQuerySchema>;
+
+export const meetingInsightsQuerySchema = z.object({
+  category: z
+    .enum([
+      "COMMITMENT",
+      "CONSTRAINT",
+      "INSIGHT",
+      "WARNING",
+      "RISK",
+      "OPPORTUNITY",
+    ])
+    .optional(),
+});
+export type MeetingInsightsQueryInput = z.infer<
+  typeof meetingInsightsQuerySchema
+>;

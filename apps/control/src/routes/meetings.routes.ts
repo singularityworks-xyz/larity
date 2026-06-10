@@ -1,16 +1,21 @@
 import { Elysia } from "elysia";
 import {
+  MeetingInsightsService,
   MeetingParticipantService,
   MeetingService,
   TranscriptService,
 } from "../services";
-import type { MeetingQueryInput } from "../validators";
+import type {
+  MeetingInsightsQueryInput,
+  MeetingQueryInput,
+} from "../validators";
 import {
   createMeetingParticipantBaseSchema,
   createMeetingSchema,
   createTranscriptSchema,
   meetingExtractionSchema,
   meetingIdSchema,
+  meetingInsightsQuerySchema,
   meetingParticipantIdSchema,
   meetingQuerySchema,
   updateMeetingParticipantSchema,
@@ -359,4 +364,49 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
       }
     },
     { params: meetingIdSchema }
+  )
+  // Get processing status of meeting
+  .get(
+    "/:id/processing-status",
+    async ({ params, set }) => {
+      const status = await MeetingService.getProcessingStatus(params.id);
+      if (!status) {
+        set.status = 404;
+        return { success: false, error: "Meeting not found" };
+      }
+      return { success: true, data: status };
+    },
+    { params: meetingIdSchema }
+  )
+  // Trigger reprocessing of meeting insights
+  .post(
+    "/:id/reprocess",
+    async ({ params, set }) => {
+      try {
+        const result = await MeetingService.reprocessMeeting(params.id);
+        return { success: true, data: result };
+      } catch (error) {
+        set.status = 400;
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Reprocessing failed",
+        };
+      }
+    },
+    { params: meetingIdSchema }
+  )
+  // Get aggregated insights for meeting
+  .get(
+    "/:id/insights",
+    async ({ params, query }) => {
+      const insights = await MeetingInsightsService.getInsights(
+        params.id,
+        query as unknown as MeetingInsightsQueryInput
+      );
+      return { success: true, data: insights };
+    },
+    {
+      params: meetingIdSchema,
+      query: meetingInsightsQuerySchema,
+    }
   );

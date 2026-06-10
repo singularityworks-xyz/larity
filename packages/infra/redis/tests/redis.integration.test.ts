@@ -1,144 +1,34 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { type ChildProcess, spawn } from "node:child_process";
 import { promisify } from "node:util";
+import {
+  RedisContainer,
+  type StartedRedisContainer,
+} from "@testcontainers/redis";
 import Redis, { type Redis as RedisInstance } from "ioredis";
 
 const sleep = promisify(setTimeout);
 
-interface DockerContainer {
-  process: ChildProcess;
-  containerId?: string;
-}
-
-class RedisTestContainer {
-  private container: DockerContainer | null = null;
-  private readonly redisUrl = "redis://localhost:6379";
-
-  start(): Promise<void> {
-    console.log("Starting Redis test container...");
-
-    const dockerProcess = spawn(
-      "docker-compose",
-      ["-f", "docker-compose.test.yml", "up", "-d"],
-      {
-        cwd: import.meta.dirname,
-        stdio: ["pipe", "pipe", "pipe"],
-      }
-    );
-
-    this.container = { process: dockerProcess };
-
-    return new Promise((resolve, reject) => {
-      let _stdout = "";
-      let stderr = "";
-
-      dockerProcess.stdout?.on("data", (data) => {
-        _stdout += data.toString();
-      });
-
-      dockerProcess.stderr?.on("data", (data) => {
-        stderr += data.toString();
-      });
-
-      dockerProcess.on("close", (code) => {
-        if (code === 0) {
-          console.log("Redis container started successfully");
-          resolve();
-        } else if (
-          stderr.includes("port is already allocated") ||
-          stderr.includes("address already in use")
-        ) {
-          console.log(
-            "Redis port already in use, assuming dev container is running."
-          );
-          resolve();
-        } else {
-          console.error("Failed to start Redis container:", stderr);
-          reject(
-            new Error(`Docker Compose failed with code ${code}: ${stderr}`)
-          );
-        }
-      });
-
-      setTimeout(() => {
-        dockerProcess.kill();
-        reject(new Error("Timeout starting Redis container"));
-      }, 60_000);
-    });
-  }
-
-  async waitForReady(maxRetries = 30): Promise<void> {
-    console.log("Waiting for Redis to be ready...");
-
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        const testRedis = new Redis(this.redisUrl);
-        await testRedis.ping();
-        await testRedis.quit();
-        console.log("Redis is ready!");
-        return;
-      } catch (_error) {
-        console.log(`Redis not ready yet, retry ${i + 1}/${maxRetries}...`);
-        await sleep(1000);
-      }
-    }
-
-    throw new Error("Redis container failed to become ready");
-  }
-
-  async stop(): Promise<void> {
-    console.log("Stopping Redis test container...");
-
-    if (this.container) {
-      try {
-        const dockerProcess = spawn(
-          "docker-compose",
-          ["-f", "docker-compose.test.yml", "down", "-v"],
-          {
-            cwd: import.meta.dirname,
-            stdio: ["pipe", "pipe", "pipe"],
-          }
-        );
-
-        await new Promise((resolve, reject) => {
-          dockerProcess.on("close", (code) => {
-            if (code === 0) {
-              console.log("Redis container stopped successfully");
-              resolve(undefined);
-            } else {
-              console.error("Failed to stop Redis container");
-              reject(new Error(`Docker Compose down failed with code ${code}`));
-            }
-          });
-
-          setTimeout(() => {
-            dockerProcess.kill();
-            reject(new Error("Timeout stopping Redis container"));
-          }, 30_000);
-        });
-      } catch (error) {
-        console.error("Error stopping Redis container:", error);
-      }
-    }
-  }
-
-  getRedisUrl(): string {
-    return this.redisUrl;
-  }
-}
-
-const testContainer = new RedisTestContainer();
+let testContainer: StartedRedisContainer | null = null;
 let redis: RedisInstance;
 
 describe("Redis Integration Tests", () => {
   beforeAll(async () => {
-    process.env.REDIS_URL = testContainer.getRedisUrl();
+    const externalUrl = process.env.REDIS_URL;
 
     try {
-      await testContainer.start();
-      await testContainer.waitForReady();
-
-      redis = new Redis(testContainer.getRedisUrl());
+      if (externalUrl) {
+        console.log(`Using provided REDIS_URL: ${externalUrl}`);
+        const testRedis = new Redis(externalUrl);
+        await testRedis.ping();
+        await testRedis.quit();
+        redis = new Redis(externalUrl);
+      } else {
+        console.log("No REDIS_URL provided, starting Redis Testcontainer...");
+        testContainer = await new RedisContainer("redis:7-alpine").start();
+        const url = testContainer.getConnectionUrl();
+        process.env.REDIS_URL = url;
+        redis = new Redis(url);
+      }
     } catch (error) {
       console.error("Failed to setup Redis test environment:", error);
       throw error;
@@ -154,7 +44,9 @@ describe("Redis Integration Tests", () => {
       console.error("Error disconnecting Redis client:", error);
     }
 
-    await testContainer.stop();
+    if (testContainer) {
+      await testContainer.stop();
+    }
   }, 60_000);
 
   describe("Client Integration", () => {
@@ -231,7 +123,8 @@ describe("Redis Integration Tests", () => {
       let receivedMessage: unknown = null;
       let messageReceived = false;
 
-      const subscriber = new Redis(testContainer.getRedisUrl());
+      // use the same connection string that the test uses
+      const subscriber = new Redis(process.env.REDIS_URL as string);
       await subscriber.subscribe(channel);
 
       subscriber.on("message", (receivedChannel, message) => {

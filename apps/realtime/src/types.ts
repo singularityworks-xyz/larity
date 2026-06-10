@@ -12,6 +12,7 @@ export interface SocketData {
   role: "host" | "participant";
   connectedAt: number;
   lastFrameTs: number;
+  orgId: string;
 }
 
 /**

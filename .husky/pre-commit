@@ -2,8 +2,8 @@
 # Exit on any error
 set -e
 
-# Run only unit tests (exclude *.integration.test.ts which require Docker)
-find packages apps -name '*.test.ts' ! -name '*.integration.test.ts' -not -path '*/node_modules/*' -type f | xargs bun test
+# Run only unit tests sequentially via the package.json test script
+bun run test
 
 # Type-check desktop app if any of its source files are staged
 if echo "$(git diff --cached --name-only)" | grep -q "^apps/desktop/src/"; then

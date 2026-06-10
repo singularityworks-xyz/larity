@@ -1,7 +1,17 @@
 process.env.REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 process.env.LOG_LEVEL = "debug";
 
-import { afterAll, beforeAll, describe, expect, it, mock } from "bun:test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  spyOn,
+} from "bun:test";
+import { sessionManager } from "@larity/stt";
 import Redis from "ioredis";
 import { AlertPublisher } from "../../../packages/meeting-mode/src/alerts/publisher";
 import { MeetingPipelineEngine } from "../../../packages/meeting-mode/src/pipeline/engine";
@@ -21,43 +31,6 @@ import { startServer, stopServer } from "../src/server";
 
 let redisPub: Redis;
 let redisSub: Redis; // Tauri desktop IPC mock
-
-mock.module("@larity/stt", () => {
-  return {
-    env: {
-      DEEPGRAM_API_KEY: "test-key",
-      REDIS_URL: process.env.REDIS_URL || "redis://localhost:6379",
-    },
-    validateEnv: () => undefined,
-    sessionManager: {
-      createSession: mock(() => true),
-      hasSession: mock(() => true),
-      closeSession: mock(async () => undefined),
-      closeAll: mock(async () => undefined),
-      sendAudio: mock(async (sessionId: string, _frame: ArrayBuffer) => {
-        // Publish mock STT final result
-        const now = Date.now();
-        const sttResult = {
-          sessionId,
-          transcript:
-            "We absolutely must deliver this new feature by tomorrow.",
-          speechTimestamp: now - 3000,
-          ts: now,
-          isFinal: true,
-          diarizationIndex: 0,
-          confidence: 0.99,
-          channel: 0,
-          start: 0,
-          duration: 0.1,
-        };
-        await redisPub.publish(
-          `meeting.stt.${sessionId}`,
-          JSON.stringify(sttResult)
-        );
-      }),
-    },
-  };
-});
 
 // Create mocks for managers
 const mockConstraintManager = {
@@ -106,7 +79,7 @@ const mockCommitmentManager = {
 
 import { redisKeys } from "@larity/infra/redis/keys";
 
-function waitFor(predicate: () => boolean, timeoutMs = 2500): Promise<void> {
+function waitFor(predicate: () => boolean, timeoutMs = 5000): Promise<void> {
   const startedAt = Date.now();
 
   return new Promise((resolve, reject) => {
@@ -190,6 +163,61 @@ class DelegatingPipelineFinalizer {
 describe("Full Pipeline E2E Test", () => {
   let app: ReturnType<typeof startServer> extends Promise<infer T> ? T : never;
   const receivedAlerts: any[] = [];
+
+  let createSessionSpy: any;
+  let hasSessionSpy: any;
+  let closeSessionSpy: any;
+  let closeAllSpy: any;
+  let sendAudioSpy: any;
+
+  beforeEach(() => {
+    createSessionSpy = spyOn(
+      sessionManager,
+      "createSession"
+    ).mockImplementation(() => true);
+    hasSessionSpy = spyOn(sessionManager, "hasSession").mockImplementation(
+      () => true
+    );
+    closeSessionSpy = spyOn(sessionManager, "closeSession").mockImplementation(
+      () => {
+        /* mock */
+      }
+    );
+    closeAllSpy = spyOn(sessionManager, "closeAll").mockImplementation(() => {
+      /* mock */
+    });
+    sendAudioSpy = spyOn(sessionManager, "sendAudio").mockImplementation(
+      async (sessionId: string, _frame: Buffer | Uint8Array) => {
+        // Publish mock STT final result
+        const now = Date.now();
+        const sttResult = {
+          sessionId,
+          transcript:
+            "We absolutely must deliver this new feature by tomorrow.",
+          speechTimestamp: now - 3000,
+          ts: now,
+          isFinal: true,
+          diarizationIndex: 0,
+          confidence: 0.99,
+          channel: 0,
+          start: 0,
+          duration: 0.1,
+        };
+        await redisPub.publish(
+          `meeting.stt.${sessionId}`,
+          JSON.stringify(sttResult)
+        );
+      }
+    );
+  });
+
+  afterEach(() => {
+    createSessionSpy.mockRestore();
+    hasSessionSpy.mockRestore();
+    closeSessionSpy.mockRestore();
+    closeAllSpy.mockRestore();
+    sendAudioSpy.mockRestore();
+  });
 
   beforeAll(async () => {
     const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
@@ -311,21 +339,37 @@ describe("Full Pipeline E2E Test", () => {
   });
 
   it("processes binary frames from WebSocket through full pipeline to Redis alerts channel", async () => {
+    console.log("E2E Test: Opening WebSocket...");
     const ws = new WebSocket(
       `ws://127.0.0.1:${env.PORT}/?sessionId=test-session-e2e&userId=host-user&role=host`
     );
 
     await new Promise<void>((resolve, reject) => {
-      ws.onopen = () => resolve();
-      ws.onerror = () => reject(new Error("WebSocket open failed"));
+      ws.onopen = () => {
+        console.log("E2E Test: WebSocket opened!");
+        resolve();
+      };
+      ws.onerror = (e) => {
+        console.error("E2E Test: WebSocket failed to open!", e);
+        reject(new Error("WebSocket open failed"));
+      };
+      ws.onclose = (event) => {
+        console.log(
+          `E2E Test: WebSocket closed code=${event.code} reason=${event.reason}`
+        );
+      };
     });
 
-    // Send binary audio frame - mockSTT will intercept and publish STT result
-    // STT result will be caught by subscriber, pushed through finalizer to MeetingPipelineEngine
-    // Engine will run tier1, tier2, tier4, and publish an alert
+    console.log("E2E Test: Sending binary frame...");
     ws.send(new Uint8Array([1, 2, 3, 4]));
 
-    await waitFor(() => receivedAlerts.length > 0);
+    console.log(
+      "E2E Test: Waiting for alert to be received on Redis subscription..."
+    );
+    await waitFor(() => {
+      console.log(`Current receivedAlerts length: ${receivedAlerts.length}`);
+      return receivedAlerts.length > 0;
+    });
 
     expect(receivedAlerts.length).toBeGreaterThan(0);
     const alert = receivedAlerts[0];

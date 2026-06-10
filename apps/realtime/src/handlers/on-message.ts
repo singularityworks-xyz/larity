@@ -1,6 +1,10 @@
 import { sessionManager } from "@larity/stt";
+import { getStreamer } from "../audio/registry";
 import { createRealtimeLogger } from "../logger";
-import { publishVadSignal } from "../redis/publisher";
+import {
+  publishParticipantRoleChange,
+  publishVadSignal,
+} from "../redis/publisher";
 import { updateLastFrameTs } from "../session";
 import type { RealtimeSocket } from "../types";
 
@@ -84,6 +88,28 @@ function handleParsedVadPayload(
     return;
   }
 
+  if (payload.type === "participant_role_change") {
+    const { speakerId, role: newRole } = payload as unknown as {
+      speakerId: string;
+      role: "TEAM" | "EXTERNAL";
+    };
+    if (
+      typeof speakerId === "string" &&
+      (newRole === "TEAM" || newRole === "EXTERNAL")
+    ) {
+      publishParticipantRoleChange(sessionId, {
+        speakerId,
+        role: newRole,
+      }).catch((err) => {
+        log.error(
+          { err, sessionId },
+          "Failed to publish participant role change"
+        );
+      });
+    }
+    return;
+  }
+
   if (payload.type === "vad_speaking" || payload.type === "vad_silence") {
     handleVadMessage(
       payload.type as "vad_speaking" | "vad_silence",
@@ -106,6 +132,23 @@ function handleBinaryFrame(
   sessionManager.sendAudio(sessionId, frame).catch((err) => {
     log.error({ err, sessionId }, "Failed to relay frame to Deepgram");
   });
+
+  // Fire-and-forget S3 audio persistence — errors never block live processing
+  const streamer = getStreamer(sessionId);
+  if (streamer && !streamer.done) {
+    try {
+      if (frame.length > 0) {
+        const tag = frame[0];
+        const pcm = frame.subarray(1);
+        streamer.writeDemux(tag, pcm);
+      }
+    } catch (error) {
+      log.error(
+        { err: error, sessionId },
+        "Failed to write frame to audio persistence — continuing without"
+      );
+    }
+  }
 }
 
 /**

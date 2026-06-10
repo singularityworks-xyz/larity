@@ -1,3 +1,5 @@
+import { redis } from "@larity/infra/redis";
+import { redisKeys } from "@larity/infra/redis/keys";
 import { Elysia, t } from "elysia";
 import { createControlLogger } from "../logger";
 import { meetingSessionService } from "../services/meeting-session.service";
@@ -49,9 +51,27 @@ export const internalSessionRoutes = new Elysia({
         role
       );
 
+      let orgId: string | undefined;
+      if (isValid) {
+        try {
+          const contextStr = await redis.get(redisKeys.meetingContext(id));
+          if (contextStr) {
+            const context = JSON.parse(contextStr) as Record<string, unknown>;
+            if (context && typeof context.orgId === "string") {
+              orgId = context.orgId;
+            }
+          }
+        } catch (_e) {
+          // Ignore
+        }
+      }
+
       return {
         success: true,
-        data: { valid: isValid },
+        data: {
+          valid: isValid,
+          orgId: orgId || "default",
+        },
       };
     },
     {

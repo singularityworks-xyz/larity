@@ -4,6 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "dev": "bun --env-file=../../.env --watch index.ts",
+    "test": "LOG_LEVEL=fatal bun test --preload ./tests/setup.ts",
     "lint": "biome check --log-level=info --diagnostic-level=warn .",
     "lint:fix": "biome check --write --unsafe .",
     "format": "biome format --write .",
@@ -16,6 +18,16 @@
     "typescript": "^6"
   },
   "dependencies": {
-    "@larity/telemetry": "workspace:*"
+    "@google/genai": "^2.7.0",
+    "@larity/infra": "workspace:*",
+    "@larity/jobs": "workspace:*",
+    "@larity/logger": "workspace:*",
+    "@larity/stt": "workspace:*",
+    "@larity/telemetry": "workspace:*",
+    "bullmq": "^5.48.1",
+    "elysia": "^1.4.25",
+    "ioredis": "^5.9.0",
+    "meeting-mode": "workspace:*",
+    "zod": "^4.4.3"
   }
 }

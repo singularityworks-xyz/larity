@@ -1,0 +1,22 @@
+{
+  "name": "@larity/jobs",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^6"
+  },
+  "dependencies": {
+    "@larity/infra": "workspace:*",
+    "@larity/logger": "workspace:*",
+    "bullmq": "^5.48.1",
+    "ioredis": "^5.8.2",
+    "zod": "^4.3.5"
+  }
+}
