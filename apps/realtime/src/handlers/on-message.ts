@@ -1,7 +1,10 @@
 import { sessionManager } from "@larity/stt";
 import { getStreamer } from "../audio/registry";
 import { createRealtimeLogger } from "../logger";
-import { publishVadSignal } from "../redis/publisher";
+import {
+  publishParticipantRoleChange,
+  publishVadSignal,
+} from "../redis/publisher";
 import { updateLastFrameTs } from "../session";
 import type { RealtimeSocket } from "../types";
 
@@ -81,6 +84,28 @@ function handleParsedVadPayload(
         "Syncing audio stream start with network-aware offset"
       );
       sessionManager.setAudioStreamStart(sessionId, serverAudioStartTs);
+    }
+    return;
+  }
+
+  if (payload.type === "participant_role_change") {
+    const { speakerId, role: newRole } = payload as unknown as {
+      speakerId: string;
+      role: "TEAM" | "EXTERNAL";
+    };
+    if (
+      typeof speakerId === "string" &&
+      (newRole === "TEAM" || newRole === "EXTERNAL")
+    ) {
+      publishParticipantRoleChange(sessionId, {
+        speakerId,
+        role: newRole,
+      }).catch((err) => {
+        log.error(
+          { err, sessionId },
+          "Failed to publish participant role change"
+        );
+      });
     }
     return;
   }

@@ -10,6 +10,7 @@ import type {
 import {
   PARTICIPANT_JOIN,
   PARTICIPANT_LEAVE,
+  participantRoleChangeChannel,
   SESSION_END,
   SESSION_START,
   vadChannel,
@@ -109,6 +110,26 @@ export async function publishParticipantLeave(
     log.error(
       { err: error, sessionId: event.sessionId },
       "Failed to publish participant leave"
+    );
+  }
+}
+
+/**
+ * Publish participant role change event
+ */
+export async function publishParticipantRoleChange(
+  sessionId: string,
+  event: { speakerId: string; role: "TEAM" | "EXTERNAL" }
+): Promise<void> {
+  try {
+    const channel = participantRoleChangeChannel(sessionId);
+    if (redis && typeof redis.publish === "function") {
+      await redis.publish(channel, JSON.stringify(event));
+    }
+  } catch (error) {
+    log.error(
+      { err: error, sessionId },
+      "Failed to publish participant role change"
     );
   }
 }
