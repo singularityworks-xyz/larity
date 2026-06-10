@@ -142,11 +142,11 @@ The decisions below (B.1–B.19) were adopted after audits of the pipeline for l
 - **Decision:** **`LEDGER_SNAPSHOT_DEBOUNCE_MS`** coalesces snapshot writes; flush on session close; **`ledger_snapshot_flushes_total`** counter. When debounce is 0 (tests), callers await immediate flush.
 - **Where:** `commitment/ledger.ts`, `constraint/ledger.ts`.
 
-### B.18 Tier 2 schema enforcement (Groq JSON schema strict mode)
+### B.18 Tier 2 schema enforcement (OpenAI/SambaNova JSON schema strict mode)
 
-- **Context:** Tier 2 runs as **`chat.completions`** on **Groq** with **`response_format: json_schema`** (`strict: true`). Providers require every key under `properties` to appear in `required`; optional fields are modeled as **`null`**.
+- **Context:** Tier 2 runs as **`chat.completions`** on **SambaNova** (via OpenAI SDK) with **`response_format: json_schema`** (`strict: true`). Providers require every key under `properties` to appear in `required`; optional fields are modeled as **`null`**.
 - **Decision:** **`extractedData`** and non-null **`topicDelta`** objects list **all** keys in schema `required` with nullable types; Zod preprocess strips **`null`** post-parse. Mis-specified schemas yield HTTP 400 before inference ("Tier2 classification failed silently" in logs).
-- **Where:** `pipeline/tier2.ts`, `pipeline/types.ts`, `GROQ_TIER2_MODEL` / `GROQ_API_KEY` in `env.ts`.
+- **Where:** `pipeline/tier2.ts`, `pipeline/types.ts`, `SAMBANOVA_TIER2_MODEL` / `SAMBANOVA_API_KEY` in `env.ts`.
 
 ### B.19 Utterance timestamp = speech time, not processing time (`speechTimestamp`)
 

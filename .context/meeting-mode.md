@@ -589,7 +589,7 @@ This is the core intelligence pipeline. For each finalized utterance, it runs th
 
 **Key design points:**
 - Tier 1 is purely structural/language-agnostic.
-- Tier 2 uses **Groq** (`GROQ_TIER2_MODEL`) with **`response_format: json_schema`** (`strict: true`) — **not** Gemini on the hot path (Gemini remains embeddings + Tier 4). Provider rules require **every property key** in **`extractedData`** and in a non-null **`topicDelta`** object to be present; unused slots are **`null`** (Zod strips nulls after parse).
+- Tier 2 uses **SambaNova** (`SAMBANOVA_TIER2_MODEL`) with **`response_format: json_schema`** (`strict: true`) — **not** Gemini on the hot path (Gemini remains embeddings + Tier 4). Provider rules require **every property key** in **`extractedData`** and in a non-null **`topicDelta`** object to be present; unused slots are **`null`** (Zod strips nulls after parse).
 - Tier 2 is the **single per-utterance semantic source of truth** (alerts + topic deltas).
 - Tier 3 runs on every post-filter utterance as a safety net (short-circuits pgvector when preload context is absent **and** the commitment ledger search is empty).
 - Tier 4 is deep reasoning, gated by Tier 2/Tier 3 output.
@@ -639,9 +639,9 @@ All semantic understanding is now in Tier 2 (small LLM).
 
 #### Tier 2: Semantic Classification via Small LLM (~$0.002/call, <200ms)
 
-**Single call via Groq** (`GROQ_TIER2_MODEL`, default `openai/gpt-oss-120b`) per utterance that passes the pre-filter, using **`json_schema`** structured outputs (`Tier2Classification`, **`strict: true`**). This is the primary classification layer that replaces ALL the old regex pattern libraries.
+**Single call via SambaNova** (`SAMBANOVA_TIER2_MODEL`, default `gpt-oss-120b`) per utterance that passes the pre-filter, using **`json_schema`** structured outputs (`Tier2Classification`, **`strict: true`**). This is the primary classification layer that replaces ALL the old regex pattern libraries.
 
-**Schema constraint:** Groq rejects schemas where an `object` lists `properties` without a `required` array covering **every** key — hence **`extractedData`** and non-null **`topicDelta`** are modeled as **all keys required** with **`string | null`** / **`number | null`**; the app strips **`null`** after validation so downstream code keeps optional-field ergonomics.
+**Schema constraint:** OpenAI API specs reject schemas where an `object` lists `properties` without a `required` array covering **every** key — hence **`extractedData`** and non-null **`topicDelta`** are modeled as **all keys required** with **`string | null`** / **`number | null`**; the app strips **`null`** after validation so downstream code keeps optional-field ergonomics.
 
 **Input to the LLM:**
 
@@ -834,7 +834,7 @@ Deepgram STT (1 channel):    60 min × ~$0.0077/min        = ~$0.46
 Dual-channel STT delta:      +60 channel-min × ~$0.0077   = +~$0.46
 Pre-filter kills:            ~48 of 120 utterances (40%)
 Tier 1 (structural):         ~72 utterances × $0          = FREE
-Tier 2 (Groq Tier 2):        ~72 utterances × $0.002      = ~$0.14
+Tier 2 (SambaNova Tier 2):        ~72 utterances × $0.002      = ~$0.14
 Tier 3 (embeddings):         ~72 utterances × $0.00002    = ~$0.002
 Tier 4 (large LLM):          ~8 utterances × $0.02        = ~$0.16
 
@@ -851,7 +851,7 @@ const constraintTask = constraintManager.processUtterance(utterance)
 
 const [tier1, tier2, tier3, _constraints] = await Promise.all([
   runTier1Structural(utterance),       // <50ms,  free
-  runTier2Classification(utterance),   // Groq + schema, ~$0.002
+  runTier2Classification(utterance),   // SambaNova + schema, ~$0.002
   runTier3EmbeddingSearch(utterance),    // novelty ∥ ledger ∥ memory (memory queries parallel)
   constraintTask,
 ])
@@ -929,7 +929,7 @@ Prometheus/session rollups in B.11 remain roadmap; **this channel is the current
 | Model | Purpose | Cost per call | Example |
 |-------|---------|---------------|---------|
 | **Embedding model** | Search, similarity, novelty | ~$0.00002 | Gemini embed (`@google/genai`) |
-| **Small LLM** | Classification, extraction | ~$0.002 | Groq chat completions + JSON schema (`GROQ_TIER2_MODEL`) |
+| **Small LLM** | Classification, extraction | ~$0.002 | SambaNova chat completions + JSON schema (`SAMBANOVA_TIER2_MODEL`) |
 | **Large LLM** | Deep reasoning, contradiction analysis | ~$0.02 | Gemini Tier 4 (`GEMINI_TIER4_MODEL`) |
 
 **Embedding reuse rule (no duplicate work):**
