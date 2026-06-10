@@ -10,6 +10,7 @@ import type { Alert } from "./alerts/types";
 import { CommitmentManager } from "./commitment/manager";
 import { ConstraintManager } from "./constraint/manager";
 import type { PreloadedContextPayload } from "./constraint/types";
+import { CostManager } from "./cost/manager";
 import { validateEnv } from "./env";
 import { rootLogger } from "./logger";
 import { MeetingPipelineEngine } from "./pipeline/engine";
@@ -22,6 +23,8 @@ import { SpeakerManager } from "./speaker/manager";
 import { startSubscriber, stopSubscriber } from "./subscriber";
 import { UtteranceFinalizer } from "./utterance/finalizer";
 
+const UTTERANCE_CACHE_TTL = 7 * 24 * 60 * 60;
+
 // biome-ignore lint/performance/noBarrelFile: structure convention
 export { AlertPublisher, createAlertChannelKeys } from "./alerts/publisher";
 export { AlertQueueManager } from "./alerts/queue";
@@ -32,6 +35,7 @@ export * from "./channels";
 export * from "./commitment";
 export * from "./constraint";
 export * from "./pipeline/engine";
+export { getMetricsText, startDefaultMetrics } from "./pipeline/metrics";
 export * from "./pipeline/pre-filter";
 export * from "./pipeline/tier1";
 export * from "./pipeline/tier2";
@@ -40,7 +44,9 @@ export * from "./pipeline/tier4-alert";
 export * from "./pipeline/tier4-context";
 export * from "./pipeline/types";
 export { SpeakerIdentifier } from "./speaker/identifier";
+export * from "./speaker/offline-correlation";
 export * from "./speaker/types";
+export * from "./speculative";
 export * from "./utterance/types";
 
 let finalizer: UtteranceFinalizer | null = null;
@@ -48,6 +54,10 @@ let speakerManager: SpeakerManager | null = null;
 let commitmentManager: CommitmentManager | null = null;
 let constraintManager: ConstraintManager | null = null;
 let pipelineEngine: MeetingPipelineEngine | null = null;
+let costManager: CostManager | null = null;
+
+/** One AlertPublisher per session — avoids construction overhead per Tier alert */
+const alertPublisherCache = new Map<string, AlertPublisher>();
 
 //graceful shutdown handler
 async function shutdown(signal: string): Promise<void> {
@@ -59,12 +69,14 @@ async function shutdown(signal: string): Promise<void> {
     }
 
     if (commitmentManager) {
-      commitmentManager.closeAll();
+      await commitmentManager.closeAll();
     }
 
     if (constraintManager) {
-      constraintManager.closeAll();
+      await constraintManager.closeAll();
     }
+
+    alertPublisherCache.clear();
 
     if (pipelineEngine) {
       pipelineEngine.closeAll();
@@ -114,6 +126,8 @@ async function main(): Promise<void> {
   constraintManager = new ConstraintManager(
     redisClient as unknown as ConstructorParameters<typeof ConstraintManager>[0]
   );
+  costManager = new CostManager(redisClient as Redis);
+
   finalizer = new UtteranceFinalizer(
     {
       publish: (channel, message) => redisClient.publish(channel, message),
@@ -130,16 +144,26 @@ async function main(): Promise<void> {
     finalizer,
     constraintManager,
     commitmentManager,
+    costManager,
     preFilter: new PreFilter(),
     tier1: new Tier1StructuralDetector(),
     tier2: new Tier2Classifier(),
     tier4: new Tier4DeepReasoner(),
     tier4Alerts: {
-      publish: async (sessionId: string, alert: Alert) =>
-        new AlertPublisher({
-          redis: redisClient as Redis,
-          sessionId,
-        }).publish(alert),
+      publish: async (sessionId: string, alert: Alert) => {
+        let pub = alertPublisherCache.get(sessionId);
+        if (!pub) {
+          pub = new AlertPublisher({
+            redis: redisClient as Redis,
+            sessionId,
+          });
+          alertPublisherCache.set(sessionId, pub);
+        }
+        await pub.publish(alert);
+      },
+    },
+    onPipelineSessionClosed: (sessionId) => {
+      alertPublisherCache.delete(sessionId);
     },
     getContextPayload: async (sessionId) => {
       const payload = await redisClient.get(
@@ -165,8 +189,27 @@ async function main(): Promise<void> {
       return;
     }
 
-    const evaluation = await pipelineEngine.evaluateUtterance(utterance);
-    await publishPipelineEvaluationTrace(redisClient, utterance, evaluation);
+    // Append to Redis list for post-processing worker retrieval (with 7-day TTL)
+    const key = `meeting.utterance.${utterance.sessionId}`;
+    const payload = JSON.stringify(utterance, (k, val) =>
+      k === "embeddingPromise" ? undefined : val
+    );
+    try {
+      await redisClient.rpush(key, payload);
+      await redisClient.expire(key, UTTERANCE_CACHE_TTL);
+    } catch (err) {
+      rootLogger.error(
+        { err, sessionId: utterance.sessionId },
+        "Failed to cache live utterance in Redis"
+      );
+    }
+
+    pipelineEngine.evaluateUtteranceQueued(
+      utterance,
+      async (utt, evaluation) => {
+        await publishPipelineEvaluationTrace(redisClient, utt, evaluation);
+      }
+    );
   });
 
   await startSubscriber(
@@ -187,7 +230,9 @@ async function main(): Promise<void> {
   rootLogger.info("============================================");
 }
 
-main().catch((error) => {
-  rootLogger.fatal({ err: error }, "Unhandled error");
-  process.exit(1);
-});
+if (import.meta.main) {
+  main().catch((error) => {
+    rootLogger.fatal({ err: error }, "Unhandled error");
+    process.exit(1);
+  });
+}

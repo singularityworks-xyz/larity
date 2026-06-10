@@ -13,6 +13,7 @@ describe("constraint/manager", () => {
     redis = new Redis() as unknown as RedisClient;
     manager = new ConstraintManager(redis, {
       now: () => 1_700_000_000_000,
+      snapshotDebounceMs: 0,
     });
   });
 

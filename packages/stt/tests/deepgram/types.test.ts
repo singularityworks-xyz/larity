@@ -8,7 +8,7 @@ import {
 describe("Deepgram Types", () => {
   describe("DEFAULT_DG_CONFIG", () => {
     it("should have diarize enabled for per-stream speaker labels in logs and Redis", () => {
-      expect(DEFAULT_DG_CONFIG.diarize).toBe(true);
+      expect(DEFAULT_DG_CONFIG.diarize).toBe("true");
     });
 
     it("should use nova-3 model", () => {
@@ -17,21 +17,21 @@ describe("Deepgram Types", () => {
 
     it("should use linear16 encoding at 16kHz mono", () => {
       expect(DEFAULT_DG_CONFIG.encoding).toBe("linear16");
-      expect(DEFAULT_DG_CONFIG.sample_rate).toBe(16_000);
-      expect(DEFAULT_DG_CONFIG.channels).toBe(1);
+      expect(DEFAULT_DG_CONFIG.sample_rate).toBe("16000");
+      expect(DEFAULT_DG_CONFIG.channels).toBe("1");
     });
 
     it("should enable punctuation and smart formatting", () => {
-      expect(DEFAULT_DG_CONFIG.punctuate).toBe(true);
-      expect(DEFAULT_DG_CONFIG.smart_format).toBe(true);
+      expect(DEFAULT_DG_CONFIG.punctuate).toBe("true");
+      expect(DEFAULT_DG_CONFIG.smart_format).toBe("true");
     });
 
     it("should enable interim results", () => {
-      expect(DEFAULT_DG_CONFIG.interim_results).toBe(true);
+      expect(DEFAULT_DG_CONFIG.interim_results).toBe("true");
     });
 
-    it("should have keepAlive enabled", () => {
-      expect(DEFAULT_DG_CONFIG.keepAlive).toBe(true);
+    it("should use english language as primary", () => {
+      expect(DEFAULT_DG_CONFIG.language).toBe("en");
     });
   });
 

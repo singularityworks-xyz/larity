@@ -1,0 +1,249 @@
+@import "tailwindcss";
+
+@import "@fontsource/geist-sans/latin-400.css";
+@import "@fontsource/geist-sans/latin-500.css";
+@import "@fontsource/geist-sans/latin-600.css";
+@import "@fontsource/geist-mono/latin-400.css";
+@import "@fontsource/geist-mono/latin-500.css";
+@import "@fontsource/share-tech-mono/latin-400.css";
+@import "./meeting-mode.css";
+
+@theme {
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-elevated-a: var(--bg-elevated-a);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-emphasis: var(--bg-emphasis);
+  --color-surface-overlay: var(--surface-overlay);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-border-subtle: var(--border-subtle);
+
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-fg-on-accent: var(--fg-on-accent);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-pressed: var(--accent-pressed);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-fg: var(--accent-fg);
+
+  --color-success-fg: var(--success-fg);
+  --color-success-bg: var(--success-bg);
+  --color-warning-fg: var(--warning-fg);
+  --color-warning-bg: var(--warning-bg);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-bg: var(--danger-bg);
+  --color-info-fg: var(--info-fg);
+  --color-info-bg: var(--info-bg);
+
+  --font-sans: "Geist Sans", "Inter", system-ui, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+
+  --radius-none: 0px;
+  --radius-0: var(--radius-0);
+  --radius-1: var(--radius-1);
+}
+
+@layer base {
+  :root {
+    --bg: #000000;
+    --bg-elevated: #0a0a0a;
+    --bg-elevated-a: #0a0a0a1a;
+    --bg-subtle: #111111;
+    --bg-emphasis: #171717;
+    --surface-overlay: #0e0e0ee6;
+
+    --border: #262626;
+    --border-strong: #3a3a3a;
+    --border-subtle: #1a1a1a;
+
+    --fg: #ededed;
+    --fg-muted: #a1a1a1;
+    --fg-subtle: #6b6b6b;
+    --fg-on-accent: #0a0a0a;
+
+    --accent: #ffffff;
+    --accent-hover: #e0e0e0;
+    --accent-pressed: #c0c0c0;
+    --accent-subtle: #ffffff1a;
+    --accent-fg: #000000;
+
+    --success-fg: #3fb950;
+    --success-bg: #3fb9501a;
+    --warning-fg: #d29922;
+    --warning-bg: #d299221a;
+    --danger-fg: #f85149;
+    --danger-bg: #f851491a;
+    --info-fg: #58a6ff;
+    --info-bg: #58a6ff1a;
+
+    --radius-0: 12px;
+    --radius-1: 8px;
+
+    --ring: var(--accent);
+
+    color-scheme: dark;
+  }
+
+  * {
+    box-sizing: border-box;
+    border-color: var(--border);
+  }
+
+  html {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-feature-settings:
+      "tnum" 1,
+      "ss01" 1,
+      "ss03" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: inherit;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  :where(a):focus-visible,
+  :where(button):focus-visible,
+  :where(input):focus-visible,
+  :where(textarea):focus-visible,
+  :where(select):focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 1px var(--bg),
+      0 0 0 2px var(--ring);
+  }
+
+  code,
+  pre {
+    font-family: var(--font-mono);
+  }
+}
+
+@keyframes splashBloom {
+  from {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes brandPulse {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes overlay-heartbeat {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 5px rgba(63, 185, 80, 0);
+  }
+}
+
+@keyframes dot-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes topic-crossfade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes counter-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(210, 153, 34, 0.5);
+  }
+
+  70% {
+    box-shadow: 0 0 0 5px rgba(210, 153, 34, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(210, 153, 34, 0);
+  }
+}
+
+@keyframes contradiction-flash {
+  0% {
+    background-color: rgba(248, 81, 73, 0.3);
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes status-bar-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+*[data-tauri-drag-region] {
+  app-region: drag;
+  -webkit-app-region: drag;
+}

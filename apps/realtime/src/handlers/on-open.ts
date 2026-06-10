@@ -1,4 +1,5 @@
 import { sessionManager } from "@larity/stt";
+import { createStreamer } from "../audio/registry";
 import { createRealtimeLogger } from "../logger";
 import {
   publishParticipantJoin,
@@ -39,6 +40,20 @@ export function onOpen(ws: RealtimeSocket): void {
       );
       return;
     }
+
+    // Start raw audio persistence for host sessions
+    try {
+      createStreamer(sessionId, data.orgId);
+      log.info(
+        { sessionId, orgId: data.orgId },
+        "Audio persistence streamer created"
+      );
+    } catch (error) {
+      log.error(
+        { err: error, sessionId },
+        "Failed to create audio persistence streamer — continuing without persistence"
+      );
+    }
   }
 
   log.info({ sessionId, userId, role }, "Connection established");
@@ -57,6 +72,7 @@ export function onOpen(ws: RealtimeSocket): void {
   publishParticipantJoin({
     sessionId,
     userId,
+    name: data.name,
     role,
     ts: data.connectedAt,
   }).catch((err) => {

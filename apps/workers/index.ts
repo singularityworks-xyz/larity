@@ -1,6 +1,6 @@
-import { setupTelemetry } from "@larity/telemetry";
+import { startWorkersApp } from "./src/index";
 
-// Initialize telemetry
-setupTelemetry("workers");
-
-console.log("Hello via Bun workers!");
+startWorkersApp().catch((error) => {
+  console.error("FATAL: Workers startup failed", error);
+  process.exit(1);
+});

@@ -9,6 +9,24 @@ import type { TopicState } from "./types";
 
 const log = createMeetingModeLogger("topic-manager");
 
+/** Derive a short initial label from the first utterance text so the
+ *  frontend shows something descriptive before the summarizer or Tier 2
+ *  supplies the real label. */
+function deriveInitialLabel(text?: string): string {
+  if (!text) {
+    return "New Topic";
+  }
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return "New Topic";
+  }
+  const maxLen = 40;
+  if (trimmed.length <= maxLen) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, maxLen)}…`;
+}
+
 export interface TopicPublisher {
   publish(channel: string, message: string): Promise<number>;
   hset(key: string, field: string, value: string): Promise<number>;
@@ -46,6 +64,9 @@ export class TopicManager {
   // Processing locks per topic to prevent concurrent summarizer runs
   private readonly processingLocks = new Set<string>();
 
+  // Tracks last summarization hash per topic to skip redundant LLM calls
+  private readonly lastSummarizedHash = new Map<string, string>();
+
   constructor(publisher: TopicPublisher, options: TopicManagerOptions = {}) {
     this.embedder = new GoogleGenAIEmbedder();
     this.summarizer = new TopicSummarizer();
@@ -60,8 +81,23 @@ export class TopicManager {
   async assignTopic(utterance: Utterance): Promise<string> {
     const { sessionId, text } = utterance;
 
-    // 1. Embed utterance (use pre-computed if available)
-    const newVector = utterance.embedding ?? (await this.embedder.embed(text));
+    // 1. Embed utterance (pre-computed, in-flight promise, or embed here)
+    let newVector: number[];
+    if (utterance.embedding && utterance.embedding.length > 0) {
+      newVector = utterance.embedding;
+    } else if (utterance.embeddingPromise) {
+      try {
+        const resolved = await utterance.embeddingPromise;
+        newVector =
+          resolved && resolved.length > 0
+            ? resolved
+            : await this.embedder.embed(text);
+      } catch {
+        newVector = await this.embedder.embed(text);
+      }
+    } else {
+      newVector = await this.embedder.embed(text);
+    }
     utterance.embedding = newVector;
 
     // 2. Find best match
@@ -101,12 +137,20 @@ export class TopicManager {
 
       const newTopic: TopicState = this.createNewTopicState(
         assignedTopicId,
-        newVector
+        newVector,
+        text
       );
       sessionTopics.push(newTopic);
       this.activeTopics.set(sessionId, sessionTopics);
 
       log.info({ sessionId, topicId: assignedTopicId }, "Spawned new topic");
+
+      this.persistAndPublish(sessionId, newTopic).catch((err) =>
+        log.error(
+          { err, sessionId, topicId: assignedTopicId },
+          "Failed to publish new topic"
+        )
+      );
     }
 
     if (this.enableAsyncSummarization) {
@@ -188,6 +232,8 @@ export class TopicManager {
 
   /**
    * Slow Path orchestration: Add text to pending queue, check triggers.
+   * LLM summarization is strictly a background polish step — the live summary
+   * comes from applyTier2TopicDelta reducer state.
    */
   private enqueueForSummarization(topicId: string, text: string): void {
     const pending = this.pendingUtterances.get(topicId) || [];
@@ -198,6 +244,20 @@ export class TopicManager {
     const existingTimer = this.debounceTimers.get(topicId);
     if (existingTimer) {
       clearTimeout(existingTimer);
+    }
+
+    // Hash-based dedup: skip LLM if topic state hasn't changed significantly
+    const topicState = this.findTopicState(topicId);
+    const currentHash = topicState ? computeStateHash(topicState) : "";
+    const lastHash = this.lastSummarizedHash.get(topicId);
+
+    if (lastHash && currentHash === lastHash) {
+      log.debug(
+        { topicId },
+        "Skipping summarization — no meaningful state change"
+      );
+      this.pendingUtterances.set(topicId, []);
+      return;
     }
 
     // Trigger 1: Batch size reached
@@ -218,12 +278,23 @@ export class TopicManager {
     this.debounceTimers.set(topicId, timer);
   }
 
+  private findTopicState(topicId: string): TopicState | null {
+    for (const topics of this.activeTopics.values()) {
+      const t = topics.find((topic) => topic.topicId === topicId);
+      if (t) {
+        return t;
+      }
+    }
+    return null;
+  }
+
   /**
    * Trigger the actual LLM summarization. Contains locking logic to avoid race conditions.
+   * Rely entirely on applyTier2TopicDelta (the reducer state) as the live summary;
+   * LLM refinement is strictly a background polish step — fail-silent without re-queueing.
    */
   private async triggerSummarization(topicId: string): Promise<void> {
     if (this.processingLocks.has(topicId)) {
-      // Currently summarizing. The next batch/debounce will pick up any remaining items later.
       return;
     }
 
@@ -234,29 +305,24 @@ export class TopicManager {
 
     this.processingLocks.add(topicId);
 
-    // Snapshot the batch and clear the pending list
     const utterancesToSummarize = [...pending];
     this.pendingUtterances.set(topicId, []);
 
+    let success = false;
+
     try {
-      // Find the topic state
-      let targetTopic: TopicState | null = null;
+      const targetTopic = this.findTopicState(topicId);
       let targetSessionId = "";
 
       for (const [sessionId, topics] of this.activeTopics.entries()) {
-        const t = topics.find((topic) => topic.topicId === topicId);
-        if (t) {
-          targetTopic = t;
+        if (topics.some((t) => t.topicId === topicId)) {
           targetSessionId = sessionId;
           break;
         }
       }
 
       if (!targetTopic) {
-        log.warn(
-          { topicId },
-          "Topic state not found during summarization trigger"
-        );
+        log.warn({ topicId }, "Topic state not found during summarization");
         return;
       }
 
@@ -270,21 +336,24 @@ export class TopicManager {
         utterancesToSummarize
       );
 
-      // Merge new data
       this.applySummarizerUpdate(targetTopic, partialState);
-
-      // Persist to Redis and Publish
       await this.persistAndPublish(targetSessionId, targetTopic);
+      success = true;
+
+      this.lastSummarizedHash.set(topicId, computeStateHash(targetTopic));
     } catch (error) {
-      log.error({ err: error, topicId }, "Summarization workflow failed");
-      // Put them back in queue (prepend) to try again next time
-      const currentPending = this.pendingUtterances.get(topicId) || [];
-      this.pendingUtterances.set(topicId, [
-        ...utterancesToSummarize,
-        ...currentPending,
-      ]);
+      // Fail-silent: strictly catch all LLM errors without breaking TopicManager.
+      // applyTier2TopicDelta is the live source of truth; LLM polish is best-effort.
+      log.warn(
+        { err: error, topicId },
+        "Background summarization LLM failed silently"
+      );
     } finally {
       this.processingLocks.delete(topicId);
+    }
+
+    if (success) {
+      log.debug({ topicId }, "Background summarization completed successfully");
     }
   }
 
@@ -347,11 +416,13 @@ export class TopicManager {
 
   private createNewTopicState(
     topicId: string,
-    initialCentroid: number[]
+    initialCentroid: number[],
+    initialText?: string
   ): TopicState {
+    const derivedLabel = deriveInitialLabel(initialText);
     return {
       topicId,
-      label: "New Topic", // Temporary until LLM updates it
+      label: derivedLabel,
       summary: "",
       constraintsMentioned: [],
       commitmentsMentioned: [],
@@ -385,6 +456,7 @@ export class TopicManager {
         await this.triggerSummarization(topic.topicId);
       }
       this.pendingUtterances.delete(topic.topicId);
+      this.lastSummarizedHash.delete(topic.topicId);
     }
     this.activeTopics.delete(sessionId);
     log.info({ sessionId }, "Topic manager session closed");
@@ -393,6 +465,18 @@ export class TopicManager {
   getTopics(sessionId: string): TopicState[] {
     return [...(this.activeTopics.get(sessionId) ?? [])];
   }
+}
+
+function computeStateHash(state: TopicState): string {
+  const parts = [
+    state.label,
+    state.summary,
+    String(state.commitmentsMentioned.length),
+    String(state.riskFlags.length),
+    String(state.completeness.hasOwner),
+    String(state.completeness.hasDeadline),
+  ];
+  return parts.join("|");
 }
 
 function appendUniqueByDescription<T extends { description: string }>(

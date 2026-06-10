@@ -1,0 +1,180 @@
+/* Meeting Mode Overhaul Tokens & Animations */
+
+:root {
+  /* AI Gradient System — drives the overlay bottom orb and header live dot */
+  --grad-hue: 252;
+}
+
+/* Motion System meeting mode only */
+.ease-out-custom {
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.ease-spring {
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Alert entry/exit animations */
+@keyframes alert-enter {
+  from {
+    opacity: 0;
+    transform: translateX(10px) scale(0.98);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    max-height: 200px;
+  }
+}
+
+.alert-card-enter {
+  animation: alert-enter 280ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes alert-exit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+    max-height: 200px;
+    margin-bottom: 8px;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-8px);
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border: 0;
+    overflow: hidden;
+  }
+}
+
+.alert-card-exit {
+  animation: alert-exit 200ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes alert-expand-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Topic label slides in from right on topic shift */
+@keyframes topic-enter {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Counter flash on new entry */
+@keyframes counter-flash {
+  0%,
+  100% {
+    background: transparent;
+  }
+  30% {
+    background: var(--accent-subtle);
+  }
+}
+
+/* Live indicator ring — pulse around the title-bar dot */
+@keyframes speak-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  70% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+@keyframes speak-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+}
+
+/* Remember this ripple — from footer button origin */
+@keyframes remember-ripple {
+  from {
+    transform: scale(0);
+    opacity: 0.14;
+  }
+  to {
+    transform: scale(20);
+    opacity: 0;
+  }
+}
+
+/* Commitment row animation */
+@keyframes commitment-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.commitment-row-enter {
+  animation: commitment-enter 350ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+/* Voice Gradient canvas mask */
+.voice-gradient-canvas {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  pointer-events: none;
+  z-index: 0;
+  /* Fade to transparent across the top 55% of the canvas height */
+  -webkit-mask-image: linear-gradient(
+    to top,
+    black 0%,
+    black 35%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(to top, black 0%, black 35%, transparent 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert-card-enter,
+  .alert-card-exit,
+  .alert-expand-in,
+  .topic-enter,
+  .counter-flash,
+  .speak-ring,
+  .speak-pulse,
+  .remember-ripple,
+  .commitment-row-enter {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}

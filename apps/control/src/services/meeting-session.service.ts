@@ -1,8 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { redis } from "@larity/packages/infra/redis";
-import { redisKeys } from "@larity/packages/infra/redis/keys";
-import { TTL } from "@larity/packages/infra/redis/ttl";
+import { redis } from "@larity/infra/redis";
+import { redisKeys } from "@larity/infra/redis/keys";
+import { TTL } from "@larity/infra/redis/ttl";
+import {
+  createS3Client,
+  getS3Config,
+  PutObjectCommand,
+} from "@larity/infra/s3";
 import { prisma } from "../lib/prisma";
+import { createControlLogger } from "../logger";
 import type {
   ActiveSession,
   EndSessionInput,
@@ -92,6 +98,8 @@ interface SessionData {
  * - Getting session status
  */
 export const meetingSessionService = {
+  logger: createControlLogger("meeting-session-service"),
+
   /**
    * Start a new meeting session
    *
@@ -222,6 +230,11 @@ export const meetingSessionService = {
       // Add to active sessions set
       await redis.sadd(redisKeys.activeSessions(), sessionId);
 
+      // Initialize session config with defaults
+      const configKey = redisKeys.sessionConfig(sessionId);
+      await redis.hset(configKey, "allowNameCustomization", "true");
+      await redis.expire(configKey, SESSION_TTL);
+
       // Map meeting to session
       await redis.set(
         redisKeys.meetingToSession(meetingId),
@@ -248,6 +261,7 @@ export const meetingSessionService = {
         status: "initializing",
         websocketUrl,
         createdAt: now,
+        allowNameCustomization: true,
       };
     } finally {
       // Always release lock
@@ -287,12 +301,17 @@ export const meetingSessionService = {
       );
     }
 
+    const trimmedDescription = input.description?.trim();
+    const trimmedAgenda = input.agenda?.trim();
+
     const meeting = await prisma.meeting.create({
       data: {
         clientId: input.clientId,
         title: input.title?.trim() || "Untitled meeting",
+        ...(trimmedDescription ? { description: trimmedDescription } : {}),
+        ...(trimmedAgenda ? { agenda: trimmedAgenda } : {}),
         status: "SCHEDULED",
-        scheduledAt: new Date(),
+        scheduledAt: input.scheduledAt ?? new Date(),
       },
       select: { id: true },
     });
@@ -422,6 +441,7 @@ export const meetingSessionService = {
    */
   async updateActivity(sessionId: string): Promise<void> {
     const sessionKey = redisKeys.meetingSession(sessionId);
+    const configKey = redisKeys.sessionConfig(sessionId);
     const now = Date.now();
 
     await redis.hset(sessionKey, {
@@ -432,8 +452,9 @@ export const meetingSessionService = {
     // Increment utterance count
     await redis.hincrby(sessionKey, "utteranceCount", 1);
 
-    // Refresh TTL
+    // Refresh TTL on both session and config keys
     await redis.expire(sessionKey, SESSION_TTL);
+    await redis.expire(configKey, SESSION_TTL);
   },
 
   /**
@@ -484,6 +505,7 @@ export const meetingSessionService = {
     role: "participant";
     websocketUrl: string;
     joinedAt: number;
+    allowNameCustomization: boolean;
   }> {
     // 1. Check session exists and is active
     const sessionKey = redisKeys.meetingSession(sessionId);
@@ -551,7 +573,12 @@ export const meetingSessionService = {
     await redis.sadd(participantsKey, userId);
     await redis.expire(participantsKey, SESSION_TTL);
 
-    // 4. Return connection details
+    // 4. Read session config
+    const configKey = redisKeys.sessionConfig(sessionId);
+    const configData = await redis.hget(configKey, "allowNameCustomization");
+    const allowNameCustomization = configData !== "false";
+
+    // 5. Return connection details
     const websocketUrl = `${REALTIME_WS_URL}?sessionId=${sessionId}&userId=${userId}&role=participant`;
 
     return {
@@ -561,6 +588,7 @@ export const meetingSessionService = {
       role: "participant",
       websocketUrl,
       joinedAt: Date.now(),
+      allowNameCustomization,
     };
   },
 
@@ -627,6 +655,11 @@ export const meetingSessionService = {
           redisKeys.sessionParticipants(sessionId)
         );
 
+        const configData = await redis.hget(
+          redisKeys.sessionConfig(sessionId),
+          "allowNameCustomization"
+        );
+
         const host = meeting.participants[0];
 
         return {
@@ -639,12 +672,40 @@ export const meetingSessionService = {
           hostName: host?.user?.name ?? null,
           startedAt: meeting.startedAt ? meeting.startedAt.getTime() : null,
           participantCount: participantCount + 1,
+          allowNameCustomization: configData !== "false",
         } satisfies ActiveSession;
       })
     );
 
     return activeSessions.filter(
       (session): session is ActiveSession => session !== null
+    );
+  },
+
+  async updateConfig(
+    sessionId: string,
+    userId: string,
+    config: { allowNameCustomization: boolean }
+  ): Promise<void> {
+    const sessionKey = redisKeys.meetingSession(sessionId);
+    const sessionData = await redis.hgetall(sessionKey);
+
+    if (!sessionData || Object.keys(sessionData).length === 0) {
+      throw new MeetingSessionError("Session not found", "SESSION_NOT_FOUND");
+    }
+
+    if (sessionData.userId !== userId) {
+      throw new MeetingSessionError(
+        "Only the host can update session config",
+        "UNAUTHORIZED"
+      );
+    }
+
+    const configKey = redisKeys.sessionConfig(sessionId);
+    await redis.hset(
+      configKey,
+      "allowNameCustomization",
+      config.allowNameCustomization ? "true" : "false"
     );
   },
 
@@ -666,21 +727,140 @@ export const meetingSessionService = {
    * Delayed to allow other services to process the session end event
    */
   async scheduleCleanup(sessionId: string, meetingId: string): Promise<void> {
-    // In production, you'd use a job queue (RabbitMQ)
-    // For now, we'll clean up immediately but keep some data
-
     // Remove from active sessions
     await redis.srem(redisKeys.activeSessions(), sessionId);
 
-    // Remove meeting-to-session mapping
-    await redis.del(redisKeys.meetingToSession(meetingId));
+    // Fetch orgId from DB
+    let orgId: string | undefined;
+    try {
+      const meeting = await prisma.meeting.findUnique({
+        where: { id: meetingId },
+        select: {
+          client: {
+            select: {
+              orgId: true,
+            },
+          },
+        },
+      });
+      if (meeting?.client?.orgId) {
+        orgId = meeting.client.orgId;
+      }
+    } catch (err) {
+      this.logger.error(
+        { err, meetingId, sessionId },
+        `Failed to fetch orgId from DB for meeting ${meetingId}, aborting session S3 dump`
+      );
+    }
 
-    // Set a short TTL on the session data (keep for 5 minutes for debugging)
-    const sessionKey = redisKeys.meetingSession(sessionId);
-    await redis.expire(sessionKey, 5 * 60);
+    if (orgId) {
+      // Dump session state to S3
+      try {
+        const commitmentsRaw = await redis.get(
+          redisKeys.meetingCommitment(sessionId)
+        );
+        const finalCommitments = commitmentsRaw
+          ? JSON.parse(commitmentsRaw)
+          : null;
 
-    const contextKey = redisKeys.meetingContext(sessionId);
-    await redis.expire(contextKey, 5 * 60);
+        const constraintsRaw = await redis.get(
+          redisKeys.meetingConstraintLedger(sessionId)
+        );
+        const finalConstraints = constraintsRaw
+          ? JSON.parse(constraintsRaw)
+          : null;
+
+        const speakerMap = await redis.hgetall(
+          redisKeys.meetingSpeaker(sessionId)
+        );
+
+        const topicsRaw = await redis.get(redisKeys.meetingTopic(sessionId));
+        const finalTopics = topicsRaw ? JSON.parse(topicsRaw) : null;
+
+        const vadHistoryRaw = await redis.lrange(
+          `meeting.vad.${sessionId}`,
+          0,
+          -1
+        );
+        const vadHistory = vadHistoryRaw.map((item) => {
+          try {
+            return JSON.parse(item);
+          } catch {
+            return item;
+          }
+        });
+
+        const clockOffsets = await redis.hgetall(
+          `meeting.clock_offsets.${sessionId}`
+        );
+
+        const sessionState = {
+          sessionId,
+          meetingId,
+          orgId,
+          commitments: finalCommitments,
+          constraints: finalConstraints,
+          speakerMap,
+          topics: finalTopics,
+          vadHistory,
+          clockOffsets,
+          timestamp: Date.now(),
+        };
+
+        const s3Client = createS3Client();
+        try {
+          const config = getS3Config();
+          const key = `${orgId}/${sessionId}/session_state.json`;
+
+          await s3Client.send(
+            new PutObjectCommand({
+              Bucket: config.bucket,
+              Key: key,
+              Body: JSON.stringify(sessionState, null, 2),
+              ContentType: "application/json",
+              ServerSideEncryption: "AES256",
+            })
+          );
+        } finally {
+          s3Client.destroy();
+        }
+      } catch (err) {
+        // Fail-safe: do not crash if S3 upload fails, but log it
+        this.logger.error(
+          { err, sessionId, meetingId, orgId },
+          `Session cleanup S3 dump failed for session ${sessionId}`
+        );
+      }
+    } else {
+      this.logger.warn(
+        { sessionId, meetingId },
+        `Aborting session S3 dump for session ${sessionId}: missing or empty orgId`
+      );
+    }
+
+    // Extend TTL of specified keys to 7 days
+    const keysToExtend = [
+      redisKeys.meetingSession(sessionId),
+      redisKeys.meetingToSession(meetingId),
+      redisKeys.meetingCommitment(sessionId),
+      redisKeys.meetingConstraintLedger(sessionId),
+      redisKeys.meetingSpeaker(sessionId),
+      redisKeys.meetingContext(sessionId),
+      redisKeys.meetingTopic(sessionId),
+      `meeting.topics.${sessionId}`,
+      `meeting.cost.${sessionId}`,
+      `meeting.clock_offsets.${sessionId}`,
+      `meeting.vad.${sessionId}`,
+      `meeting:ledger:${sessionId}`,
+    ];
+
+    for (const key of keysToExtend) {
+      try {
+        await redis.expire(key, 7 * 24 * 60 * 60); // 7 days
+      } catch {
+        // ignore
+      }
+    }
   },
 
   async preloadContext(input: {

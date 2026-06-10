@@ -1,3 +1,4 @@
+import "./styles/globals.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -11,17 +12,43 @@ import {
   rootIndexLoader,
 } from "./routes/_guard";
 import { AddClientPage } from "./routes/clients/add";
-import { DashboardPage } from "./routes/dashboard";
+import { HomePage } from "./routes/home";
 import { LoginPage } from "./routes/login";
 import { MeetingPage } from "./routes/meeting/$session-id";
+import { MeetingPostPage } from "./routes/meeting-post/$meeting-id";
 import { JoinMeetingPage } from "./routes/meetings/join";
 import { StartMeetingPage } from "./routes/meetings/start";
-import { OnboardingHomePage } from "./routes/onboarding";
-import { OnboardingCreateOrgPage } from "./routes/onboarding/create-org";
-import { OnboardingJoinOrgPage } from "./routes/onboarding/join-org";
+import { OnboardingPage } from "./routes/onboarding";
+import { OverlayPage } from "./routes/overlay";
 import { RegisterPage } from "./routes/register";
+import { SettingsPage } from "./routes/settings";
+import { WelcomePage } from "./routes/welcome";
 
 const router = createBrowserRouter([
+  {
+    path: "/overlay",
+    element: <OverlayPage />,
+  },
+  {
+    path: "/welcome",
+    loader: guestOnlyLoader,
+    element: <WelcomePage />,
+  },
+  {
+    path: "/login",
+    loader: guestOnlyLoader,
+    element: <LoginPage />,
+  },
+  {
+    path: "/register",
+    loader: guestOnlyLoader,
+    element: <RegisterPage />,
+  },
+  {
+    path: "/onboarding",
+    loader: onboardingLoader,
+    element: <OnboardingPage />,
+  },
   {
     path: "/",
     element: <App />,
@@ -31,37 +58,9 @@ const router = createBrowserRouter([
         loader: rootIndexLoader,
       },
       {
-        path: "login",
-        loader: guestOnlyLoader,
-        element: <LoginPage />,
-      },
-      {
-        path: "register",
-        loader: guestOnlyLoader,
-        element: <RegisterPage />,
-      },
-      {
-        path: "onboarding",
-        loader: onboardingLoader,
-        children: [
-          {
-            index: true,
-            element: <OnboardingHomePage />,
-          },
-          {
-            path: "create-org",
-            element: <OnboardingCreateOrgPage />,
-          },
-          {
-            path: "join-org",
-            element: <OnboardingJoinOrgPage />,
-          },
-        ],
-      },
-      {
-        path: "dashboard",
+        path: "home",
         loader: authGateLoader,
-        element: <DashboardPage />,
+        element: <HomePage />,
       },
       {
         path: "clients/add",
@@ -82,6 +81,16 @@ const router = createBrowserRouter([
         path: "meeting/:sessionId",
         loader: authGateLoader,
         element: <MeetingPage />,
+      },
+      {
+        path: "meeting-post/:meetingId",
+        loader: authGateLoader,
+        element: <MeetingPostPage />,
+      },
+      {
+        path: "settings",
+        loader: authGateLoader,
+        element: <SettingsPage />,
       },
     ],
   },

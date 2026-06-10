@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "bun --env-file=../../.env --watch src/index.ts",
-    "test": "bun test --preload ./tests/setup.ts",
+    "test": "LOG_LEVEL=fatal bun test --preload ./tests/setup.ts",
     "test:client": "bun run scripts/test-client.ts",
     "test:subscriber": "bun run scripts/redis-subscriber.ts",
     "test:stress": "bun run scripts/stress-test.ts",
@@ -18,14 +18,20 @@
     "@types/bun": "latest"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^6"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1053.0",
+    "@aws-sdk/lib-storage": "^3.1053.0",
     "@elysiajs/opentelemetry": "^1.4.10",
-    "@larity/stt": "workspace:*",
+    "@larity/infra": "workspace:*",
+    "@larity/jobs": "workspace:*",
     "@larity/logger": "workspace:*",
+    "@larity/stt": "workspace:*",
     "@larity/telemetry": "workspace:*",
     "elysia": "^1.4.25",
-    "ioredis": "^5.9.0"
+    "ioredis": "^5.9.0",
+    "meeting-mode": "workspace:*",
+    "prom-client": "^15.1.3"
   }
 }

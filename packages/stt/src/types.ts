@@ -40,4 +40,5 @@ export interface SttResult {
   start: number; // Seconds from Deepgram
   duration: number;
   ts: number; // Unix timestamp when processed
+  speechTimestamp: number; // Absolute Unix ms of speech (connectionStartTime + start*1000)
 }

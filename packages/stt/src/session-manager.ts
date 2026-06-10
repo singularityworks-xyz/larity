@@ -13,6 +13,7 @@ const log = createSttLogger("session-manager");
 
 interface SessionConnection {
   sendAudio(audioBuffer: Buffer): Promise<void>;
+  setAudioStreamStart(serverAudioStartTs: number): void;
   close(): void;
 }
 
@@ -97,6 +98,16 @@ export class SessionManager {
     }
 
     await connection.sendAudio(audioBuffer);
+  }
+
+  /**
+   * Set the perfect server-side timestamp for the start of the audio stream
+   */
+  setAudioStreamStart(sessionId: string, serverAudioStartTs: number): void {
+    const connection = this.connections.get(sessionId);
+    if (connection) {
+      connection.setAudioStreamStart(serverAudioStartTs);
+    }
   }
 
   /**

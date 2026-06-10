@@ -80,15 +80,18 @@ export function createTestUtterance(
 export function createTestSttResult(
   overrides: Partial<SttResult> = {}
 ): SttResult {
+  const timestamp = Date.now();
   return {
     sessionId: "test-session",
     isFinal: true,
     transcript: "Hello world.",
     confidence: 0.95,
     diarizationIndex: 0,
+    channel: 0,
     start: 0,
     duration: 2.5,
-    ts: Date.now(),
+    ts: timestamp,
+    speechTimestamp: timestamp,
     ...overrides,
   };
 }

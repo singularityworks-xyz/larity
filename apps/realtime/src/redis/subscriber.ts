@@ -1,9 +1,12 @@
 import { Redis } from "ioredis";
 import { createRealtimeLogger } from "../logger";
-import { broadcast, sendToUser } from "../session";
+import { broadcast, hasSession, sendToUser } from "../session";
 
 const log = createRealtimeLogger("subscriber");
 const pipelineTraceLog = createRealtimeLogger("pipeline-trace");
+
+const DEBUG_INGEST_ENDPOINT =
+  "http://127.0.0.1:7268/ingest/d02c4985-7539-46d4-bc45-33f990c9f9a8";
 
 /** Same semantics as `packages/meeting-mode` `PIPELINE_TRACE_PRETTY_JSON` */
 function pipelineTracePrettyLogsEnabled(): boolean {
@@ -45,12 +48,15 @@ export async function startSubscriber(): Promise<void> {
   // Pattern: meeting.alert.{sessionId}.shared
   // Pattern: meeting.alert.{sessionId}.user.{userId}
   // Pattern: meeting.pipeline.{sessionId} — tier / gate trace (logged only, no WS relay)
+  // Pattern: meeting.stt.* — raw Deepgram partials + finals (forwarded to WS for live transcript)
   await subscriber.psubscribe(
     "meeting.utterance.*",
     "meeting.topic.*",
     "meeting.alert.*",
     "meeting.ledger.*",
-    "meeting.pipeline.*"
+    "meeting.pipeline.*",
+    "meeting.stt.*",
+    "meeting.processed.*"
   );
 
   subscriber.on("pmessage", (pattern, channel, message) => {
@@ -75,16 +81,96 @@ function handleMessage(
       return;
     }
 
+    if (handleSttChannel(channel, message)) {
+      return;
+    }
+
+    if (handleProcessedChannel(channel, message)) {
+      return;
+    }
+
     if (handleBroadcastSessionChannel(channel, message)) {
       return;
     }
 
     if (channel.startsWith("meeting.alert.")) {
+      log.info({ channel }, "handleMessage: routing to handleAlertChannel");
       handleAlertChannel(channel, message);
     }
   } catch (error) {
     log.error({ err: error, channel }, "Failed to handle Redis message");
   }
+}
+
+/**
+ * Forward raw STT (Deepgram) partials/finals to WebSocket clients before meeting-mode enrichment.
+ * Channel shapes: `meeting.stt.{sessionId}` (final), `meeting.stt.partial.{sessionId}` (partial).
+ */
+function handleSttChannel(channel: string, message: string): boolean {
+  if (!channel.startsWith("meeting.stt.")) {
+    return false;
+  }
+
+  const parts = channel.split(".");
+  if (parts[0] !== "meeting" || parts[1] !== "stt") {
+    return true;
+  }
+
+  let sessionId: string;
+  let envelopeType: "stt_partial" | "stt_final";
+
+  if (parts[2] === "partial" && parts.length >= 4) {
+    envelopeType = "stt_partial";
+    sessionId = parts.slice(3).join(".");
+  } else if (parts.length >= 3) {
+    envelopeType = "stt_final";
+    sessionId = parts.slice(2).join(".");
+  } else {
+    return true;
+  }
+
+  if (!sessionId) {
+    return true;
+  }
+
+  try {
+    const payload = JSON.parse(message) as Record<string, unknown>;
+    const wrapped = JSON.stringify({ ...payload, type: envelopeType });
+    broadcast(sessionId, wrapped);
+  } catch (error) {
+    log.warn({ err: error, channel }, "Invalid STT JSON from Redis");
+  }
+
+  return true;
+}
+
+/**
+ * Forward meeting processed events to WebSocket clients.
+ * Channel shape: `meeting.processed.{sessionId}`.
+ */
+function handleProcessedChannel(channel: string, message: string): boolean {
+  if (!channel.startsWith("meeting.processed.")) {
+    return false;
+  }
+
+  const parts = channel.split(".");
+  const sessionId = parts[2];
+  if (!sessionId) {
+    return true;
+  }
+
+  try {
+    const payload = JSON.parse(message) as Record<string, unknown>;
+    const wrapped = JSON.stringify({ ...payload, type: "meeting_processed" });
+    broadcast(sessionId, wrapped);
+  } catch (error) {
+    log.warn(
+      { err: error, channel },
+      "Invalid meeting processed JSON from Redis"
+    );
+  }
+
+  return true;
 }
 
 function handleBroadcastSessionChannel(
@@ -119,8 +205,66 @@ function handleAlertChannel(channel: string, message: string): void {
     return;
   }
 
+  // #region agent log
+  if (process.env.DEBUG_ALERT_INGEST === "true") {
+    let category: string | null = null;
+    let alertRouting: string | null = null;
+    try {
+      const o = JSON.parse(message) as Record<string, unknown>;
+      if (typeof o.category === "string") {
+        category = o.category;
+      }
+      if (typeof o.routing === "string") {
+        alertRouting = o.routing;
+      }
+    } catch {
+      /* ignore */
+    }
+    const sessionLive = hasSession(sessionId);
+    fetch(DEBUG_INGEST_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "6eb14a",
+      },
+      body: JSON.stringify({
+        sessionId: "6eb14a",
+        runId: "post-fix",
+        hypothesisId: "B",
+        location: "subscriber.ts:handleAlertChannel",
+        message: "Redis alert channel received",
+        data: {
+          channelSuffix: "REDACTED",
+          redisSessionId: "REDACTED",
+          route,
+          category,
+          alertRouting,
+          sessionLive,
+          personalTargetUserId: "REDACTED",
+          personalHasSocket: null,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => undefined);
+  }
+  // #endregion
+
+  let wrapped: string;
+  try {
+    wrapped = JSON.stringify({ ...JSON.parse(message), type: "alert" });
+  } catch {
+    return;
+  }
+
   if (route === "shared") {
-    broadcast(sessionId, message);
+    broadcast(sessionId, wrapped);
+    log.info(
+      {
+        sessionId,
+        channelLen: channel.length,
+      },
+      "handleAlertChannel: broadcast alert to session"
+    );
     return;
   }
 
@@ -133,7 +277,7 @@ function handleAlertChannel(channel: string, message: string): void {
     return;
   }
 
-  sendToUser(sessionId, userId, message);
+  sendToUser(sessionId, userId, wrapped);
 }
 
 function handlePipelineTraceMessage(message: string): void {
@@ -167,6 +311,8 @@ function handlePipelineTraceMessage(message: string): void {
 export const __test_only_handleBroadcastSessionChannel =
   handleBroadcastSessionChannel;
 export const __test_only_handleAlertChannel = handleAlertChannel;
+export const __test_only_handleSttChannel = handleSttChannel;
+export const __test_only_handleProcessedChannel = handleProcessedChannel;
 
 /**
  * Stop the Redis subscriber

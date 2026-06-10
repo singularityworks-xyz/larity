@@ -1,5 +1,6 @@
 import { opentelemetry } from "@elysiajs/opentelemetry";
 import { Elysia, t } from "elysia";
+import { getMetricsText, startDefaultMetrics } from "meeting-mode";
 import { env } from "./env";
 import { onClose } from "./handlers/on-close";
 import { onDrain } from "./handlers/on-drain";
@@ -7,9 +8,16 @@ import { onMessage } from "./handlers/on-message";
 import { onOpen } from "./handlers/on-open";
 import { validateSession } from "./handlers/validate-session";
 import { createRealtimeLogger } from "./logger";
+import { addAdminRoutes } from "./routes/admin";
 import type { RealtimeSocket } from "./types";
 
 const log = createRealtimeLogger("server");
+
+// WebSocket configuration constants
+/** Maximum payload length in bytes (64 KB) */
+const WEBSOCKET_MAX_PAYLOAD_BYTES = 64 * 1024;
+/** Idle timeout in seconds (10 minutes) */
+const WEBSOCKET_IDLE_TIMEOUT_SECONDS = 600;
 
 /**
  * Start the WebSocket server
@@ -19,79 +27,102 @@ const log = createRealtimeLogger("server");
 export function startServer(): Promise<any> {
   return new Promise((resolve, reject) => {
     try {
+      startDefaultMetrics();
+
       const app = new Elysia()
         .use(opentelemetry({ serviceName: "realtime" }))
-        .ws("/*", {
-          // Schema validation for the connection URL query parameters
-          query: t.Object({
-            sessionId: t.String({ error: "Missing sessionId query parameter" }),
-            userId: t.String({ error: "Missing userId query parameter" }),
-            role: t.Union([t.Literal("host"), t.Literal("participant")], {
-              error: "Role must be 'host' or 'participant'",
-            }),
-          }),
-
-          // Payload and timeout configurations
-          maxPayloadLength: 64 * 1024,
-          idleTimeout: 600,
-
-          /**
-           * Runs before the WebSocket connection is established.
-           * We validate the session with the control plane here.
-           */
-          async beforeHandle({ query: { sessionId, userId, role }, set }) {
-            const isValid = await validateSession(sessionId, userId, role);
-            if (!isValid) {
-              set.status = 401;
-              return "Invalid or expired session";
-            }
-          },
-
-          /**
-           * Called when WebSocket connection is established
-           */
-          open(socket) {
-            // Attach our custom SocketData to the Elysia WS context
-            const { sessionId, userId, role } = socket.data.query;
-            const now = Date.now();
-
-            // We use Object.assign to attach our properties to socket.data
-            // so it implements our SocketData interface expected by handlers
-            Object.assign(socket.data, {
+        .get("/metrics", async () => {
+          const metrics = await getMetricsText();
+          return new Response(metrics, {
+            headers: { "Content-Type": "text/plain; version=0.0.4" },
+          });
+        })
+        .derive(async ({ query }) => {
+          const sessionId = query?.sessionId;
+          if (sessionId) {
+            const validation = await validateSession(
               sessionId,
-              userId,
-              role,
-              connectedAt: now,
-              lastFrameTs: now,
-            });
-
-            onOpen(socket as unknown as RealtimeSocket);
-          },
-
-          /**
-           * Called for every incoming message
-           */
-          message(socket, message) {
-            onMessage(
-              socket as unknown as RealtimeSocket,
-              message as string | Buffer | Uint8Array
+              query.userId,
+              query.role
             );
-          },
-
-          /**
-           * Called when send buffer is draining after being full
-           */
-          drain(socket) {
-            onDrain(socket as unknown as RealtimeSocket);
-          },
-
-          /**
-           * Called when connection closes
-           */
-          close(socket, code, message) {
-            onClose(socket as unknown as RealtimeSocket, code, message);
-          },
+            return { sessionValidation: validation };
+          }
+          return { sessionValidation: { isValid: false } };
         });
+
+      addAdminRoutes(app);
+
+      app.ws("/*", {
+        // Schema validation for the connection URL query parameters
+        query: t.Object({
+          sessionId: t.String({ error: "Missing sessionId query parameter" }),
+          userId: t.String({ error: "Missing userId query parameter" }),
+          role: t.Union([t.Literal("host"), t.Literal("participant")], {
+            error: "Role must be 'host' or 'participant'",
+          }),
+          name: t.Optional(t.String()),
+        }),
+
+        // Payload and timeout configurations
+        maxPayloadLength: WEBSOCKET_MAX_PAYLOAD_BYTES,
+        idleTimeout: WEBSOCKET_IDLE_TIMEOUT_SECONDS,
+
+        /**
+         * Runs before the WebSocket connection is established.
+         * We validate the session with the control plane here.
+         */
+        beforeHandle({ sessionValidation, set }) {
+          if (!sessionValidation.isValid) {
+            set.status = 401;
+            return "Invalid or expired session";
+          }
+        },
+
+        /**
+         * Called when WebSocket connection is established
+         */
+        open(socket) {
+          const { sessionId, userId, role, name } = socket.data.query;
+          const orgId = socket.data.sessionValidation?.orgId || "default";
+          const now = Date.now();
+
+          Object.assign(socket.data, {
+            sessionId,
+            userId,
+            name: name ?? "",
+            role,
+            orgId,
+            connectedAt: now,
+            lastFrameTs: now,
+          });
+
+          onOpen(socket as unknown as RealtimeSocket);
+        },
+
+        /**
+         * Called for every incoming message
+         */
+        message(socket, message) {
+          onMessage(
+            socket as unknown as RealtimeSocket,
+            message as string | Buffer | Uint8Array
+          );
+        },
+
+        /**
+         * Called when send buffer is draining after being full
+         */
+        drain(socket) {
+          onDrain(socket as unknown as RealtimeSocket);
+        },
+
+        /**
+         * Called when connection closes
+         */
+        close(socket, code, message) {
+          onClose(socket as unknown as RealtimeSocket, code, message);
+        },
+      });
 
       // Bind to port
       app.listen(env.PORT, (server) => {

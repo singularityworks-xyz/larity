@@ -25,10 +25,24 @@ export interface AudioStreamingMetrics {
 export interface AudioStreamingOptions {
   wsBaseUrl?: string;
   userId?: string;
+  userName?: string;
   role?: "host" | "participant";
   backpressureThresholdBytes?: number;
   maxPendingFrames?: number;
 }
+
+export type IncomingMessageType =
+  | "utterance"
+  | "topic"
+  | "ledger"
+  | "alert"
+  | "participant_event"
+  | "stt_partial"
+  | "stt_final"
+  | "meeting_processed"
+  | "unknown";
+
+export type IncomingMessageHandler = (data: Record<string, unknown>) => void;
 
 interface SendResult {
   sent: boolean;
@@ -42,17 +56,24 @@ const DEFAULT_MAX_PENDING_FRAMES = 8;
 const WS_AUDIO_TAG_MIC = 0;
 const WS_AUDIO_TAG_SYS = 1;
 const LEGACY_AUDIO_FRAME_TAG = WS_AUDIO_TAG_SYS;
+const DEBUG_INGEST_ENDPOINT =
+  "http://127.0.0.1:7268/ingest/d02c4985-7539-46d4-bc45-33f990c9f9a8";
 
 export function buildRealtimeSocketUrl(
   wsBaseUrl: string,
   sessionId: string,
   userId: string,
-  role: "host" | "participant"
+  role: "host" | "participant",
+  userName?: string
 ): string {
   const url = new URL(wsBaseUrl);
   url.searchParams.set("sessionId", sessionId);
   url.searchParams.set("userId", userId);
   url.searchParams.set("role", role);
+  const normalizedName = userName?.trim();
+  if (normalizedName) {
+    url.searchParams.set("name", normalizedName);
+  }
   return url.toString();
 }
 
@@ -88,15 +109,74 @@ export function shouldDropFrame(
   return bufferedAmount > thresholdBytes;
 }
 
+function sendAlertClassificationDebugLog(
+  data: Record<string, unknown>,
+  resolvedType: IncomingMessageType
+): void {
+  const cat = data.category;
+  const sev = data.severity;
+  const looksLikeAlert =
+    (typeof cat === "string" && typeof sev === "string") ||
+    typeof data.alertType === "string" ||
+    typeof data.level === "string";
+  if (!looksLikeAlert) {
+    return;
+  }
+  const isDebugEnv =
+    typeof process !== "undefined"
+      ? process.env.ENABLE_ALERT_CLASSIFICATION_DEBUG
+      : import.meta.env?.VITE_ENABLE_ALERT_CLASSIFICATION_DEBUG;
+  const enabled = isDebugEnv === "true" || isDebugEnv === "1";
+  if (!enabled) {
+    return;
+  }
+  // #region agent log
+  fetch(DEBUG_INGEST_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "6eb14a",
+    },
+    body: JSON.stringify({
+      sessionId: "6eb14a",
+      runId: "post-fix",
+      hypothesisId: "A",
+      location: "audio-streaming.ts:onmessage",
+      message: "WS frame classified for alert-shaped payload",
+      data: {
+        resolvedType,
+        hasUtteranceId: typeof data.utteranceId === "string",
+        hasTopicId: typeof data.topicId === "string",
+        topicIdValue:
+          typeof data.topicId === "string"
+            ? (data.topicId as string).slice(0, 64)
+            : null,
+        hasCategory: typeof cat === "string",
+        hasSeverity: typeof sev === "string",
+        hasId: typeof data.id === "string",
+        triggerTier: data.triggerTier,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => undefined);
+  // #endregion
+}
+
 export class AudioStreamingClient {
   private socket: WebSocket | null = null;
   private readonly wsBaseUrl: string;
   private userId: string;
+  private userName: string;
   private role: "host" | "participant";
   private readonly backpressureThresholdBytes: number;
   private readonly maxPendingFrames: number;
-  private readonly pendingFrames: Uint8Array[] = [];
+  private readonly pendingFrames: { data: Uint8Array; ts: number }[] = [];
+  private streamStarted = false;
   private readonly log = createLogger("audio-streaming");
+  private readonly messageHandlers = new Map<
+    IncomingMessageType | "*",
+    Set<IncomingMessageHandler>
+  >();
 
   private readonly metrics: AudioStreamingMetrics = {
     framesSent: 0,
@@ -109,6 +189,7 @@ export class AudioStreamingClient {
   constructor(options: AudioStreamingOptions = {}) {
     this.wsBaseUrl = options.wsBaseUrl ?? DEFAULT_WS_URL;
     this.userId = sanitizeUserId(options.userId);
+    this.userName = options.userName?.trim() ?? "";
     this.role = options.role ?? "host";
     this.backpressureThresholdBytes =
       options.backpressureThresholdBytes ?? DEFAULT_BACKPRESSURE_THRESHOLD;
@@ -131,7 +212,8 @@ export class AudioStreamingClient {
         this.wsBaseUrl,
         sessionId,
         this.userId,
-        this.role
+        this.role,
+        this.userName
       );
     } catch {
       this.warning =
@@ -147,6 +229,7 @@ export class AudioStreamingClient {
       this.log.info("WebSocket connected");
       if (this.socket === ws) {
         this.warning = "";
+        this.streamStarted = false; // Reset stream state on new connection
       }
     };
 
@@ -174,15 +257,53 @@ export class AudioStreamingClient {
         "Realtime connection error. Audio may not be streaming to server.";
     };
 
+    ws.onmessage = (event) => {
+      if (typeof event.data !== "string") {
+        return;
+      }
+
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(event.data) as Record<string, unknown>;
+      } catch {
+        return;
+      }
+
+      const type = detectIncomingMessageType(data);
+      sendAlertClassificationDebugLog(data, type);
+      const handlers = this.messageHandlers.get(type);
+      if (handlers) {
+        for (const handler of handlers) {
+          handler(data);
+        }
+      }
+
+      const allHandlers = this.messageHandlers.get("*");
+      if (allHandlers) {
+        for (const handler of allHandlers) {
+          handler(data);
+        }
+      }
+    };
+
     this.socket = ws;
   }
 
-  setIdentity(userId: string, role: "host" | "participant" = "host"): void {
+  setIdentity(
+    userId: string,
+    role: "host" | "participant" = "host",
+    userName?: string
+  ): void {
     this.userId = sanitizeUserId(userId);
     this.role = role;
+    if (userName !== undefined) {
+      this.userName = userName;
+    }
   }
 
   disconnect(): void {
+    this.pendingFrames.length = 0;
+    this.streamStarted = false;
     if (this.socket) {
       this.log.info("Disconnecting socket manually");
       this.socket.close();
@@ -202,15 +323,26 @@ export class AudioStreamingClient {
     this.warning = "";
   }
 
+  subscribe(
+    type: IncomingMessageType | "*",
+    handler: IncomingMessageHandler
+  ): () => void {
+    let handlers = this.messageHandlers.get(type);
+    if (!handlers) {
+      handlers = new Set();
+      this.messageHandlers.set(type, handlers);
+    }
+    handlers.add(handler);
+    return () => {
+      handlers.delete(handler);
+    };
+  }
+
   handleAudioFrame(event: AudioFrameEvent): SendResult {
     const payload = event.payload;
     this.metrics.lastFrameTs = payload.ts;
 
-    if (
-      !this.socket ||
-      this.socket.readyState === WebSocket.CLOSED ||
-      this.socket.readyState === WebSocket.CLOSING
-    ) {
+    if (!this.isSocketAvailable()) {
       this.metrics.framesDropped += 1;
       this.warning =
         "Realtime socket is not connected. Frames are being dropped.";
@@ -220,14 +352,32 @@ export class AudioStreamingClient {
     const frameBytes = ensureTaggedAudioFrame(
       decodeBase64ToBytes(payload.data)
     );
-    this.pendingFrames.push(frameBytes);
+    this.pendingFrames.push({ data: frameBytes, ts: payload.ts });
 
+    const dropped = this.manageBackpressure();
+    const sent = this.flushPending(payload.sessionId);
+
+    this.updateWarning(sent, dropped);
+
+    return { sent, dropped };
+  }
+
+  private isSocketAvailable(): boolean {
+    return (
+      !!this.socket &&
+      this.socket.readyState !== WebSocket.CLOSED &&
+      this.socket.readyState !== WebSocket.CLOSING
+    );
+  }
+
+  private manageBackpressure(): boolean {
     let dropped = false;
+    const isSocketOpen = this.socket?.readyState === WebSocket.OPEN;
 
     if (
-      this.socket.readyState === WebSocket.OPEN &&
+      isSocketOpen &&
       shouldDropFrame(
-        this.socket.bufferedAmount,
+        this.socket?.bufferedAmount ?? 0,
         this.backpressureThresholdBytes
       )
     ) {
@@ -242,34 +392,65 @@ export class AudioStreamingClient {
       this.pendingFrames.shift();
       this.metrics.framesDropped += 1;
       dropped = true;
-      if (this.socket.readyState === WebSocket.OPEN) {
+      if (isSocketOpen) {
         this.warning =
           "Network heartbeat warning: upload is congested; dropping oldest realtime audio frames.";
       }
     }
+    return dropped;
+  }
 
+  private flushPending(sessionId: string): boolean {
     let sent = false;
-    if (this.socket.readyState === WebSocket.OPEN) {
-      while (
-        this.pendingFrames.length > 0 &&
-        !shouldDropFrame(
-          this.socket.bufferedAmount,
-          this.backpressureThresholdBytes
-        )
-      ) {
-        const nextFrame = this.pendingFrames.shift();
-        if (!nextFrame) {
-          break;
-        }
-        this.socket.send(nextFrame);
-        this.metrics.framesSent += 1;
-        sent = true;
+    if (this.socket?.readyState !== WebSocket.OPEN) {
+      return sent;
+    }
+
+    while (
+      this.pendingFrames.length > 0 &&
+      !shouldDropFrame(
+        this.socket.bufferedAmount,
+        this.backpressureThresholdBytes
+      )
+    ) {
+      const nextFrame = this.pendingFrames.shift();
+      if (!nextFrame) {
+        break;
       }
+
+      if (!this.streamStarted) {
+        this.sendStreamStart(sessionId, nextFrame.ts);
+      }
+
+      this.socket.send(nextFrame.data as BufferSource);
+      this.metrics.framesSent += 1;
+      sent = true;
+    }
+    return sent;
+  }
+
+  private sendStreamStart(sessionId: string, clientTs: number): void {
+    this.socket?.send(
+      JSON.stringify({
+        type: "audio_stream_start",
+        sessionId,
+        userId: this.userId,
+        clientTs,
+        clientSendTs: Date.now(),
+      })
+    );
+    this.streamStarted = true;
+  }
+
+  private updateWarning(sent: boolean, dropped: boolean): void {
+    if (sent && this.warning !== "") {
+      this.warning = "";
+      return;
     }
 
     if (
       !dropped &&
-      this.socket.readyState === WebSocket.OPEN &&
+      this.socket?.readyState === WebSocket.OPEN &&
       this.pendingFrames.length > 0 &&
       shouldDropFrame(
         this.socket.bufferedAmount,
@@ -279,12 +460,6 @@ export class AudioStreamingClient {
       this.warning =
         "Network heartbeat warning: upload is congested; dropping oldest realtime audio frames.";
     }
-
-    if (sent && this.warning !== "") {
-      this.warning = "";
-    }
-
-    return { sent, dropped };
   }
 
   sendVadSignal(type: "vad_speaking" | "vad_silence", sessionId: string): void {
@@ -301,6 +476,72 @@ export class AudioStreamingClient {
       })
     );
   }
+
+  changeParticipantRole(
+    sessionId: string,
+    speakerId: string,
+    role: "TEAM" | "EXTERNAL"
+  ): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    this.socket.send(
+      JSON.stringify({
+        type: "participant_role_change",
+        sessionId,
+        speakerId,
+        role,
+        clientSendTs: Date.now(),
+      })
+    );
+  }
+}
+
+function detectIncomingMessageType(
+  data: Record<string, unknown>
+): IncomingMessageType {
+  const dataType = data.type;
+  if (dataType === "stt_partial") {
+    return "stt_partial";
+  }
+  if (dataType === "stt_final") {
+    return "stt_final";
+  }
+  if (dataType === "meeting_processed") {
+    return "meeting_processed";
+  }
+  if (dataType === "alert") {
+    return "alert";
+  }
+  if (
+    typeof dataType === "string" &&
+    (dataType === "insert" || dataType === "status_change")
+  ) {
+    return "ledger";
+  }
+  if (typeof data.utteranceId === "string") {
+    return "utterance";
+  }
+  // Alerts include `topicId` (context); classify before generic topicId branch.
+  if (
+    typeof data.alertType === "string" ||
+    typeof data.level === "string" ||
+    (typeof data.category === "string" && typeof data.severity === "string")
+  ) {
+    return "alert";
+  }
+  if (typeof data.topicId === "string") {
+    return "topic";
+  }
+  if (
+    dataType === "participant_joined" ||
+    dataType === "participant_left" ||
+    dataType === "participant_list"
+  ) {
+    return "participant_event";
+  }
+  return "unknown";
 }
 
 function sanitizeUserId(userId: string | undefined): string {

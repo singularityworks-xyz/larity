@@ -6,6 +6,7 @@ export interface VadSignal {
   sessionId: string;
   clientSendTs: number;
   serverReceiveTs: number;
+  role?: "host" | "participant";
 }
 
 export interface VadSpeakerState {
@@ -15,12 +16,24 @@ export interface VadSpeakerState {
 
 export type VadState = Map<string, VadSpeakerState>;
 
+export interface VadActivityInterval {
+  userId: string;
+  startTs: number;
+  endTs?: number;
+}
+
+export type MappingSource =
+  | "partial_provisional"
+  | "final_confirmed"
+  | "retroactive_vad";
+
 export interface SpeakerMapping {
   diarizationIndex: number;
   speaker: SpeakerIdentity;
   confirmedAt: number;
   confidence: number;
   lastUtteranceTs: number;
+  source?: MappingSource;
 }
 
 export interface CorrelationResult {
@@ -41,10 +54,35 @@ export interface SpeakerIdentifierConfig {
   correlationWindowMs: number;
   lateCorrelationWindowMs: number;
   minConfirmationSignals: number;
+  provisionalTtlMs: number;
+  maxVadIntervalsPerUser: number;
+  vadTrailingCooldownMs: number;
 }
 
 export const DEFAULT_SPEAKER_CONFIG: SpeakerIdentifierConfig = {
-  correlationWindowMs: 250,
+  correlationWindowMs: 1500,
   lateCorrelationWindowMs: 2000,
   minConfirmationSignals: 1,
+  provisionalTtlMs: 8000,
+  maxVadIntervalsPerUser: 8,
+  vadTrailingCooldownMs: 200,
 };
+
+export interface SessionStateTeamMember {
+  userId: string;
+  name: string;
+  role?: "host" | "participant";
+}
+
+export type SessionStateSpeakerMapping = SpeakerMapping;
+
+export interface SessionSpeakerStatePayload {
+  vadHistory: Array<{
+    userId: string;
+    type: "vad_speaking" | "vad_silence";
+    adjustedTs: number;
+    role?: "host" | "participant";
+  }>;
+  speakerMappings: Record<string, SessionStateSpeakerMapping>;
+  teamMembers: SessionStateTeamMember[];
+}

@@ -80,12 +80,12 @@ export type PrismaVersion = {
 }
 
 /**
- * Prisma Client JS version: 7.2.0
- * Query Engine version: 0c8ef2ce45c83248ab3df073180d5eda9e8be7a3
+ * Prisma Client JS version: 7.8.0
+ * Query Engine version: 3c6e192761c0362d496ed980de936e2f3cebcd3a
  */
 export const prismaVersion: PrismaVersion = {
-  client: "7.2.0",
-  engine: "0c8ef2ce45c83248ab3df073180d5eda9e8be7a3"
+  client: "7.8.0",
+  engine: "3c6e192761c0362d496ed980de936e2f3cebcd3a"
 }
 
 /**
@@ -401,7 +401,8 @@ export const ModelName = {
   ImportantPoint: 'ImportantPoint',
   PolicyGuardrail: 'PolicyGuardrail',
   Document: 'Document',
-  Reminder: 'Reminder'
+  Reminder: 'Reminder',
+  TranscriptUtterance: 'TranscriptUtterance'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -417,7 +418,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "org" | "client" | "user" | "orgInvite" | "clientMember" | "session" | "account" | "verification" | "meeting" | "meetingParticipant" | "transcript" | "decision" | "task" | "openQuestion" | "importantPoint" | "policyGuardrail" | "document" | "reminder"
+    modelProps: "org" | "client" | "user" | "orgInvite" | "clientMember" | "session" | "account" | "verification" | "meeting" | "meetingParticipant" | "transcript" | "decision" | "task" | "openQuestion" | "importantPoint" | "policyGuardrail" | "document" | "reminder" | "transcriptUtterance"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1753,6 +1754,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    TranscriptUtterance: {
+      payload: Prisma.$TranscriptUtterancePayload<ExtArgs>
+      fields: Prisma.TranscriptUtteranceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.TranscriptUtteranceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TranscriptUtterancePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.TranscriptUtteranceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TranscriptUtterancePayload>
+        }
+        findFirst: {
+          args: Prisma.TranscriptUtteranceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TranscriptUtterancePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.TranscriptUtteranceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TranscriptUtterancePayload>
+        }
+        findMany: {
+          args: Prisma.TranscriptUtteranceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TranscriptUtterancePayload>[]
+        }
+        create: {
+          args: Prisma.TranscriptUtteranceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TranscriptUtterancePayload>
+        }
+        createMany: {
+          args: Prisma.TranscriptUtteranceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.TranscriptUtteranceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TranscriptUtterancePayload>[]
+        }
+        delete: {
+          args: Prisma.TranscriptUtteranceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TranscriptUtterancePayload>
+        }
+        update: {
+          args: Prisma.TranscriptUtteranceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TranscriptUtterancePayload>
+        }
+        deleteMany: {
+          args: Prisma.TranscriptUtteranceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.TranscriptUtteranceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.TranscriptUtteranceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TranscriptUtterancePayload>[]
+        }
+        upsert: {
+          args: Prisma.TranscriptUtteranceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TranscriptUtterancePayload>
+        }
+        aggregate: {
+          args: Prisma.TranscriptUtteranceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateTranscriptUtterance>
+        }
+        groupBy: {
+          args: Prisma.TranscriptUtteranceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TranscriptUtteranceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.TranscriptUtteranceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TranscriptUtteranceCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1925,6 +2000,7 @@ export const MeetingScalarFieldEnum = {
   endedAt: 'endedAt',
   calendarEventId: 'calendarEventId',
   summary: 'summary',
+  speakerMappings: 'speakerMappings',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -2082,6 +2158,21 @@ export const ReminderScalarFieldEnum = {
 } as const
 
 export type ReminderScalarFieldEnum = (typeof ReminderScalarFieldEnum)[keyof typeof ReminderScalarFieldEnum]
+
+
+export const TranscriptUtteranceScalarFieldEnum = {
+  id: 'id',
+  meetingId: 'meetingId',
+  clientId: 'clientId',
+  speaker: 'speaker',
+  text: 'text',
+  timestamp: 'timestamp',
+  duration: 'duration',
+  channel: 'channel',
+  createdAt: 'createdAt'
+} as const
+
+export type TranscriptUtteranceScalarFieldEnum = (typeof TranscriptUtteranceScalarFieldEnum)[keyof typeof TranscriptUtteranceScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -2552,6 +2643,21 @@ export type PrismaClientOptions = ({
    * ```
    */
   comments?: runtime.SqlCommenterPlugin[]
+  /**
+   * Optional maximum size for the query plan cache. If not provided, a default size will be used.
+   * A value of `0` can be used to disable the cache entirely. A higher cache size can improve
+   * performance for applications that execute a large number of unique queries, while a smaller
+   * cache size can reduce memory usage.
+   * 
+   * @example
+   * ```
+   * const prisma = new PrismaClient({
+   *   adapter,
+   *   queryPlanCacheMaxSize: 100,
+   * })
+   * ```
+   */
+  queryPlanCacheMaxSize?: number
 }
 export type GlobalOmitConfig = {
   org?: Prisma.OrgOmit
@@ -2572,6 +2678,7 @@ export type GlobalOmitConfig = {
   policyGuardrail?: Prisma.PolicyGuardrailOmit
   document?: Prisma.DocumentOmit
   reminder?: Prisma.ReminderOmit
+  transcriptUtterance?: Prisma.TranscriptUtteranceOmit
 }
 
 /* Types for Logging */

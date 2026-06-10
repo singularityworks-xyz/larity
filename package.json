@@ -9,16 +9,16 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo run dev --no-daemon",
-    "build": "turbo run build --no-daemon",
-    "lint": "turbo run lint --no-daemon",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
     "lint:root": "biome check --log-level=info --diagnostic-level=warn .",
-    "lint:fix": "turbo run lint:fix --no-daemon && bun run lint:root --write",
-    "format": "turbo run format --no-daemon && biome format --write .",
-    "format:check": "turbo run format:check --no-daemon && biome format .",
+    "lint:fix": "turbo run lint:fix && bun run lint:root --write",
+    "format": "turbo run format && biome format --write .",
+    "format:check": "turbo run format:check && biome format .",
     "check": "ultracite check",
-    "test": "find packages apps -name '*.test.ts' ! -name '*.integration.test.ts' -not -path '*/node_modules/*' -type f | xargs bun test",
-    "test:integration": "find packages apps -name '*.integration.test.ts' -not -path '*/node_modules/*' -type f | xargs bun test",
+    "test": "for dir in packages/infra packages/meeting-mode packages/stt apps/control apps/desktop apps/realtime apps/workers; do files=$(find $dir -name '*.test.ts' ! -name '*.integration.test.ts' ! -name '*.e2e.test.ts' -not -path '*/node_modules/*' -type f); if [ ! -z \"$files\" ]; then bun test $files || exit 1; fi; done",
+    "test:integration": "for dir in packages/infra packages/meeting-mode apps/control apps/realtime; do files=$(find $dir -name '*.integration.test.ts' -not -path '*/node_modules/*' -type f); if [ ! -z \"$files\" ]; then bun test $files || exit 1; fi; done",
     "smoke:telemetry": "bash scripts/telemetry-smoke.sh",
     "prepare": "husky",
     "fix": "ultracite fix"
@@ -35,9 +35,10 @@
     "ultracite": "7.1.4"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^6"
   },
   "dependencies": {
+    "@deepgram/sdk": "^5.1.0",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "amqplib": "^0.10.9",

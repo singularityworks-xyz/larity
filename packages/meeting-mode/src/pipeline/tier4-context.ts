@@ -1,5 +1,6 @@
 import type { Commitment } from "../commitment/types";
 import type { Constraint, PreloadedContextPayload } from "../constraint/types";
+import type { SpeakerStateSummary } from "../speaker-state/types";
 import type { Utterance } from "../utterance/types";
 import type {
   Tier1Result,
@@ -205,6 +206,7 @@ export interface Tier4AssemblyInput {
   allCommitments: readonly Commitment[];
   allConstraints: readonly Constraint[];
   maxConstraints?: number;
+  speakerStates?: SpeakerStateSummary[];
 }
 
 export function assembleTier4Context(input: Tier4AssemblyInput): Tier4Context {
@@ -234,6 +236,7 @@ export function assembleTier4Context(input: Tier4AssemblyInput): Tier4Context {
     matchedHistoricalItems,
     matchedCommitments,
     relevantConstraints,
+    speakerStates: input.speakerStates,
   };
 }
 
@@ -270,5 +273,6 @@ export function tierContextForPromptPayload(
       source: constraint.source,
       confidence: constraint.confidence,
     })),
+    ...(ctx.speakerStates ? { speakerStates: ctx.speakerStates } : {}),
   };
 }

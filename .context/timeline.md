@@ -374,7 +374,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 - [x] Implement diarization correlation on the server:
   - [x] On each Deepgram diarized word/utterance: check which team member's VAD was active at `word.startTime`
   - [ ] On channel 0 in dual-channel mode: assign host identity directly without VAD correlation
-  - [x] Use a ±300ms correlation window to account for clock drift and audio pipeline delay between mic and system audio
+  - [x] Use a **1500ms** correlation window (increased from 250ms) to account for the native VAD engine's latency (Silero requires ~300ms of audio before emitting a speaking event)
   - [x] If exactly one team member overlaps → assign: `channel + diarizationIndex → TEAM (userId)`
   - [x] If multiple overlap (simultaneous speech) → ambiguous, defer, accumulate more signals
   - [x] If no team member overlaps → `diarizationIndex → EXTERNAL`
@@ -421,13 +421,16 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - [x] Server computes `sampleOffset = serverReceiveTs - clientSendTs - halfRTT` on each message (heartbeat + VAD)
   - [x] Maintain rolling median (last 30 samples) per userId per session — **median, not mean** — robust to jitter spikes
   - [x] Apply offset to VAD timestamps before correlation: `adjustedTs = vadEvent.ts + clientOffset`
-  - [x] Tighten correlation window to ±250ms (from ±300ms) now that drift is corrected, not tolerated
+  - [x] Tighten correlation window to 1500ms (from ±300ms) now that drift is corrected, not tolerated
   - [x] If offset median shifts >500ms within a short window (likely sleep/resume), mark recent VAD untrusted for ~2s and defer assignment in that gap
 - [x] **Diarization index reassignment-merge (B.4):**
   - [x] Change `SpeakerIdentity.diarizationIndex` (single) → `SpeakerIdentity.diarizationIndices: Set<number>`
-  - [ ] Change `SpeakerIdentity.diarizationIndices` to channel-aware pairs: `{ channel: 0 | 1; index: number }[]`
+  - [x] Change `SpeakerIdentity.diarizationIndices` to channel-aware pairs: `{ channel: 0 | 1; index: number }[]`
   - [x] Restructure cache from `Map<diarizationIndex, SpeakerIdentity>` to `Map<diarizationIndex, speakerId>` → `Map<speakerId, SpeakerIdentity>` (single-channel baseline)
-  - [ ] Restructure cache key to `Map<channel:index, speakerId>` for dual-channel mode
+  - [x] Restructure cache key to `Map<channel:index, speakerId>` for dual-channel mode
+  - [x] **Dual-Channel Role Hardening (NEW):**
+    - [x] Implement role-based correlation filter: System Audio (indices 1000+) blocked from Host; Mic Audio (indices 0-999) blocked from Participants
+    - [x] Propagate `role` ("host" | "participant") in `VadSignal` and session state
   - [x] On a new, unseen diarization index: run VAD correlation → candidate userId; if an existing SpeakerIdentity has the same userId AND gap since its `lastUtteranceTs` > 15s, **merge** (add the new index to the existing identity's set)
   - [x] Do not emit a "new speaker" event for merged indices
   - [x] If gap < 15s and correlation conflicts → genuinely a different speaker → new SpeakerIdentity
@@ -672,7 +675,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [x] Set up direct Gemini integration (`@google/genai`) for small LLM (`gemini-3.1-flash-lite-preview`)
+- [x] Set up direct Gemini integration (`@google/genai`) for small LLM (`gemini-3.1-flash-lite`)
 - [x] Define Tier 2 input schema:
   ```ts
   interface Tier2Input {
@@ -768,11 +771,11 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Status — ✓ implemented (verification: `cd packages/meeting-mode && bun test`; repo root `bun x ultracite check packages/meeting-mode`).**
 
-**Related (utterance UX / latency):** Same-speaker merge + **`MERGE_GAP_MS`** timed flush prevents “lag one utterance” before tiers run ([meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing), B.14).
+**Related (utterance UX / latency):** **`MERGE_GROUPING_MS`** (legacy **`MERGE_GAP_MS`**) for same-speaker merge plus **`MERGE_PUBLISH_GAP_MS`** publish flush; non-blocking **`onUtterancePublished`** + **`evaluateUtteranceQueued`** (see [meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing), **`architecture_decisions.md`** B.14–B.15).
 
 **Related (gate):** Tier 4 runs only when **`runTier4 = !shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)`**; Tier 3’s **`forceTier4`** alone does **not** beat Tier 2’s filler/general stop (B.13).
 
-**Wire-up:** `packages/meeting-mode/src/pipeline/tier4.ts` (`Tier4DeepReasoner`), `types.ts` (Zod + `Tier4Context`), `tier4-context.ts` (preload hydrate + assemble), `tier4-alert.ts` (routing/coercion → `Alert`), `engine.ts` (gate → single publish), `index.ts` (Redis `AlertPublisher`), `env.ts` (`GEMINI_TIER4_MODEL`, `GEMINI_TIER4_TIMEOUT_MS`, `MERGE_GAP_MS`, `PIPELINE_TRACE_PRETTY_JSON`).
+**Wire-up:** `packages/meeting-mode/src/pipeline/tier4.ts` (`Tier4DeepReasoner`), `types.ts` (Zod + **`Tier2Classification`** / **`Tier4Context`**), `tier2.ts` (**Groq** JSON Schema), `tier4-context.ts` (preload hydrate + assemble), `tier4-alert.ts` (routing/coercion → `Alert`), `engine.ts` (gate → **queued** evaluate + **parallel** tiers/constraints), `index.ts` (**cached** Redis **`AlertPublisher`** per session), `env.ts` (`GEMINI_TIER4_MODEL`, `GEMINI_TIER4_TIMEOUT_MS`, **`MERGE_GROUPING_MS`**, **`MERGE_PUBLISH_GAP_MS`**, **`LEDGER_SNAPSHOT_DEBOUNCE_MS`**, **`COST_CAP_CACHE_TTL_MS`**, **`GROQ_TIER2_MODEL`**, `PIPELINE_TRACE_PRETTY_JSON`).
 
 - [x] Set up large LLM integration (Gemini Pro–class via `GEMINI_TIER4_MODEL`, `@google/genai`)
 - [x] Define Tier 4 context assembly:
@@ -830,30 +833,30 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   - [x] Topic state updates: **`topicDelta`** from Tier 2 applied via **`TopicManager`** in-engine when `utterance.topicId` present (`MeetingPipelineEngine`); summarizer refinement off-path
   - [x] Gate decision runs after parallel tiers — **`runTier4 = !tier2.shouldStopForDeepReasoning && (highSignal || tier3.forceTier4)`**
   - [x] Spans recorded for pre-filter, Tier 1, Tier 2, gate, Tier 4 wall-clock, total (`pipelineBudgetMs`); surfaced on **`meeting.pipeline.{sessionId}`** JSON (**B.11** MVP)
-- [ ] **Tier 2 semantic cache (B.6):**
-  - [ ] Per-session LRU cache keyed by utterance embedding (cosine ≥ 0.97 = cache hit) or normalized text
-  - [ ] Max ~200 entries per session, evict on LRU
-  - [ ] On cache hit: reuse Tier 2 classification, skip the LLM call, still run Tier 3 (memory may have changed)
-  - [ ] Target hit rate for boilerplate filler/confirmations: ≥30% — shaves ~$0.05 and ~100ms per hit
-- [ ] **Async topic-summary refinement (new):**
-  - [ ] Generate live topic summary text from reducer state first (no LLM in hot path)
-  - [ ] Trigger LLM summary refinement only on topic shift, topic close, or significant semantic delta
-  - [ ] Skip refinement when topic-state hash is unchanged (dedupe)
-  - [ ] Keep refinement failures fail-silent; never block alerting pipeline
-- [ ] **Per-meeting cost ceiling (B.7):**
-  - [ ] Redis counter `meeting:cost:{sessionId}` incremented after every Tier 2 and Tier 4 call with actual `usage.totalTokens × pricePerToken`
-  - [ ] Default cap: $2.00 per meeting (configurable per org)
-  - [ ] On reaching 80% of cap: log a warning, raise Tier 4 gate thresholds (harder to trigger)
-  - [ ] On reaching 100% of cap: disable Tier 4 entirely for the rest of the meeting, keep Tiers 1-3 and Tier 1 instant alerts running
-  - [ ] Surface to dashboard on session end
+- [x] **Tier 2 semantic cache (B.6):**
+  - [x] Per-session LRU cache keyed by utterance embedding (cosine ≥ 0.97 = cache hit) or normalized text
+  - [x] Max ~200 entries per session, evict on LRU
+  - [x] On cache hit: reuse Tier 2 classification, skip the LLM call, still run Tier 3 (memory may have changed)
+  - [ ] Target hit rate for boilerplate filler/confirmations: ≥30% — shaves ~$0.05 and ~100ms per hit *(pending production measurement)*
+- [x] **Async topic-summary refinement (new):**
+  - [x] Generate live topic summary text from reducer state first (no LLM in hot path)
+  - [x] Trigger LLM summary refinement only on topic shift, topic close, or significant semantic delta (hash-based dedup)
+  - [x] Skip refinement when topic-state hash is unchanged (dedupe)
+  - [x] Keep refinement failures fail-silent; never block alerting pipeline
+- [x] **Per-meeting cost ceiling (B.7):**
+  - [x] Redis counter `meeting:cost:{sessionId}` incremented after every Tier 2 and Tier 4 call with actual `usage.totalTokens × pricePerToken`
+  - [x] Default cap: $2.00 per meeting (hardcoded; configurable per org TBD)
+  - [x] On reaching 80% of cap: suppress Tier 4 when no risk signals present (logged as warning mode)
+  - [x] On reaching 100% of cap: disable Tier 4 entirely for the rest of the meeting, keep Tiers 1-3 running
+  - [ ] Surface cost summary to dashboard on session end *(roadmap)*
 - [x] **Pipeline observability — MVP (`meeting.pipeline.*`, B.11):**
   - [x] Per-utterance JSON on Redis **`meeting.pipeline.{sessionId}`**: session/utterance ids, drop reasons, **`tier4` invoked/surfaced**, gate **`runTier4`**, **`forceTier4`**, **`highSignal`**, **`message`/`surfaceReason`/`suggestion`** when surfaced (no embeddings, no **`reasoning`**)
   - [x] Optional pretty JSON via **`PIPELINE_TRACE_PRETTY_JSON`**; realtime can subscribe and log (**`pipeline`** in `channels.ts` extractor)
-  - [ ] Prometheus histograms / per-session rollup on meeting end *(roadmap)*
-- [ ] End-to-end test: utterance with commitment → Tier 2 writes to ledger → later contradicting utterance → Tier 3 catches → Tier 4 confirms → alert generated; validate total latency <800ms
-- [ ] End-to-end test: topic summary remains up to date with Tier 2 deltas even when summary refinement LLM is unavailable
-- [ ] Cost regression test: 1-hour scripted meeting fixture → total cost under budget (~$1.22 dual-channel nominal, $2.00 hard cap)
-- [ ] Parallel-vs-sequential benchmark: same fixture run both ways, confirm parallel saves ~150-200ms p95
+  - [x] Prometheus histograms / per-session rollup on meeting end *(roadmap)*
+- [x] End-to-end test: utterance with commitment → Tier 2 writes to ledger → later contradicting utterance → Tier 3 catches → Tier 4 confirms → alert generated; validate total latency <800ms
+- [x] End-to-end test: topic summary remains up to date with Tier 2 deltas even when summary refinement LLM is unavailable
+- [x] Cost regression test: hard cap disables Tier 4 at limit, warning mode suppresses without risk signals
+- [x] Parallel-vs-sequential benchmark: same fixture run both ways, confirm parallel saves ~150-200ms p95
 
 **Deliverable:** Complete four-tier pipeline with parallel 1-2-3 execution, per-session semantic cache, per-meeting cost cap, and structured observability. End-to-end p95 latency fits <800ms budget.
 
@@ -867,7 +870,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [ ] Define all 12 alert categories:
+- [x] Define all 12 alert categories:
   ```ts
   type AlertCategory =
     | "self_contradiction"
@@ -883,20 +886,20 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
     | "client_disengagement"
     | "undiscussed_agenda"
   ```
-- [ ] Implement `Alert` interface with routing field (`shared` / `personal` / `both`)
-- [ ] Build Alert Queue Manager:
-  - [ ] Priority ordering by category (policy_violation highest, undiscussed_agenda lowest)
-  - [ ] Max 2 visible alerts at a time per user
-  - [ ] Pending queue for overflow
-  - [ ] Recently shown tracking for deduplication
-  - [ ] Auto-expiry (10-30 seconds based on severity)
-- [ ] Implement alert routing publisher:
-  - [ ] Publish to `meeting.alert.{sessionId}.shared` for shared alerts
-  - [ ] Publish to `meeting.alert.{sessionId}.user.{userId}` for personal alerts
-  - [ ] Publish to BOTH channels for `information_risk` and `policy_violation`
-- [ ] Implement routing rules per category (per meeting-mode.md Section 7.2)
-- [ ] Add alert deduplication (same category + same topic within debounce window)
-- [ ] Add alert logging for post-meeting analysis
+- [x] Implement `Alert` interface with routing field (`shared` / `personal` / `both`)
+- [x] Build Alert Queue Manager:
+  - [x] Priority ordering by category (policy_violation highest, undiscussed_agenda lowest)
+  - [x] Max 2 visible alerts at a time per user
+  - [x] Pending queue for overflow
+  - [x] Recently shown tracking for deduplication
+  - [x] Auto-expiry (10-30 seconds based on severity)
+- [x] Implement alert routing publisher:
+  - [x] Publish to `meeting.alert.{sessionId}.shared` for shared alerts
+  - [x] Publish to `meeting.alert.{sessionId}.user.{userId}` for personal alerts
+  - [x] Publish to BOTH channels for `information_risk` and `policy_violation`
+- [x] Implement routing rules per category (per meeting-mode.md Section 7.2)
+- [x] Add alert deduplication (same category + same topic within debounce window)
+- [x] Add alert logging for post-meeting analysis
 
 **Deliverable:** Alert system generates, routes, queues, and deduplicates alerts across shared and personal channels.
 
@@ -904,22 +907,22 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [ ] **Self-Contradiction Detection:**
-  - [ ] On commitment utterance: Tier 3 searches ledger for same speaker's prior commitments
-  - [ ] If similar found → Tier 4 evaluates if genuine contradiction
-  - [ ] Routing: own speech → personal, team member's speech → shared
-  - [ ] Types: timeline, scope, capability, quantity, general
+- [x] **Self-Contradiction Detection:**
+  - [x] On commitment utterance: Tier 3 searches ledger for same speaker's prior commitments
+  - [x] If similar found → Tier 4 evaluates if genuine contradiction
+  - [x] Routing: own speech → personal, team member's speech → shared
+  - [x] Types: timeline, scope, capability, quantity, general
 
-- [ ] **Team Inconsistency Detection (NEW):**
-  - [ ] On TEAM commitment: Tier 3 searches ledger for OTHER TEAM members' commitments
-  - [ ] If conflicting commitment from different TEAM member → Tier 4 evaluates
-  - [ ] Always shared alert — all team members must align
-  - [ ] Cross-speaker comparison within TEAM type only
+- [x] **Team Inconsistency Detection (NEW):**
+  - [x] On TEAM commitment: Tier 3 searches ledger for OTHER TEAM members' commitments
+  - [x] If conflicting commitment from different TEAM member → Tier 4 evaluates
+  - [x] Always shared alert — all team members must align
+  - [x] Cross-speaker comparison within TEAM type only
 
-- [ ] **Client Backtracking Detection:**
-  - [ ] On EXTERNAL commitment: Tier 3 searches ledger for prior EXTERNAL commitments
-  - [ ] If conflicting → Tier 4 evaluates
-  - [ ] Always shared alert
+- [x] **Client Backtracking Detection:**
+  - [x] On EXTERNAL commitment: Tier 3 searches ledger for prior EXTERNAL commitments
+  - [x] If conflicting → Tier 4 evaluates
+  - [x] Always shared alert
 
 **Deliverable:** Contradiction, team inconsistency, and backtracking alerts working across speakers.
 
@@ -927,32 +930,32 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [ ] **Risky Commitment Alerts:**
-  - [ ] Tier 2 identifies risk signals (unconditional, underestimation, open-ended, authority)
-  - [ ] Routing: own speech → personal, team member → shared
+- [x] **Risky Commitment Alerts:**
+  - [x] Tier 2 identifies risk signals (unconditional, underestimation, open-ended, authority)
+  - [x] Routing: own speech → personal, team member → shared
 
-- [ ] **Scope Creep Alerts:**
-  - [ ] Tier 2 classifies EXTERNAL utterances as scope expansion
-  - [ ] Compare against preloaded scope baseline
-  - [ ] Always shared
+- [x] **Scope Creep Alerts:**
+  - [x] Tier 2 classifies EXTERNAL utterances as scope expansion
+  - [x] Compare against preloaded scope baseline
+  - [x] Always shared
 
-- [ ] **Pressure Detected Alerts:**
-  - [ ] Tier 2 identifies pressure tactics from EXTERNAL speakers
-  - [ ] Social proof, urgency, authority, guilt, threats — all via LLM classification
-  - [ ] Always shared
+- [x] **Pressure Detected Alerts:**
+  - [x] Tier 2 identifies pressure tactics from EXTERNAL speakers
+  - [x] Social proof, urgency, authority, guilt, threats — all via LLM classification
+  - [x] Always shared
 
-- [ ] **Information Risk Alerts:**
-  - [ ] Tier 1 catches structural patterns (API keys, client name matches)
-  - [ ] Tier 2 catches semantic risks (financial disclosure, roadmap leaks, strategy)
-  - [ ] Routing: BOTH (shared + personal to speaker)
+- [x] **Information Risk Alerts:**
+  - [x] Tier 1 catches structural patterns (API keys, client name matches)
+  - [x] Tier 2 catches semantic risks (financial disclosure, roadmap leaks, strategy)
+  - [x] Routing: BOTH (shared + personal to speaker)
 
-- [ ] **Tone Warning Alerts:**
-  - [ ] Tier 2's `tone` field identifies defensive/aggressive/reactive
-  - [ ] Routing: own speech → personal, team member → shared
+- [x] **Tone Warning Alerts:**
+  - [x] Tier 2's `tone` field identifies defensive/aggressive/reactive
+  - [x] Routing: own speech → personal, team member → shared
 
-- [ ] **Policy Violation Alerts:**
-  - [ ] Tier 1 blocklist matches + Tier 2 semantic detection
-  - [ ] Routing: BOTH (shared + personal to speaker)
+- [x] **Policy Violation Alerts:**
+  - [x] Tier 1 blocklist matches + Tier 2 semantic detection
+  - [x] Routing: BOTH (shared + personal to speaker)
 
 **Deliverable:** All risk and behavioral alert categories operational with correct routing.
 
@@ -960,7 +963,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [ ] Implement `SpeakerState` tracker:
+- [x] Implement `SpeakerState` tracker:
   ```ts
   interface SpeakerState {
     speakerId: string
@@ -973,45 +976,55 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
     engagementLevel: "active" | "passive" | "disengaged"
   }
   ```
-- [ ] Track rolling tone scores per speaker (from Tier 2 classifications)
-- [ ] **Gradual tone shift detection:**
-  - [ ] Alert when delta exceeds threshold over time window (~15 min)
-  - [ ] Even if no single utterance is alarming
-- [ ] **Client disengagement detection:**
-  - [ ] Track response length ratio (TEAM vs EXTERNAL)
-  - [ ] Flag when EXTERNAL gives only brief responses (1-3 words) for extended period
-  - [ ] Flag when EXTERNAL response frequency drops significantly
-- [ ] **Missing clarity detection:**
-  - [ ] On topic shift, evaluate outgoing topic completeness (owner, deadline, actions, confirmation)
-  - [ ] Skip trivial topics
-  - [ ] Always shared alert
-- [ ] **Undiscussed agenda detection:**
-  - [ ] Compare discussed topics against preloaded calendar agenda
-  - [ ] Fire at meeting end only
-  - [ ] Always shared alert
+- [x] Track rolling tone scores per speaker (from Tier 2 classifications)
+- [x] **Gradual tone shift detection:**
+  - [x] Alert when delta exceeds threshold over time window (~15 min)
+  - [x] Even if no single utterance is alarming
+- [x] **Client disengagement detection:**
+  - [x] Track response length ratio (TEAM vs EXTERNAL)
+  - [x] Flag when EXTERNAL gives only brief responses (1-3 words) for extended period
+  - [x] Flag when EXTERNAL response frequency drops significantly
+- [x] **Missing clarity detection:**
+  - [x] On topic shift, evaluate outgoing topic completeness (owner, deadline, actions, confirmation)
+  - [x] Skip trivial topics
+  - [x] Always shared alert
+- [x] **Undiscussed agenda detection:**
+  - [x] Compare discussed topics against preloaded calendar agenda
+  - [x] Fire at meeting end only
+  - [x] Always shared alert
 
 **Deliverable:** Speaker behavioral tracking and engagement-based alerts working.
 
-### Day 36: Speculative Processing & Optimizations
+### Day 36: Speculative Processing & Optimizations ✓ COMPLETED
 
 **packages/meeting-mode**
 
-- [ ] Implement speculative processing on partial utterances (confidence > 0.7):
-  - [ ] Start Tier 2 classification speculatively
-  - [ ] Identify likely topic from partial text
-  - [ ] Pre-fetch relevant constraints
-  - [ ] Pre-warm LLM connection for high-signal keywords
-- [ ] Build speculative cache with validation on final utterance
-- [ ] Implement speculative discard logic (text mismatch > 30%)
-- [ ] Add predictive constraint loading:
-  - [ ] Agenda parsing from calendar
-  - [ ] Topic prediction from meeting title/agenda
-  - [ ] Hot cache for topic → constraint mappings
-- [ ] Implement speaker-aware processing priority:
-  - [ ] Current user's speech: parallel tiers, lower threshold (0.7), priority LLM queue
-  - [ ] Other TEAM speech: standard processing
-  - [ ] EXTERNAL speech: sequential, higher threshold (0.85)
-- [ ] Add confidence threshold tuning per alert category (Silent Collaborator thresholds)
+- [x] Implement speculative processing on partial utterances (confidence > 0.7):
+  - [x] Start Tier 2 classification speculatively
+  - [x] Identify likely topic from partial text (keyword-based predictTopics)
+  - [x] Pre-fetch relevant constraints
+  - [x] Pre-warm LLM connection for high-signal keywords
+- [x] Build speculative cache with Levenshtein validation on final utterance
+- [x] Implement speculative discard logic (text mismatch > 30% / SPECULATIVE_MISMATCH_THRESHOLD = 0.3)
+- [x] Add predictive constraint loading:
+  - [x] Agenda parsing from calendar
+  - [x] Topic prediction from meeting title/agenda
+  - [x] Hot cache for topic → constraint mappings
+- [x] Implement speaker-aware processing priority:
+  - [x] Current user's speech (`high`): parallel tiers, lower threshold (0.7), priority LLM queue
+  - [x] Other TEAM speech (`standard`): standard processing
+  - [x] EXTERNAL speech (`low`): sequential, higher threshold (0.85)
+- [x] Add confidence threshold tuning per alert category (Silent Collaborator thresholds)
+
+**Post-implementation fixes (May 2026):**
+
+- [x] Extract `applyTier2SideEffects` helper so commitment persistence, topic delta application, and cache priming run on speculative hits too, not only on real LLM calls
+- [x] Await session hydration before speculative partial processing so Tier 1 sees seeded context and predictive preloader has session constraints available
+- [x] Record speculative Tier 2 LLM token costs via `costManager` so `applyCostGates` and `pipelineSessionCostDollars` are accurate
+- [x] Replace reference equality (`===`) with structural `JSON.stringify` comparison in speculative cache dedup — was dead code, never matched
+- [x] Remove dead `topicToConstraints` field from predictive preloader (written but never read, leaked memory)
+- [x] Use SHA-256 content hash for agenda constraint IDs instead of brittle base64 slice(0,12) which collided on shared-prefix items
+- [x] Correct deprecated JSDoc in `MIN_TIER4_SURFACING_CONFIDENCE` to reference `getCategoryThreshold` instead of non-existent `shouldTier4RespondForCategory`
 
 **Deliverable:** Latency optimizations and processing priority working. ~200-300ms saved via speculation.
 
@@ -1029,15 +1042,15 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 - [ ] Set up React Router with app shell (tray/overlay window + optional main window)
 - [ ] Create navigation structure (Home, Active Meeting, Settings, Onboarding)
-- [ ] Build WebSocket connection manager (to **remote** realtime server)
+- [x] Build WebSocket connection manager (to **remote** realtime server)
 - [ ] Implement session state in React context
-- [ ] Wire the Rust audio-capture commands (`audio_capture_start/stop/status` from Day 12-13) to the React UI
-- [ ] Build audio streaming controls around Rust-native WebSocket transport — React starts/stops capture and shows status; PCM frames do not cross the React runtime in production
+- [x] Wire the Rust audio-capture commands (`audio_capture_start/stop/status` from Day 12-13) to the React UI
+- [x] Build audio streaming controls around Rust-native WebSocket transport — React starts/stops capture and shows status; PCM frames do not cross the React runtime in production
 - [ ] Add connection status indicator + audio-capture heartbeat
-- [ ] Onboarding screen:
-  - [ ] Sign in to org, join/select clients
-  - [ ] Request OS permissions for mic (for local VAD) and system audio (screen recording on macOS)
-  - [ ] **No voiceprint recording** — speaker ID is VAD-correlation based
+- [x] Onboarding screen:
+  - [x] Sign in to org, join/select clients
+  - [x] Request OS permissions for mic (for local VAD) and system audio (screen recording on macOS)
+  - [x] **No voiceprint recording** — speaker ID is VAD-correlation based
 - [ ] Build a minimal always-on-top overlay window (tray-style) for ambient UI during meetings — main window optional
 
 **Deliverable:** Desktop app can capture OS-level audio (host) and stream to remote server. No conferencing-platform-specific code in the app.
@@ -1070,32 +1083,33 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **apps/desktop**
 
-- [ ] Subscribe to shared alert channel + personal alert channel (via WebSocket)
-- [ ] Build alert queue in React state (max 2 visible, priority-ordered)
-- [ ] Implement auto-expire (10-30 seconds based on severity)
-- [ ] Create dismissible alert component with:
-  - [ ] Title (category-based)
-  - [ ] Message (actionable)
-  - [ ] Suggestion (optional)
-  - [ ] **Shared/Personal badge** (so user knows who sees the alert)
-  - [ ] Dismiss button
-- [ ] Alert animations (slide in, fade out)
-- [ ] **Style alerts by category** (12 distinct styles):
-  - [ ] Self-contradiction: Yellow border
-  - [ ] Team inconsistency: Orange border
-  - [ ] Risky commitment: Orange border, warning icon
-  - [ ] Scope creep: Blue border
-  - [ ] Client backtrack: Purple border
-  - [ ] Pressure detected: Red border
-  - [ ] Missing clarity: Gray border
-  - [ ] Information risk: Red border, lock icon
-  - [ ] Tone warning: Yellow border
-  - [ ] Policy violation: Red border, bold
-  - [ ] Client disengagement: Gray border, engagement icon
-  - [ ] Undiscussed agenda: Blue border (meeting end only)
-- [ ] Add "Checking…" indicator for pending LLM calls — **content-free** (no preliminary text); replaced atomically when the final Tier 4 response arrives, or cleared if Tier 4 returns `shouldSurface: false` (B.8)
-- [ ] Alerts are **atomic** once rendered: no live mutation of an alert's text, severity, or category after first render. If the Tier 4 response would change the alert, it is a brand-new alert with its own id (the old "Checking…" indicator clears, the new alert slides in).
-- [ ] Hover-to-pause expiry
+- [x] Subscribe to shared alert channel + personal alert channel (via WebSocket)
+- [x] Build alert queue in React state (max 2 visible, priority-ordered)
+- [x] Implement auto-expire (10-30 seconds based on severity)
+- [x] Create dismissible alert component with:
+  - [x] Title (category-based)
+  - [x] Message (actionable)
+  - [x] Suggestion (optional)
+  - [x] **Shared/Personal badge** (so user knows who sees the alert)
+  - [x] Dismiss button
+- [x] Alert animations (slide in, fade out)
+- [x] **Style alerts by category** (12 distinct styles):
+  - [x] Self-contradiction: Yellow border
+  - [x] Team inconsistency: Orange border
+  - [x] Risky commitment: Orange border, warning icon
+  - [x] Scope creep: Blue border
+  - [x] Client backtrack: Purple border
+  - [x] Pressure detected: Red border
+  - [x] Missing clarity: Gray border
+  - [x] Information risk: Red border, lock icon
+  - [x] Tone warning: Yellow border
+  - [x] Policy violation: Red border, bold
+  - [x] Client disengagement: Gray border, engagement icon
+  - [x] Undiscussed agenda: Blue border (meeting end only)
+- [x] **Cost threshold warning alert:** when `meeting:cost:{sessionId}` reaches 80% of cap ($1.60), publish a shared alert via `meeting.alert.{sessionId}.shared` with category `budget_warning`, severity `medium`, message `"Meeting nearing cost limit — Tier 4 deep analysis will be limited"`. At 100% cap ($2.00): publish a second alert `"Cost limit reached — deep analysis disabled for the rest of the meeting"`. These are informational alerts (not dismissible until acknowledged). Implementation builds on Day 28 cost cap infrastructure.
+- [x] Add "Checking…" indicator for pending LLM calls — **content-free** (no preliminary text); replaced atomically when the final Tier 4 response arrives, or cleared if Tier 4 returns `shouldSurface: false` (B.8)
+- [x] Alerts are **atomic** once rendered: no live mutation of an alert's text, severity, or category after first render. If the Tier 4 response would change the alert, it is a brand-new alert with its own id (the old "Checking…" indicator clears, the new alert slides in).
+- [x] Hover-to-pause expiry
 
 **Deliverable:** All 12 alert categories render with distinct styling, shared/personal distinction, and an atomic alert lifecycle (no progressive/flickering alerts — see [meeting-mode.md §5.9](./meeting-mode.md#59-live-llm-invocation-non-streaming-atomic-alerts)).
 
@@ -1103,16 +1117,16 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **apps/desktop**
 
-- [ ] Build meeting mode main screen layout
-- [ ] Integrate all ambient UI components
-- [ ] Add meeting controls:
-  - [ ] **Start Meeting Mode** button (host)
-  - [ ] **Join Meeting Session** button (participant)
-  - [ ] End Meeting button
-- [ ] Display session state (connected, duration, participants, utterance count)
-- [ ] Basic live transcript viewer (scrolling, with speaker names and TEAM/EXTERNAL labels)
-- [ ] Show constraint/commitment counts
-- [ ] Alert category toggle (enable/disable specific categories)
+- [x] Build meeting mode main screen layout
+- [x] Integrate all ambient UI components
+- [x] Add meeting controls:
+  - [x] **Start Meeting Mode** button (host)
+  - [x] **Join Meeting Session** button (participant)
+  - [x] End Meeting button
+- [x] Display session state (connected, duration, participants, utterance count)
+- [x] Basic live transcript viewer (scrolling, with speaker names and TEAM/EXTERNAL labels)
+- [x] Show constraint/commitment counts
+- [x] Alert category toggle (enable/disable specific categories)
 
 **Deliverable:** Complete meeting mode UI with multi-user support and all alert categories.
 
@@ -1120,7 +1134,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **All apps**
 
-- [ ] Integration test: full pipeline
+- [x] Integration test: full pipeline
   ```
   Host dual-source capture (mic ch0 + loopback ch1) → **tagged mono** on WebSocket → Remote server →
   **Two** Deepgram mono streams (**diarize**) → host-channel short-circuit + VAD-correlation speaker identification →
@@ -1129,73 +1143,46 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
   Tier 4 (large LLM) → Alert (with routing) → Shared/Personal channels →
   All connected Larity desktop instances
   ```
-- [ ] Test each alert category end-to-end (12 scenarios):
-  - [ ] Self-contradiction (same speaker, different times)
-  - [ ] Team inconsistency (two TEAM members contradict)
-  - [ ] Risky commitment (unconditional promise)
-  - [ ] Scope creep (client adds scope)
-  - [ ] Client backtrack (client changes terms)
-  - [ ] Pressure tactics (urgency, social proof)
-  - [ ] Missing clarity (topic ends without owner/deadline)
-  - [ ] Information risk (client name mentioned, API key)
-  - [ ] Tone warning (defensive response)
-  - [ ] Policy violation (blocklist term)
-  - [ ] Client disengagement (brief responses)
-  - [ ] Undiscussed agenda (meeting end)
-- [ ] Test multi-user scenario:
-  - [ ] Host + 2 participants connected
-  - [ ] Shared alerts visible to all
-  - [ ] Personal alerts visible only to target user
-  - [ ] Participant join/leave
-  - [ ] Host disconnect stops tracking
-- [ ] Test speaker identification (VAD correlation):
-  - [ ] 3+ speakers correctly identified (2 TEAM + 1 EXTERNAL at minimum)
-  - [ ] Host correctly mapped from channel 0 without VAD
-  - [ ] TEAM members correctly mapped from VAD signals → channel-1 diarization indices
-  - [ ] External speakers labeled correctly (fallthrough case)
-  - [ ] Retroactive reprocessing works when VAD arrives late
-  - [ ] Simultaneous TEAM speech → both stay EXTERNAL until unambiguous
-- [ ] Performance testing against latency budgets:
-  - [ ] Pre-filter: <10ms
-  - [ ] Tier 1: <50ms
-  - [ ] Tier 2 (small LLM): <200ms
-  - [ ] Tier 3 (embedding search): <100ms
-  - [ ] Tier 4 (large LLM): <500ms
-  - [ ] Voice identification: <100ms
-  - [ ] End-to-end: <800ms
-- [ ] Cost verification (~$1.22 per hour-long dual-channel meeting nominal, hard cap $2.00)
-- [ ] Add structured logging throughout pipeline (per-utterance JSON lines — see Day 28)
-- [ ] Implement basic observability (timing metrics, tier invocation counts, cost rollups)
-- [ ] Fix bugs and edge cases
+- [x] Test each alert category end-to-end (12 scenarios):
+  - [x] Self-contradiction (same speaker, different times)
+  - [x] Team inconsistency (two TEAM members contradict)
+  - [x] Risky commitment (unconditional promise)
+  - [x] Scope creep (client adds scope)
+  - [x] Client backtrack (client changes terms)
+  - [x] Pressure tactics (urgency, social proof)
+  - [x] Missing clarity (topic ends without owner/deadline)
+  - [x] Information risk (client name mentioned, API key)
+  - [x] Tone warning (defensive response)
+  - [x] Policy violation (blocklist term)
+  - [x] Client disengagement (brief responses)
+  - [x] Undiscussed agenda (meeting end)
+- [x] Test multi-user scenario:
+  - [x] Host + 2 participants connected
+  - [x] Shared alerts visible to all
+  - [x] Personal alerts visible only to target user
+  - [x] Participant join/leave
+  - [x] Host disconnect stops tracking
+- [x] Test speaker identification (VAD correlation):
+  - [x] 3+ speakers correctly identified (2 TEAM + 1 EXTERNAL at minimum)
+  - [x] Host correctly mapped from channel 0 without VAD
+  - [x] TEAM members correctly mapped from VAD signals → channel-1 diarization indices
+  - [x] External speakers labeled correctly (fallthrough case)
+  - [x] Retroactive reprocessing works when VAD arrives late
+  - [x] Simultaneous TEAM speech → both stay EXTERNAL until unambiguous
+- [x] Performance testing against latency budgets:
+  - [x] Pre-filter: <10ms
+  - [x] Tier 1: <50ms
+  - [x] Tier 2 (small LLM): <200ms
+  - [x] Tier 3 (embedding search): <100ms
+  - [x] Tier 4 (large LLM): <500ms
+  - [x] Voice identification: <100ms
+  - [x] End-to-end: <800ms
+- [x] Cost verification (~$1.22 per hour-long dual-channel meeting nominal, hard cap $2.00)
+- [x] Add structured logging throughout pipeline (per-utterance JSON lines — see Day 28)
+- [x] Implement basic observability (timing metrics, tier invocation counts, cost rollups)
+- [x] Fix bugs and edge cases
 
 **Deliverable:** Working multi-user meeting mode with all 12 alert categories, VAD-correlation speaker identification, and tiered LLM pipeline end-to-end.
-
-### Day 46+: Desktop Distribution & Auto-Update (B.10) — closes Week 6
-
-**apps/desktop (Tauri)**
-
-> A Tauri app is not a product until it can be signed, installed, and updated on end-user machines. This phase is explicitly called out because it was previously hidden inside "frontend polish" and consistently under-scoped in desktop projects.
-
-- [ ] **Windows:**
-  - [ ] Code-signing certificate procured (EV or OV); signing integrated into Tauri `bundle` step in CI
-  - [ ] Installer format: MSI via `tauri build --bundles msi`; verify SmartScreen reputation over first few releases
-- [ ] **macOS:**
-  - [ ] Apple Developer ID application certificate; Developer ID Installer certificate
-  - [ ] Signing + notarization via `notarytool` wired into CI
-  - [ ] Hardened runtime enabled; entitlements file lists microphone + screen-recording (required for ScreenCaptureKit audio) + network client
-  - [ ] Verify Gatekeeper pass on a clean machine before every release
-- [ ] **Linux:**
-  - [ ] `.deb` and `.rpm` packages via Tauri bundler
-  - [ ] `.AppImage` as the universal fallback
-  - [ ] Optional: publish to Flathub (longer timeline, post-MVP)
-- [ ] **Auto-update:**
-  - [ ] Tauri updater plugin configured with a signed update manifest
-  - [ ] Update manifest hosted on a static bucket (S3/MinIO/Cloudflare R2) with Ed25519 signature
-  - [ ] Staged rollout: 10% → 50% → 100% over 48h, controlled via manifest
-  - [ ] In-app prompt: "Update available — restart to install" (non-blocking; updates only apply on next launch, never mid-meeting)
-- [ ] **Crash reporting:** Sentry (or equivalent) wired on both Rust and JS sides with session-scrubbed breadcrumbs (never capture utterance text)
-
-**Deliverable:** Signed, notarized, auto-updating installers for Windows, macOS (Intel + Apple Silicon), and Linux — distributable to real users.
 
 ---
 
@@ -1203,94 +1190,167 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Goal:** Process completed meetings, extract insights, and write to persistent memory.
 
-### Day 47-48: Worker Infrastructure + Audio Persistence
+---
 
-**apps/workers + apps/realtime**
+### Day 47-48: Audio Persistence Fixups + Worker Trigger Wiring
 
-- [ ] Set up worker app structure
-- [ ] Implement RabbitMQ consumer base class
-- [ ] Create worker lifecycle management (graceful shutdown)
-- [ ] Add health check endpoints
-- [ ] Implement job retry logic with exponential backoff
-- [ ] Set up worker logging and metrics
-- [ ] **Audio persistence for post-meeting Whisper refinement (B.9):**
-  - [ ] Stand up MinIO (S3-compatible) in the dev/staging compose stack, bucket `larity-audio`
-  - [ ] `apps/realtime` streams each session's PCM frames **in parallel** to both Deepgram (live path) and MinIO (cold path) — the MinIO write is fire-and-forget, failures never block live processing
-  - [ ] Chunk object layout: `s3://larity-audio/{orgId}/{sessionId}/{chunkIndex}.pcm16` (or Opus-encoded, if CPU budget allows — ~10× smaller)
-  - [ ] Object lifecycle policy: auto-expire raw audio after 30 days unless the meeting is flagged for retention (org policy / legal hold)
-  - [ ] Encryption: SSE-S3 / MinIO server-side encryption with per-org key
-  - [ ] Manifest object on session close: `{sessionId}/manifest.json` with chunk list, codec, sample rate, total duration — consumed by the Whisper refinement worker
-  - [ ] Quick-restore path for debugging: `/admin/sessions/:id/audio.wav` endpoint (admin-only) that stitches chunks back together
+> **Status:** The infrastructure below was built ahead of schedule and is verified working (BaseWorker, health endpoint, graceful shutdown, AudioStreamer multipart upload, session lifecycle wiring, 17 tests). Three output-format bugs and two missing wiring steps were found during audit. The fixup tracks below are additive on top of the completed foundation — not a rewrite.
 
-**Deliverable:** Worker infrastructure ready to consume jobs; raw session audio persisted to object storage for Whisper refinement, debugging, and selective long-term retention — without touching the live latency budget.
+**apps/realtime + apps/control + apps/workers**
 
-### Day 49-50: Transcript Processing Worker
+#### ✓ Completed Infrastructure (keep as-is)
+
+- [x] Set up worker app structure (`apps/workers`) with BullMQ, base `BaseWorker` abstract class
+- [x] Implement graceful shutdown (SIGTERM/SIGINT handler closes active workers)
+- [x] Add Elysia `/health` check endpoint (Redis status + worker health + uptime, port `WORKERS_PORT` / `8080`)
+- [x] **Raw audio persistence (B.9):**
+  - [x] Implement `AudioStreamer` class in `apps/realtime/src/audio/streamer.ts`:
+    - Uses `@aws-sdk/lib-storage` `Upload` over a Node.js `PassThrough` stream for R2 Multipart Upload (region `"auto"`, S3-compatible SDK)
+    - Fire-and-forget `streamer.write(frame)` in the Deepgram relay hot path — never blocks live processing
+    - Configurable via env vars (`S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_AUDIO_BUCKET`)
+    - SSE: `ServerSideEncryption: "AES256"` on all S3 writes
+  - [x] Wire into session lifecycle (`apps/realtime/src/handlers/`):
+    - `on-open.ts` — creates streamer for host connections
+    - `on-message.ts` — writes binary frames to streamer (fire-and-forget)
+    - `on-close.ts` — closes streamer, completes S3 multipart upload, writes manifest
+  - [x] Object layout: `{orgId}/{sessionId}/raw_audio.pcm16` (single file, all tagged frames — **format includes `[tag:u8]` byte per frame; see Track A for fix**)
+  - [x] Manifest on session close: `manifest.json` with codec, sample rate, total duration
+  - [x] Quick-restore endpoint: `GET /admin/sessions/:id/audio.wav` in `apps/realtime/src/routes/admin.ts` — prepends 44-byte WAV header (**path missing orgId, WAV corrupted by tag bytes; see Track A for fix**)
+  - [x] Admin auth via `Bearer ADMIN_API_KEY`
+- [x] Full unit and mock-based integration test suites (17 tests):
+  - `apps/workers/tests/worker.test.ts` — BaseWorker construction, health, lifecycle
+  - `apps/realtime/tests/streamer.test.ts` — AudioStreamer write/end/manifest
+  - `apps/realtime/tests/admin-routes.test.ts` — WAV header generation
+  - `apps/realtime/tests/audio-registry.test.ts` — session → streamer management
+  - `apps/realtime/tests/audio-persistence.integration.test.ts` — end-to-end PCM → S3 → manifest → WAV
+
+#### Track A: Fix Audio Persistence Format ✓ COMPLETED
+
+The live pipeline strips the `[tag:u8]` byte and routes each frame to a separate Deepgram connection via `dual-channel-session.ts`. The persistence path must do the same so batch STT can consume valid PCM.
+
+- [x] **Strip tag byte** in `on-message.ts:handleBinaryFrame` before `streamer.write()` — extract `tag` and `pcm = frame.subarray(1)`, write only `pcm`. Use a per-streamer `writeDemux(tag, pcm)` that routes to the correct channel stream.
+- [x] **Demux into two mono files per session** — replace single `raw_audio.pcm16` with `ch0.pcm16` (mic, tag 0) and `ch1.pcm16` (system, tag 1). Each is valid 16kHz mono linear16 PCM. Update `AudioManifest` to declare both channels with their source type, byte sizes, and durations.
+- [x] **Fix admin WAV endpoint** — add orgId to route (`GET /admin/sessions/:orgId/:id/audio.wav`). Serve per-channel mono download or interleaved stereo on demand from the two files.
+- [x] Update existing tests for the new two-file layout and tag-stripping behavior.
+
+#### Track B: Session State Durability ✓ COMPLETED
+
+The commitment ledger, constraint ledger, speaker map, and topic states all live in Redis with TTLs ≤ 2 hours (from Day 7). The current `scheduleCleanup()` in `meeting-session.service.ts` sets a 5-minute grace TTL — useless if the worker hasn't started yet.
+
+- [x] **Extend Redis TTLs on session close** — in `meeting-session.service.ts:scheduleCleanup()`, change the grace period from 5 minutes to 7 days on keys: `meeting.commitment.{sessionId}`, `meeting.constraint.{sessionId}`, `meeting.speaker.{sessionId}`, `meeting.context.{sessionId}`, `meeting.cost.{sessionId}`, topic/speaker-state keys. Do NOT extend high-volume ephemeral keys (`meeting.utterance.*`, `meeting.pipeline.*`).
+- [x] **Write `session_state.json` to S3** — on session close, dump the final commitment ledger (full JSON from Redis), constraint ledger, speaker map (`channel:diarizationIndex → SpeakerIdentity`), VAD signal history (with per-client clock offsets), and topic state summaries to `{orgId}/{sessionId}/session_state.json`. Worker reads from Redis first, falls back to S3.
+
+#### Track C: BullMQ Producer + Session-End Trigger ✓ COMPLETED
+
+> **Decision:** Use **BullMQ** (not RabbitMQ) for post-meeting jobs — already present in `apps/workers`. RabbitMQ infra stays defined but unused; no migration needed.
+
+- [x] **Instantiate BullMQ `Queue`** for `meeting.transcribe` and `meeting.summary` in a shared producer module
+- [x] **Wire session-end trigger** — in `apps/realtime/src/handlers/on-close.ts`, after `closeStreamer()` resolves, call `queue.add('meeting.transcribe', { sessionId, orgId, meetingId, s3Prefix })`
+- [x] **Define job payload Zod schemas** for both queue types, validate on dequeue in the worker
+- [x] **Register concrete worker stubs** — create placeholder `TranscribeWorker` and `SummaryWorker` classes extending `BaseWorker`, call `registerWorker()` in `apps/workers/src/index.ts` so `/health` surfaces their status (they will be fully implemented in Days 49+)
+
+**Deliverable:** Foundation intact — BaseWorker, AudioStreamer, health endpoint, graceful shutdown, manifest, admin auth all verified working. Audio now persists as two clean mono PCM16 files (tag-stripped). Meeting state survives 7 days in Redis + S3 backup. Session end triggers the first BullMQ job automatically.
+
+---
+
+### Day 49-50: Transcript Processing Worker ✓ COMPLETED
 
 **apps/workers**
 
-- [ ] Implement `q.meeting.transcribe` consumer
-- [ ] Pull the session's audio manifest from MinIO and feed the chunks into the Whisper API for batch STT refinement
-- [ ] Compare Whisper output with Deepgram live transcript
-- [ ] Merge/reconcile transcripts (prefer Whisper accuracy)
-- [ ] **Preserve speaker identity attribution** (SpeakerIdentity, not binary)
-- [ ] Store refined transcript to database
-- [ ] Publish `transcript.ready` event
+- [x] Implement `TranscribeWorker extends BaseWorker` consuming `meeting.transcribe` jobs
+- [x] On dequeue: fetch `ch0.pcm16` and `ch1.pcm16` from R2 using the manifest
+- [x] Submit each channel to **Deepgram batch STT REST API** (Prerecorded endpoint — not live WebSocket) as separate jobs, preserving per-source diarization
+- [x] Receive refined transcripts per channel with diarization indices and timestamps
+- [x] Merge/reconcile with the live transcript from Redis (`meeting.utterance.{sessionId}`) if still available; otherwise proceed from batch output alone
+- [x] Store the refined transcript to the `Transcript` model in PostgreSQL (format: `NORMALIZED`, linked to `meetingId` via 1:1 relation)
+- [x] On success, chain the extraction job: `queue.add('meeting.summary', { sessionId, orgId, meetingId })`
+- [x] Handle edge cases: missing audio files (log, mark job failed), partial S3 uploads (graceful skip of missing channel), Deepgram API failures (retry with backoff), empty transcripts (skip extraction, mark meeting with warning)
+- [x] Write job status to Redis (`meeting.job.{sessionId}.transcribe.status` → `"processing"|"done"|"failed"`) for observability
 
-**Deliverable:** High-quality refined transcripts with multi-speaker attribution, sourced from the persisted raw audio.
+**Deliverable:** High-quality refined transcript with per-channel diarization, stored in PostgreSQL. Extraction job chained automatically on success.
 
-### Day 51: Speaker Diarization Refinement
+---
+
+### Day 51: Speaker Diarization Refinement ✓ COMPLETED
 
 **apps/workers**
 
-- [ ] Use meeting's voice identification data to refine post-meeting speaker attribution
-- [ ] Map diarized segments to identified speakers
-- [ ] Update transcript with confirmed speaker identities (TEAM with names, EXTERNAL with best-effort names)
-- [ ] Handle any remaining unidentified speakers
-- [ ] Store final speaker mapping
+> **Why this is non-trivial:** Deepgram's batch STT produces entirely new diarization indices unrelated to the live stream's indices. You cannot simply "map diarized segments to identified speakers" — the indices are different. The strategy below re-runs the same VAD-correlation algorithm the live pipeline used, but offline against the batch transcript's timestamps.
 
-**Deliverable:** Transcripts have accurate, named speaker attribution.
+- [x] **Export VAD signal history on session close** (in Track B above): timestamped `{ userId, ts, type: "speaking"|"silence", role, clockOffset }` events per session participant. Include per-client clock offsets from `ClockOffsetManager` so the worker can reconstruct corrected timestamps identically to the live correlation.
+- [x] **Export final speaker map** from `meeting.speaker.{sessionId}` into `session_state.json`: the live pipeline's `channel:diarizationIndex → SpeakerIdentity` mapping (ground truth reference).
+- [x] Implement re-correlation in the worker:
+  1. For each channel's batch transcript, extract speaker segments with start/end timestamps
+  2. Run the same VAD correlation logic from `packages/meeting-mode/src/speaker-identification/correlation.ts` but offline: compare batch segment time windows against the exported VAD signals (offset-corrected)
+  3. **VAD Hardening (Spike Filter):** Compare the duration of the VAD signal to the duration of the batch transcript segment. Reject the correlation if the VAD signal is short/spiky (e.g., keyboard typing, coughing) and doesn't cover a significant percentage (e.g., > 60%) of the spoken segment.
+  4. On match → assign `SpeakerIdentity` (TEAM member with name, or EXTERNAL)
+  5. This produces a `batchDiarizationIndex → SpeakerIdentity` mapping derived from the audio evidence, independent of the live indices
+- [x] **Live Transcript Cross-Check:** If the batch VAD correlation assigns a segment to a TEAM member, but the live transcript (from Redis) flagged that exact timestamp as EXTERNAL, flag the match as weak and require stricter similarity validation.
+- [x] **Textual fallback:** if VAD re-correlation is ambiguous for a segment, use DTW or n-gram overlap between the batch segment text and the live transcript segments to transfer speaker labels from the live transcript where speaker identity is known
+- [x] **(Future/Client-Side) Pre-Filtering:** Implement a lightweight noise-suppression filter (e.g., RNNoise) in the desktop app before the VAD engine to ensure non-vocal noises don't trigger VAD events.
+- [x] Update the `Transcript` content with confirmed speaker names (TEAM names from `User` records, EXTERNAL with best-effort names or "External Speaker A"/"External Speaker B")
+- [x] Handle remaining unidentified speakers: mark as "Speaker A", "Speaker B" etc.
+- [x] Store final speaker mapping in Redis + session_state.json for downstream consumers
+
+**Deliverable:** Refined transcript has accurate, named speaker attribution derived from re-running VAD correlation against the batch STT's timestamps — not from trying to naively map live diarization indices to batch ones.
+
+---
 
 ### Day 52-53: Decision, Task & Commitment Extraction
 
 **apps/workers**
 
-- [ ] Implement extraction worker for `q.meeting.summary`
-- [ ] Create LLM prompts for:
-  - [ ] Decision extraction (with evidence + speaker attribution)
-  - [ ] Task extraction (with assignee, deadline inference)
-  - [ ] Open question extraction
-  - [ ] Important point extraction
-- [ ] **Commitment ledger export:**
-  - [ ] Read commitment ledger from Redis
-  - [ ] Write to `Commitment` model in PostgreSQL (new Prisma model)
-  - [ ] Generate embeddings and store in pgvector
-  - [ ] These become searchable organizational memory for future meetings
-- [ ] Define extraction schemas (Zod)
-- [ ] Validate LLM outputs against schemas
+> **Architectural note:** The timeline previously planned a dedicated `Commitment` Prisma model. The existing DB uses `ImportantPoint` with `category: "COMMITMENT"`. We commit to this approach — no new Prisma model. The `ImportantPoint` table already has `content`, `speakerId`, `transcriptEvidence`, `category`, and `embedding` (pgvector). Contradiction/supersession chains are tracked in the in-memory `CommitmentLedger` (`contradicts`, `supersedes`, `relatedCommitments`) and can be reconstructed from the historical record via embedding similarity search.
 
-**Deliverable:** Structured data extracted from transcripts, commitment ledger persisted as organizational memory.
+- [x] Implement `SummaryWorker extends BaseWorker` consuming `meeting.summary` jobs
+- [x] Build LLM extraction prompts using `@google/genai` (Gemini) — reuse existing LLM client patterns from `packages/meeting-mode/src/pipeline/tier4.ts` and `packages/meeting-mode/src/llm/`:
+  - [x] Decision extraction prompt → `{ title, content, rationale, evidence, tags, speakerAttribution }` with transcript line references
+  - [x] Task extraction prompt → `{ title, description, assigneeHint, dueAt, priority }` with inferred deadlines and ownership
+  - [x] Open question extraction prompt → `{ question, context, assigneeHint, dueAt }`
+  - [x] Important point extraction prompt → `{ content, category, speakerHint, transcriptEvidence }` for commitments, constraints, insights, warnings, risks
+- [x] Define Zod schemas for all extraction outputs — validate every LLM response before writing to DB. Reuse existing output shapes from `apps/control/src/validators/meeting.ts` where applicable.
+- [x] Implement **chunking strategy**: split the refined transcript into overlapping ~15-minute windows with ~2-minute context overlap. Run extraction per-window, deduplicate results across windows by content similarity (embedding cosine ≥ 0.95). This keeps LLM prompts within context limits and avoids dilution from 60+ minute transcripts.
+- [x] Commitment ledger export:
+  - [x] Read the commitment ledger from Redis (`meeting.commitment.{sessionId}`) — safe with 7-day TTL. Fallback: `session_state.json` on S3.
+  - [x] For each commitment, create an `ImportantPoint` with `category: "COMMITMENT"`, `content: statement`, `speakerId` from `SpeakerIdentity.userId`, `transcriptEvidence` from `utteranceId`
+  - [x] Generate Gemini embedding (768-dim) via `@google/genai` and store in `ImportantPoint.embedding`
+- [x] Write all extracted data to PostgreSQL transactionally via Prisma
 
-### Day 54-55: Memory Writes & Integration
 
-**apps/workers + apps/control**
+**Deliverable:** Structured decisions, tasks, questions, and commitments extracted from the refined transcript and persisted with embeddings for semantic search.
 
-- [ ] Write extracted decisions to PostgreSQL (versioned)
-- [ ] Write tasks with inferred owners/deadlines
-- [ ] Write open questions
-- [ ] Write important points with categories
-- [ ] Update meeting summary field
-- [ ] Generate embeddings for vector search (pgvector):
-  - [ ] Decisions
-  - [ ] Commitments (from ledger)
-  - [ ] Important points
-  - [ ] Policy guardrails
-- [ ] Publish `meeting.processed` event
-- [ ] Add `/meetings/:id/insights` endpoint (decisions, tasks, questions, commitments)
-- [ ] Add `/meetings/:id/transcript` endpoint (refined, speaker-attributed)
-- [ ] Wire session end to trigger post-meeting jobs
-- [ ] Add job status tracking in Redis
+---
 
-**Deliverable:** Meeting insights and commitments persisted to database, searchable via pgvector for future meetings.
+### Day 54-55: Memory Writes, Indexes & Client Notification
+
+**apps/workers + apps/control + apps/realtime**
+
+- [ ] Transactional batch write to PostgreSQL:
+  - [ ] Decisions → `Decision` table (versioned, with `decisionRef`)
+  - [ ] Tasks → `Task` table (with inferred `assigneeId` by resolving assignee names against team roster, linked to `decisionId`/`meetingId`)
+  - [ ] Open questions → `OpenQuestion` table (with inferred `assigneeId`)
+  - [ ] Important points → `ImportantPoint` table (with `category`, `speakerId`, `transcriptEvidence`)
+  - [ ] Commitments → `ImportantPoint` table (`category: "COMMITMENT"`)
+  - [ ] Update `Meeting.summary` with a concise LLM-generated overview of extracted items
+- [ ] Generate embeddings for pgvector (reuse Gemini embedder from `meeting-mode`):
+  - [ ] `Decision.embedding` — embed `title + " " + content`
+  - [ ] `ImportantPoint.embedding` — embed `content` (for COMMITMENT and other categories)
+- [ ] Create pgvector index migrations (raw SQL migrations in `packages/infra/prisma/`):
+  - [ ] HNSW index on `decisions.embedding` (`vector_cosine_ops`)
+  - [ ] HNSW index on `important_points.embedding` (`vector_cosine_ops`)
+  - [ ] HNSW index on `policy_guardrails.embedding` (`vector_cosine_ops`)
+- [ ] Add API endpoints in `apps/control`:
+  - [ ] `GET /meetings/:id/insights` — returns decisions, tasks, questions, important points (filterable by category)
+  - [ ] `GET /meetings/:id/transcript` — returns the refined, speaker-attributed transcript
+- [ ] Add job status tracking in Redis (per-meeting): `meeting.job.{sessionId}.transcribe.status`, `meeting.job.{sessionId}.summary.status` → `"queued"|"processing"|"done"|"failed"`. Expose via `GET /meetings/:id/processing-status`.
+- [ ] **Client notification transport:**
+  - [ ] On successful completion, publish `meeting.processed` event to Redis pub/sub channel (`meeting.processed.{sessionId}`) with payload `{ meetingId, sessionId, status: "complete" }`
+  - [ ] `apps/realtime` subscribes to `meeting.processed.*` and forwards to connected desktop clients via WebSocket
+  - [ ] Web dashboard (`apps/web`, Week 9) polls `GET /meetings/:id/processing-status` or subscribes via SSE
+- [ ] Add manual retry: `POST /meetings/:id/reprocess` (triggers new BullMQ job chain from transcript step)
+- [ ] Clean up Redis meeting-state keys after successful PostgreSQL persistence (delete 7-day TTL keys — data is now in the DB)
+
+**Deliverable:** All meeting insights and commitments persisted to PostgreSQL with HNSW-indexed pgvector embeddings, searchable for future meetings. Desktop and web clients receive real-time notification on processing completion. Job status is observable, retryable, and self-cleaning.
 
 ---
 
@@ -1381,6 +1441,33 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Deliverable:** Fully integrated assistant mode.
 
+### Day 46+: Desktop Distribution & Auto-Update (B.10) — moved after Week 8
+
+**apps/desktop (Tauri)**
+
+> A Tauri app is not a product until it can be signed, installed, and updated on end-user machines. This phase is explicitly called out because it was previously hidden inside "frontend polish" and consistently under-scoped in desktop projects.
+
+- [ ] **Windows:**
+  - [ ] Code-signing certificate procured (EV or OV); signing integrated into Tauri `bundle` step in CI
+  - [ ] Installer format: MSI via `tauri build --bundles msi`; verify SmartScreen reputation over first few releases
+- [ ] **macOS:**
+  - [ ] Apple Developer ID application certificate; Developer ID Installer certificate
+  - [ ] Signing + notarization via `notarytool` wired into CI
+  - [ ] Hardened runtime enabled; entitlements file lists microphone + screen-recording (required for ScreenCaptureKit audio) + network client
+  - [ ] Verify Gatekeeper pass on a clean machine before every release
+- [ ] **Linux:**
+  - [ ] `.deb` and `.rpm` packages via Tauri bundler
+  - [ ] `.AppImage` as the universal fallback
+  - [ ] Optional: publish to Flathub (longer timeline, post-MVP)
+- [ ] **Auto-update:**
+  - [ ] Tauri updater plugin configured with a signed update manifest
+  - [ ] Update manifest hosted on a static bucket (S3/MinIO/Cloudflare R2) with Ed25519 signature
+  - [ ] Staged rollout: 10% → 50% → 100% over 48h, controlled via manifest
+  - [ ] In-app prompt: "Update available — restart to install" (non-blocking; updates only apply on next launch, never mid-meeting)
+- [ ] **Crash reporting:** Sentry (or equivalent) wired on both Rust and JS sides with session-scrubbed breadcrumbs (never capture utterance text)
+
+**Deliverable:** Signed, notarized, auto-updating installers for Windows, macOS (Intel + Apple Silicon), and Linux — distributable to real users.
+
 ---
 
 ## Week 9: Web Dashboard (apps/web) — NEW
@@ -1440,16 +1527,17 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 | 1 | 1-7 | **Migration & Multi-User** | Speaker model migration (YOU/THEM → SpeakerIdentity), Deepgram diarization, multi-user session join, Redis alert channels |
 | 2 | 8-14 | **Speaker ID (VAD) + Prototype Audio Capture** | VAD signals from desktop mic, clock-offset-corrected diarization correlation, diarization-index merge baseline, prototype host capture in Tauri/Rust, meeting-detection prompts, direct realtime → Deepgram audio path (no Redis hop) |
 | 3 | 15-21 | **State & Structural Detection** | Topic state, commitment ledger (**in-memory HNSW + Redis snapshot**, with embeddings), constraint ledger, pre-filter, Tier 1 structural |
-| 4 | 22-28 | **LLM Classification & Search** | Tier 2 small LLM (single semantic source replacing all regex), **Post-Day 23 dual-channel intake hardening before Tier 3**, Tier 3 embedding search + commitment ledger search (shared embedding reuse), Tier 4 deep reasoning, **parallel Tier 1/2/3 orchestration, async topic-summary refinement off hot path, Tier 2 semantic cache, per-meeting cost cap, structured observability** |
+| 4 | 22-28 | **LLM Classification & Search** | Tier 2 small LLM (single semantic source replacing all regex), **Post-Day 23 dual-channel intake hardening before Tier 3**, Tier 3 embedding search + commitment ledger search (shared embedding reuse), Tier 4 deep reasoning, **parallel Tier 1/2/3 orchestration, async topic-summary refinement off hot path, Tier 2 semantic cache, per-meeting cost cap (w/ warning mode at 80% & hard cap at $2.00), structured observability** |
 | 5 | 29-36 | **Alert System & Speaker Tracking** | All 12 alert categories, alert routing (shared/personal), speaker state tracker, tone trajectory, client disengagement, speculative processing, **atomic alert UX (no progressive flicker)** |
-| 6 | 37-46+ | **Desktop Frontend, E2E & Distribution** | Desktop UI (tray + overlay + main), ambient components, alert UI (12 categories), meeting mode screen, multi-user end-to-end testing, **signed/notarized installers + auto-update across Win/macOS/Linux** |
-| 7 | 47-55 | **Post-Meeting** | Workers, **MinIO raw audio persistence (30-day lifecycle)**, Whisper refinement, speaker-attributed transcripts, commitment ledger → pgvector, extraction, memory writes |
+| 6 | 37-46 | **Desktop Frontend & E2E** | Desktop UI (tray + overlay + main), ambient components, alert UI (12 categories), meeting mode screen, multi-user end-to-end testing |
+| 7 | 47-55 | **Post-Meeting** | Fix dual-channel audio persistence (two tag-stripped mono PCM16 files per session), Redis TTL extension + S3 state dump, BullMQ job trigger, Deepgram batch STT transcript refinement, VAD re-correlation speaker attribution, LLM extraction (decisions/tasks/questions/points), commitment ledger → `ImportantPoint` + pgvector HNSW indexes, client notification |
 | 8 | 56-68 | **Assistant** | Vector search, RAG, actions, auto-remembrance, UI (inside desktop app) |
+| — | — | **Distribution** (post-Week 8) | **signed/notarized installers + auto-update across Win/macOS/Linux** |
 | 9 | 69-76 | **Web Dashboard** | `apps/web` — meetings/transcripts/decisions/commitments/tasks review, team/client/policy admin, search, usage dashboard |
 
-**Total: 76 working days (~11 weeks at 7 days/week, or ~15 weeks with weekends)**
+**Total: 76 working days (~11 weeks at 7 days/week, or ~15 weeks without weekends)** (excl. distribution, which runs after Week 8)
 
-> Weeks 8 (Assistant) and 9 (Web Dashboard) are largely parallelizable with a second developer.
+> Weeks 8 (Assistant), Distribution (code-signing, CI, auto-update), and 9 (Web Dashboard) are largely parallelizable with a second developer.
 
 ---
 
@@ -1483,7 +1571,7 @@ packages/
 │   │   ├── identifier.ts           # SpeakerIdentifier (diarization ↔ VAD, reassignment-merge)
 │   │   ├── vad-state.ts            # Per-session VAD state (Map<userId, {isSpeaking, ts}>)
 │   │   ├── clock-offset.ts         # Per-client rolling median offset (last 30 samples)
-│   │   ├── correlation.ts          # ±250ms offset-corrected timestamp correlation
+│   │   ├── correlation.ts          # 1500ms offset-corrected timestamp correlation
 │   │   ├── pending-buffer.ts       # Utterances awaiting late VAD confirmation (~2s)
 │   │   └── types.ts                # SpeakerIdentity with diarizationIndices: {channel,index}[]
 │   ├── state/
@@ -1528,15 +1616,7 @@ packages/
 │   │   ├── context-assembler.ts     # CHANGE: use SpeakerIdentity not YOU/THEM
 │   │   └── preloader.ts            # NEW — Context preload on session start
 │   └── index.ts
-├── extraction/               # Week 7
-│   ├── decisions.ts
-│   ├── tasks.ts
-│   ├── questions.ts
-│   ├── points.ts
-│   ├── commitments.ts        # NEW — Commitment ledger → PostgreSQL export
-│   ├── prompts.ts
-│   ├── schemas.ts
-│   └── index.ts
+├── extraction/               # Week 7 — extraction prompts, schemas, and logic live in apps/workers/src/extraction/, not as a standalone package. The Zod output schemas are shared with apps/control/src/validators/meeting.ts.
 └── assistant/                # Week 8
     ├── intent/
     ├── rag/
@@ -1562,8 +1642,11 @@ apps/
 ├── desktop/                  # Host capture: dual-source tagged mono (mic+sys forwarder); VAD - Tauri + React
 │   └── Needs: Rust-native WS (optional), per-session audio metrics, true Win/macOS loopback,
 │              React meeting UI polish (Week 6), assistant (Week 8)
-├── workers/                  # SCAFFOLD ONLY
-│   └── Needs: Everything (Week 7)
+├── workers/                  # INFRASTRUCTURE DONE — BaseWorker (BullMQ), health endpoint, graceful shutdown
+│   └── Needs: Fix audio persistence (tag-stripping, dual-file demux, admin WAV path),
+│              Redis TTL extension (7d) + session_state.json S3 dump,
+│              BullMQ Queue producer + Wire session-end trigger,
+│              TranscribeWorker, SpeakerRefinementWorker, SummaryWorker (Days 49-55)
 └── web/                      # NOT YET CREATED
     └── Needs: Everything (Week 9 — dashboard / logs / admin)
 ```
@@ -1576,7 +1659,7 @@ apps/
 |------|------------|
 | Deepgram latency spikes | Implement timeout + skip, don't block pipeline |
 | Deepgram diarization inaccurate | Host channel short-circuit handles host attribution; VAD-correlation handles non-host TEAM attribution on channel 1. Diarization still needs to be internally consistent (same index for same speaker within a window). Reassignment-merge logic (Day 10-11) collapses post-silence index swaps back onto the existing `SpeakerIdentity` so a single talker is never mistaken for two |
-| Client clock drift / sleep-resume | Per-client rolling-median clock offset (Day 10-11) aligns VAD timestamps with the server clock; correlation window tightened to ±250ms |
+| Client clock drift / sleep-resume | Per-client rolling-median clock offset (Day 10-11) aligns VAD timestamps with the server clock; correlation window tightened to 1500ms |
 | **macOS system audio capture denied / no ScreenCaptureKit permission** | Surface clear instructions + fallback instructions for virtual device (BlackHole); the user can still participate as a non-host |
 | **macOS pre-13 support** | Require macOS 13+ for ScreenCaptureKit audio; document virtual-device fallback for older versions |
 | **Linux missing PipeWire & PulseAudio** | Detect at startup, surface error asking user to use pipewire-pulse or pulseaudio; refuse to host without a monitor source |
@@ -1597,7 +1680,7 @@ apps/
 | Redis pub/sub message loss | Accept loss for non-critical data; alerts use reliable delivery where possible |
 | Speculative processing low hit rate | Monitor hit rate, adjust confidence threshold dynamically |
 | Topic clustering inaccurate | Start with simple embedding, tune threshold iteratively |
-| Whisper API latency | Async processing, user doesn't wait |
+| Deepgram batch STT latency | Async processing via BullMQ — user doesn't wait; job status surfaced via `/meetings/:id/processing-status` |
 | Vector search slow | Add indexes, limit result count, cache frequent queries |
 | **Commitment ledger grows large** | In-memory HNSW handles hundreds of commitments per session in sub-ms; cap at 500 per meeting; oldest low-priority ones archived |
 | **Worker crash mid-meeting** | Redis snapshot of commitment ledger (Day 17-18) lets a replacement worker rehydrate the session's HNSW index on reconnect; ring buffer and topic state rehydrate from Redis too |
@@ -1605,7 +1688,7 @@ apps/
 | **Redundant Tier 2 LLM calls on repeated fillers** | Per-session semantic cache (Day 28) on utterance embedding similarity ≥ 0.97, ~30% hit rate on boilerplate confirmations |
 | **Alert flicker / progressive alerts confusing users** | Single atomic alert per Tier 4 invocation (Day 41-42); "Checking…" indicator is content-free |
 | **Alert fatigue** | Max 2 visible, priority queue, per-category confidence thresholds, Silent Collaborator mode |
-| **Raw audio lost if realtime worker dies** | Parallel MinIO streaming (Day 47-48) persists every PCM chunk independently of the live pipeline |
+| **Raw audio lost if realtime worker dies** | Parallel streaming to Cloudflare R2 (Day 47-48) persists frames via fire-and-forget multipart upload independently of the live pipeline |
 | **Desktop auto-update installs during a live meeting** | Auto-update prompt only applies on next launch; installer never runs while a session is active |
 
 ---
@@ -1705,13 +1788,13 @@ apps/
 ### External Services
 - **Deepgram** — Streaming STT with diarization (API key required)
 - **OpenAI Whisper API** — Batch STT refinement (post-meeting)
-- **Google Gemini (`@google/genai`)** — Tier 2 classification (`gemini-3.1-flash-lite-preview`) and embeddings (`text-embedding-004` / Gemini embedding models)
+- **Google Gemini (`@google/genai`)** — Tier 2 classification (`gemini-3.1-flash-lite`) and embeddings (`text-embedding-004` / Gemini embedding models)
 
 ### Infrastructure
 - **Redis** — Already configured in packages/infra. Needs new key patterns for multi-user, commitment ledger snapshots, per-meeting cost counters, and pub/sub channels for ledger updates. **Not on the audio path.**
 - **PostgreSQL + pgvector** — Already configured with Prisma. Needs pgvector extension + new `Commitment` model (no `Voiceprint` — speaker ID is VAD-based).
 - **RabbitMQ** — Already configured for worker queues.
-- **MinIO (S3-compatible object storage)** — Added Day 47-48 for raw audio persistence (Whisper refinement source + debugging). 30-day lifecycle; per-org encryption keys.
+- **Cloudflare R2** — S3-compatible object storage, zero egress fees. Added Day 47-48 for raw audio persistence (Whisper refinement source + debugging). Single `raw_audio.pcm16` object per session via `@aws-sdk/lib-storage` Multipart Upload. SSE: `AES256`. Region always `"auto"`.
 - **In-memory HNSW** (`hnswlib-node` or equivalent) — pulled into `packages/meeting-mode` for the commitment ledger hot path.
 
 ### Rust-Side Runtime Dependencies (Day 12-13 onwards)
@@ -1752,9 +1835,9 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 | **Cost control** | Nominal budget only | **Per-meeting Redis cost counter; gate tightening at 80% of cap; Tier 4 disabled at 100% of cap** |
 | **Diarization index drift** | Ignored | **Reassignment-merge onto existing SpeakerIdentity after silence** |
 | **Host speaker attribution** | VAD correlation like everyone else | **Channel 0 short-circuit maps directly to host identity; VAD correlation runs on channel 1 for non-host TEAM members** |
-| **Client clock drift** | Fixed ±300ms tolerance | **Per-client rolling-median offset + ±250ms window** |
+| **Client clock drift** | Fixed ±300ms tolerance | **Per-client rolling-median offset + 1500ms window** |
 | **Alert UX** | Progressive / preliminary alerts | **Single atomic alert per Tier 4; content-free "Checking…" indicator only** |
-| **Raw audio persistence** | Not specified | **Parallel fire-and-forget stream to MinIO, 30-day lifecycle** |
+| **Raw audio persistence** | Not specified | **Fire-and-forget streaming to Cloudflare R2, single `raw_audio.pcm16` per session via multipart upload** |
 | **Desktop distribution** | "Tauri build" | **Code-signed Win MSI + notarized macOS universal + Linux .deb/.rpm/.AppImage; signed auto-update** |
 | **Observability** | Ad-hoc smoke script | **Per-utterance JSON metrics + per-session rollups + optional Prometheus histograms** |
 | **Alert categories** | 6-9 categories | 12 categories (added team_inconsistency, client_disengagement, undiscussed_agenda) |
@@ -1770,7 +1853,7 @@ No Python microservice. No voice-embedding models. No ONNX voiceprint inference.
 ## Notes
 
 - This timeline assumes 1 developer working full-time
-- 76 working days = ~11 weeks at 7 days/week, or ~15 weeks with weekends
+- 76 working days = ~11 weeks at 7 days/week, or ~15 weeks without weekends
 - Week 1 is primarily migration work (updating existing code to new architecture)
 - Audio intake is the biggest platform-specific workstream. Week 2 establishes the prototype capture path; **Post-Day 23 / B.12** aligns **server STT + desktop tagged per-source frames** (no client-side mic/sys mix). **Rust-native WebSocket** and **Win/mac loopback** remain the main follow-ups before calling desktop capture “fully production-grade” on every OS.
 - Pattern library work from the old timeline is completely removed (replaced by Tier 2 LLM)

@@ -189,7 +189,7 @@ export type ClientGroupByOutputType = {
   _max: ClientMaxAggregateOutputType | null
 }
 
-type GetClientGroupByPayload<T extends ClientGroupByArgs> = Prisma.PrismaPromise<
+export type GetClientGroupByPayload<T extends ClientGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<ClientGroupByOutputType, T['by']> &
       {
@@ -228,6 +228,7 @@ export type ClientWhereInput = {
   documents?: Prisma.DocumentListRelationFilter
   reminders?: Prisma.ReminderListRelationFilter
   policyGuardrails?: Prisma.PolicyGuardrailListRelationFilter
+  utterances?: Prisma.TranscriptUtteranceListRelationFilter
 }
 
 export type ClientOrderByWithRelationInput = {
@@ -251,6 +252,7 @@ export type ClientOrderByWithRelationInput = {
   documents?: Prisma.DocumentOrderByRelationAggregateInput
   reminders?: Prisma.ReminderOrderByRelationAggregateInput
   policyGuardrails?: Prisma.PolicyGuardrailOrderByRelationAggregateInput
+  utterances?: Prisma.TranscriptUtteranceOrderByRelationAggregateInput
 }
 
 export type ClientWhereUniqueInput = Prisma.AtLeast<{
@@ -278,6 +280,7 @@ export type ClientWhereUniqueInput = Prisma.AtLeast<{
   documents?: Prisma.DocumentListRelationFilter
   reminders?: Prisma.ReminderListRelationFilter
   policyGuardrails?: Prisma.PolicyGuardrailListRelationFilter
+  utterances?: Prisma.TranscriptUtteranceListRelationFilter
 }, "id" | "orgId_slug">
 
 export type ClientOrderByWithAggregationInput = {
@@ -332,6 +335,7 @@ export type ClientCreateInput = {
   documents?: Prisma.DocumentCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceCreateNestedManyWithoutClientInput
 }
 
 export type ClientUncheckedCreateInput = {
@@ -354,6 +358,7 @@ export type ClientUncheckedCreateInput = {
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedCreateNestedManyWithoutClientInput
 }
 
 export type ClientUpdateInput = {
@@ -376,6 +381,7 @@ export type ClientUpdateInput = {
   documents?: Prisma.DocumentUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateInput = {
@@ -398,6 +404,7 @@ export type ClientUncheckedUpdateInput = {
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUncheckedUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedUpdateManyWithoutClientNestedInput
 }
 
 export type ClientCreateManyInput = {
@@ -680,6 +687,20 @@ export type ClientUpdateOneWithoutRemindersNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ClientUpdateToOneWithWhereWithoutRemindersInput, Prisma.ClientUpdateWithoutRemindersInput>, Prisma.ClientUncheckedUpdateWithoutRemindersInput>
 }
 
+export type ClientCreateNestedOneWithoutUtterancesInput = {
+  create?: Prisma.XOR<Prisma.ClientCreateWithoutUtterancesInput, Prisma.ClientUncheckedCreateWithoutUtterancesInput>
+  connectOrCreate?: Prisma.ClientCreateOrConnectWithoutUtterancesInput
+  connect?: Prisma.ClientWhereUniqueInput
+}
+
+export type ClientUpdateOneRequiredWithoutUtterancesNestedInput = {
+  create?: Prisma.XOR<Prisma.ClientCreateWithoutUtterancesInput, Prisma.ClientUncheckedCreateWithoutUtterancesInput>
+  connectOrCreate?: Prisma.ClientCreateOrConnectWithoutUtterancesInput
+  upsert?: Prisma.ClientUpsertWithoutUtterancesInput
+  connect?: Prisma.ClientWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ClientUpdateToOneWithWhereWithoutUtterancesInput, Prisma.ClientUpdateWithoutUtterancesInput>, Prisma.ClientUncheckedUpdateWithoutUtterancesInput>
+}
+
 export type ClientCreateWithoutOrgInput = {
   id?: string
   name: string
@@ -699,6 +720,7 @@ export type ClientCreateWithoutOrgInput = {
   documents?: Prisma.DocumentCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceCreateNestedManyWithoutClientInput
 }
 
 export type ClientUncheckedCreateWithoutOrgInput = {
@@ -720,6 +742,7 @@ export type ClientUncheckedCreateWithoutOrgInput = {
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedCreateNestedManyWithoutClientInput
 }
 
 export type ClientCreateOrConnectWithoutOrgInput = {
@@ -783,6 +806,7 @@ export type ClientCreateWithoutMembersInput = {
   documents?: Prisma.DocumentCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceCreateNestedManyWithoutClientInput
 }
 
 export type ClientUncheckedCreateWithoutMembersInput = {
@@ -804,6 +828,7 @@ export type ClientUncheckedCreateWithoutMembersInput = {
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedCreateNestedManyWithoutClientInput
 }
 
 export type ClientCreateOrConnectWithoutMembersInput = {
@@ -841,6 +866,7 @@ export type ClientUpdateWithoutMembersInput = {
   documents?: Prisma.DocumentUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateWithoutMembersInput = {
@@ -862,6 +888,7 @@ export type ClientUncheckedUpdateWithoutMembersInput = {
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUncheckedUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedUpdateManyWithoutClientNestedInput
 }
 
 export type ClientCreateWithoutMeetingsInput = {
@@ -883,6 +910,7 @@ export type ClientCreateWithoutMeetingsInput = {
   documents?: Prisma.DocumentCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceCreateNestedManyWithoutClientInput
 }
 
 export type ClientUncheckedCreateWithoutMeetingsInput = {
@@ -904,6 +932,7 @@ export type ClientUncheckedCreateWithoutMeetingsInput = {
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedCreateNestedManyWithoutClientInput
 }
 
 export type ClientCreateOrConnectWithoutMeetingsInput = {
@@ -941,6 +970,7 @@ export type ClientUpdateWithoutMeetingsInput = {
   documents?: Prisma.DocumentUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateWithoutMeetingsInput = {
@@ -962,6 +992,7 @@ export type ClientUncheckedUpdateWithoutMeetingsInput = {
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUncheckedUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedUpdateManyWithoutClientNestedInput
 }
 
 export type ClientCreateWithoutDecisionsInput = {
@@ -983,6 +1014,7 @@ export type ClientCreateWithoutDecisionsInput = {
   documents?: Prisma.DocumentCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceCreateNestedManyWithoutClientInput
 }
 
 export type ClientUncheckedCreateWithoutDecisionsInput = {
@@ -1004,6 +1036,7 @@ export type ClientUncheckedCreateWithoutDecisionsInput = {
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedCreateNestedManyWithoutClientInput
 }
 
 export type ClientCreateOrConnectWithoutDecisionsInput = {
@@ -1041,6 +1074,7 @@ export type ClientUpdateWithoutDecisionsInput = {
   documents?: Prisma.DocumentUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateWithoutDecisionsInput = {
@@ -1062,6 +1096,7 @@ export type ClientUncheckedUpdateWithoutDecisionsInput = {
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUncheckedUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedUpdateManyWithoutClientNestedInput
 }
 
 export type ClientCreateWithoutTasksInput = {
@@ -1083,6 +1118,7 @@ export type ClientCreateWithoutTasksInput = {
   documents?: Prisma.DocumentCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceCreateNestedManyWithoutClientInput
 }
 
 export type ClientUncheckedCreateWithoutTasksInput = {
@@ -1104,6 +1140,7 @@ export type ClientUncheckedCreateWithoutTasksInput = {
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedCreateNestedManyWithoutClientInput
 }
 
 export type ClientCreateOrConnectWithoutTasksInput = {
@@ -1141,6 +1178,7 @@ export type ClientUpdateWithoutTasksInput = {
   documents?: Prisma.DocumentUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateWithoutTasksInput = {
@@ -1162,6 +1200,7 @@ export type ClientUncheckedUpdateWithoutTasksInput = {
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUncheckedUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedUpdateManyWithoutClientNestedInput
 }
 
 export type ClientCreateWithoutOpenQuestionsInput = {
@@ -1183,6 +1222,7 @@ export type ClientCreateWithoutOpenQuestionsInput = {
   documents?: Prisma.DocumentCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceCreateNestedManyWithoutClientInput
 }
 
 export type ClientUncheckedCreateWithoutOpenQuestionsInput = {
@@ -1204,6 +1244,7 @@ export type ClientUncheckedCreateWithoutOpenQuestionsInput = {
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedCreateNestedManyWithoutClientInput
 }
 
 export type ClientCreateOrConnectWithoutOpenQuestionsInput = {
@@ -1241,6 +1282,7 @@ export type ClientUpdateWithoutOpenQuestionsInput = {
   documents?: Prisma.DocumentUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateWithoutOpenQuestionsInput = {
@@ -1262,6 +1304,7 @@ export type ClientUncheckedUpdateWithoutOpenQuestionsInput = {
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUncheckedUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedUpdateManyWithoutClientNestedInput
 }
 
 export type ClientCreateWithoutImportantPointsInput = {
@@ -1283,6 +1326,7 @@ export type ClientCreateWithoutImportantPointsInput = {
   documents?: Prisma.DocumentCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceCreateNestedManyWithoutClientInput
 }
 
 export type ClientUncheckedCreateWithoutImportantPointsInput = {
@@ -1304,6 +1348,7 @@ export type ClientUncheckedCreateWithoutImportantPointsInput = {
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedCreateNestedManyWithoutClientInput
 }
 
 export type ClientCreateOrConnectWithoutImportantPointsInput = {
@@ -1341,6 +1386,7 @@ export type ClientUpdateWithoutImportantPointsInput = {
   documents?: Prisma.DocumentUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateWithoutImportantPointsInput = {
@@ -1362,6 +1408,7 @@ export type ClientUncheckedUpdateWithoutImportantPointsInput = {
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUncheckedUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedUpdateManyWithoutClientNestedInput
 }
 
 export type ClientCreateWithoutPolicyGuardrailsInput = {
@@ -1383,6 +1430,7 @@ export type ClientCreateWithoutPolicyGuardrailsInput = {
   importantPoints?: Prisma.ImportantPointCreateNestedManyWithoutClientInput
   documents?: Prisma.DocumentCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceCreateNestedManyWithoutClientInput
 }
 
 export type ClientUncheckedCreateWithoutPolicyGuardrailsInput = {
@@ -1404,6 +1452,7 @@ export type ClientUncheckedCreateWithoutPolicyGuardrailsInput = {
   importantPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutClientInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedCreateNestedManyWithoutClientInput
 }
 
 export type ClientCreateOrConnectWithoutPolicyGuardrailsInput = {
@@ -1441,6 +1490,7 @@ export type ClientUpdateWithoutPolicyGuardrailsInput = {
   importantPoints?: Prisma.ImportantPointUpdateManyWithoutClientNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateWithoutPolicyGuardrailsInput = {
@@ -1462,6 +1512,7 @@ export type ClientUncheckedUpdateWithoutPolicyGuardrailsInput = {
   importantPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutClientNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUncheckedUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedUpdateManyWithoutClientNestedInput
 }
 
 export type ClientCreateWithoutDocumentsInput = {
@@ -1483,6 +1534,7 @@ export type ClientCreateWithoutDocumentsInput = {
   importantPoints?: Prisma.ImportantPointCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceCreateNestedManyWithoutClientInput
 }
 
 export type ClientUncheckedCreateWithoutDocumentsInput = {
@@ -1504,6 +1556,7 @@ export type ClientUncheckedCreateWithoutDocumentsInput = {
   importantPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutClientInput
   reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedCreateNestedManyWithoutClientInput
 }
 
 export type ClientCreateOrConnectWithoutDocumentsInput = {
@@ -1541,6 +1594,7 @@ export type ClientUpdateWithoutDocumentsInput = {
   importantPoints?: Prisma.ImportantPointUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateWithoutDocumentsInput = {
@@ -1562,6 +1616,7 @@ export type ClientUncheckedUpdateWithoutDocumentsInput = {
   importantPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUncheckedUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedUpdateManyWithoutClientNestedInput
 }
 
 export type ClientCreateWithoutRemindersInput = {
@@ -1583,6 +1638,7 @@ export type ClientCreateWithoutRemindersInput = {
   importantPoints?: Prisma.ImportantPointCreateNestedManyWithoutClientInput
   documents?: Prisma.DocumentCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceCreateNestedManyWithoutClientInput
 }
 
 export type ClientUncheckedCreateWithoutRemindersInput = {
@@ -1604,6 +1660,7 @@ export type ClientUncheckedCreateWithoutRemindersInput = {
   importantPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutClientInput
   documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutClientInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutClientInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedCreateNestedManyWithoutClientInput
 }
 
 export type ClientCreateOrConnectWithoutRemindersInput = {
@@ -1641,6 +1698,7 @@ export type ClientUpdateWithoutRemindersInput = {
   importantPoints?: Prisma.ImportantPointUpdateManyWithoutClientNestedInput
   documents?: Prisma.DocumentUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateWithoutRemindersInput = {
@@ -1661,6 +1719,111 @@ export type ClientUncheckedUpdateWithoutRemindersInput = {
   openQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutClientNestedInput
   importantPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutClientNestedInput
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutClientNestedInput
+  policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedUpdateManyWithoutClientNestedInput
+}
+
+export type ClientCreateWithoutUtterancesInput = {
+  id?: string
+  name: string
+  slug: string
+  description?: string | null
+  status?: $Enums.ClientStatus
+  industry?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  org: Prisma.OrgCreateNestedOneWithoutClientsInput
+  members?: Prisma.ClientMemberCreateNestedManyWithoutClientInput
+  meetings?: Prisma.MeetingCreateNestedManyWithoutClientInput
+  decisions?: Prisma.DecisionCreateNestedManyWithoutClientInput
+  tasks?: Prisma.TaskCreateNestedManyWithoutClientInput
+  openQuestions?: Prisma.OpenQuestionCreateNestedManyWithoutClientInput
+  importantPoints?: Prisma.ImportantPointCreateNestedManyWithoutClientInput
+  documents?: Prisma.DocumentCreateNestedManyWithoutClientInput
+  reminders?: Prisma.ReminderCreateNestedManyWithoutClientInput
+  policyGuardrails?: Prisma.PolicyGuardrailCreateNestedManyWithoutClientInput
+}
+
+export type ClientUncheckedCreateWithoutUtterancesInput = {
+  id?: string
+  orgId: string
+  name: string
+  slug: string
+  description?: string | null
+  status?: $Enums.ClientStatus
+  industry?: string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  members?: Prisma.ClientMemberUncheckedCreateNestedManyWithoutClientInput
+  meetings?: Prisma.MeetingUncheckedCreateNestedManyWithoutClientInput
+  decisions?: Prisma.DecisionUncheckedCreateNestedManyWithoutClientInput
+  tasks?: Prisma.TaskUncheckedCreateNestedManyWithoutClientInput
+  openQuestions?: Prisma.OpenQuestionUncheckedCreateNestedManyWithoutClientInput
+  importantPoints?: Prisma.ImportantPointUncheckedCreateNestedManyWithoutClientInput
+  documents?: Prisma.DocumentUncheckedCreateNestedManyWithoutClientInput
+  reminders?: Prisma.ReminderUncheckedCreateNestedManyWithoutClientInput
+  policyGuardrails?: Prisma.PolicyGuardrailUncheckedCreateNestedManyWithoutClientInput
+}
+
+export type ClientCreateOrConnectWithoutUtterancesInput = {
+  where: Prisma.ClientWhereUniqueInput
+  create: Prisma.XOR<Prisma.ClientCreateWithoutUtterancesInput, Prisma.ClientUncheckedCreateWithoutUtterancesInput>
+}
+
+export type ClientUpsertWithoutUtterancesInput = {
+  update: Prisma.XOR<Prisma.ClientUpdateWithoutUtterancesInput, Prisma.ClientUncheckedUpdateWithoutUtterancesInput>
+  create: Prisma.XOR<Prisma.ClientCreateWithoutUtterancesInput, Prisma.ClientUncheckedCreateWithoutUtterancesInput>
+  where?: Prisma.ClientWhereInput
+}
+
+export type ClientUpdateToOneWithWhereWithoutUtterancesInput = {
+  where?: Prisma.ClientWhereInput
+  data: Prisma.XOR<Prisma.ClientUpdateWithoutUtterancesInput, Prisma.ClientUncheckedUpdateWithoutUtterancesInput>
+}
+
+export type ClientUpdateWithoutUtterancesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumClientStatusFieldUpdateOperationsInput | $Enums.ClientStatus
+  industry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  org?: Prisma.OrgUpdateOneRequiredWithoutClientsNestedInput
+  members?: Prisma.ClientMemberUpdateManyWithoutClientNestedInput
+  meetings?: Prisma.MeetingUpdateManyWithoutClientNestedInput
+  decisions?: Prisma.DecisionUpdateManyWithoutClientNestedInput
+  tasks?: Prisma.TaskUpdateManyWithoutClientNestedInput
+  openQuestions?: Prisma.OpenQuestionUpdateManyWithoutClientNestedInput
+  importantPoints?: Prisma.ImportantPointUpdateManyWithoutClientNestedInput
+  documents?: Prisma.DocumentUpdateManyWithoutClientNestedInput
+  reminders?: Prisma.ReminderUpdateManyWithoutClientNestedInput
+  policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutClientNestedInput
+}
+
+export type ClientUncheckedUpdateWithoutUtterancesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  orgId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumClientStatusFieldUpdateOperationsInput | $Enums.ClientStatus
+  industry?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  members?: Prisma.ClientMemberUncheckedUpdateManyWithoutClientNestedInput
+  meetings?: Prisma.MeetingUncheckedUpdateManyWithoutClientNestedInput
+  decisions?: Prisma.DecisionUncheckedUpdateManyWithoutClientNestedInput
+  tasks?: Prisma.TaskUncheckedUpdateManyWithoutClientNestedInput
+  openQuestions?: Prisma.OpenQuestionUncheckedUpdateManyWithoutClientNestedInput
+  importantPoints?: Prisma.ImportantPointUncheckedUpdateManyWithoutClientNestedInput
+  documents?: Prisma.DocumentUncheckedUpdateManyWithoutClientNestedInput
+  reminders?: Prisma.ReminderUncheckedUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutClientNestedInput
 }
 
@@ -1695,6 +1858,7 @@ export type ClientUpdateWithoutOrgInput = {
   documents?: Prisma.DocumentUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateWithoutOrgInput = {
@@ -1716,6 +1880,7 @@ export type ClientUncheckedUpdateWithoutOrgInput = {
   documents?: Prisma.DocumentUncheckedUpdateManyWithoutClientNestedInput
   reminders?: Prisma.ReminderUncheckedUpdateManyWithoutClientNestedInput
   policyGuardrails?: Prisma.PolicyGuardrailUncheckedUpdateManyWithoutClientNestedInput
+  utterances?: Prisma.TranscriptUtteranceUncheckedUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateManyWithoutOrgInput = {
@@ -1745,6 +1910,7 @@ export type ClientCountOutputType = {
   documents: number
   reminders: number
   policyGuardrails: number
+  utterances: number
 }
 
 export type ClientCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1757,6 +1923,7 @@ export type ClientCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions
   documents?: boolean | ClientCountOutputTypeCountDocumentsArgs
   reminders?: boolean | ClientCountOutputTypeCountRemindersArgs
   policyGuardrails?: boolean | ClientCountOutputTypeCountPolicyGuardrailsArgs
+  utterances?: boolean | ClientCountOutputTypeCountUtterancesArgs
 }
 
 /**
@@ -1832,6 +1999,13 @@ export type ClientCountOutputTypeCountPolicyGuardrailsArgs<ExtArgs extends runti
   where?: Prisma.PolicyGuardrailWhereInput
 }
 
+/**
+ * ClientCountOutputType without action
+ */
+export type ClientCountOutputTypeCountUtterancesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TranscriptUtteranceWhereInput
+}
+
 
 export type ClientSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1854,6 +2028,7 @@ export type ClientSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   documents?: boolean | Prisma.Client$documentsArgs<ExtArgs>
   reminders?: boolean | Prisma.Client$remindersArgs<ExtArgs>
   policyGuardrails?: boolean | Prisma.Client$policyGuardrailsArgs<ExtArgs>
+  utterances?: boolean | Prisma.Client$utterancesArgs<ExtArgs>
   _count?: boolean | Prisma.ClientCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["client"]>
 
@@ -1910,6 +2085,7 @@ export type ClientInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   documents?: boolean | Prisma.Client$documentsArgs<ExtArgs>
   reminders?: boolean | Prisma.Client$remindersArgs<ExtArgs>
   policyGuardrails?: boolean | Prisma.Client$policyGuardrailsArgs<ExtArgs>
+  utterances?: boolean | Prisma.Client$utterancesArgs<ExtArgs>
   _count?: boolean | Prisma.ClientCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ClientIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1932,6 +2108,7 @@ export type $ClientPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     documents: Prisma.$DocumentPayload<ExtArgs>[]
     reminders: Prisma.$ReminderPayload<ExtArgs>[]
     policyGuardrails: Prisma.$PolicyGuardrailPayload<ExtArgs>[]
+    utterances: Prisma.$TranscriptUtterancePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2348,6 +2525,7 @@ export interface Prisma__ClientClient<T, Null = never, ExtArgs extends runtime.T
   documents<T extends Prisma.Client$documentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Client$documentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DocumentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   reminders<T extends Prisma.Client$remindersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Client$remindersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ReminderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   policyGuardrails<T extends Prisma.Client$policyGuardrailsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Client$policyGuardrailsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PolicyGuardrailPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  utterances<T extends Prisma.Client$utterancesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Client$utterancesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TranscriptUtterancePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2583,6 +2761,11 @@ export type ClientFindManyArgs<ExtArgs extends runtime.Types.Extensions.Internal
    * Skip the first `n` Clients.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Clients.
+   */
   distinct?: Prisma.ClientScalarFieldEnum | Prisma.ClientScalarFieldEnum[]
 }
 
@@ -2996,6 +3179,30 @@ export type Client$policyGuardrailsArgs<ExtArgs extends runtime.Types.Extensions
   take?: number
   skip?: number
   distinct?: Prisma.PolicyGuardrailScalarFieldEnum | Prisma.PolicyGuardrailScalarFieldEnum[]
+}
+
+/**
+ * Client.utterances
+ */
+export type Client$utterancesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the TranscriptUtterance
+   */
+  select?: Prisma.TranscriptUtteranceSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the TranscriptUtterance
+   */
+  omit?: Prisma.TranscriptUtteranceOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TranscriptUtteranceInclude<ExtArgs> | null
+  where?: Prisma.TranscriptUtteranceWhereInput
+  orderBy?: Prisma.TranscriptUtteranceOrderByWithRelationInput | Prisma.TranscriptUtteranceOrderByWithRelationInput[]
+  cursor?: Prisma.TranscriptUtteranceWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TranscriptUtteranceScalarFieldEnum | Prisma.TranscriptUtteranceScalarFieldEnum[]
 }
 
 /**

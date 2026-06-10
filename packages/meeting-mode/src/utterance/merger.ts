@@ -1,11 +1,11 @@
-import { MERGE_GAP_MS } from "../env";
+import { MERGE_GROUPING_MS } from "../env";
 import type { Utterance } from "./types";
 
 export class UtteranceMerger {
   private readonly gapThreshold: number;
   private pending: Utterance | null = null;
 
-  constructor(gapThreshold: number = MERGE_GAP_MS) {
+  constructor(gapThreshold: number = MERGE_GROUPING_MS) {
     this.gapThreshold = gapThreshold;
   }
 
@@ -44,7 +44,18 @@ export class UtteranceMerger {
   private shouldMerge(prev: Utterance, next: Utterance): boolean {
     // Only merge utterances from the same speaker
     if (prev.speaker.speakerId !== next.speaker.speakerId) {
-      return false;
+      // Fallback: if speakerId differs because speaker identification
+      // resolved between utterances (e.g. "spk_1" → "user123"), check
+      // whether Deepgram assigned the same diarization index.
+      const sharesDiarization =
+        prev.speaker.diarizationIndices.length > 0 &&
+        next.speaker.diarizationIndices.length > 0 &&
+        prev.speaker.diarizationIndices.some((di) =>
+          next.speaker.diarizationIndices.includes(di)
+        );
+      if (!sharesDiarization) {
+        return false;
+      }
     }
 
     const prevEndTime = prev.timestamp + prev.duration * 1000;

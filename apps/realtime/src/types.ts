@@ -8,9 +8,11 @@
 export interface SocketData {
   sessionId: string;
   userId: string;
+  name: string;
   role: "host" | "participant";
   connectedAt: number;
   lastFrameTs: number;
+  orgId: string;
 }
 
 /**
@@ -55,6 +57,7 @@ export interface VadSignal {
   sessionId: string;
   clientSendTs: number;
   serverReceiveTs: number;
+  role?: "host" | "participant";
 }
 
 /**
@@ -74,6 +77,7 @@ export interface SessionEndEvent {
 export interface ParticipantJoinEvent {
   sessionId: string;
   userId: string;
+  name: string;
   role: "host" | "participant";
   ts: number;
 }

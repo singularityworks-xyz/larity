@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Commitment } from "../commitment/types";
 import type { Constraint } from "../constraint/types";
+import type { SpeakerStateSummary } from "../speaker-state/types";
 import type { SpeakerIdentity, Utterance } from "../utterance/types";
 
 export const tier2IntentSchema = z.enum([
@@ -28,15 +29,31 @@ export const tier2ToneSchema = z.enum([
   "confident",
 ]);
 
+/** Strip Groq strict-schema null placeholders before optional Zod fields */
+function optionalTier2String(max: number) {
+  return z.preprocess(
+    (val) =>
+      val === null || val === undefined || val === "" ? undefined : val,
+    z.string().min(1).max(max).optional()
+  );
+}
+
+function optionalTier2Number() {
+  return z.preprocess(
+    (val) => (val === null || val === undefined ? undefined : val),
+    z.number().finite().optional()
+  );
+}
+
 export const tier2TopicDeltaSchema = z
   .object({
-    labelHint: z.string().min(1).max(200).optional(),
-    decision: z.string().min(1).max(300).optional(),
-    commitment: z.string().min(1).max(300).optional(),
-    openQuestion: z.string().min(1).max(300).optional(),
-    risk: z.string().min(1).max(300).optional(),
-    owner: z.string().min(1).max(120).optional(),
-    deadline: z.string().min(1).max(120).optional(),
+    labelHint: optionalTier2String(200),
+    decision: optionalTier2String(300),
+    commitment: optionalTier2String(300),
+    openQuestion: optionalTier2String(300),
+    risk: optionalTier2String(300),
+    owner: optionalTier2String(120),
+    deadline: optionalTier2String(120),
   })
   .strict();
 
@@ -48,11 +65,11 @@ export const tier2ClassificationSchema = z
     riskSignals: z.array(z.string().min(1).max(200)).max(20),
     extractedData: z
       .object({
-        deadline: z.string().min(1).max(120).optional(),
-        quantity: z.number().finite().optional(),
-        scope: z.string().min(1).max(300).optional(),
-        amount: z.number().finite().optional(),
-        currency: z.string().min(1).max(12).optional(),
+        deadline: optionalTier2String(120),
+        quantity: optionalTier2Number(),
+        scope: optionalTier2String(300),
+        amount: optionalTier2Number(),
+        currency: optionalTier2String(12),
       })
       .strict(),
     confidence: z.number().min(0).max(1),
@@ -71,6 +88,8 @@ export interface Tier2Input {
   speaker: SpeakerIdentity;
   recentSameSpeaker: string[];
   topicLabel?: string;
+  /** Structural price/currency cue (aligned with Tier1 `pricingHit`) for Tier2 user message. */
+  structuralPricingCue?: boolean;
 }
 
 export type Tier2Intent = z.infer<typeof tier2IntentSchema>;
@@ -89,11 +108,16 @@ export interface Tier1Result {
   detections: Tier1Detection[];
   technicalHit: boolean;
   blocklistHit: boolean;
+  /** True when the utterance contains a currency/price mention (e.g. $400, 300 rupees, €50).
+   *  Drives the highSignal gate independently of Tier 2 classification quality. */
+  pricingHit: boolean;
 }
 
 export interface Tier2Outcome {
   classification: Tier2Classification;
   shouldStopForDeepReasoning: boolean;
+  promptTokens?: number;
+  completionTokens?: number;
 }
 
 export interface Tier3Result {
@@ -132,6 +156,7 @@ export interface Tier4Context {
   matchedHistoricalItems: Tier4HistoricalMatch[];
   matchedCommitments: Tier4CommitmentMatch[];
   relevantConstraints: Constraint[];
+  speakerStates?: SpeakerStateSummary[];
 }
 
 export const tier4AlertTypeLiterals = [

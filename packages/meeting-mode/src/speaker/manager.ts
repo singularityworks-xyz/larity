@@ -22,9 +22,14 @@ export class SpeakerManager {
     identifier.processVadSignal(signal);
   }
 
-  registerTeamMember(sessionId: string, userId: string, name: string): void {
+  registerTeamMember(
+    sessionId: string,
+    userId: string,
+    name: string,
+    role?: "host" | "participant"
+  ): void {
     const identifier = this.getIdentifier(sessionId);
-    identifier.registerTeamMember(userId, name);
+    identifier.registerTeamMember(userId, name, role);
     log.info(
       { sessionId, userId, name },
       "Registered team member in SpeakerIdentifier"

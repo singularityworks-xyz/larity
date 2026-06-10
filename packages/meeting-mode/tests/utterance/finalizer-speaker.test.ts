@@ -90,6 +90,40 @@ describe("UtteranceFinalizer with SpeakerIdentifier", () => {
     expect(published.speaker.name).toBe("Alice");
   });
 
+  it("should honor provisional speaker mapping created from partials", async () => {
+    const now = Date.now();
+    identifier.processVadSignal({
+      type: "vad_speaking",
+      userId: aliceId,
+      sessionId,
+      clientSendTs: now - 200,
+      serverReceiveTs: now - 200,
+    });
+    identifier.processSttPartial(9, now - 100);
+    identifier.processVadSignal({
+      type: "vad_silence",
+      userId: aliceId,
+      sessionId,
+      clientSendTs: now,
+      serverReceiveTs: now,
+    });
+
+    await finalizer.process(
+      createTestSttResult({
+        sessionId,
+        isFinal: true,
+        transcript: "Delayed final from Alice.",
+        diarizationIndex: 9,
+        speechTimestamp: now + 3000,
+      })
+    );
+    await finalizer.closeSession(sessionId);
+
+    const published = JSON.parse(publisher.calls.at(-1)?.message ?? "{}");
+    expect(published.speaker.type).toBe("TEAM");
+    expect(published.speaker.userId).toBe(aliceId);
+  });
+
   it("should fall back to EXTERNAL when SpeakerIdentifier cannot identify", async () => {
     const result = createTestSttResult({
       sessionId,
@@ -217,6 +251,94 @@ describe("UtteranceFinalizer with SpeakerIdentifier", () => {
         expect(handlerCalls.length).toBeGreaterThan(0);
         expect(handlerCalls[0]?.oldType).toBe("EXTERNAL");
       }
+    });
+  });
+
+  describe("dual-channel host-echo discarding", () => {
+    it("should discard host utterance if on system channel (diarization index >= 1000)", async () => {
+      const now = Date.now();
+      const bobId = "user-bob";
+      identifier.registerTeamMember(bobId, "Bob", "host");
+
+      const mockMappings = new Map();
+      mockMappings.set(1000, {
+        diarizationIndex: 1000,
+        speaker: {
+          speakerId: "spk_1000",
+          type: "TEAM" as const,
+          userId: bobId,
+          name: "Bob",
+          diarizationIndices: [1000],
+          isCurrentUser: false,
+          confidence: 1,
+          isHost: true,
+        },
+        confirmedAt: now,
+        confidence: 1,
+        lastUtteranceTs: now,
+        source: "final_confirmed" as const,
+      });
+      identifier.hydrate(mockMappings);
+
+      const result = createTestSttResult({
+        sessionId,
+        isFinal: true,
+        transcript: "This is a system channel echo of the host.",
+        diarizationIndex: 1000,
+        ts: now,
+      });
+
+      await finalizer.process(result);
+      await finalizer.closeSession(sessionId);
+
+      const hasBobMessage = publisher.calls.some((call) => {
+        const msg = JSON.parse(call.message);
+        return msg.text.includes("echo of the host");
+      });
+      expect(hasBobMessage).toBe(false);
+    });
+
+    it("should NOT discard remote participant utterance on system channel (diarization index >= 1000)", async () => {
+      const now = Date.now();
+      const charlieId = "user-charlie";
+      identifier.registerTeamMember(charlieId, "Charlie", "participant");
+
+      const mockMappings = new Map();
+      mockMappings.set(1001, {
+        diarizationIndex: 1001,
+        speaker: {
+          speakerId: "spk_1001",
+          type: "TEAM" as const,
+          userId: charlieId,
+          name: "Charlie",
+          diarizationIndices: [1001],
+          isCurrentUser: false,
+          confidence: 1,
+          isHost: false,
+        },
+        confirmedAt: now,
+        confidence: 1,
+        lastUtteranceTs: now,
+        source: "final_confirmed" as const,
+      });
+      identifier.hydrate(mockMappings);
+
+      const result = createTestSttResult({
+        sessionId,
+        isFinal: true,
+        transcript: "This is a remote participant speaking.",
+        diarizationIndex: 1001,
+        ts: now,
+      });
+
+      await finalizer.process(result);
+      await finalizer.closeSession(sessionId);
+
+      const hasCharlieMessage = publisher.calls.some((call) => {
+        const msg = JSON.parse(call.message);
+        return msg.text.includes("remote participant speaking");
+      });
+      expect(hasCharlieMessage).toBe(true);
     });
   });
 });

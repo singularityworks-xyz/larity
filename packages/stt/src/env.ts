@@ -8,7 +8,8 @@ import { resolve } from "node:path";
 import dotenv from "dotenv";
 
 // Load .env from project root (larity/)
-dotenv.config({ path: resolve(import.meta.dir, "../../../.env") });
+const meta = import.meta as ImportMeta & { dir: string };
+dotenv.config({ path: resolve(meta.dir, "../../../.env") });
 
 /**
  * Deepgram API key (required)

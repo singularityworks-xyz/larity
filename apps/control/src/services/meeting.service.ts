@@ -1,3 +1,5 @@
+import { redis } from "@larity/infra/redis";
+import { redisKeys } from "@larity/infra/redis/keys";
 import { applyPagination } from "../lib/pagination";
 import { prisma } from "../lib/prisma";
 import type {
@@ -282,5 +284,171 @@ export const MeetingService = {
         summary: data.summary,
       };
     });
+  },
+
+  async getProcessingStatus(meetingId: string) {
+    const meeting = await prisma.meeting.findUnique({
+      where: { id: meetingId },
+      include: { transcript: true },
+    });
+
+    if (!meeting) {
+      return null;
+    }
+
+    const sessionId = await redis.get(redisKeys.meetingToSession(meetingId));
+
+    if (sessionId) {
+      return this.getActiveSessionStatus(meetingId, sessionId);
+    }
+
+    return this.getDbSessionStatus(meeting);
+  },
+
+  async getActiveSessionStatus(meetingId: string, sessionId: string) {
+    const transcribeStatus =
+      (await redis.get(redisKeys.meetingJobStatus(sessionId, "transcribe"))) ||
+      "queued";
+    const summaryStatus =
+      (await redis.get(redisKeys.meetingJobStatus(sessionId, "summary"))) ||
+      "queued";
+
+    let overall = "processing";
+    if (transcribeStatus === "done" && summaryStatus === "done") {
+      overall = "complete";
+    } else if (transcribeStatus === "failed" || summaryStatus === "failed") {
+      overall = "failed";
+    } else if (transcribeStatus === "queued" && summaryStatus === "queued") {
+      overall = "queued";
+    }
+
+    return {
+      meetingId,
+      sessionId,
+      steps: {
+        transcribe: transcribeStatus,
+        summary: summaryStatus,
+      },
+      overall,
+    };
+  },
+
+  getDbSessionStatus(meeting: {
+    id: string;
+    status: string;
+    transcript: unknown;
+    summary: string | null;
+  }) {
+    if (meeting.status === "ENDED") {
+      const transcribeStatus = meeting.transcript ? "done" : "failed";
+      const summaryStatus = meeting.summary ? "done" : "failed";
+      const overall =
+        transcribeStatus === "done" && summaryStatus === "done"
+          ? "complete"
+          : "failed";
+
+      return {
+        meetingId: meeting.id,
+        sessionId: null,
+        steps: {
+          transcribe: transcribeStatus,
+          summary: summaryStatus,
+        },
+        overall,
+      };
+    }
+
+    return {
+      meetingId: meeting.id,
+      sessionId: null,
+      steps: {
+        transcribe: "queued",
+        summary: "queued",
+      },
+      overall: "queued",
+    };
+  },
+
+  async reprocessMeeting(meetingId: string) {
+    const meeting = await prisma.meeting.findUnique({
+      where: { id: meetingId },
+      include: {
+        client: {
+          select: { orgId: true },
+        },
+        transcript: true,
+      },
+    });
+
+    if (!meeting) {
+      throw new Error("Meeting not found");
+    }
+
+    let sessionId = await redis.get(redisKeys.meetingToSession(meetingId));
+
+    if (!sessionId && meeting.transcript) {
+      try {
+        const utterances = JSON.parse(meeting.transcript.content);
+        if (
+          Array.isArray(utterances) &&
+          utterances.length > 0 &&
+          utterances[0]?.id
+        ) {
+          const parts = utterances[0].id.split(":");
+          if (parts.length > 0) {
+            sessionId = parts[0];
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!sessionId) {
+      throw new Error("Could not resolve session ID for meeting");
+    }
+
+    const orgId = meeting.client.orgId;
+
+    if (meeting.transcript) {
+      // Reprocess summary only
+      const statusKey = redisKeys.meetingJobStatus(sessionId, "summary");
+      await redis.set(statusKey, "queued", "EX", 24 * 60 * 60);
+
+      const { summaryQueue } = await import("@larity/jobs");
+      const job = await summaryQueue.add("meeting.summary", {
+        meetingId,
+        sessionId,
+        orgId,
+      });
+
+      return {
+        success: true,
+        jobId: job.id,
+        sessionId,
+      };
+    }
+    // Reprocess from transcription step
+    const transcribeStatusKey = redisKeys.meetingJobStatus(
+      sessionId,
+      "transcribe"
+    );
+    const summaryStatusKey = redisKeys.meetingJobStatus(sessionId, "summary");
+    await redis.set(transcribeStatusKey, "queued", "EX", 24 * 60 * 60);
+    await redis.set(summaryStatusKey, "queued", "EX", 24 * 60 * 60);
+
+    const { transcribeQueue } = await import("@larity/jobs");
+    const job = await transcribeQueue.add("meeting.transcribe", {
+      meetingId,
+      sessionId,
+      orgId,
+      s3Prefix: `${orgId}/${sessionId}`,
+    });
+
+    return {
+      success: true,
+      jobId: job.id,
+      sessionId,
+    };
   },
 };

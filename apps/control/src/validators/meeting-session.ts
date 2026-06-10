@@ -45,6 +45,9 @@ export const startAdhocSessionSchema = z.object({
     .min(1, "Title must not be empty")
     .max(255, "Title must be less than 255 characters")
     .optional(),
+  description: z.string().max(10_000).optional(),
+  agenda: z.string().max(10_000).optional(),
+  scheduledAt: z.coerce.date().optional(),
   metadata: startSessionSchema.shape.metadata,
 });
 
@@ -99,6 +102,7 @@ export const joinSessionResponseSchema = z.object({
   role: z.literal("participant"),
   websocketUrl: z.string(),
   joinedAt: z.number(),
+  allowNameCustomization: z.boolean(),
 });
 
 export type JoinSessionResponse = z.infer<typeof joinSessionResponseSchema>;
@@ -125,8 +129,9 @@ export const startSessionResponseSchema = z.object({
   sessionId: z.string(),
   meetingId: z.string(),
   status: SessionStatus,
-  websocketUrl: z.string(), // URL for WebSocket connection
+  websocketUrl: z.string(),
   createdAt: z.number(),
+  allowNameCustomization: z.boolean(),
 });
 
 export type StartSessionResponse = z.infer<typeof startSessionResponseSchema>;
@@ -141,6 +146,7 @@ export const activeSessionSchema = z.object({
   hostName: z.string().nullable(),
   startedAt: z.number().nullable(),
   participantCount: z.number(),
+  allowNameCustomization: z.boolean(),
 });
 
 export type ActiveSession = z.infer<typeof activeSessionSchema>;

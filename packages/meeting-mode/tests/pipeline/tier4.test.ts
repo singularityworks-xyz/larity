@@ -11,6 +11,7 @@ import type {
   Tier4HistoricalMatch,
   Tier4Response,
 } from "../../src/pipeline/types";
+import { SILENT_COLLABORATOR_THRESHOLDS } from "../../src/speculative/types";
 
 function minimalContext(overrides: Partial<Tier4Context> = {}): Tier4Context {
   const historical: Tier4HistoricalMatch[] = [];
@@ -33,6 +34,7 @@ function minimalContext(overrides: Partial<Tier4Context> = {}): Tier4Context {
       detections: [],
       blocklistHit: false,
       technicalHit: false,
+      pricingHit: false,
     },
     tier2Classification: {
       intent: "commitment",
@@ -73,9 +75,9 @@ describe("pipeline/tier4", () => {
     });
 
     const result = await reasoner.reason(minimalContext());
-    expect(result).not.toBeNull();
-    expect(result?.alertType).toBe("risky_commitment");
-    expect(result?.confidence).toBeGreaterThanOrEqual(
+    expect(result.response).not.toBeNull();
+    expect(result.response?.alertType).toBe("risky_commitment");
+    expect(result.response?.confidence).toBeGreaterThanOrEqual(
       MIN_TIER4_SURFACING_CONFIDENCE
     );
   });
@@ -84,7 +86,9 @@ describe("pipeline/tier4", () => {
     const reasoner = new Tier4DeepReasoner({
       invoke: async () => "not-json",
     });
-    await expect(reasoner.reason(minimalContext())).resolves.toBeNull();
+    const result = await reasoner.reason(minimalContext());
+    expect(result.response).toBeNull();
+    expect(result.tokenCount).toBe(0);
   });
 
   it("fails silently when schema rejects model output", async () => {
@@ -102,7 +106,9 @@ describe("pipeline/tier4", () => {
         }),
     });
 
-    await expect(reasoner.reason(minimalContext())).resolves.toBeNull();
+    const result2 = await reasoner.reason(minimalContext());
+    expect(result2.response).toBeNull();
+    expect(result2.tokenCount).toBe(0);
   });
 
   it("times out invoking Gemini layer", async () => {
@@ -116,11 +122,15 @@ describe("pipeline/tier4", () => {
       },
     });
 
-    await expect(reasoner.reason(minimalContext())).resolves.toBeNull();
+    const result3 = await reasoner.reason(minimalContext());
+    expect(result3.response).toBeNull();
+    expect(result3.tokenCount).toBe(0);
   });
 });
 
 describe("pipeline/tier4 surfacing guards", () => {
+  const riskyCommitmentThreshold =
+    SILENT_COLLABORATOR_THRESHOLDS.risky_commitment;
   const response: Tier4Response = {
     alertType: "risky_commitment",
     severity: "medium",
@@ -128,7 +138,7 @@ describe("pipeline/tier4 surfacing guards", () => {
     surfaceReason:
       "Speaker committed to a delivery date without confirming scope or risks.",
     suggestion: "Pause and restate what is in scope before agreeing to a date.",
-    confidence: MIN_TIER4_SURFACING_CONFIDENCE + 0.05,
+    confidence: riskyCommitmentThreshold + 0.05,
     shouldSurface: true,
     reasoning: "Hidden diagnostic text",
     routing: "personal",
@@ -150,13 +160,22 @@ describe("pipeline/tier4 surfacing guards", () => {
     ).toBe(false);
   });
 
-  it("abstains when confidence low", () => {
+  it("abstains when confidence below category threshold", () => {
     expect(
       shouldTier4Respond({
         ...response,
-        confidence: MIN_TIER4_SURFACING_CONFIDENCE - 0.05,
+        confidence: riskyCommitmentThreshold - 0.05,
       })
     ).toBe(false);
+  });
+
+  it("surfaces when confidence meets category threshold", () => {
+    expect(
+      shouldTier4Respond({
+        ...response,
+        confidence: riskyCommitmentThreshold + 0.01,
+      })
+    ).toBe(true);
   });
 
   it("fills target user from speaker for personal alerts", () => {

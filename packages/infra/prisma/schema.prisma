@@ -49,6 +49,7 @@ model Client {
   documents       Document[]
   reminders       Reminder[]
   policyGuardrails PolicyGuardrail[]
+  utterances      TranscriptUtterance[]
 
   @@unique([orgId, slug])
   @@index([orgId])
@@ -223,7 +224,8 @@ model Meeting {
   startedAt     DateTime?
   endedAt       DateTime?
   calendarEventId String?
-  summary       String?
+  summary       Json?
+  speakerMappings Json?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -233,6 +235,7 @@ model Meeting {
   tasks           Task[]
   openQuestions   OpenQuestion[]
   importantPoints ImportantPoint[]
+  utterances      TranscriptUtterance[]
 
   @@index([clientId])
   @@index([status])
@@ -565,4 +568,24 @@ enum ReminderEntityType {
   MEETING
   DECISION
   OPEN_QUESTION
+}
+
+model TranscriptUtterance {
+  id        String   @id @default(uuid())
+  meetingId String
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  speaker   String                              // raw label, e.g. "Richard Sterling - 1"
+  text      String
+  timestamp Float                               // seconds from recording start
+  duration  Float                               // seconds
+  channel   Int      @default(0)
+  embedding Unsupported("vector(768)")?
+  createdAt DateTime @default(now())
+
+  @@index([meetingId])
+  @@index([clientId])
+  @@index([speaker])
+  @@map("transcript_utterances")
 }

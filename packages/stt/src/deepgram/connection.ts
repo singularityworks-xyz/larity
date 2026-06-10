@@ -6,8 +6,6 @@
  * Handles transcript events and publishes to Redis.
  */
 
-import type { ListenLiveClient } from "@deepgram/sdk";
-import { LiveTranscriptionEvents } from "@deepgram/sdk";
 import { redis } from "@larity/infra/redis";
 import { partialChannel, transcriptChannel } from "../channels";
 import { createSttLogger } from "../logger";
@@ -16,8 +14,18 @@ import { getDeepgramClient } from "./client";
 import {
   DEFAULT_DG_CONFIG,
   type DeepgramWord,
+  type TranscriptAlternative,
   type TranscriptResult,
 } from "./types";
+
+/** Minimal handle for a v5 Listen V1 WebSocket connection. */
+interface LiveConnection {
+  on(event: string, callback: (...args: unknown[]) => void): void;
+  sendMedia(message: ArrayBuffer | Blob | ArrayBufferView): void;
+  connect(): void;
+  close(): void;
+  waitForOpen(): Promise<unknown>;
+}
 
 const log = createSttLogger("dg-connection");
 
@@ -56,13 +64,25 @@ function summarizeDiarizedSpeakers(words: DeepgramWord[] | undefined): string {
  * - Stamp logical channel (mic vs sys) on published SttResult
  */
 export class DeepgramConnection {
-  private connection: ListenLiveClient | null = null;
+  private connection: LiveConnection | null = null;
   private readonly sessionId: string;
   /** Logical capture channel: 0 = host mic, 1 = system / loopback (stamped on SttResult.channel). */
   private readonly logicalChannel: number;
   private isConnected = false;
   private isConnecting = false;
   private isClosed = false;
+  private connectionStartTime = 0;
+  private streamStartServerTs = 0;
+
+  // Accumulation state for stitching intermediate is_final=true segments
+  // until speech_final=true signals the end of the utterance.
+  // See: https://developers.deepgram.com/docs/understand-endpointing-interim-results
+  private accumulatedText = "";
+  private accumulatedConfidence = 0;
+  private accumulatedSegmentCount = 0;
+  private accumulatedStart = 0;
+  private accumulatedEnd = 0;
+  private accumulatedDiarizationIndex = -1;
 
   // Reconnection state
   private retryCount = 0;
@@ -86,10 +106,17 @@ export class DeepgramConnection {
 
     try {
       const client = getDeepgramClient();
-      this.connection = client.listen.live(DEFAULT_DG_CONFIG);
+      // biome-ignore lint/suspicious/noExplicitAny: SDK internally fills Authorization
+      const cfg = DEFAULT_DG_CONFIG as any;
+      this.connection = await client.listen.v1.connect(cfg);
       this.setupEventHandlers();
+      this.connection.connect();
+      await this.connection.waitForOpen();
     } catch (error) {
-      log.error(`Failed to create connection for ${this.sessionId}:`, error);
+      log.error(
+        error as Error,
+        `Failed to create connection for ${this.sessionId}`
+      );
       this.isConnecting = false;
       await this.reconnect();
     }
@@ -103,23 +130,24 @@ export class DeepgramConnection {
       return;
     }
 
-    this.connection.on(LiveTranscriptionEvents.Open, () => {
+    this.connection.on("open", () => {
       log.info(`Connection opened for ${this.sessionId}`);
+      this.connectionStartTime = Date.now();
       this.isConnected = true;
       this.isConnecting = false;
       this.retryCount = 0; // Reset retry count on successful connection
     });
 
-    this.connection.on(LiveTranscriptionEvents.Close, (event: unknown) => {
+    this.connection.on("close", (event: unknown) => {
       const closeEvent = event as {
         code?: number;
         reason?: string;
         wasClean?: boolean;
       };
-      log.info(`Connection closed for ${this.sessionId}`, {
-        code: closeEvent?.code,
-        reason: closeEvent?.reason,
-      });
+      log.info(
+        { code: closeEvent?.code, reason: closeEvent?.reason },
+        `Connection closed for ${this.sessionId}`
+      );
       this.isConnected = false;
       this.isConnecting = false;
 
@@ -130,16 +158,33 @@ export class DeepgramConnection {
       }
     });
 
-    this.connection.on(LiveTranscriptionEvents.Error, (error) => {
-      log.error(`Error for ${this.sessionId}:`, error);
+    this.connection.on("error", (error) => {
+      log.error(error as Error, `Error for ${this.sessionId}`);
     });
 
-    this.connection.on(
-      LiveTranscriptionEvents.Transcript,
-      (result: TranscriptResult) => {
-        this.handleTranscript(result);
+    this.connection.on("message", (data: unknown) => {
+      const result = data as TranscriptResult | { type: "UtteranceEnd" };
+      if (result.type === "Results") {
+        this.handleTranscript(result as TranscriptResult);
+      } else if (result.type === "UtteranceEnd") {
+        // UtteranceEnd fires after utterance_end_ms of post-speech silence.
+        // This is our primary accumulator flush signal: more reliable than the
+        // old setTimeout-based safety timer because it originates from Deepgram's
+        // own VAD rather than a local clock heuristic.
+        log.info(`UtteranceEnd received for ${this.sessionId}`);
+        this.flushAccumulatedFinal();
       }
+    });
+  }
+
+  /**
+   * Set the perfect server-side timestamp for the start of the audio stream
+   */
+  setAudioStreamStart(serverAudioStartTs: number): void {
+    log.info(
+      `Anchor TS set for ${this.sessionId}: ${serverAudioStartTs} (previously: ${this.streamStartServerTs})`
     );
+    this.streamStartServerTs = serverAudioStartTs;
   }
 
   /**
@@ -179,7 +224,7 @@ export class DeepgramConnection {
       buffer.byteOffset,
       buffer.byteOffset + buffer.byteLength
     );
-    this.connection.send(arrayBuffer);
+    this.connection.sendMedia(arrayBuffer as ArrayBuffer);
   }
 
   /**
@@ -187,6 +232,15 @@ export class DeepgramConnection {
    *
    * Extracts the diarization speaker index from Deepgram's response.
    * Speaker identification (matching to team members) happens downstream.
+   *
+   * Accumulates intermediate is_final=true segments until speech_final=true
+   * signals the complete utterance boundary. This prevents a single sentence
+   * from being fragmented into multiple short final utterances when Deepgram's
+   * endpointing triggers between natural speech pauses.
+   *
+   * See: https://developers.deepgram.com/docs/understand-endpointing-interim-results
+   * "Concatenate is_final: true segments until speech_final: true is received
+   *  for the complete utterance."
    */
   private async handleTranscript(result: TranscriptResult): Promise<void> {
     const { is_final, channel, start, duration } = result;
@@ -201,30 +255,96 @@ export class DeepgramConnection {
       return; // Skip empty transcripts
     }
 
-    // Extract diarization index from words if available
-    // Deepgram includes speaker index per word when diarize=true
-    // Default to -1 if not available (e.g. first few seconds or empty words)
-    const diarizationIndex = alternative.words?.[0]?.speaker ?? -1;
-    const channelIndex = this.logicalChannel;
+    // --- Accumulate intermediate finals (is_final=true, speech_final=false) ---
+    if (is_final && !result.speech_final) {
+      this.accumulateSegment(transcript, alternative, start, duration);
+      return;
+    }
+
+    // --- Publish partials immediately, never touching the accumulator ---
+    if (!is_final) {
+      // During accumulation, prepend accumulated text so the frontend
+      // sees the full sentence grow rather than disjoint segment text.
+      // Avoid duplication: if Deepgram's partial already includes the
+      // accumulated text (e.g. interim results before endpointing),
+      // use the raw transcript.
+      const partialText =
+        this.accumulatedText && !transcript.startsWith(this.accumulatedText)
+          ? `${this.accumulatedText} ${transcript}`
+          : transcript;
+
+      const diarizationIndex = this.computeDiarizationIndex(alternative);
+      const anchorTs =
+        this.streamStartServerTs > 0
+          ? this.streamStartServerTs
+          : this.connectionStartTime;
+
+      const sttResult: SttResult = {
+        sessionId: this.sessionId,
+        isFinal: false,
+        transcript: partialText,
+        confidence: Math.round((alternative.confidence || 0) * 100) / 100,
+        diarizationIndex,
+        channel: this.logicalChannel,
+        start,
+        duration,
+        ts: Date.now(),
+        speechTimestamp: anchorTs + start * 1000,
+      };
+      const diarizeSummary = summarizeDiarizedSpeakers(alternative.words);
+      log.info(
+        `"${partialText}" | session=${this.sessionId} ` +
+          `capture_ch=${this.logicalChannel} ` +
+          `dg_speaker=${diarizationIndex} dg_speakers=[${diarizeSummary}] ` +
+          `speech_final=false partial conf=${(alternative.confidence || 0).toFixed(2)}`
+      );
+      await this.publishTranscript(sttResult);
+      return;
+    }
+
+    // --- speech_final=true: combine with accumulated text, publish as final ---
+
+    const finalTranscript = this.accumulatedText
+      ? `${this.accumulatedText} ${transcript}`
+      : transcript;
+
+    const finalConfidence = this.combineConfidence(alternative.confidence || 0);
+    const finalStart =
+      this.accumulatedSegmentCount > 0 ? this.accumulatedStart : start;
+    const finalDuration =
+      this.accumulatedSegmentCount > 0
+        ? Math.max(this.accumulatedEnd, start + duration) - finalStart
+        : duration;
+    const diarizationIndex =
+      this.accumulatedSegmentCount > 0
+        ? this.accumulatedDiarizationIndex
+        : this.computeDiarizationIndex(alternative);
+
+    this.resetAccumulation();
+
+    const anchorTs =
+      this.streamStartServerTs > 0
+        ? this.streamStartServerTs
+        : this.connectionStartTime;
 
     const sttResult: SttResult = {
       sessionId: this.sessionId,
-      isFinal: is_final,
-      transcript,
-      confidence: alternative.confidence || 0,
+      isFinal: true,
+      transcript: finalTranscript,
+      confidence: Math.round(finalConfidence * 100) / 100,
       diarizationIndex,
-      channel: channelIndex,
-      start,
-      duration,
+      channel: this.logicalChannel,
+      start: finalStart,
+      duration: finalDuration,
       ts: Date.now(),
+      speechTimestamp: anchorTs + finalStart * 1000,
     };
-
     const diarizeSummary = summarizeDiarizedSpeakers(alternative.words);
     log.info(
-      `"${transcript}" | session=${this.sessionId} capture_ch=${channelIndex} ` +
+      `"${finalTranscript}" | session=${this.sessionId} ` +
+        `capture_ch=${this.logicalChannel} ` +
         `dg_speaker=${diarizationIndex} dg_speakers=[${diarizeSummary}] ` +
-        `speech_final=${result.speech_final} ${is_final ? "final" : "partial"} ` +
-        `conf=${(alternative.confidence || 0).toFixed(2)}`
+        `speech_final=true final conf=${finalConfidence.toFixed(2)}`
     );
     await this.publishTranscript(sttResult);
   }
@@ -240,8 +360,122 @@ export class DeepgramConnection {
     try {
       await redis.publish(channel, JSON.stringify(result));
     } catch (error) {
-      log.error(`Failed to publish transcript for ${this.sessionId}:`, error);
+      log.error(
+        error as Error,
+        `Failed to publish transcript for ${this.sessionId}`
+      );
     }
+  }
+
+  /**
+   * Flush any accumulated intermediate finals as a standalone final utterance.
+   * Called on UtteranceEnd events (primary path) and on connection close (safety path).
+   * If the accumulator is empty, this is a no-op.
+   */
+  private async flushAccumulatedFinal(): Promise<void> {
+    const text = this.accumulatedText;
+    if (!text) {
+      return;
+    }
+
+    const confidence =
+      this.accumulatedSegmentCount > 0
+        ? this.accumulatedConfidence / this.accumulatedSegmentCount
+        : 0;
+    const start = this.accumulatedStart;
+    const diarizationIndex = this.accumulatedDiarizationIndex;
+    const flushDuration =
+      this.accumulatedEnd > start ? this.accumulatedEnd - start : 0;
+
+    this.resetAccumulation();
+
+    const anchorTs =
+      this.streamStartServerTs > 0
+        ? this.streamStartServerTs
+        : this.connectionStartTime;
+
+    const sttResult: SttResult = {
+      sessionId: this.sessionId,
+      isFinal: true,
+      transcript: text,
+      confidence: Math.round(confidence * 100) / 100,
+      diarizationIndex,
+      channel: this.logicalChannel,
+      start,
+      duration: flushDuration,
+      ts: Date.now(),
+      speechTimestamp: anchorTs + start * 1000,
+    };
+
+    log.info(
+      `Utterance flush: "${text}" | session=${this.sessionId} ` +
+        `capture_ch=${this.logicalChannel} ` +
+        `dg_speaker=${diarizationIndex}`
+    );
+    await this.publishTranscript(sttResult);
+  }
+
+  /**
+   * Accumulate an intermediate final segment (is_final=true, speech_final=false).
+   * Concatenates text and tracks confidence, start time, and diarization index.
+   */
+  private accumulateSegment(
+    transcript: string,
+    alternative: TranscriptAlternative,
+    start: number,
+    duration: number
+  ): void {
+    this.accumulatedText += (this.accumulatedText ? " " : "") + transcript;
+    this.accumulatedConfidence += alternative.confidence || 0;
+    this.accumulatedSegmentCount++;
+    if (this.accumulatedSegmentCount === 1) {
+      this.accumulatedStart = start;
+    }
+    const segmentEnd = start + (duration ?? 0);
+    if (segmentEnd > this.accumulatedEnd) {
+      this.accumulatedEnd = segmentEnd;
+    }
+    const diarizationIndex = this.computeDiarizationIndex(alternative);
+    if (diarizationIndex >= 0) {
+      this.accumulatedDiarizationIndex = diarizationIndex;
+    }
+    log.debug(
+      `Accumulated final segment: "${transcript}" ` +
+        `(total: "${this.accumulatedText}")`
+    );
+  }
+
+  /**
+   * Compute weighted average confidence across accumulated segments and the
+   * current segment's confidence.
+   */
+  private combineConfidence(currentConfidence: number): number {
+    return this.accumulatedSegmentCount > 0
+      ? (this.accumulatedConfidence + currentConfidence) /
+          (this.accumulatedSegmentCount + 1)
+      : currentConfidence;
+  }
+
+  /**
+   * Reset all accumulation state after a final utterance is published or flushed.
+   */
+  private resetAccumulation(): void {
+    this.accumulatedText = "";
+    this.accumulatedConfidence = 0;
+    this.accumulatedSegmentCount = 0;
+    this.accumulatedStart = 0;
+    this.accumulatedEnd = 0;
+    this.accumulatedDiarizationIndex = -1;
+  }
+
+  /**
+   * Extract and compute the diarization index from a Deepgram transcript alternative,
+   * offset by the logical channel to prevent collisions between mic (0-999) and sys
+   * (1000-1999) speaker indices.
+   */
+  private computeDiarizationIndex(alternative: TranscriptAlternative): number {
+    const raw = alternative.words?.[0]?.speaker ?? -1;
+    return raw >= 0 ? raw + this.logicalChannel * 1000 : raw;
   }
 
   /**
@@ -271,16 +505,28 @@ export class DeepgramConnection {
   /**
    * Close the connection permanently
    */
-  close(): void {
+  async close(): Promise<void> {
+    try {
+      await this.flushAccumulatedFinal();
+    } catch (error) {
+      log.error(
+        error as Error,
+        `Error flushing accumulated on close for ${this.sessionId}`
+      );
+    }
+
     this.isClosed = true;
     this.isConnected = false;
     this.isConnecting = false;
 
     if (this.connection) {
       try {
-        this.connection.requestClose();
+        this.connection.close();
       } catch (error) {
-        log.error(`Error closing connection for ${this.sessionId}:`, error);
+        log.error(
+          error as Error,
+          `Error closing connection for ${this.sessionId}`
+        );
       }
       this.connection = null;
     }

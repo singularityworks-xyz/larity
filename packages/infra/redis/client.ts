@@ -21,6 +21,20 @@ redis.on("error", (error) => {
 });
 
 export async function connectRedis() {
+  const status = redis.status;
+
+  if (status === "ready" || status === "connect") {
+    log.info("Redis already connected");
+    return true;
+  }
+
+  if (status === "connecting" || status === "reconnecting") {
+    log.info("Redis is already connecting, waiting...");
+    await redis.ping();
+    log.info("Redis connected (waited for existing connection)");
+    return true;
+  }
+
   try {
     await redis.connect();
     log.info("Redis connected");

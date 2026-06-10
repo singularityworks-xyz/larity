@@ -7,7 +7,7 @@ const log = createMeetingModeLogger("topic-summarizer");
 
 export class TopicSummarizer {
   private readonly ai: GoogleGenAI;
-  private readonly model = "gemini-3.1-flash-lite-preview";
+  private readonly model = "gemini-3.1-flash-lite";
 
   constructor() {
     this.ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });

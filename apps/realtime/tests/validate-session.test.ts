@@ -27,7 +27,8 @@ describe("Validate Session Tests", () => {
     );
     const result = await validateSession("local-test-session-123");
 
-    expect(result).toBe(true);
+    expect(result.isValid).toBe(true);
+    expect(result.orgId).toBe("default");
   });
 
   it("should not bypass test-session in production", async () => {
@@ -43,7 +44,7 @@ describe("Validate Session Tests", () => {
     );
     const result = await validateSession("local-test-session-123");
 
-    expect(result).toBe(false);
+    expect(result.isValid).toBe(false);
   });
 
   it("should return true for valid session response", async () => {
@@ -54,7 +55,7 @@ describe("Validate Session Tests", () => {
         json: () =>
           Promise.resolve({
             success: true,
-            data: { valid: true },
+            data: { valid: true, orgId: "org-123" },
           }),
       })) as any;
 
@@ -64,7 +65,8 @@ describe("Validate Session Tests", () => {
     );
     const result = await validateSession("valid-session-id");
 
-    expect(result).toBe(true);
+    expect(result.isValid).toBe(true);
+    expect(result.orgId).toBe("org-123");
   });
 
   it("should return false for invalid session response", async () => {
@@ -83,7 +85,7 @@ describe("Validate Session Tests", () => {
     );
     const result = await validateSession("invalid-session-id");
 
-    expect(result).toBe(false);
+    expect(result.isValid).toBe(false);
   });
 
   it("should return false for non-ok HTTP response", async () => {
@@ -99,7 +101,7 @@ describe("Validate Session Tests", () => {
     );
     const result = await validateSession("non-existent-session");
 
-    expect(result).toBe(false);
+    expect(result.isValid).toBe(false);
   });
 
   it("should return false (secure default) when fetch throws an error", async () => {
@@ -111,7 +113,7 @@ describe("Validate Session Tests", () => {
     const result = await validateSession("error-session");
 
     // In prod, errors must reject the connection
-    expect(result).toBe(false);
+    expect(result.isValid).toBe(false);
   });
 
   it("should return false for malformed response", async () => {
@@ -126,6 +128,6 @@ describe("Validate Session Tests", () => {
     );
     const result = await validateSession("malformed-session");
 
-    expect(result).toBe(false);
+    expect(result.isValid).toBe(false);
   });
 });

@@ -34,6 +34,9 @@ export interface SpeakerIdentity {
 
   /** Confidence of the speaker identification (0-1) */
   confidence: number;
+
+  /** Is this speaker the host? */
+  isHost?: boolean;
 }
 
 export interface Utterance {
@@ -49,6 +52,8 @@ export interface Utterance {
   mergedCount: number;
   topicId?: string;
   embedding?: number[];
+  /** In-flight embedding for topic assignment; never serialized over Redis */
+  embeddingPromise?: Promise<number[] | undefined>;
 }
 
 export interface FinalizeResult {

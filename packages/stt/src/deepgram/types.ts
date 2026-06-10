@@ -6,42 +6,36 @@
  */
 
 /**
- * Deepgram live transcription configuration
- */
-export interface DeepgramLiveConfig {
-  model: string;
-  language: string;
-  punctuate: boolean;
-  interim_results: boolean;
-  smart_format: boolean;
-  endpointing: number;
-  vad_events: boolean;
-  encoding: string;
-  sample_rate: number;
-  channels: number;
-  diarize: boolean;
-}
-
-/**
  * Default configuration for live transcription
  * Assumes linear16 @ 16kHz mono (common for speech)
  *
  * diarize=true enables speaker diarization — Deepgram assigns
  * speaker indices (0, 1, 2...) to each word/segment.
+ *
+ * Note: v5 SDK requires boolean options as string literals.
  */
 export const DEFAULT_DG_CONFIG = {
   model: "nova-3",
-  language: "en-US",
-  punctuate: true,
-  interim_results: true,
-  smart_format: true,
-  endpointing: 600, // 600ms silence = end of utterance
-  vad_events: true,
+  // "en" gives better-calibrated VAD and endpointing than "multi".
+  // Deepgram nova-3 still auto-detects other languages when they appear;
+  // "en" only sets the primary/default language.
+  language: "en",
+  punctuate: "true",
+  interim_results: "true",
+  smart_format: "true",
+  // 450ms silence reliably captures natural sentence-ending pauses without
+  // eating into mid-sentence breaths (which are typically 200-400ms), while
+  // avoiding false cutoffs on dramatic pauses.
+  endpointing: "450",
+  vad_events: "true",
+  // UtteranceEnd fires after this many ms of silence following a speech segment.
+  // Acts as the primary flush signal for the accumulator, replacing the old
+  // safety-timer approach which was fragile and could delay output by 5 seconds.
+  utterance_end_ms: "1000",
   encoding: "linear16",
-  sample_rate: 16_000,
-  channels: 1,
-  keepAlive: true,
-  diarize: true,
+  sample_rate: "16000",
+  channels: "1",
+  diarize: "true",
 } as const;
 
 /**
@@ -73,14 +67,14 @@ export interface ChannelResult {
 }
 
 /**
- * Deepgram transcript result event
+ * Deepgram transcript result event (v5 ListenV1Results shape)
  */
 export interface TranscriptResult {
   type: "Results";
   channel_index: number[];
   duration: number;
   start: number;
-  is_final: boolean;
-  speech_final: boolean;
+  is_final?: boolean;
+  speech_final?: boolean;
   channel: ChannelResult;
 }

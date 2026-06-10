@@ -4,22 +4,21 @@ import { UtteranceFinalizer } from "../../src/utterance/finalizer";
 import { createTestSttResult, resetUtteranceSeq } from "../helpers";
 
 mock.module("../../src/topic/embedder", () => ({
-  GoogleGenAIEmbedder: function () {
-    return {
-      embed: () => Promise.resolve(new Array(768).fill(0)),
-    };
+  GoogleGenAIEmbedder: class {
+    embed() {
+      return Promise.resolve(new Array(768).fill(0));
+    }
   },
 }));
 
 mock.module("../../src/topic/summarizer", () => ({
-  TopicSummarizer: function () {
-    return {
-      summarize: () =>
-        Promise.resolve({
-          summary: "Mock summary",
-          actionItems: [],
-        }),
-    };
+  TopicSummarizer: class {
+    summarize() {
+      return Promise.resolve({
+        summary: "Mock summary",
+        actionItems: [],
+      });
+    }
   },
 }));
 

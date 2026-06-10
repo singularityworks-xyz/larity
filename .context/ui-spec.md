@@ -5,8 +5,8 @@
 > `architecture-and-flow.md` (system behavior).
 
 **Aesthetic target.** Cursor-dark base + Vercel formal restraint. Near-black
-surfaces, hairline borders, sharp corners, dense typography, monochrome with
-one functional accent. No gradients, no rounded chips, no decorative shadow,
+surfaces, hairline borders, soft iOS-like corners, dense typography, primarily
+monochromatic UI. No neon gradients, no decorative shadow,
 no marketing flourish. The product looks like a tool, not a brand.
 
 **Theme rule.** Dark only in v1. There is no light mode. Light values below
@@ -16,11 +16,11 @@ exist solely as inversions for high-contrast print exports.
 
 ## 1. Design Principles
 
-1. **Sharp over soft.** Border radius 0 by default; 2px reserved for
-   interactive controls. Never higher.
+1. **Soft over sharp.** iOS-like corner smoothing by default; 12px for cards,
+   8px reserved for interactive controls.
 2. **Hairlines do the work.** A single 1px border on `--border` separates
    surfaces. Avoid shadow as a separator.
-3. **Mono first.** Color is for state, not decoration. One accent (`--accent`),
+3. **Monochromatic.** Color is for state, not decoration. Grayscale accent (`--accent`),
    plus four semantic states (success/warning/danger/info).
 4. **Density is a feature.** Operators are reading lots of small data.
    Default density is compact; comfortable density is opt-in.
@@ -60,16 +60,16 @@ not their hex.
 
 ### 2.2 Accent (one, and only one)
 
-Cursor-violet, used sparingly. Never as a background for large regions; only
+Monochromatic (pure white or grey), used sparingly. Never as a background for large regions; only
 as a text color, a 1–2px stroke, or a small fill on the primary action.
 
 | Token | Hex | Use |
 |---|---|---|
-| `--accent` | `#7C5CFF` | Primary action fill, key indicator dot, link. |
-| `--accent-hover` | `#8E73FF` | Primary action hover. |
-| `--accent-pressed` | `#6A4DE8` | Primary action active. |
-| `--accent-subtle` | `#7C5CFF1A` | Selected row tint (10% accent). |
-| `--accent-fg` | `#FFFFFF` | Text on accent fill. |
+| `--accent` | `#FFFFFF` | Primary action fill, key indicator dot, link. |
+| `--accent-hover` | `#E0E0E0` | Primary action hover. |
+| `--accent-pressed` | `#C0C0C0` | Primary action active. |
+| `--accent-subtle` | `#FFFFFF1A` | Selected row tint (10% accent). |
+| `--accent-fg` | `#000000` | Text on accent fill. |
 
 ### 2.3 Semantic states
 
@@ -178,15 +178,15 @@ User-toggleable in `/settings/appearance`.
 
 ---
 
-## 5. Border Radius (the sharp-corner rule)
+## 5. Border Radius (iOS-like smoothing)
 
 | Token | Value | Where |
 |---|---|---|
-| `--radius-0` | `0px` | Default. Cards, panels, sheets, table rows, alerts, transcript bubbles, charts, modals, page surfaces. |
-| `--radius-1` | `2px` | Interactive controls only: buttons, inputs, selects, checkboxes, segmented controls, badges, chips, kbd hints. |
+| `--radius-0` | `12px` | Default. Cards, panels, sheets, table rows, alerts, transcript bubbles, charts, modals, page surfaces. |
+| `--radius-1` | `8px` | Interactive controls only: buttons, inputs, selects, checkboxes, segmented controls, badges, chips, kbd hints. |
 | `--radius-pill` | `999px` | **Forbidden.** Do not use. Status indicators are 0 or 2px rectangles. |
 
-Avatars are an exception: 2px square with a 1px `--border` ring. No circles.
+Avatars are an exception: 8px square with a 1px `--border` ring. No circles.
 
 ---
 
@@ -254,8 +254,8 @@ Forbidden:
 
 ### 9.1 Button
 
-Variants. Height `28px` (compact) / `32px` (comfortable). Radius `2px`.
-Padding `0 12px`. Font `text-sm` / `500`. Icon-only buttons are square.
+Variants. Height `28px` (compact) / `32px` (comfortable). Radius `8px`.
+Padding `0 12px`. Font `text-sm` / `500`. Icon-only buttons are gently rounded squares.
 
 | Variant | Background | Text | Border |
 |---|---|---|---|
@@ -275,7 +275,7 @@ States:
 
 ### 9.2 Input / Select / Textarea
 
-- Height `28`/`32`, radius `2px`.
+- Height `28`/`32`, radius `8px`.
 - Background `--bg-elevated`, border `1px --border`, text `--fg`.
 - Placeholder `--fg-subtle`.
 - Focus: border `--accent`, with `box-shadow: 0 0 0 1px var(--accent)`.
@@ -284,15 +284,15 @@ States:
 
 ### 9.3 Checkbox / Radio / Switch
 
-- Checkbox: `14×14`, radius `2px`, border `1px --border-strong`. Checked
+- Checkbox: `14×14`, radius `4px`, border `1px --border-strong`. Checked
   fills `--accent` with `lucide check` 10px.
-- Radio: same dimensions, but the inner mark is a `6×6` square (not a dot).
-- Switch: `28×16` track, radius `2px`, knob `12×12` radius `2px`. Off:
+- Radio: same dimensions, but the inner mark is a `6×6` rounded square (not a dot).
+- Switch: `28×16` track, radius `8px`, knob `12×12` radius `6px`. Off:
   `--bg-subtle`. On: `--accent`.
 
 ### 9.4 Card / Panel
 
-- Background `--bg-elevated`, border `1px --border`, radius `0`.
+- Background `--bg-elevated`, border `1px --border`, radius `12px`.
 - Padding `16` (compact) / `20` (comfortable).
 - Header row: `text-sm --fg-muted` label on the left, optional action
   buttons on the right, separated from body by a `1px --border-subtle`.
@@ -329,7 +329,7 @@ Padding `8 16`, divided by `1px --border-subtle`. Hover background
 
 ### 9.8 Badge / Chip / Pill
 
-- Height `18px`, radius `2px`, padding `0 6px`, `text-xs / 500`.
+- Height `18px`, radius `4px`, padding `0 6px`, `text-xs / 500`.
 - Variants:
   - **Neutral:** bg `--bg-subtle`, text `--fg`.
   - **Status (success/warning/danger/info):** bg `<state>-bg`, text

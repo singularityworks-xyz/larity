@@ -1,4 +1,7 @@
+import { redis } from "@larity/infra/redis";
+import { redisKeys } from "@larity/infra/redis/keys";
 import { sessionManager } from "@larity/stt";
+import { closeStreamer } from "../audio/registry";
 import { createRealtimeLogger } from "../logger";
 import { publishParticipantLeave, publishSessionEnd } from "../redis/publisher";
 import { getSession, removeConnection } from "../session";
@@ -23,7 +26,7 @@ export function onClose(
 
   // Remove connection from memory
   // returns session if it was the last connection and session is removed
-  const sessionRemoved = removeConnection(sessionId, userId);
+  const sessionRemoved = removeConnection(sessionId, userId, ws);
 
   const now = Date.now();
   const duration = now - connectedAt;
@@ -47,9 +50,9 @@ export function onClose(
   const isSessionEmpty = !!sessionRemoved;
 
   if (role === "host" || isSessionEmpty) {
-    sessionManager.closeSession(sessionId).catch((err) => {
-      log.error({ err, sessionId }, "Failed to close Deepgram session");
-    });
+    // closeSession internally cleans up STT connections and schedules asynchronous cleanup tasks,
+    // so a direct await is unnecessary/redundant here.
+    sessionManager.closeSession(sessionId);
 
     const sessionData = sessionRemoved || currentSession;
     const sessionDuration = sessionData ? now - sessionData.startedAt : 0;
@@ -61,5 +64,58 @@ export function onClose(
     }).catch((err) => {
       log.error({ err, sessionId }, "Failed to publish session end");
     });
+
+    // Close the audio persistence streamer asynchronously
+    // This completes the S3 multipart upload and writes the manifest, then triggers the transcription job
+    closeStreamer(sessionId)
+      .then(async (manifest) => {
+        if (!manifest) {
+          log.warn(
+            { sessionId },
+            "No audio manifest generated. Post-meeting transcription job skipped."
+          );
+          return;
+        }
+        log.info(
+          { sessionId },
+          "Audio persistence streamer closed. Triggering transcription job..."
+        );
+        try {
+          const { transcribeQueue } = await import("@larity/jobs");
+          const meetingId = await redis.hget(
+            redisKeys.meetingSession(sessionId),
+            "meetingId"
+          );
+          if (!meetingId) {
+            log.error(
+              { sessionId },
+              "Cannot trigger transcribe job: meetingId not found in Redis"
+            );
+            return;
+          }
+          const payload = {
+            sessionId,
+            orgId: manifest.orgId,
+            meetingId,
+            s3Prefix: `${manifest.orgId}/${manifest.sessionId}`,
+          };
+          await transcribeQueue.add("meeting.transcribe", payload);
+          log.info(
+            { sessionId, meetingId },
+            "Transcription job triggered successfully"
+          );
+        } catch (jobErr) {
+          log.error(
+            { err: jobErr, sessionId },
+            "Failed to trigger post-meeting transcription job"
+          );
+        }
+      })
+      .catch((err) => {
+        log.error(
+          { err, sessionId },
+          "Failed to close audio persistence streamer"
+        );
+      });
   }
 }

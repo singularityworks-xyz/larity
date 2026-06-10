@@ -107,3 +107,8 @@ export type Document = Prisma.DocumentModel
  * 
  */
 export type Reminder = Prisma.ReminderModel
+/**
+ * Model TranscriptUtterance
+ * 
+ */
+export type TranscriptUtterance = Prisma.TranscriptUtteranceModel

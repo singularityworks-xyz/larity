@@ -58,7 +58,7 @@ The desktop app has **five window types**:
 
 #### `/onboarding` (3 steps, single window, progress dots)
 1. **Permissions check:** request mic + system audio loopback / screen capture + notifications. Show real status per permission. Block "Continue" until the machine can either host dual-channel capture or explicitly run as participant-only.
-2. **Calendar connect:** Google / Microsoft / "Skip for now". On connect, list next 7 days of meetings as a preview.
+2. **Calendar connect:** Google / Microsoft / "Skip for now". On connect, list next 7 days of meetings as a preview. **→ SKIPPED in current implementation (shows "Coming soon" placeholder with skip action).**
 3. **Voice baseline:** 10-second mic check (used only for local VAD calibration — *not* a voice profile, no audio leaves device). Plain copy: *"This calibrates your microphone. We do not store voice samples."*
 
 End state: lands on `/home` with a "First meeting" hint card.
@@ -66,15 +66,44 @@ End state: lands on `/home` with a "First meeting" hint card.
 ### 1.2 Idle / Home
 
 #### `/home` (main desktop window default route)
-- **Top:** "Next meeting in 12 min — Acme weekly sync" card with **Open brief**, **Start meeting mode**, **Mute auto-prompt** actions.
-- **Today panel:** chronological list of today's meetings (time, client, attendees, brief status: *prepped / not prepped*).
-- **Recent activity:** last 5 meetings with key metrics (duration, alerts surfaced, commitments captured, decisions extracted). Each row links to `/meetings/:id`.
-- **Open commitments preview:** 3 most recent commitments where you are the owner; "View all" → web Commitments view.
+
+> **Backend route:** `GET /api/home` — aggregate endpoint returning `nextMeeting`, `todayMeetings`, `recentActivity`, `openCommitments`. See `apps/control/src/routes/home.routes.ts`.
+
+- **Next meeting card** — "Next meeting in 12 min — Acme weekly sync" with **Open brief**, **Start meeting mode**, **Mute auto-prompt** actions.
+  - → `GET /api/home` — `nextMeeting` field. Sourced from the closest `SCHEDULED` meeting with `scheduledAt >= now`.
+  - ⚠️ **MISSING:** No dedicated `briefStatus` field on `Meeting`. Currently proxied by checking if `meeting.summary !== null` ("prepped" if summary exists). A proper brief generation pipeline is planned for v2.
+
+- **Today panel** — chronological list of today's meetings (time, client, attendees, brief status: *prepped / not prepped*).
+  - → `GET /api/home` — `todayMeetings` field. Filters meetings with `status IN (SCHEDULED, LIVE)` and `scheduledAt` between today's start/end of day.
+  - ⚠️ **MISSING:** Same `briefStatus` proxy as above.
+
+- **Recent activity** — last 5 meetings with key metrics (duration, decisions extracted, commitments captured, tasks created). Each row links to `Desktop /meetings/:id`.
+  - → `GET /api/home` — `recentActivity` field. Queries the last 5 `ENDED` meetings ordered by `endedAt DESC`.
+  - ⚠️ **MISSING:** No `Alert` model exists, so "alerts surfaced" is omitted from metrics. Commitment counts are fetched per-meeting via a separate `ImportantPoint.count()` query filtered by `category=COMMITMENT`.
+
+- **Open commitments preview** — 3 most recent commitments where you are the owner; "View all" → web Commitments view.
+  - → `GET /api/home` — `openCommitments` field. Queries `ImportantPoint` where `category=COMMITMENT AND speakerId=<userId>`, ordered by `createdAt DESC`, limit 3.
+  - ⚠️ **MISSING:** No commitment `ownerId` field on `ImportantPoint`. Currently uses `speakerId` as a proxy for commitment ownership. A future schema migration should add a dedicated `ownerId` (or create a standalone `Commitment` model).
+  - ⚠️ **MISSING:** No commitment status lifecycle (`TENTATIVE` / `CONFIRMED` / `CONTRADICTED` / `SUPERSEDED`). All commitments from `ImportantPoint.category=COMMITMENT` lack a status field. The user-flow spec (section 2.6) requires these statuses for proper commitment management.
+
 - **Health strip (footer):** server connection status, audio device status, last sync timestamp.
+  - → `GET /health` (server ping, unauthenticated) + Tauri `audio_capture_status` command. Fully client-side — no backend route needed.
+  - Implemented in `apps/desktop/src/features/home/use-health.ts`.
 
 #### Tray menu (always present)
+
+⚠️ **NOT IMPLEMENTED.** Documented for future implementation:
+
 - Active state pill: `Idle` / `Listening (Acme call)` / `Reconnecting`.
 - Quick actions: **Start meeting mode**, **Open overlay**, **Open assistant**, **Settings**, **Quit**.
+
+**Implementation notes (Tauri tray):**
+1. Add `tray-icon` to Tauri Cargo features in `Cargo.toml`.
+2. Create system tray in `src-tauri/src/lib.rs` `setup()` hook using `tauri::tray::TrayIconBuilder::new()` with a tray icon.
+3. Build a Rust menu with items (`tauri::menu::MenuBuilder`) for each quick action.
+4. Emit events to frontend via `app_handle.emit("tray-action", payload)` on menu item click.
+5. Listen in frontend with `import { listen } from "@tauri-apps/api/event"`.
+6. Update tray icon/tooltip for state changes using `tray_handle.set_icon()` and `tray_handle.set_tooltip()`.
 
 ### 1.3 Pre-Meeting Brief
 

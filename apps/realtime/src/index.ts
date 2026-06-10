@@ -3,7 +3,7 @@ import { setupTelemetry } from "@larity/telemetry";
 // Initialize telemetry before other imports
 setupTelemetry("realtime");
 
-import { connectRedis } from "@larity/packages/infra/redis";
+import { connectRedis } from "@larity/infra/redis";
 import {
   sessionManager,
   env as sttEnv,
@@ -20,6 +20,7 @@ if (!process.env.REDIS_URL && sttEnv.REDIS_URL) {
 
 import { env } from "./env";
 import { rootLogger } from "./logger";
+import { startSubscriber, stopSubscriber } from "./redis/subscriber";
 import { startServer, stopServer } from "./server";
 
 // Track the Elysia instance for graceful shutdown
@@ -51,6 +52,15 @@ async function main(): Promise<void> {
   }
   rootLogger.info("Redis connected");
 
+  // Start Redis subscriber to relay pipeline output to WebSocket clients
+  try {
+    await startSubscriber();
+    rootLogger.info("Redis subscriber started");
+  } catch (error) {
+    rootLogger.fatal({ err: error }, "FATAL: Failed to start Redis subscriber");
+    process.exit(1);
+  }
+
   // Start WebSocket server
   try {
     appInstance = await startServer();
@@ -68,6 +78,12 @@ async function shutdown(signal: string): Promise<void> {
   if (appInstance) {
     stopServer(appInstance);
     appInstance = null;
+  }
+
+  try {
+    await stopSubscriber();
+  } catch (error) {
+    rootLogger.error({ err: error }, "Error while stopping Redis subscriber");
   }
 
   try {

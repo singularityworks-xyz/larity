@@ -59,7 +59,7 @@ describe("SpeakerIdentifier", () => {
       expect(identifier.isSpeaking(aliceId)).toBe(false);
     });
 
-    it("should ignore VAD signals from unknown users", () => {
+    it("should auto-register unknown users from authenticated VAD signals", () => {
       identifier.processVadSignal({
         type: "vad_speaking",
         userId: "unknown-user",
@@ -68,7 +68,50 @@ describe("SpeakerIdentifier", () => {
         serverReceiveTs: Date.now(),
       });
 
-      expect(identifier.isSpeaking("unknown-user")).toBe(false);
+      expect(identifier.isSpeaking("unknown-user")).toBe(true);
+    });
+  });
+
+  describe("partial provisional mapping", () => {
+    it("creates provisional mapping from partial and confirms on final", () => {
+      const now = Date.now();
+      identifier.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: now - 100,
+        serverReceiveTs: now - 100,
+      });
+
+      identifier.processSttPartial(42, now);
+      const speaker = identifier.identifySpeakerForFinal(42, now + 50);
+      expect(speaker.type).toBe("TEAM");
+      expect(speaker.userId).toBe(aliceId);
+    });
+
+    it("expires stale provisional mapping via TTL", () => {
+      const custom = new SpeakerIdentifier(sessionId, {
+        provisionalTtlMs: 100,
+      });
+      custom.registerTeamMember(aliceId, "Alice");
+      const now = Date.now();
+      custom.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: now,
+        serverReceiveTs: now,
+      });
+      custom.processSttPartial(7, now);
+      custom.processVadSignal({
+        type: "vad_silence",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: now + 50,
+        serverReceiveTs: now + 50,
+      });
+      const speaker = custom.identifySpeakerForFinal(7, now + 2000);
+      expect(speaker.type).toBe("EXTERNAL");
     });
   });
 
@@ -216,7 +259,7 @@ describe("SpeakerIdentifier", () => {
       expect(mergedIdentity.diarizationIndices).toContain(1);
     });
 
-    it("should create a conflict identity if a known user maps to two indices within <15s", () => {
+    it("should merge indices if a known user maps to two indices within <15s", () => {
       // Alice speaks at index 0
       identifier.processVadSignal({
         type: "vad_speaking",
@@ -237,7 +280,10 @@ describe("SpeakerIdentifier", () => {
       });
       const conflictIdentity = identifier.identifySpeaker(1, 3000);
 
-      expect(conflictIdentity.speakerId).not.toBe(firstIdentity.speakerId);
+      // We should merge them because Deepgram often shifts diarization indices mid-sentence
+      expect(conflictIdentity.speakerId).toBe(firstIdentity.speakerId);
+      expect(conflictIdentity.diarizationIndices).toContain(0);
+      expect(conflictIdentity.diarizationIndices).toContain(1);
     });
   });
 
@@ -450,9 +496,141 @@ describe("SpeakerIdentifier", () => {
     });
 
     it("should use default config values", () => {
-      expect(DEFAULT_SPEAKER_CONFIG.correlationWindowMs).toBe(250);
+      expect(DEFAULT_SPEAKER_CONFIG.correlationWindowMs).toBe(1500);
       expect(DEFAULT_SPEAKER_CONFIG.lateCorrelationWindowMs).toBe(2000);
       expect(DEFAULT_SPEAKER_CONFIG.minConfirmationSignals).toBe(1);
+    });
+
+    it("keeps hybrid correlation overhead bounded for hot path", () => {
+      const perfIdentifier = new SpeakerIdentifier(sessionId);
+      perfIdentifier.registerTeamMember(aliceId, "Alice");
+      const base = Date.now();
+      perfIdentifier.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: base,
+        serverReceiveTs: base,
+      });
+
+      const start = performance.now();
+      for (let i = 0; i < 10_000; i += 1) {
+        perfIdentifier.processSttPartial(i, base + i);
+        perfIdentifier.identifySpeakerForFinal(i, base + i + 10);
+      }
+      const elapsed = performance.now() - start;
+      expect(elapsed).toBeLessThan(2000);
+    });
+  });
+
+  describe("VAD Trailing Edge Cooldown & Channel-Aware Merge Guard", () => {
+    it("should not correlate a participant to a client when time gap is larger than trailing cooldown", () => {
+      const customIdentifier = new SpeakerIdentifier(sessionId, {
+        vadTrailingCooldownMs: 200,
+        correlationWindowMs: 1500,
+      });
+      customIdentifier.registerTeamMember(aliceId, "Alice", "participant"); // Alice is participant (system channel)
+
+      const base = 1_700_000_000_000;
+
+      customIdentifier.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: base,
+        serverReceiveTs: base,
+      });
+      customIdentifier.processVadSignal({
+        type: "vad_silence",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: base + 50,
+        serverReceiveTs: base + 50,
+      });
+
+      // Utterance arrives at base + 300 (250ms gap) on system channel (index 1000)
+      const speaker = customIdentifier.identifySpeaker(1000, base + 300);
+      expect(speaker.type).toBe("EXTERNAL");
+    });
+
+    it("should correlate a participant to a client when time gap is within trailing cooldown", () => {
+      const customIdentifier = new SpeakerIdentifier(sessionId, {
+        vadTrailingCooldownMs: 200,
+        correlationWindowMs: 1500,
+      });
+      customIdentifier.registerTeamMember(aliceId, "Alice", "participant");
+
+      const base = 1_700_000_000_000;
+
+      customIdentifier.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: base,
+        serverReceiveTs: base,
+      });
+      customIdentifier.processVadSignal({
+        type: "vad_silence",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: base + 50,
+        serverReceiveTs: base + 50,
+      });
+
+      // Utterance arrives at base + 150 (100ms gap) on system channel (index 1000)
+      const speaker = customIdentifier.identifySpeaker(1000, base + 150);
+      expect(speaker.type).toBe("TEAM");
+      expect(speaker.userId).toBe(aliceId);
+    });
+
+    it("should not merge diarization indices of different channel classes for the same user", () => {
+      const customIdentifier = new SpeakerIdentifier(sessionId);
+
+      // 1. Register Alice as participant
+      customIdentifier.registerTeamMember(aliceId, "Alice", "participant");
+
+      const base = 1_700_000_000_000;
+
+      // Alice speaks on system channel (index 1000)
+      customIdentifier.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: base,
+        serverReceiveTs: base,
+      });
+      const speaker1000 = customIdentifier.identifySpeaker(1000, base + 100);
+      expect(speaker1000.type).toBe("TEAM");
+      expect(speaker1000.userId).toBe(aliceId);
+      expect(speaker1000.diarizationIndices).toContain(1000);
+
+      customIdentifier.processVadSignal({
+        type: "vad_silence",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: base + 500,
+        serverReceiveTs: base + 500,
+      });
+
+      // 2. Change Alice's role to host
+      customIdentifier.registerTeamMember(aliceId, "Alice", "host");
+
+      // Alice speaks on mic channel (index 1)
+      customIdentifier.processVadSignal({
+        type: "vad_speaking",
+        userId: aliceId,
+        sessionId,
+        clientSendTs: base + 1000,
+        serverReceiveTs: base + 1000,
+      });
+      const speaker1 = customIdentifier.identifySpeaker(1, base + 1100);
+
+      // Should NOT merge index 1 into Alice's participant mapping, and should return EXTERNAL
+      expect(speaker1.type).toBe("EXTERNAL");
+
+      // Alice's original mapping should still only contain index 1000
+      const mapping = customIdentifier.getSpeakerMapping(1000);
+      expect(mapping?.speaker.diarizationIndices).toEqual([1000]);
     });
   });
 });

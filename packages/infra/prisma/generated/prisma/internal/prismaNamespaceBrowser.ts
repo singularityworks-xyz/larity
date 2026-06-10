@@ -68,7 +68,8 @@ export const ModelName = {
   ImportantPoint: 'ImportantPoint',
   PolicyGuardrail: 'PolicyGuardrail',
   Document: 'Document',
-  Reminder: 'Reminder'
+  Reminder: 'Reminder',
+  TranscriptUtterance: 'TranscriptUtterance'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -77,12 +78,12 @@ export type ModelName = (typeof ModelName)[keyof typeof ModelName]
  * Enums
  */
 
-export const TransactionIsolationLevel = {
+export const TransactionIsolationLevel = runtime.makeStrictEnum({
   ReadUncommitted: 'ReadUncommitted',
   ReadCommitted: 'ReadCommitted',
   RepeatableRead: 'RepeatableRead',
   Serializable: 'Serializable'
-} as const
+} as const)
 
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel]
 
@@ -220,6 +221,7 @@ export const MeetingScalarFieldEnum = {
   endedAt: 'endedAt',
   calendarEventId: 'calendarEventId',
   summary: 'summary',
+  speakerMappings: 'speakerMappings',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -379,6 +381,21 @@ export const ReminderScalarFieldEnum = {
 export type ReminderScalarFieldEnum = (typeof ReminderScalarFieldEnum)[keyof typeof ReminderScalarFieldEnum]
 
 
+export const TranscriptUtteranceScalarFieldEnum = {
+  id: 'id',
+  meetingId: 'meetingId',
+  clientId: 'clientId',
+  speaker: 'speaker',
+  text: 'text',
+  timestamp: 'timestamp',
+  duration: 'duration',
+  channel: 'channel',
+  createdAt: 'createdAt'
+} as const
+
+export type TranscriptUtteranceScalarFieldEnum = (typeof TranscriptUtteranceScalarFieldEnum)[keyof typeof TranscriptUtteranceScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -388,8 +405,8 @@ export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
 
 
 export const NullableJsonNullValueInput = {
-  DbNull: 'DbNull',
-  JsonNull: 'JsonNull'
+  DbNull: DbNull,
+  JsonNull: JsonNull
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
@@ -404,9 +421,9 @@ export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
 
 
 export const JsonNullValueFilter = {
-  DbNull: 'DbNull',
-  JsonNull: 'JsonNull',
-  AnyNull: 'AnyNull'
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
 } as const
 
 export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]

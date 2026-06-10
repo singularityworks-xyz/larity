@@ -1,11 +1,222 @@
-use tauri::{AppHandle, Manager, State};
-use audio::{AudioDevice, AudioCaptureStatus};
+use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use audio::{AudioDevice, AudioCaptureStatus, VadState};
 use meeting_detection::MeetingDetectionHint;
 
 pub mod audio;
 pub mod meeting_detection;
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+#[cfg(target_os = "linux")]
+mod linux_media_permission {
+    use serde::{Deserialize, Serialize};
+    use std::fs;
+    use std::path::PathBuf;
+    use std::sync::Mutex;
+    use tauri::{AppHandle, Manager};
+    use webkit2gtk::glib::object::Cast;
+    use webkit2gtk::{
+        PermissionRequest, PermissionRequestExt, UserMediaPermissionRequest,
+        UserMediaPermissionRequestExt, WebViewExt,
+    };
+
+    const DECISION_FILE_NAME: &str = "linux_media_permission.json";
+
+    #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+    #[serde(rename_all = "snake_case")]
+    pub enum Decision {
+        Allow,
+        Deny,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    struct DecisionFile {
+        decision: Decision,
+    }
+
+    pub struct PermissionStore {
+        path: PathBuf,
+        decision: Mutex<Option<Decision>>,
+    }
+
+    impl PermissionStore {
+        pub fn new(path: PathBuf) -> Self {
+            let decision = Self::load_from_disk(&path);
+            Self {
+                path,
+                decision: Mutex::new(decision),
+            }
+        }
+
+        pub fn get(&self) -> Option<Decision> {
+            self.decision.lock().ok().and_then(|value| *value)
+        }
+
+        pub fn set(&self, decision: Decision) -> Result<(), String> {
+            {
+                let mut guard = self
+                    .decision
+                    .lock()
+                    .map_err(|_| "Failed to lock media permission state".to_string())?;
+                *guard = Some(decision);
+            }
+            self.persist(Some(decision))
+        }
+
+        pub fn reset(&self) -> Result<(), String> {
+            {
+                let mut guard = self
+                    .decision
+                    .lock()
+                    .map_err(|_| "Failed to lock media permission state".to_string())?;
+                *guard = None;
+            }
+            self.persist(None)
+        }
+
+        fn load_from_disk(path: &PathBuf) -> Option<Decision> {
+            let raw = fs::read_to_string(path).ok()?;
+            let parsed = serde_json::from_str::<DecisionFile>(&raw).ok()?;
+            Some(parsed.decision)
+        }
+
+        fn persist(&self, decision: Option<Decision>) -> Result<(), String> {
+            if let Some(parent) = self.path.parent() {
+                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+
+            match decision {
+                Some(value) => {
+                    let payload = DecisionFile { decision: value };
+                    let raw = serde_json::to_string_pretty(&payload).map_err(|e| e.to_string())?;
+                    fs::write(&self.path, raw).map_err(|e| e.to_string())
+                }
+                None => {
+                    if self.path.exists() {
+                        fs::remove_file(&self.path).map_err(|e| e.to_string())?;
+                    }
+                    Ok(())
+                }
+            }
+        }
+    }
+
+    fn prompt_user_for_media_permission() -> Decision {
+        let allow = rfd::MessageDialog::new()
+            .set_title("Microphone Permission")
+            .set_description(
+                "Allow microphone access for VAD correlation?\n\nIf denied, your speech may be treated as EXTERNAL instead of TEAM MEMBER.",
+            )
+            .set_buttons(rfd::MessageButtons::YesNo)
+            .set_level(rfd::MessageLevel::Info)
+            .show();
+        if matches!(
+            allow,
+            rfd::MessageDialogResult::Yes | rfd::MessageDialogResult::Ok
+        ) {
+            Decision::Allow
+        } else {
+            Decision::Deny
+        }
+    }
+
+    pub fn configure_permission_handler(app: &tauri::App) -> Result<(), String> {
+        let path_resolver = app.path();
+        let config_dir = path_resolver
+            .app_config_dir()
+            .map_err(|e| format!("Failed to get app config directory: {e}"))?;
+        let store_path = config_dir.join(DECISION_FILE_NAME);
+        app.manage(PermissionStore::new(store_path));
+
+        let window = app
+            .get_webview_window("main")
+            .ok_or("Main window not found".to_string())?;
+        let app_handle = app.handle().clone();
+
+        window
+            .with_webview(move |webview| {
+                let wv = webview.inner();
+                let app_handle = app_handle.clone();
+
+                wv.connect_permission_request(move |_view, request: &PermissionRequest| {
+                    let Some(media_request) = request.downcast_ref::<UserMediaPermissionRequest>() else {
+                        // Let non-media requests follow WebKit defaults.
+                        return false;
+                    };
+                    if media_request.is_for_video_device() {
+                        // This app only needs microphone access for VAD.
+                        request.deny();
+                        return true;
+                    }
+                    if !media_request.is_for_audio_device() {
+                        return false;
+                    }
+
+                    let Some(store) = app_handle.try_state::<PermissionStore>() else {
+                        request.deny();
+                        return true;
+                    };
+
+                    if let Some(decision) = store.get() {
+                        match decision {
+                            Decision::Allow => request.allow(),
+                            Decision::Deny => request.deny(),
+                        }
+                        return true;
+                    }
+
+                    let decision = prompt_user_for_media_permission();
+                    if let Err(error) = store.set(decision) {
+                        eprintln!("Failed to persist media permission decision: {error}");
+                    }
+
+                    match decision {
+                        Decision::Allow => request.allow(),
+                        Decision::Deny => request.deny(),
+                    }
+                    true
+                });
+            })
+            .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    pub fn linux_media_permission_get_decision(app: AppHandle) -> Result<String, String> {
+        let Some(store) = app.try_state::<PermissionStore>() else {
+            return Ok("unset".to_string());
+        };
+        Ok(match store.get() {
+            Some(Decision::Allow) => "allow".to_string(),
+            Some(Decision::Deny) => "deny".to_string(),
+            None => "unset".to_string(),
+        })
+    }
+
+    pub fn linux_media_permission_reset(app: AppHandle) -> Result<(), String> {
+        let Some(store) = app.try_state::<PermissionStore>() else {
+            return Ok(());
+        };
+        store.reset()
+    }
+
+    pub fn linux_media_permission_ensure_prompt(app: AppHandle) -> Result<String, String> {
+        let Some(store) = app.try_state::<PermissionStore>() else {
+            return Ok("deny".to_string());
+        };
+        if let Some(decision) = store.get() {
+            return Ok(match decision {
+                Decision::Allow => "allow".to_string(),
+                Decision::Deny => "deny".to_string(),
+            });
+        }
+        let decision = prompt_user_for_media_permission();
+        store.set(decision)?;
+        Ok(match decision {
+            Decision::Allow => "allow".to_string(),
+            Decision::Deny => "deny".to_string(),
+        })
+    }
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -90,21 +301,106 @@ fn meeting_detection_check_heuristic() -> Result<Option<MeetingDetectionHint>, S
     meeting_detection::check_process_or_audio_heuristic()
 }
 
+#[tauri::command]
+fn create_overlay_window(app: AppHandle, url: String) -> Result<(), String> {
+    let parsed = tauri::Url::parse(&url).map_err(|e| e.to_string())?;
+
+    let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
+    let main_url = main_window.url().map_err(|e| e.to_string())?;
+    let main_origin = main_url.origin();
+
+    if parsed.origin() != main_origin {
+        return Err("External URL origin does not match app origin".to_string());
+    }
+
+    WebviewWindowBuilder::new(&app, "meeting-overlay", WebviewUrl::External(parsed))
+        .title("Larity Meeting")
+        .inner_size(376.0, 480.0)
+        .min_inner_size(320.0, 360.0)
+        .max_inner_size(420.0, 540.0)
+        .decorations(false)
+        .always_on_top(true)
+        .resizable(true)
+        .build()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn vad_start(app: AppHandle, state: State<'_, VadState>) -> Result<(), String> {
+    let vad_tx = audio::vad::spawn_vad_task(app).map_err(|e| e.to_string())?;
+    *state.vad_tx.blocking_lock() = Some(vad_tx);
+    Ok(())
+}
+
+#[tauri::command]
+fn vad_stop(state: State<'_, VadState>) -> Result<(), String> {
+    *state.vad_tx.blocking_lock() = None;
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+fn linux_media_permission_get_decision(app: AppHandle) -> Result<String, String> {
+    linux_media_permission::linux_media_permission_get_decision(app)
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+fn linux_media_permission_reset(app: AppHandle) -> Result<(), String> {
+    linux_media_permission::linux_media_permission_reset(app)
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+fn linux_media_permission_ensure_prompt(app: AppHandle) -> Result<String, String> {
+    linux_media_permission::linux_media_permission_ensure_prompt(app)
+}
+
+#[cfg(not(target_os = "linux"))]
+#[tauri::command]
+fn linux_media_permission_get_decision() -> Result<String, String> {
+    Ok("unsupported".to_string())
+}
+
+#[cfg(not(target_os = "linux"))]
+#[tauri::command]
+fn linux_media_permission_reset() -> Result<(), String> {
+    Ok(())
+}
+
+#[cfg(not(target_os = "linux"))]
+#[tauri::command]
+fn linux_media_permission_ensure_prompt() -> Result<String, String> {
+    Ok("allow".to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             app.manage(audio::AudioState::default());
+            app.manage(audio::VadState::default());
+            #[cfg(target_os = "linux")]
+            {
+                linux_media_permission::configure_permission_handler(app)?;
+            }
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             greet,
+            create_overlay_window,
             audio_capture_list_devices,
             audio_capture_start,
             audio_capture_stop,
             audio_capture_status,
             meeting_detection_check_heuristic,
+            vad_start,
+            vad_stop,
+            linux_media_permission_get_decision,
+            linux_media_permission_reset,
+            linux_media_permission_ensure_prompt,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

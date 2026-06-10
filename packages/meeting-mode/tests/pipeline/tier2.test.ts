@@ -5,8 +5,8 @@ import { createTeamSpeaker } from "../helpers";
 describe("pipeline/tier2", () => {
   it("parses valid classifier response and computes gate decision", async () => {
     const classifier = new Tier2Classifier({
-      invoke: async () =>
-        JSON.stringify({
+      invoke: async () => ({
+        text: JSON.stringify({
           intent: "commitment",
           commitmentType: "timeline",
           tone: "confident",
@@ -19,6 +19,9 @@ describe("pipeline/tier2", () => {
             deadline: "next friday",
           },
         }),
+        promptTokens: 50,
+        completionTokens: 30,
+      }),
     });
 
     const result = await classifier.classify({
@@ -35,10 +38,13 @@ describe("pipeline/tier2", () => {
 
   it("fails silent on invalid schema", async () => {
     const classifier = new Tier2Classifier({
-      invoke: async () =>
-        JSON.stringify({
+      invoke: async () => ({
+        text: JSON.stringify({
           intent: "unknown-intent",
         }),
+        promptTokens: 0,
+        completionTokens: 0,
+      }),
     });
 
     const result = await classifier.classify({
@@ -54,8 +60,8 @@ describe("pipeline/tier2", () => {
 
   it("stops deep reasoning for high-confidence filler", async () => {
     const classifier = new Tier2Classifier({
-      invoke: async () =>
-        JSON.stringify({
+      invoke: async () => ({
+        text: JSON.stringify({
           intent: "filler",
           commitmentType: null,
           tone: "neutral",
@@ -63,6 +69,9 @@ describe("pipeline/tier2", () => {
           extractedData: {},
           confidence: 0.9,
         }),
+        promptTokens: 0,
+        completionTokens: 0,
+      }),
     });
 
     const result = await classifier.classify({

@@ -170,15 +170,20 @@ This is NOT a single-user experience. Multiple team members share a session.
 ### 7. Streaming STT with Diarization
 * **Deepgram Output:** Partial hypotheses with channel indices + speaker indices → Corrections → Final segments with speaker attribution
 * **Diarization:** Deepgram assigns speaker indices (0, 1, 2, ...) within **each** mono stream — arbitrary integers, not identities. **Logical capture channel 0** (host mic) maps to the host `SpeakerIdentity` directly; **logical capture channel 1** (loopback) uses VAD correlation for TEAM vs EXTERNAL.
+* **Utterance Accumulation:** Deepgram sends `is_final=true` for intermediate segments within a single utterance — only the last has `speech_final=true`. The STT layer accumulates `is_final=true, speech_final=false` segments until `speech_final=true` signals the utterance boundary, preventing sentence fragmentation. A 5s safety timeout flushes accumulated text if `speech_final` never arrives.
+* **Partial Prepend:** During accumulation, incoming partials are prepended with the accumulated text so the frontend sees the full sentence grow, rather than disjoint segment text jumping in. Duplication is avoided by checking if the partial already starts with the accumulated text.
 * *Note: Raw STT output is not LLM-safe.*
 
 ### 7.1 Speaker Identification (VAD Correlation)
 
 > **Full Details:** See [meeting-mode.md §3](./meeting-mode.md#3-speaker-identification-via-vad-correlation)
 
-* Each team member's Larity instance runs **local VAD on their microphone** and sends timestamped speaking signals via WebSocket
+* Each team member's Larity instance runs **Rust-native local VAD** (Silero V5 via `voice_activity_detector` crate, not browser WASM) on their microphone and sends timestamped speaking signals via WebSocket
 * The server maintains a **rolling-median clock offset per client** (last 30 samples) so VAD timestamps align with the server's audio ingestion clock
-* The server **correlates offset-corrected VAD timestamps against Deepgram channel-1 diarization indices** (±250ms window after offset correction)
+* Speaker mapping is **hybrid**: STT partials create short-lived provisional diarization→user candidates, STT finals confirm authoritative identity, and late VAD can still trigger retroactive correction.
+* **Utterance timestamps use speech time** (`connectionStartTime + Deepgram.start * 1000`) for VAD correlation, not processing time (`Date.now()`). This eliminates the 3–8 second gap between VAD intervals and utterance timestamps that caused missed correlations for short utterances.
+* **Dual-Channel Hardening**: The server enforces strict role-to-channel isolation. Host VAD only correlates with Channel 0 (indices 0-999); Participant VAD only correlates with Channel 1 (indices 1000-1999). This prevents identity bleeding from system audio (YouTube/conferencing) into the host's identity.
+* The server **correlates offset-corrected VAD timestamps against diarization indices** (±1500ms window to account for VAD engine lag).
 * Deepgram reassigns diarization indices after silences; the server merges a new channel/index pair onto an existing `SpeakerIdentity` when VAD correlation points at the same userId and the gap since that identity last spoke exceeds the merge threshold (default 15s). `SpeakerIdentity` therefore owns a **set** of channel/index pairs.
 * Matched → TEAM (with userId) | Unmatched → EXTERNAL (client)
 * External speaker names from calendar data (best-effort)
@@ -210,8 +215,9 @@ interface SpeakerIdentity {
 * **Success Rate:** ~85% of speculative work is usable
 
 ### 8. STT Normalization Layer
-* **Component:** Utterance Finalizer (pure logic)
-* **Actions:** Drop non-final segments, merge short utterances, add light punctuation, attach **speaker identity** + timestamp
+* **Component:** DeepgramConnection (STT layer) + Utterance Finalizer (meeting-mode)
+* **STT Layer Actions:** Accumulate `is_final=true, speech_final=false` segments until `speech_final=true`, then publish a single combined final. During accumulation, prepend accumulated text to incoming partials for frontend continuity. 5s safety flush for edge cases.
+* **Meeting-Mode Actions:** Drop non-final segments, merge short utterances, add light punctuation, attach **speaker identity** + timestamp
 * **Output:**
     ```json
     {
@@ -228,7 +234,7 @@ interface SpeakerIdentity {
       "ts": 1730000004
     }
     ```
-* **Constraint:** Only these normalized objects move forward (after **same-speaker merge** within `MERGE_GAP_MS`; see [meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing))
+* **Constraint:** Only these normalized objects move forward (after **same-speaker merge** within **`MERGE_GROUPING_MS`** and **publish flush** by **`MERGE_PUBLISH_GAP_MS`** on pending lines; see [meeting-mode.md §5.5.1](./meeting-mode.md#551-utterance-merger-and-publish-timing))
 * **Broadcast:** Every final utterance pushed to ALL connected team members
 
 ### 9. Processing Pipeline (Tiered, Cost-Optimized)
@@ -237,7 +243,9 @@ interface SpeakerIdentity {
 
 The pipeline replaces the old regex-heavy approach with LLM-based classification. **No English-only pattern libraries.** Works in any language.
 
-**Execution model:** After pre-filter, Tiers 1, 2, and 3 run **in parallel** (independent reads of the same utterance). Tier 4 runs **after** they resolve and is gated by **`runTier4 = ¬shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)`**, where **`shouldStopForDeepReasoning`** is Tier 2’s high-confidence filler/general with no risks, **`highSignal`** is Tier 1 instant hits plus commitment/decision/concern or any risk signals, and **`forceTier4`** comes from Tier 3 memory or ledger similarity hits. **`forceTier4` does not override** the filler/general stop — this avoids Tier 4 on low-value lines when embeddings spuriously match the ledger.
+**Execution model:** After pre-filter, **Tier 1, Tier 2, Tier 3, and constraint extraction** run **in parallel** (independent reads of the same utterance). Internally, Tier 3 issues **parallel** pgvector queries for org/client memory when preload context exists. Tier 4 runs **after** they resolve and is gated by **`runTier4 = ¬shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)`**, where **`shouldStopForDeepReasoning`** is Tier 2’s high-confidence filler/general with no risks, **`highSignal`** is Tier 1 instant hits plus commitment/decision/concern or any risk signals, and **`forceTier4`** comes from Tier 3 memory or ledger similarity hits. **`forceTier4` does not override** the filler/general stop — this avoids Tier 4 on low-value lines when embeddings spuriously match the ledger.
+
+**Hot path throughput:** Finalizer **`embeddingPromise`** starts before topic assignment; **`onUtterancePublished`** does not await the full pipeline between finals — **`evaluateUtteranceQueued`** serializes work **per session** while transcripts publish on **`MERGE_PUBLISH_GAP_MS`**. Meeting context + cost reads avoid redundant Redis GETs via session caches (**§B.16** in `architecture_decisions.md`).
 
 **Observability (MVP):** Versioned structured traces publish to **`meeting.pipeline.{sessionId}`** (Redis pub/sub): tier summaries, gate flags, latency slices; when Tier 4 surfaces, **`message` / `surfaceReason` / `suggestion`** appear in the trace (no embeddings, no internal `reasoning`). See [meeting-mode.md §5.6.2](./meeting-mode.md#562-pipeline-traces-meetingpipelinesessionid).
 
@@ -252,7 +260,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 * **Accelerator, NOT a gate** — fires instant alerts but everything passes through to Tier 2
 
 #### Tier 2: Small LLM Classification (~$0.002/call, <200ms)
-* **Single call to Gemini flash-lite** per utterance
+* **Groq** structured outputs (**`GROQ_TIER2_MODEL`**) — JSON Schema **`strict`**; optional slots expressed as **`null`** keys per provider rules (see `architecture_decisions.md` **B.18**)
 * Input: utterance + speaker identity + last 2-3 utterances from same speaker (cross-utterance context)
 * **Replaces ALL old regex pattern libraries** (risky language, pressure tactics, tone, scope creep, backtracking, vague language)
 * Returns: intent, commitmentType, tone, riskSignals, extractedData, confidence, and `topicDelta` fields
@@ -263,7 +271,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 #### Tier 3: Embedding Search + Novelty Check (~$0.00002/call, <100ms)
 * Runs on **EVERY utterance** (safety net — catches what Tier 2 might miss)
 * Uses a **shared utterance embedding** reused by topic assignment, Tier 2 cache similarity, and commitment-ledger writes
-* Three parallel checks:
+* Three parallel checks (memory search uses **parallel** DB queries):
     * **Novelty check**: semantic deduplication within meeting
     * **Memory search**: pgvector search for past decisions, commitments, policies (client-scoped + org-wide)
     * **Commitment ledger search**: compare against ALL commitments from THIS meeting (catches contradictions from 40 min ago)
@@ -282,7 +290,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 | Model | Purpose | Cost/call | Example |
 |-------|---------|-----------|---------|
 | **Embedding** | Search, similarity, novelty | ~$0.00002 | text-embedding-004 (Gemini via @google/genai) |
-| **Small LLM** | Classification, extraction | ~$0.002 | gemini-3.1-flash-lite-preview |
+| **Small LLM** | Classification, extraction | ~$0.002 | Groq (`GROQ_TIER2_MODEL`) |
 | **Large LLM** | Deep reasoning | ~$0.02 | gemini-2.5-pro |
 
 **Total cost per 1-hour meeting:** ~$0.76 in single-channel fallback, ~$1.22 in dual-channel default (includes Deepgram channel-minute cost; LLM/embedding tiers remain ~$0.30).
@@ -315,7 +323,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 * **Speaker State Tracker:** Rolling tone scores per speaker, engagement metrics, response patterns
     * Detects gradual tone shifts (escalation over 15 min)
     * Detects client disengagement (brief responses, declining frequency)
-* **State Persistence:** All ledgers in Redis per session, accessible to all participants
+* **State Persistence:** Ledgers backed by Redis snapshots (**debounced** writes — **`LEDGER_SNAPSHOT_DEBOUNCE_MS`**) per session, accessible to all participants
 
 ### 12. Live LLM Invocation (Read-Only, Atomic Alerts)
 * **LLM Characteristics:**

@@ -53,7 +53,7 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       serverReceiveTs: baseTs + 7000,
     });
 
-    const speaker2 = identifier.identifySpeaker(2, baseTs + 8000);
+    const speaker2 = identifier.identifySpeaker(2, baseTs + 10_000);
     expect(speaker2.type).toBe("EXTERNAL");
   });
 
@@ -112,7 +112,9 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       serverReceiveTs: base + 2000,
     });
 
-    const spk1 = identifier.identifySpeaker(1, base + 3000);
+    // Alice stopped at 2000. Bob starts at 5000.
+    // Check at 4000: 4000 - 1500 = 2500. Alice (end 2000) is gone. Bob (start 5000) hasn't started.
+    const spk1 = identifier.identifySpeaker(1, base + 4000);
     expect(spk1.type).toBe("EXTERNAL");
 
     identifier.processVadSignal({
@@ -134,7 +136,8 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
       serverReceiveTs: base + 7000,
     });
 
-    const spk1Again = identifier.identifySpeaker(1, base + 3000);
+    // Bob stopped at 7000. Check at 9000: 9000 - 1500 = 7500. Bob (end 7000) is gone.
+    const spk1Again = identifier.identifySpeaker(1, base + 9000);
     expect(spk1Again.type).toBe("EXTERNAL");
 
     const stats = identifier.getStats();
@@ -206,6 +209,32 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
     expect(second.userId).toBe(aliceId);
   });
 
+  it("uses partial-first mapping when final is delayed", () => {
+    const identifier = new SpeakerIdentifier(sessionId);
+    identifier.registerTeamMember(aliceId, "Alice");
+    const base = Date.now();
+
+    identifier.processVadSignal({
+      type: "vad_speaking",
+      userId: aliceId,
+      sessionId,
+      clientSendTs: base,
+      serverReceiveTs: base,
+    });
+    identifier.processSttPartial(3, base + 300);
+    identifier.processVadSignal({
+      type: "vad_silence",
+      userId: aliceId,
+      sessionId,
+      clientSendTs: base + 900,
+      serverReceiveTs: base + 900,
+    });
+
+    const speaker = identifier.identifySpeakerForFinal(3, base + 4000);
+    expect(speaker.type).toBe("TEAM");
+    expect(speaker.userId).toBe(aliceId);
+  });
+
   it("Clock Skew Simulation: should correct for constant client skew", () => {
     const identifier = new SpeakerIdentifier(sessionId);
     identifier.registerTeamMember(aliceId, "Alice");
@@ -243,5 +272,26 @@ describe("Speaker Identification Integration: VAD → Correlation → Utterance 
     // It should successfully correlate because the VAD timestamp was offset-corrected internally!
     expect(speaker.type).toBe("TEAM");
     expect(speaker.userId).toBe(aliceId);
+  });
+
+  it("should support manual role overrides", () => {
+    const identifier = new SpeakerIdentifier(sessionId);
+    identifier.registerTeamMember(aliceId, "Alice");
+
+    const base = Date.now();
+
+    // 1. Participant starts as EXTERNAL
+    const speaker = identifier.identifySpeaker(0, base);
+    expect(speaker.type).toBe("EXTERNAL");
+
+    // 2. Override role manually to TEAM
+    identifier.changeParticipantRole("spk_0", "TEAM");
+    const speakerOverridden = identifier.identifySpeaker(0, base + 1000);
+    expect(speakerOverridden.type).toBe("TEAM");
+
+    // 3. Override role manually back to EXTERNAL
+    identifier.changeParticipantRole("spk_0", "EXTERNAL");
+    const speakerReverted = identifier.identifySpeaker(0, base + 2000);
+    expect(speakerReverted.type).toBe("EXTERNAL");
   });
 });

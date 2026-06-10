@@ -103,22 +103,23 @@ describe("pipeline/engine integration", () => {
       preFilter: new PreFilter(),
       tier1: new Tier1StructuralDetector(),
       tier2: new Tier2Classifier({
-        invoke: (_input, _timeout) =>
-          Promise.resolve(
-            JSON.stringify({
-              intent: "commitment",
-              commitmentType: "timeline",
-              tone: "confident",
-              riskSignals: [],
-              extractedData: { deadline: "2026-06-01" },
-              confidence: 0.88,
-              topicDelta: {
-                commitment: "Deliver by 2026-06-01",
-                deadline: "2026-06-01",
-                owner: "Alice",
-              },
-            })
-          ),
+        invoke: async () => ({
+          text: JSON.stringify({
+            intent: "commitment",
+            commitmentType: "timeline",
+            tone: "confident",
+            riskSignals: [],
+            extractedData: { deadline: "2026-06-01" },
+            confidence: 0.88,
+            topicDelta: {
+              commitment: "Deliver by 2026-06-01",
+              deadline: "2026-06-01",
+              owner: "Alice",
+            },
+          }),
+          promptTokens: 50,
+          completionTokens: 30,
+        }),
       }),
       tier4: new Tier4DeepReasoner({
         invoke: (_prompt, _timeout) =>
@@ -154,6 +155,7 @@ describe("pipeline/engine integration", () => {
       speaker: createTeamSpeaker("user-alice", "Alice", {
         speakerId: "spk_alice",
       }),
+      embedding: [0.1, 0.2, 0.3],
     });
 
     const first = await engine.evaluateUtterance(utterance);
@@ -215,17 +217,18 @@ describe("pipeline/engine integration", () => {
       preFilter: new PreFilter(),
       tier1: new Tier1StructuralDetector(),
       tier2: new Tier2Classifier({
-        invoke: (_input, _timeout) =>
-          Promise.resolve(
-            JSON.stringify({
-              intent: "commitment",
-              commitmentType: "scope",
-              tone: "neutral",
-              riskSignals: [],
-              extractedData: {},
-              confidence: 0.86,
-            })
-          ),
+        invoke: async () => ({
+          text: JSON.stringify({
+            intent: "commitment",
+            commitmentType: "scope",
+            tone: "neutral",
+            riskSignals: [],
+            extractedData: {},
+            confidence: 0.86,
+          }),
+          promptTokens: 50,
+          completionTokens: 30,
+        }),
       }),
       tier4: new Tier4DeepReasoner({
         invoke: (_prompt, _timeout) =>
@@ -293,17 +296,18 @@ describe("pipeline/engine integration", () => {
       preFilter: new PreFilter(),
       tier1: new Tier1StructuralDetector(),
       tier2: new Tier2Classifier({
-        invoke: (_input, _timeout) =>
-          Promise.resolve(
-            JSON.stringify({
-              intent: "filler",
-              commitmentType: null,
-              tone: "neutral",
-              riskSignals: [],
-              extractedData: {},
-              confidence: 0.92,
-            })
-          ),
+        invoke: async () => ({
+          text: JSON.stringify({
+            intent: "filler",
+            commitmentType: null,
+            tone: "neutral",
+            riskSignals: [],
+            extractedData: {},
+            confidence: 0.92,
+          }),
+          promptTokens: 50,
+          completionTokens: 30,
+        }),
       }),
       tier4: new Tier4DeepReasoner({
         invoke: () => Promise.reject(new Error("Tier4 should not run")),
@@ -360,17 +364,18 @@ describe("pipeline/engine integration", () => {
       preFilter: new PreFilter(),
       tier1: new Tier1StructuralDetector(),
       tier2: new Tier2Classifier({
-        invoke: (_input, _timeout) =>
-          Promise.resolve(
-            JSON.stringify({
-              intent: "commitment",
-              commitmentType: null,
-              tone: "neutral",
-              riskSignals: [],
-              extractedData: {},
-              confidence: 0.9,
-            })
-          ),
+        invoke: async () => ({
+          text: JSON.stringify({
+            intent: "commitment",
+            commitmentType: null,
+            tone: "neutral",
+            riskSignals: [],
+            extractedData: {},
+            confidence: 0.9,
+          }),
+          promptTokens: 50,
+          completionTokens: 30,
+        }),
       }),
       tier4: new Tier4DeepReasoner({
         invoke: (_prompt, _timeout) =>
@@ -442,17 +447,18 @@ describe("pipeline/engine integration", () => {
       preFilter: new PreFilter(),
       tier1: new Tier1StructuralDetector(),
       tier2: new Tier2Classifier({
-        invoke: (_input, _timeout) =>
-          Promise.resolve(
-            JSON.stringify({
-              intent: "filler",
-              commitmentType: null,
-              tone: "neutral",
-              riskSignals: [],
-              extractedData: {},
-              confidence: 0.92,
-            })
-          ),
+        invoke: async () => ({
+          text: JSON.stringify({
+            intent: "filler",
+            commitmentType: null,
+            tone: "neutral",
+            riskSignals: [],
+            extractedData: {},
+            confidence: 0.92,
+          }),
+          promptTokens: 50,
+          completionTokens: 30,
+        }),
       }),
       tier4: new Tier4DeepReasoner({
         invoke: () => Promise.reject(new Error("Tier4 should not run")),

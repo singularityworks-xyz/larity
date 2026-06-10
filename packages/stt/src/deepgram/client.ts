@@ -1,4 +1,4 @@
-import { createClient, type DeepgramClient } from "@deepgram/sdk";
+import { DeepgramClient } from "@deepgram/sdk";
 import { DEEPGRAM_API_KEY } from "../env";
 import { createSttLogger } from "../logger";
 
@@ -14,7 +14,7 @@ export function getDeepgramClient(): DeepgramClient {
     if (!DEEPGRAM_API_KEY) {
       throw new Error("DEEPGRAM_API_KEY is not set");
     }
-    client = createClient(DEEPGRAM_API_KEY);
+    client = new DeepgramClient({ apiKey: DEEPGRAM_API_KEY });
     log.info("Deepgram client initialized");
   }
   return client;

@@ -52,6 +52,7 @@ describe("buildPipelineTracePayload", () => {
         detections: [],
         technicalHit: false,
         blocklistHit: false,
+        pricingHit: false,
       },
       tier2: {
         intent: "commitment",
@@ -94,6 +95,7 @@ describe("buildPipelineTracePayload", () => {
         detections: [],
         technicalHit: false,
         blocklistHit: false,
+        pricingHit: false,
       },
       tier2: {
         intent: "concern",

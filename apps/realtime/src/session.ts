@@ -16,7 +16,10 @@
  * - Not authoritative
  */
 
+import { createRealtimeLogger } from "./logger";
 import type { RealtimeSocket, SessionConnection, SessionEntry } from "./types";
+
+const log = createRealtimeLogger("session");
 
 /**
  * In-memory session registry
@@ -59,14 +62,21 @@ export function addConnection(sessionId: string, socket: RealtimeSocket): void {
  */
 export function removeConnection(
   sessionId: string,
-  userId: string
+  userId: string,
+  closingSocket?: RealtimeSocket
 ): SessionEntry | undefined {
   const session = sessions.get(sessionId);
   if (!session) {
     return undefined;
   }
 
-  session.connections.delete(userId);
+  const currentConnection = session.connections.get(userId);
+  if (
+    currentConnection &&
+    (!closingSocket || currentConnection.socket === closingSocket)
+  ) {
+    session.connections.delete(userId);
+  }
 
   // If no connections left, remove the session entirely
   if (session.connections.size === 0) {
@@ -118,6 +128,10 @@ export function hasSession(sessionId: string): boolean {
 export function broadcast(sessionId: string, message: string): void {
   const session = sessions.get(sessionId);
   if (!session) {
+    log.warn(
+      { sessionId, knownSessions: [...sessions.keys()].slice(0, 5) },
+      "broadcast: session not found in map — dropped"
+    );
     return;
   }
 
@@ -139,12 +153,25 @@ export function sendToUser(
   message: string
 ): void {
   const connection = getConnection(sessionId, userId);
-  if (connection) {
-    try {
-      connection.socket.send(message);
-    } catch (_err) {
-      // Ignore send errors
-    }
+  if (!connection) {
+    const session = sessions.get(sessionId);
+    log.warn(
+      {
+        sessionId,
+        userId,
+        sessionExists: !!session,
+        knownUserIds: session
+          ? [...session.connections.keys()].slice(0, 10)
+          : [],
+      },
+      "sendToUser: no connection found for userId — message dropped"
+    );
+    return;
+  }
+  try {
+    connection.socket.send(message);
+  } catch (_err) {
+    // Ignore send errors
   }
 }
 
@@ -171,4 +198,12 @@ export function getTotalConnectionCount(): number {
  */
 export function getAllSessionIds(): string[] {
   return Array.from(sessions.keys());
+}
+
+/**
+ * Test-only reset: clears all session state.
+ * Must NOT be used in production code.
+ */
+export function __test_only_reset(): void {
+  sessions.clear();
 }

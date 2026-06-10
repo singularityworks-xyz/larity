@@ -43,6 +43,10 @@ export function speakerChannel(sessionId: string): string {
   return `meeting.speaker.${sessionId}`;
 }
 
+export function participantRoleChangeChannel(sessionId: string): string {
+  return `meeting.role.${sessionId}`;
+}
+
 export function audioChannel(sessionId: string): string {
   return `realtime.audio.${sessionId}`;
 }
@@ -60,6 +64,7 @@ const meetingSessionChannels = new Set([
   "ledger",
   "speaker",
   "pipeline",
+  "role",
 ]);
 
 const realtimeSessionChannels = new Set(["audio", "stt", "vad"]);
@@ -102,3 +107,4 @@ export function extractUserIdFromAlertChannel(
 export const ALERT_SHARED_PATTERN = "meeting.alert.*.shared";
 export const ALERT_PERSONAL_PATTERN = "meeting.alert.*.user.*";
 export const VAD_PATTERN = "realtime.vad.*";
+export const PARTICIPANT_ROLE_CHANGE_PATTERN = "meeting.role.*";
