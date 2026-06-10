@@ -123,6 +123,56 @@ export class SpeakerIdentifier {
     }
   }
 
+  changeParticipantRole(speakerId: string, role: "TEAM" | "EXTERNAL"): void {
+    const mapping = this.speakerMappings.get(speakerId);
+    if (mapping) {
+      mapping.speaker.type = role;
+      log.info(
+        { sessionId: this.sessionId, speakerId, role },
+        "Manually updated participant role in existing mapping"
+      );
+    } else {
+      let diarizationIndex = 0;
+      if (speakerId.startsWith("spk_")) {
+        const idxStr = speakerId.split("_")[1];
+        if (idxStr) {
+          const parsed = Number.parseInt(idxStr, 10);
+          if (!Number.isNaN(parsed)) {
+            diarizationIndex = parsed;
+          }
+        }
+      }
+
+      const speaker: SpeakerIdentity = {
+        speakerId,
+        type: role,
+        name: `Speaker ${diarizationIndex + 1}`,
+        diarizationIndices: [diarizationIndex],
+        isCurrentUser: false,
+        confidence: 1.0,
+      };
+
+      const newMapping: SpeakerMapping = {
+        diarizationIndex,
+        speaker,
+        confirmedAt: Date.now(),
+        confidence: 1.0,
+        lastUtteranceTs: Date.now(),
+      };
+
+      this.indexToSpeakerId.set(diarizationIndex, speakerId);
+      this.speakerMappings.set(speakerId, newMapping);
+      log.info(
+        { sessionId: this.sessionId, speakerId, diarizationIndex, role },
+        "Created new manual mapping for participant role"
+      );
+    }
+  }
+
+  getSpeakerMappingBySpeakerId(speakerId: string): SpeakerMapping | undefined {
+    return this.speakerMappings.get(speakerId);
+  }
+
   hydrate(mappings: Map<number, SpeakerMapping>): void {
     for (const [index, mapping] of mappings) {
       const speakerId = mapping.speaker.speakerId;

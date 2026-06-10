@@ -160,6 +160,48 @@ export class UtteranceFinalizer {
     }
   }
 
+  async processRetroactiveRoleChange(
+    sessionId: string,
+    speakerId: string,
+    newSpeaker: Utterance["speaker"]
+  ): Promise<void> {
+    const ringBuffer = this.ringBuffers.get(sessionId);
+    if (!ringBuffer) {
+      return;
+    }
+
+    const utterances = ringBuffer.getBySpeakerId(speakerId);
+
+    for (const utterance of utterances) {
+      const oldType = utterance.speaker.type;
+      if (
+        utterance.speaker.type === newSpeaker.type &&
+        utterance.speaker.userId === newSpeaker.userId
+      ) {
+        continue;
+      }
+
+      utterance.speaker = { ...newSpeaker };
+
+      await this.publishUtterance(utterance);
+
+      for (const handler of this.retroactiveHandlers) {
+        await handler(utterance, oldType);
+      }
+
+      log.info(
+        {
+          sessionId,
+          utteranceId: utterance.utteranceId,
+          speakerId,
+          newType: newSpeaker.type,
+          oldType,
+        },
+        "Retroactive manual role change applied"
+      );
+    }
+  }
+
   async process(result: SttResult): Promise<void> {
     const { sessionId, isFinal } = result;
 
