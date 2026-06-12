@@ -124,10 +124,19 @@ ${utterancesText}
 
       const updatedPersona = JSON.parse(responseText);
 
+      // Fetch the existing persona to perform a deep merge and avoid losing nested keys
+      const memberForPersona = await prisma.clientMember.findUnique({
+        where: { id: clientMemberId },
+        select: { persona: true },
+      });
+      const existingPersona = memberForPersona?.persona || {};
+      const mergedPersona = deepMerge(existingPersona, updatedPersona);
+
+      // Update ClientMember.persona in the DB
       await prisma.clientMember.update({
         where: { id: clientMemberId },
         data: {
-          persona: updatedPersona,
+          persona: mergedPersona,
         },
       });
 
@@ -138,4 +147,32 @@ ${utterancesText}
       throw error;
     }
   }
+}
+
+function deepMerge(target: unknown, source: unknown): unknown {
+  if (
+    target &&
+    typeof target === "object" &&
+    !Array.isArray(target) &&
+    source &&
+    typeof source === "object" &&
+    !Array.isArray(source)
+  ) {
+    const t = target as Record<string, unknown>;
+    const s = source as Record<string, unknown>;
+    const output = { ...t };
+    for (const key of Object.keys(s)) {
+      if (s[key] && typeof s[key] === "object" && !Array.isArray(s[key])) {
+        if (key in t) {
+          output[key] = deepMerge(t[key], s[key]);
+        } else {
+          Object.assign(output, { [key]: s[key] });
+        }
+      } else {
+        Object.assign(output, { [key]: s[key] });
+      }
+    }
+    return output;
+  }
+  return source;
 }
