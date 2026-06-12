@@ -1,7 +1,12 @@
 import { Info, Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
-import { buttonClass, inputClass, labelClass } from "../../../lib/ui";
+import {
+  buttonClass,
+  formErrorClass,
+  inputClass,
+  labelClass,
+} from "../../../lib/ui";
 import { useAuthSession } from "../../auth/use-session";
 import type { ClientMember } from "../types";
 import { useClientMembers } from "../use-client-members";
@@ -20,25 +25,34 @@ export function ClientMembersRoster({ clientId }: { clientId: string }) {
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [newMemberImage, setNewMemberImage] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!newMemberName.trim()) {
       return;
     }
+    setError(null);
 
-    await createMember.mutateAsync({
-      clientId,
-      name: newMemberName.trim(),
-      email: newMemberEmail.trim() || undefined,
-      image: newMemberImage.trim() || undefined,
-      role: "CONTACT",
-    });
+    try {
+      await createMember.mutateAsync({
+        clientId,
+        name: newMemberName.trim(),
+        email: newMemberEmail.trim() || undefined,
+        image: newMemberImage.trim() || undefined,
+        role: "CONTACT",
+      });
 
-    setNewMemberName("");
-    setNewMemberEmail("");
-    setNewMemberImage("");
-    setIsAdding(false);
+      setNewMemberName("");
+      setNewMemberEmail("");
+      setNewMemberImage("");
+      setIsAdding(false);
+    } catch (err) {
+      console.error("Failed to add member:", err);
+      const message =
+        err instanceof Error ? err.message : "Failed to add member";
+      setError(message);
+    }
   }
 
   if (isLoading) {
@@ -114,6 +128,11 @@ export function ClientMembersRoster({ clientId }: { clientId: string }) {
                   value={newMemberImage}
                 />
               </div>
+              {error ? (
+                <div className="md:col-span-2">
+                  <p className={formErrorClass}>{error}</p>
+                </div>
+              ) : null}
               <div className="mt-2 flex justify-end gap-2 md:col-span-2">
                 <button
                   className={buttonClass({ variant: "ghost" })}
@@ -173,6 +192,7 @@ function EditableMemberCard({
   const [editName, setEditName] = useState(member.name);
   const [editEmail, setEditEmail] = useState(member.email || "");
   const [editImage, setEditImage] = useState(member.image || "");
+  const [error, setError] = useState<string | null>(null);
 
   const updateMember = useUpdateClientMember();
   const deleteMember = useDeleteClientMember();
@@ -182,17 +202,25 @@ function EditableMemberCard({
     if (!editName.trim()) {
       return;
     }
+    setError(null);
 
-    await updateMember.mutateAsync({
-      clientId,
-      memberId: member.id,
-      data: {
-        name: editName.trim(),
-        email: editEmail.trim() || undefined,
-        image: editImage.trim() || undefined,
-      },
-    });
-    setIsEditing(false);
+    try {
+      await updateMember.mutateAsync({
+        clientId,
+        memberId: member.id,
+        data: {
+          name: editName.trim(),
+          email: editEmail.trim() || undefined,
+          image: editImage.trim() || undefined,
+        },
+      });
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Failed to update member:", err);
+      const message =
+        err instanceof Error ? err.message : "Failed to update member";
+      setError(message);
+    }
   }
 
   async function handleDelete() {
@@ -200,7 +228,15 @@ function EditableMemberCard({
     if (!confirm(`Are you sure you want to remove ${member.name}?`)) {
       return;
     }
-    await deleteMember.mutateAsync({ clientId, memberId: member.id });
+    setError(null);
+    try {
+      await deleteMember.mutateAsync({ clientId, memberId: member.id });
+    } catch (err) {
+      console.error("Failed to delete member:", err);
+      const message =
+        err instanceof Error ? err.message : "Failed to delete member";
+      setError(message);
+    }
   }
 
   if (isEditing) {
@@ -258,6 +294,7 @@ function EditableMemberCard({
             value={editImage}
           />
         </div>
+        {error ? <p className={formErrorClass}>{error}</p> : null}
         <div className="mt-2 flex items-center justify-between">
           <button
             className="font-medium text-[11px] text-danger-fg transition-colors hover:text-danger-fg/80"
