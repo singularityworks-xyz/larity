@@ -260,7 +260,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 * **Accelerator, NOT a gate** — fires instant alerts but everything passes through to Tier 2
 
 #### Tier 2: Small LLM Classification (~$0.002/call, <200ms)
-* **Groq** structured outputs (**`GROQ_TIER2_MODEL`**) — JSON Schema **`strict`**; optional slots expressed as **`null`** keys per provider rules (see `architecture_decisions.md` **B.18**)
+* **SambaNova** structured outputs (**`SAMBANOVA_TIER2_MODEL`**) — JSON Schema **`strict`**; optional slots expressed as **`null`** keys per provider rules (see `architecture_decisions.md` **B.18**)
 * Input: utterance + speaker identity + last 2-3 utterances from same speaker (cross-utterance context)
 * **Replaces ALL old regex pattern libraries** (risky language, pressure tactics, tone, scope creep, backtracking, vague language)
 * Returns: intent, commitmentType, tone, riskSignals, extractedData, confidence, and `topicDelta` fields
@@ -290,7 +290,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 | Model | Purpose | Cost/call | Example |
 |-------|---------|-----------|---------|
 | **Embedding** | Search, similarity, novelty | ~$0.00002 | text-embedding-004 (Gemini via @google/genai) |
-| **Small LLM** | Classification, extraction | ~$0.002 | Groq (`GROQ_TIER2_MODEL`) |
+| **Small LLM** | Classification, extraction | ~$0.002 | SambaNova (`SAMBANOVA_TIER2_MODEL`) |
 | **Large LLM** | Deep reasoning | ~$0.02 | gemini-2.5-pro |
 
 **Total cost per 1-hour meeting:** ~$0.76 in single-channel fallback, ~$1.22 in dual-channel default (includes Deepgram channel-minute cost; LLM/embedding tiers remain ~$0.30).

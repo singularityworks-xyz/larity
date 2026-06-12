@@ -675,7 +675,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [x] Set up direct Gemini integration (`@google/genai`) for small LLM (`gemini-3.1-flash-lite`)
+- [x] Set up direct integration for small LLM using SambaNova (SAMBANOVA_TIER2_MODEL via OpenAI SDK) - *Updated from pre-migration gemini-3.1-flash-lite history*
 - [x] Define Tier 2 input schema:
   ```ts
   interface Tier2Input {
@@ -775,7 +775,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **Related (gate):** Tier 4 runs only when **`runTier4 = !shouldStopForDeepReasoning ∧ (highSignal ∨ forceTier4)`**; Tier 3’s **`forceTier4`** alone does **not** beat Tier 2’s filler/general stop (B.13).
 
-**Wire-up:** `packages/meeting-mode/src/pipeline/tier4.ts` (`Tier4DeepReasoner`), `types.ts` (Zod + **`Tier2Classification`** / **`Tier4Context`**), `tier2.ts` (**Groq** JSON Schema), `tier4-context.ts` (preload hydrate + assemble), `tier4-alert.ts` (routing/coercion → `Alert`), `engine.ts` (gate → **queued** evaluate + **parallel** tiers/constraints), `index.ts` (**cached** Redis **`AlertPublisher`** per session), `env.ts` (`GEMINI_TIER4_MODEL`, `GEMINI_TIER4_TIMEOUT_MS`, **`MERGE_GROUPING_MS`**, **`MERGE_PUBLISH_GAP_MS`**, **`LEDGER_SNAPSHOT_DEBOUNCE_MS`**, **`COST_CAP_CACHE_TTL_MS`**, **`GROQ_TIER2_MODEL`**, `PIPELINE_TRACE_PRETTY_JSON`).
+**Wire-up:** `packages/meeting-mode/src/pipeline/tier4.ts` (`Tier4DeepReasoner`), `types.ts` (Zod + **`Tier2Classification`** / **`Tier4Context`**), `tier2.ts` (**SambaNova** JSON Schema), `tier4-context.ts` (preload hydrate + assemble), `tier4-alert.ts` (routing/coercion → `Alert`), `engine.ts` (gate → **queued** evaluate + **parallel** tiers/constraints), `index.ts` (**cached** Redis **`AlertPublisher`** per session), `env.ts` (`GEMINI_TIER4_MODEL`, `GEMINI_TIER4_TIMEOUT_MS`, **`MERGE_GROUPING_MS`**, **`MERGE_PUBLISH_GAP_MS`**, **`LEDGER_SNAPSHOT_DEBOUNCE_MS`**, **`COST_CAP_CACHE_TTL_MS`**, **`SAMBANOVA_TIER2_MODEL`**, `PIPELINE_TRACE_PRETTY_JSON`).
 
 - [x] Set up large LLM integration (Gemini Pro–class via `GEMINI_TIER4_MODEL`, `@google/genai`)
 - [x] Define Tier 4 context assembly:

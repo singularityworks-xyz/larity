@@ -64,16 +64,17 @@ export const PIPELINE_TRACE_PRETTY_JSON =
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 export const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
-export const GROQ_TIER2_MODEL =
-  process.env.GROQ_TIER2_MODEL || "openai/gpt-oss-120b";
+export const SAMBANOVA_API_KEY = process.env.SAMBANOVA_API_KEY || "";
+export const SAMBANOVA_TIER2_MODEL =
+  process.env.SAMBANOVA_TIER2_MODEL || "gpt-oss-120b";
 
 const tier2TimeoutParsed = Number.parseInt(
-  process.env.GROQ_TIER2_TIMEOUT_MS || "3000",
+  process.env.SAMBANOVA_TIER2_TIMEOUT_MS || "3000",
   10
 );
 
-/** Groq Tier 2 request timeout (`tier2.ts`). Override via `GROQ_TIER2_TIMEOUT_MS`. Default 3000ms (raised from 1500ms when Tier2 `max_tokens` was increased to 1024). */
-export const GROQ_TIER2_TIMEOUT_MS =
+/** SambaNova Tier 2 request timeout (`tier2.ts`). Override via `SAMBANOVA_TIER2_TIMEOUT_MS`. Default 3000ms (raised from 1500ms when Tier2 `max_tokens` was increased to 1024). */
+export const SAMBANOVA_TIER2_TIMEOUT_MS =
   Number.isFinite(tier2TimeoutParsed) && tier2TimeoutParsed > 0
     ? tier2TimeoutParsed
     : 3000;
@@ -102,9 +103,9 @@ export function validateEnv(): void {
       "GEMINI_API_KEY is required for meeting intelligence (topics, embeddings, Tier 4)"
     );
   }
-  if (!GROQ_API_KEY) {
+  if (!SAMBANOVA_API_KEY) {
     throw new Error(
-      "GROQ_API_KEY is required for Tier 2 classification (meeting-mode)"
+      "SAMBANOVA_API_KEY is required for Tier 2 classification (meeting-mode)"
     );
   }
 }
