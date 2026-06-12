@@ -61,6 +61,7 @@
         "@fontsource/geist-mono": "^5.2.7",
         "@fontsource/geist-sans": "^5.2.5",
         "@fontsource/share-tech-mono": "^5.2.7",
+        "@larity/infra": "workspace:*",
         "@tanstack/react-query": "^5.90.3",
         "@tauri-apps/api": "^2",
         "@tauri-apps/plugin-opener": "^2",

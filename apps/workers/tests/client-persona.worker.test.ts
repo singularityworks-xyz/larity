@@ -1,6 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { ClientPersonaWorker } from "../src/client-persona.worker";
 
+mock.module("bullmq", () => ({
+  Worker: class MockWorker {
+    readonly name: string;
+    on = mock();
+    constructor(queueName: string) {
+      this.name = queueName;
+    }
+    isPaused() {
+      return false;
+    }
+    close() {
+      return Promise.resolve();
+    }
+    getJobCounts() {
+      return Promise.resolve({
+        active: 0,
+        waiting: 0,
+        failed: 0,
+        completed: 0,
+      });
+    }
+  },
+}));
+
 mock.module("../src/lib/gemini", () => ({
   ai: {
     models: {
