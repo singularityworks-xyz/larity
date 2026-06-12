@@ -675,7 +675,7 @@ The `packages/stt` package hosts Deepgram integration. **Production host path:**
 
 **packages/meeting-mode**
 
-- [x] Set up direct Gemini integration (`@google/genai`) for small LLM (`gemini-3.1-flash-lite`)
+- [x] Set up direct integration for small LLM using SambaNova (SAMBANOVA_TIER2_MODEL via OpenAI SDK) - *Updated from pre-migration gemini-3.1-flash-lite history*
 - [x] Define Tier 2 input schema:
   ```ts
   interface Tier2Input {

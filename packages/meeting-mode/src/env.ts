@@ -64,14 +64,12 @@ export const PIPELINE_TRACE_PRETTY_JSON =
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 export const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
-export const SAMBANOVA_API_KEY = process.env.SAMBANOVA_API_KEY || GROQ_API_KEY; // fallback to GROQ for seamless transition if env not updated yet
+export const SAMBANOVA_API_KEY = process.env.SAMBANOVA_API_KEY || "";
 export const SAMBANOVA_TIER2_MODEL =
   process.env.SAMBANOVA_TIER2_MODEL || "gpt-oss-120b";
 
 const tier2TimeoutParsed = Number.parseInt(
-  process.env.SAMBANOVA_TIER2_TIMEOUT_MS ||
-    process.env.GROQ_TIER2_TIMEOUT_MS ||
-    "3000",
+  process.env.SAMBANOVA_TIER2_TIMEOUT_MS || "3000",
   10
 );
 
