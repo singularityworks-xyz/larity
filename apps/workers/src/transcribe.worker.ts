@@ -368,10 +368,16 @@ export class TranscribeWorker extends BaseWorker<
             { meetingId, clientMemberId: memberId },
             "Chaining client persona extraction job"
           );
-          await clientPersonaQueue.add("client.personaExtraction", {
-            meetingId,
-            clientMemberId: memberId,
-          });
+          await clientPersonaQueue.add(
+            "client.personaExtraction",
+            {
+              meetingId,
+              clientMemberId: memberId,
+            },
+            {
+              jobId: `client.personaExtraction:${meetingId}:${memberId}`,
+            }
+          );
         }
       }
 
