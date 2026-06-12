@@ -1,6 +1,6 @@
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useClientMembers } from "../../features/clients/use-client-members";
 import { ExpectedParticipantsPicker } from "../../features/meetings/components/expected-participants-picker";
 import { useClients } from "../../features/meetings/use-clients";
@@ -52,11 +52,12 @@ function scheduledIsoFromForm(
 
 export function StartMeetingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const clientsQuery = useClients();
   const startMeetingMutation = useStartMeeting();
   const createParticipant = useCreateMeetingParticipant();
 
-  const [clientId, setClientId] = useState("");
+  const [clientId, setClientId] = useState(searchParams.get("clientId") || "");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [agenda, setAgenda] = useState("");

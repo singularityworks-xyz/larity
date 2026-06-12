@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { InitialsAvatar } from "../../components/avatar";
 import { ClientMembersRoster } from "../../features/clients/components/client-members-roster";
 import { useClient } from "../../features/clients/use-client";
@@ -10,6 +10,7 @@ import { buttonClass, cx, inputClass } from "../../lib/ui";
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: keep as is
 export function ClientDetailPage() {
   const { clientId } = useParams<{ clientId: string }>();
+  const navigate = useNavigate();
   const { data: client, isLoading: clientLoading } = useClient(clientId ?? "");
   const { data: meetings, isLoading: meetingsLoading } = useMeetings({
     clientId,
@@ -181,6 +182,9 @@ export function ClientDetailPage() {
                 </button>
                 <button
                   className={buttonClass({ variant: "primary", size: "sm" })}
+                  onClick={() =>
+                    navigate(`/meetings/start?clientId=${client.id}`)
+                  }
                   type="button"
                 >
                   Schedule
@@ -282,6 +286,7 @@ export function ClientDetailPage() {
           <h2 className="m-0 font-medium text-[14px] text-fg">Meetings</h2>
           <button
             className="cursor-pointer border-0 bg-transparent font-medium text-[12px] text-accent transition-colors hover:text-fg"
+            onClick={() => navigate("/home")}
             type="button"
           >
             View All
@@ -301,16 +306,24 @@ export function ClientDetailPage() {
         {!meetingsLoading && meetings && meetings.length > 0 && (
           <div className="flex flex-col overflow-hidden rounded-[var(--radius-1)] border border-border bg-bg-elevated">
             {meetings.map((meeting, i) => (
-              <div
-                className="group fade-in slide-in-from-bottom-1 flex animate-in items-center justify-between border-border border-b p-3.5 transition-colors duration-150 last:border-b-0 hover:bg-bg-subtle"
+              <button
+                className="group fade-in slide-in-from-bottom-1 flex w-full animate-in items-center justify-between border-0 border-border border-b border-solid bg-transparent p-3.5 text-left transition-colors duration-150 last:border-b-0 hover:bg-bg-subtle"
                 key={meeting.id}
+                onClick={() =>
+                  navigate(
+                    meeting.status === "ENDED"
+                      ? `/meeting-post/${meeting.id}`
+                      : `/meeting/${meeting.id}`
+                  )
+                }
                 style={{
                   animationDelay: `${i * 40}ms`,
                   animationFillMode: "both",
                 }}
+                type="button"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-[4px] border border-border bg-bg text-fg-muted transition-colors group-hover:text-fg">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-[4px] border border-border border-solid bg-bg text-fg-muted transition-colors group-hover:text-fg">
                     <svg
                       aria-labelledby={`meetingIcon-${meeting.id}`}
                       className="h-3.5 w-3.5"
@@ -321,6 +334,7 @@ export function ClientDetailPage() {
                       <title id={`meetingIcon-${meeting.id}`}>Meeting</title>
                       <path
                         d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                        stroke="currentColor"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth="1.5"
@@ -343,7 +357,7 @@ export function ClientDetailPage() {
                     className={cx(
                       "rounded-[3px] px-1.5 py-0.5 font-medium text-[10px] uppercase tracking-wide",
                       meeting.status === "SCHEDULED"
-                        ? "border border-border bg-bg-emphasis text-fg"
+                        ? "border border-border border-solid bg-bg-emphasis text-fg"
                         : "bg-bg-subtle text-fg-muted"
                     )}
                   >
@@ -365,7 +379,7 @@ export function ClientDetailPage() {
                     />
                   </svg>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
