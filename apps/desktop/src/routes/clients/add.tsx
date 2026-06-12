@@ -102,9 +102,11 @@ export function AddClientPage() {
       return;
     }
 
+    let createdClient: { id: string } | null = null;
     try {
       setIsCreating(true);
       const client = await createClient.mutateAsync(parsed.data);
+      createdClient = client;
 
       // Create all pending members sequentially
       for (const member of pendingMembers) {
@@ -116,11 +118,23 @@ export function AddClientPage() {
 
       navigate("/meetings/start");
     } catch (requestError) {
+      if (createdClient) {
+        try {
+          await api.delete(`/clients/${createdClient.id}`);
+        } catch (rollbackError) {
+          console.error(
+            "Rollback failed for client:",
+            createdClient.id,
+            rollbackError
+          );
+        }
+      }
       const message =
         requestError instanceof Error
           ? requestError.message
           : "Could not create client";
       setError(message);
+    } finally {
       setIsCreating(false);
     }
   }
