@@ -77,28 +77,37 @@ export function ClientMembersRoster({ clientId }: { clientId: string }) {
           >
             <div className="mb-4 grid grid-cols-1 gap-4 rounded-lg border border-border bg-bg-elevated p-4 md:grid-cols-2">
               <div className="grid gap-1.5">
-                <div className={labelClass}>Name</div>
+                <label className={labelClass} htmlFor="add-member-name">
+                  Name
+                </label>
                 <input
                   autoFocus
                   className={inputClass}
+                  id="add-member-name"
                   onChange={(e) => setNewMemberName(e.target.value)}
                   required
                   value={newMemberName}
                 />
               </div>
               <div className="grid gap-1.5">
-                <div className={labelClass}>Email (optional)</div>
+                <label className={labelClass} htmlFor="add-member-email">
+                  Email (optional)
+                </label>
                 <input
                   className={inputClass}
+                  id="add-member-email"
                   onChange={(e) => setNewMemberEmail(e.target.value)}
                   type="email"
                   value={newMemberEmail}
                 />
               </div>
               <div className="grid gap-1.5 md:col-span-2">
-                <div className={labelClass}>Image URL (optional)</div>
+                <label className={labelClass} htmlFor="add-member-image">
+                  Image URL (optional)
+                </label>
                 <input
                   className={inputClass}
+                  id="add-member-image"
                   onChange={(e) => setNewMemberImage(e.target.value)}
                   placeholder="https://example.com/avatar.png"
                   type="url"
@@ -203,28 +212,46 @@ function EditableMemberCard({
         onSubmit={handleSave}
       >
         <div className="grid gap-1.5">
-          <div className={labelClass}>Name</div>
+          <label
+            className={labelClass}
+            htmlFor={`edit-member-name-${member.id}`}
+          >
+            Name
+          </label>
           <input
             autoFocus
             className={inputClass}
+            id={`edit-member-name-${member.id}`}
             onChange={(e) => setEditName(e.target.value)}
             required
             value={editName}
           />
         </div>
         <div className="grid gap-1.5">
-          <div className={labelClass}>Email (optional)</div>
+          <label
+            className={labelClass}
+            htmlFor={`edit-member-email-${member.id}`}
+          >
+            Email (optional)
+          </label>
           <input
             className={inputClass}
+            id={`edit-member-email-${member.id}`}
             onChange={(e) => setEditEmail(e.target.value)}
             type="email"
             value={editEmail}
           />
         </div>
         <div className="grid gap-1.5">
-          <div className={labelClass}>Image URL (optional)</div>
+          <label
+            className={labelClass}
+            htmlFor={`edit-member-image-${member.id}`}
+          >
+            Image URL (optional)
+          </label>
           <input
             className={inputClass}
+            id={`edit-member-image-${member.id}`}
             onChange={(e) => setEditImage(e.target.value)}
             placeholder="https://..."
             type="url"
