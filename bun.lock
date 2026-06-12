@@ -17,6 +17,7 @@
         "@types/amqplib": "^0.10.8",
         "@types/bun": "latest",
         "@types/ioredis-mock": "^8.2.7",
+        "dotenv": "^17.4.2",
         "husky": "^9.1.7",
         "ioredis-mock": "^8.13.1",
         "prisma": "^7.2.0",
