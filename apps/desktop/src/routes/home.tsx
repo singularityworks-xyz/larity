@@ -4,6 +4,7 @@ import { HealthStrip } from "../components/home/health-strip";
 import { NextMeetingCard } from "../components/home/next-meeting-card";
 import { OpenCommitments } from "../components/home/open-commitments";
 import { RecentActivity } from "../components/home/recent-activity";
+import { RecentClientsPanel } from "../components/home/recent-clients";
 import { TodayPanel } from "../components/home/today-panel";
 import { useAuthSession } from "../features/auth/use-session";
 import { useHealth } from "../features/home/use-health";
@@ -374,6 +375,8 @@ export function HomePage() {
             loading={isLoading}
             meeting={data?.nextMeeting ?? null}
           />
+
+          <RecentClientsPanel />
 
           <div className={homeGridClass}>
             <TodayPanel
