@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, mock } from "bun:test";
-import { transcribeAudioBuffer } from "../../src/deepgram/batch";
 
 const mockTranscribeFile = mock(() => {
   return {
@@ -61,6 +60,8 @@ mock.module("../../src/deepgram/client", () => ({
     },
   }),
 }));
+
+import { transcribeAudioBuffer } from "../../src/deepgram/batch";
 
 describe("transcribeAudioBuffer", () => {
   const dummyBuffer = Buffer.from([0, 1, 2, 3]);
