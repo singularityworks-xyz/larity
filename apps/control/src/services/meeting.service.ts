@@ -460,7 +460,6 @@ export const MeetingService = {
     const meeting = await prisma.meeting.findUnique({
       where: { id: meetingId },
       select: {
-        speakerMappings: true,
         clientId: true,
       },
     });
@@ -483,16 +482,19 @@ export const MeetingService = {
       throw new Error("Client member does not belong to the meeting's client");
     }
 
-    const currentMappings =
-      (meeting.speakerMappings as Record<string, string>) || {};
+    const updatePayload = JSON.stringify({ [deepgramIndex]: clientMemberId });
 
-    currentMappings[deepgramIndex] = clientMemberId;
+    const result = await prisma.$queryRaw<unknown[]>`
+      UPDATE meetings
+      SET "speakerMappings" = COALESCE("speakerMappings", '{}'::jsonb) || ${updatePayload}::jsonb
+      WHERE id = ${meetingId}
+      RETURNING *
+    `;
 
-    return prisma.meeting.update({
-      where: { id: meetingId },
-      data: {
-        speakerMappings: currentMappings,
-      },
-    });
+    if (!result || result.length === 0) {
+      throw new Error("Meeting not found");
+    }
+
+    return result[0];
   },
 };
