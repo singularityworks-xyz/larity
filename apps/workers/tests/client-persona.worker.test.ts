@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
-import { ClientPersonaWorker } from "../src/client-persona.worker";
 
 mock.module("bullmq", () => ({
   Worker: class MockWorker {
@@ -55,9 +54,12 @@ mock.module("@larity/infra/prisma/client", () => ({
 }));
 
 describe("ClientPersonaWorker", () => {
-  let worker: ClientPersonaWorker;
+  let worker: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    const { ClientPersonaWorker } = await import(
+      "../src/client-persona.worker"
+    );
     worker = new ClientPersonaWorker();
     mockPrismaClientMemberFindUnique.mockReset();
     mockPrismaClientMemberUpdate.mockReset();
