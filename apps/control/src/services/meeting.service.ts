@@ -459,11 +459,28 @@ export const MeetingService = {
   ) {
     const meeting = await prisma.meeting.findUnique({
       where: { id: meetingId },
-      select: { speakerMappings: true },
+      select: {
+        speakerMappings: true,
+        clientId: true,
+      },
     });
 
     if (!meeting) {
       throw new Error("Meeting not found");
+    }
+
+    // Load the target member and verify tenant boundaries
+    const member = await prisma.clientMember.findUnique({
+      where: { id: clientMemberId },
+      select: { clientId: true },
+    });
+
+    if (!member) {
+      throw new Error("Client member not found");
+    }
+
+    if (member.clientId !== meeting.clientId) {
+      throw new Error("Client member does not belong to the meeting's client");
     }
 
     const currentMappings =
