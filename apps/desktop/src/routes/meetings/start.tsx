@@ -73,8 +73,12 @@ export function StartMeetingPage() {
   }, [clientsQuery.data, clientId]);
 
   const isSubmitDisabled = useMemo(() => {
-    return clientId.trim().length === 0 || startMeetingMutation.isPending;
-  }, [clientId, startMeetingMutation.isPending]);
+    return (
+      clientId.trim().length === 0 ||
+      startMeetingMutation.isPending ||
+      createParticipant.isPending
+    );
+  }, [clientId, startMeetingMutation.isPending, createParticipant.isPending]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
