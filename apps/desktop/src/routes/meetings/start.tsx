@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useClientMembers } from "../../features/clients/use-client-members";
 import { ExpectedParticipantsPicker } from "../../features/meetings/components/expected-participants-picker";
 import { useClients } from "../../features/meetings/use-clients";
 import { useCreateMeetingParticipant } from "../../features/meetings/use-create-meeting-participant";
@@ -63,6 +64,8 @@ export function StartMeetingPage() {
   const [scheduledAtLocal, setScheduledAtLocal] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const { data: members } = useClientMembers(clientId);
+
   // New state for expected participants
   const [expectedMemberIds, setExpectedMemberIds] = useState<Set<string>>(
     new Set()
@@ -107,15 +110,20 @@ export function StartMeetingPage() {
       });
 
       // Add participants to the created meeting
-      if (expectedMemberIds.size > 0) {
+      if (expectedMemberIds.size > 0 && members) {
         await Promise.all(
-          Array.from(expectedMemberIds).map((memberId) =>
-            createParticipant.mutateAsync({
+          Array.from(expectedMemberIds).map((memberId) => {
+            const member = members.find((m) => m.id === memberId);
+            if (!member) {
+              return Promise.resolve();
+            }
+            return createParticipant.mutateAsync({
               meetingId: session.sessionId,
-              clientMemberId: memberId,
-              status: "INVITED",
-            })
-          )
+              externalName: member.name,
+              externalEmail: member.email || undefined,
+              role: "PARTICIPANT",
+            });
+          })
         );
       }
 

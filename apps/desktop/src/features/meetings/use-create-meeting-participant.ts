@@ -3,10 +3,11 @@ import { api } from "../../lib/api";
 
 interface CreateMeetingParticipantInput {
   meetingId: string;
-  clientMemberId?: string;
   userId?: string;
+  externalName?: string;
+  externalEmail?: string;
   role?: string;
-  status?: string;
+  attendedAt?: string;
 }
 
 export function useCreateMeetingParticipant() {
@@ -15,10 +16,11 @@ export function useCreateMeetingParticipant() {
   return useMutation({
     mutationFn: (input: CreateMeetingParticipantInput) => {
       return api.post(`/meetings/${input.meetingId}/participants`, {
-        clientMemberId: input.clientMemberId,
         userId: input.userId,
+        externalName: input.externalName,
+        externalEmail: input.externalEmail,
         role: input.role,
-        status: input.status,
+        attendedAt: input.attendedAt,
       });
     },
     onSuccess: (_, variables) => {
