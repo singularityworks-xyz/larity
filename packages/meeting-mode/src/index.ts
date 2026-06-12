@@ -1,3 +1,4 @@
+import { prisma } from "@larity/infra/prisma/client";
 import {
   connectRedis,
   disconnectRedis,
@@ -182,6 +183,42 @@ async function main(): Promise<void> {
     },
     getCurrentTopicLabel: async (sessionId, topicId) =>
       finalizer?.getTopicLabel(sessionId, topicId),
+    getKnownClientMembers: async (sessionId) => {
+      try {
+        const meeting = await prisma.meeting.findUnique({
+          where: { id: sessionId },
+          select: {
+            client: {
+              select: { members: { select: { id: true, name: true } } },
+            },
+          },
+        });
+        return meeting?.client?.members ?? [];
+      } catch (err) {
+        rootLogger.error(
+          { err, sessionId },
+          "Failed to fetch known client members"
+        );
+        return [];
+      }
+    },
+    onSpeakerIdentityGuessed: (sessionId, index, memberId) => {
+      const event = {
+        type: "SPEAKER_IDENTITY_GUESSED",
+        payload: { deepgramIndex: index, clientMemberId: memberId },
+      };
+      redisClient
+        .publish(
+          `meeting.speaker_identity_guessed.${sessionId}`,
+          JSON.stringify(event)
+        )
+        .catch((err) =>
+          rootLogger.warn(
+            { err, sessionId },
+            "Failed to publish SPEAKER_IDENTITY_GUESSED event"
+          )
+        );
+    },
   });
 
   finalizer.onUtterancePublished(async (utterance) => {

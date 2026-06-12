@@ -82,4 +82,34 @@ describe("pipeline/tier2", () => {
 
     expect(result.shouldStopForDeepReasoning).toBe(true);
   });
+
+  it("extracts identityGuess from the classification", async () => {
+    const classifier = new Tier2Classifier({
+      invoke: async () => ({
+        text: JSON.stringify({
+          intent: "general",
+          commitmentType: null,
+          tone: "neutral",
+          riskSignals: [],
+          extractedData: {},
+          confidence: 0.8,
+          identityGuess: { index: "1001", memberId: "client-member-1" },
+        }),
+        promptTokens: 0,
+        completionTokens: 0,
+      }),
+    });
+
+    const result = await classifier.classify({
+      utterance: "Hi I am Alice from ClientCo",
+      speaker: createTeamSpeaker("user-1001", "1001"),
+      recentSameSpeaker: [],
+      knownClientMembers: [{ id: "client-member-1", name: "Alice" }],
+    });
+
+    expect(result.classification.identityGuess).toEqual({
+      index: "1001",
+      memberId: "client-member-1",
+    });
+  });
 });

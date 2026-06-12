@@ -1,7 +1,9 @@
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ExpectedParticipantsPicker } from "../../features/meetings/components/expected-participants-picker";
 import { useClients } from "../../features/meetings/use-clients";
+import { useCreateMeetingParticipant } from "../../features/meetings/use-create-meeting-participant";
 import { useStartMeeting } from "../../features/meetings/use-start-meeting";
 import {
   buttonClass,
@@ -51,6 +53,7 @@ export function StartMeetingPage() {
   const navigate = useNavigate();
   const clientsQuery = useClients();
   const startMeetingMutation = useStartMeeting();
+  const createParticipant = useCreateMeetingParticipant();
 
   const [clientId, setClientId] = useState("");
   const [title, setTitle] = useState("");
@@ -59,6 +62,11 @@ export function StartMeetingPage() {
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("now");
   const [scheduledAtLocal, setScheduledAtLocal] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // New state for expected participants
+  const [expectedMemberIds, setExpectedMemberIds] = useState<Set<string>>(
+    new Set()
+  );
 
   const selectedClient = useMemo(() => {
     return (clientsQuery.data ?? []).find((c) => c.id === clientId);
@@ -93,6 +101,19 @@ export function StartMeetingPage() {
         ...(agenda.trim() ? { agenda: agenda.trim() } : {}),
         ...(scheduledIso ? { scheduledAt: scheduledIso } : {}),
       });
+
+      // Add participants to the created meeting
+      if (expectedMemberIds.size > 0) {
+        await Promise.all(
+          Array.from(expectedMemberIds).map((memberId) =>
+            createParticipant.mutateAsync({
+              meetingId: session.sessionId,
+              clientMemberId: memberId,
+              status: "INVITED",
+            })
+          )
+        );
+      }
 
       navigate(`/meeting/${session.sessionId}`, {
         state: {
@@ -135,7 +156,10 @@ export function StartMeetingPage() {
               <select
                 className={selectClass}
                 id="meeting-client"
-                onChange={(event) => setClientId(event.target.value)}
+                onChange={(event) => {
+                  setClientId(event.target.value);
+                  setExpectedMemberIds(new Set()); // Reset on client change
+                }}
                 required
                 value={clientId}
               >
@@ -162,6 +186,12 @@ export function StartMeetingPage() {
               />
             </div>
           </div>
+
+          <ExpectedParticipantsPicker
+            clientId={clientId}
+            onSelectionChange={setExpectedMemberIds}
+            selectedIds={expectedMemberIds}
+          />
 
           <div className={formGroupClass}>
             <span className={labelClass}>Start time</span>
@@ -234,7 +264,7 @@ export function StartMeetingPage() {
             disabled={isSubmitDisabled}
             type="submit"
           >
-            {startMeetingMutation.isPending
+            {startMeetingMutation.isPending || createParticipant.isPending
               ? "Starting..."
               : "Start and enter room"}
           </button>

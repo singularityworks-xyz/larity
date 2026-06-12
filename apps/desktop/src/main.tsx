@@ -12,6 +12,8 @@ import {
   rootIndexLoader,
 } from "./routes/_guard";
 import { AddClientPage } from "./routes/clients/add";
+import { ClientDetailPage } from "./routes/clients/detail";
+import { ClientsPage } from "./routes/clients/index";
 import { HomePage } from "./routes/home";
 import { LoginPage } from "./routes/login";
 import { MeetingPage } from "./routes/meeting/$session-id";
@@ -61,6 +63,16 @@ const router = createBrowserRouter([
         path: "home",
         loader: authGateLoader,
         element: <HomePage />,
+      },
+      {
+        path: "clients",
+        loader: authGateLoader,
+        element: <ClientsPage />,
+      },
+      {
+        path: "clients/:clientId",
+        loader: authGateLoader,
+        element: <ClientDetailPage />,
       },
       {
         path: "clients/add",
