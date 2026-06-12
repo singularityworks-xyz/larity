@@ -119,7 +119,7 @@ ${utterancesText}
       const responseText = response.text;
       if (!responseText) {
         this.log.warn("Empty response from Gemini");
-        return { success: false };
+        throw new Error("Empty Gemini response for persona extraction");
       }
 
       const updatedPersona = JSON.parse(responseText);
