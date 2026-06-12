@@ -16,6 +16,11 @@ export type ClientMemberRole =
   | "STAKEHOLDER"
   | "DECISION_MAKER";
 
+export interface MemberPersona {
+  traits?: string[];
+  [key: string]: unknown;
+}
+
 export interface ClientMember {
   id: string;
   clientId: string;
@@ -26,7 +31,7 @@ export interface ClientMember {
   department: string | null;
   notes: string | null;
   image: string | null;
-  persona: Record<string, unknown> | null;
+  persona: MemberPersona | null;
   role: ClientMemberRole;
   createdAt: string;
   updatedAt: string;
