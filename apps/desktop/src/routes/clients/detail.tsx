@@ -28,7 +28,7 @@ export function ClientDetailPage() {
   });
 
   useEffect(() => {
-    if (client) {
+    if (client && !isEditing) {
       setEditForm({
         name: client.name,
         industry: client.industry ?? "",
@@ -36,7 +36,7 @@ export function ClientDetailPage() {
         status: client.status,
       });
     }
-  }, [client]);
+  }, [client, isEditing]);
 
   const handleSave = async () => {
     if (!client) {
