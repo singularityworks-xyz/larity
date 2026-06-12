@@ -108,6 +108,9 @@ mock.module("@larity/jobs", () => ({
   transcribeQueue: {
     add: mock(),
   },
+  clientPersonaQueue: {
+    add: mock(),
+  },
 }));
 
 describe("TranscribeWorker", () => {

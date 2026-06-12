@@ -132,3 +132,11 @@ export const meetingInsightsQuerySchema = z.object({
 export type MeetingInsightsQueryInput = z.infer<
   typeof meetingInsightsQuerySchema
 >;
+
+export const confirmSpeakerMappingSchema = z.object({
+  deepgramIndex: z.string().min(1, "Deepgram index is required"),
+  clientMemberId: z.string().uuid("Invalid client member ID"),
+});
+export type ConfirmSpeakerMappingInput = z.infer<
+  typeof confirmSpeakerMappingSchema
+>;

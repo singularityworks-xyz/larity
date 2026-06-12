@@ -29,10 +29,12 @@ export async function startWorkersApp(): Promise<void> {
   const { TranscribeWorker } = await import("./transcribe.worker");
   const { SummaryWorker } = await import("./summary.worker");
   const { AudioCleanupWorker } = await import("./audio-cleanup.worker");
+  const { ClientPersonaWorker } = await import("./client-persona.worker");
 
   registerWorker(new TranscribeWorker());
   registerWorker(new SummaryWorker());
   registerWorker(new AudioCleanupWorker());
+  registerWorker(new ClientPersonaWorker());
 
   const app = new Elysia()
     .get("/health", async () => {

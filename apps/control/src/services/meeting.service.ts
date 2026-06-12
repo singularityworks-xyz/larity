@@ -451,4 +451,31 @@ export const MeetingService = {
       sessionId,
     };
   },
+
+  async confirmSpeakerMapping(
+    meetingId: string,
+    deepgramIndex: string,
+    clientMemberId: string
+  ) {
+    const meeting = await prisma.meeting.findUnique({
+      where: { id: meetingId },
+      select: { speakerMappings: true },
+    });
+
+    if (!meeting) {
+      throw new Error("Meeting not found");
+    }
+
+    const currentMappings =
+      (meeting.speakerMappings as Record<string, string>) || {};
+
+    currentMappings[deepgramIndex] = clientMemberId;
+
+    return prisma.meeting.update({
+      where: { id: meetingId },
+      data: {
+        speakerMappings: currentMappings,
+      },
+    });
+  },
 };

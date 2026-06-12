@@ -10,6 +10,7 @@ import type {
   MeetingQueryInput,
 } from "../validators";
 import {
+  confirmSpeakerMappingSchema,
   createMeetingParticipantBaseSchema,
   createMeetingSchema,
   createTranscriptSchema,
@@ -409,4 +410,26 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
       params: meetingIdSchema,
       query: meetingInsightsQuerySchema,
     }
+  )
+  // Confirm speaker mapping deduction
+  .post(
+    "/:id/speaker-mappings",
+    async ({ params, body, set }) => {
+      try {
+        const result = await MeetingService.confirmSpeakerMapping(
+          params.id,
+          body.deepgramIndex,
+          body.clientMemberId
+        );
+        return { success: true, data: result };
+      } catch (e: unknown) {
+        const err = e as { code?: string; message?: string };
+        if (err.message === "Meeting not found") {
+          set.status = 404;
+          return { success: false, error: "Meeting not found" };
+        }
+        throw e;
+      }
+    },
+    { params: meetingIdSchema, body: confirmSpeakerMappingSchema }
   );

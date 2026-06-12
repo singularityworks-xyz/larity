@@ -56,7 +56,8 @@ export async function startSubscriber(): Promise<void> {
     "meeting.ledger.*",
     "meeting.pipeline.*",
     "meeting.stt.*",
-    "meeting.processed.*"
+    "meeting.processed.*",
+    "meeting.speaker_identity_guessed.*"
   );
 
   subscriber.on("pmessage", (pattern, channel, message) => {
@@ -181,6 +182,7 @@ function handleBroadcastSessionChannel(
     "meeting.utterance.",
     "meeting.topic.",
     "meeting.ledger.",
+    "meeting.speaker_identity_guessed.",
   ].some((prefix) => channel.startsWith(prefix));
 
   if (!isBroadcastChannel) {

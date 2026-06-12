@@ -156,6 +156,8 @@ export const ClientMemberScalarFieldEnum = {
   title: 'title',
   department: 'department',
   notes: 'notes',
+  image: 'image',
+  persona: 'persona',
   role: 'role',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

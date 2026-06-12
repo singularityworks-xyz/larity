@@ -24,3 +24,10 @@ export const AudioCleanupJobSchema = z.object({
 });
 
 export type AudioCleanupJobData = z.infer<typeof AudioCleanupJobSchema>;
+
+export const ClientPersonaJobSchema = z.object({
+  clientMemberId: z.string().min(1),
+  meetingId: z.string().min(1),
+});
+
+export type ClientPersonaJobData = z.infer<typeof ClientPersonaJobSchema>;

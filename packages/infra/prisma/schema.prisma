@@ -147,6 +147,9 @@ model ClientMember {
   department String?
   notes      String?
   
+  image      String?
+  persona    Json?
+  
   role       ClientMemberRole @default(CONTACT)
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt

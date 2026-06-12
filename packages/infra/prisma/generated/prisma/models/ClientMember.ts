@@ -33,6 +33,7 @@ export type ClientMemberMinAggregateOutputType = {
   title: string | null
   department: string | null
   notes: string | null
+  image: string | null
   role: $Enums.ClientMemberRole | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -47,6 +48,7 @@ export type ClientMemberMaxAggregateOutputType = {
   title: string | null
   department: string | null
   notes: string | null
+  image: string | null
   role: $Enums.ClientMemberRole | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -61,6 +63,8 @@ export type ClientMemberCountAggregateOutputType = {
   title: number
   department: number
   notes: number
+  image: number
+  persona: number
   role: number
   createdAt: number
   updatedAt: number
@@ -77,6 +81,7 @@ export type ClientMemberMinAggregateInputType = {
   title?: true
   department?: true
   notes?: true
+  image?: true
   role?: true
   createdAt?: true
   updatedAt?: true
@@ -91,6 +96,7 @@ export type ClientMemberMaxAggregateInputType = {
   title?: true
   department?: true
   notes?: true
+  image?: true
   role?: true
   createdAt?: true
   updatedAt?: true
@@ -105,6 +111,8 @@ export type ClientMemberCountAggregateInputType = {
   title?: true
   department?: true
   notes?: true
+  image?: true
+  persona?: true
   role?: true
   createdAt?: true
   updatedAt?: true
@@ -192,6 +200,8 @@ export type ClientMemberGroupByOutputType = {
   title: string | null
   department: string | null
   notes: string | null
+  image: string | null
+  persona: runtime.JsonValue | null
   role: $Enums.ClientMemberRole
   createdAt: Date
   updatedAt: Date
@@ -227,6 +237,8 @@ export type ClientMemberWhereInput = {
   title?: Prisma.StringNullableFilter<"ClientMember"> | string | null
   department?: Prisma.StringNullableFilter<"ClientMember"> | string | null
   notes?: Prisma.StringNullableFilter<"ClientMember"> | string | null
+  image?: Prisma.StringNullableFilter<"ClientMember"> | string | null
+  persona?: Prisma.JsonNullableFilter<"ClientMember">
   role?: Prisma.EnumClientMemberRoleFilter<"ClientMember"> | $Enums.ClientMemberRole
   createdAt?: Prisma.DateTimeFilter<"ClientMember"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ClientMember"> | Date | string
@@ -242,6 +254,8 @@ export type ClientMemberOrderByWithRelationInput = {
   title?: Prisma.SortOrderInput | Prisma.SortOrder
   department?: Prisma.SortOrderInput | Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
+  image?: Prisma.SortOrderInput | Prisma.SortOrder
+  persona?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -261,6 +275,8 @@ export type ClientMemberWhereUniqueInput = Prisma.AtLeast<{
   title?: Prisma.StringNullableFilter<"ClientMember"> | string | null
   department?: Prisma.StringNullableFilter<"ClientMember"> | string | null
   notes?: Prisma.StringNullableFilter<"ClientMember"> | string | null
+  image?: Prisma.StringNullableFilter<"ClientMember"> | string | null
+  persona?: Prisma.JsonNullableFilter<"ClientMember">
   role?: Prisma.EnumClientMemberRoleFilter<"ClientMember"> | $Enums.ClientMemberRole
   createdAt?: Prisma.DateTimeFilter<"ClientMember"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ClientMember"> | Date | string
@@ -276,6 +292,8 @@ export type ClientMemberOrderByWithAggregationInput = {
   title?: Prisma.SortOrderInput | Prisma.SortOrder
   department?: Prisma.SortOrderInput | Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
+  image?: Prisma.SortOrderInput | Prisma.SortOrder
+  persona?: Prisma.SortOrderInput | Prisma.SortOrder
   role?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -296,6 +314,8 @@ export type ClientMemberScalarWhereWithAggregatesInput = {
   title?: Prisma.StringNullableWithAggregatesFilter<"ClientMember"> | string | null
   department?: Prisma.StringNullableWithAggregatesFilter<"ClientMember"> | string | null
   notes?: Prisma.StringNullableWithAggregatesFilter<"ClientMember"> | string | null
+  image?: Prisma.StringNullableWithAggregatesFilter<"ClientMember"> | string | null
+  persona?: Prisma.JsonNullableWithAggregatesFilter<"ClientMember">
   role?: Prisma.EnumClientMemberRoleWithAggregatesFilter<"ClientMember"> | $Enums.ClientMemberRole
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ClientMember"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"ClientMember"> | Date | string
@@ -309,6 +329,8 @@ export type ClientMemberCreateInput = {
   title?: string | null
   department?: string | null
   notes?: string | null
+  image?: string | null
+  persona?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   role?: $Enums.ClientMemberRole
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -324,6 +346,8 @@ export type ClientMemberUncheckedCreateInput = {
   title?: string | null
   department?: string | null
   notes?: string | null
+  image?: string | null
+  persona?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   role?: $Enums.ClientMemberRole
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -337,6 +361,8 @@ export type ClientMemberUpdateInput = {
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  persona?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -352,6 +378,8 @@ export type ClientMemberUncheckedUpdateInput = {
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  persona?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -366,6 +394,8 @@ export type ClientMemberCreateManyInput = {
   title?: string | null
   department?: string | null
   notes?: string | null
+  image?: string | null
+  persona?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   role?: $Enums.ClientMemberRole
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -379,6 +409,8 @@ export type ClientMemberUpdateManyMutationInput = {
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  persona?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -393,6 +425,8 @@ export type ClientMemberUncheckedUpdateManyInput = {
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  persona?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -422,6 +456,8 @@ export type ClientMemberCountOrderByAggregateInput = {
   title?: Prisma.SortOrder
   department?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  image?: Prisma.SortOrder
+  persona?: Prisma.SortOrder
   role?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -436,6 +472,7 @@ export type ClientMemberMaxOrderByAggregateInput = {
   title?: Prisma.SortOrder
   department?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  image?: Prisma.SortOrder
   role?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -450,6 +487,7 @@ export type ClientMemberMinOrderByAggregateInput = {
   title?: Prisma.SortOrder
   department?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  image?: Prisma.SortOrder
   role?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -509,6 +547,8 @@ export type ClientMemberCreateWithoutClientInput = {
   title?: string | null
   department?: string | null
   notes?: string | null
+  image?: string | null
+  persona?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   role?: $Enums.ClientMemberRole
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -522,6 +562,8 @@ export type ClientMemberUncheckedCreateWithoutClientInput = {
   title?: string | null
   department?: string | null
   notes?: string | null
+  image?: string | null
+  persona?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   role?: $Enums.ClientMemberRole
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -565,6 +607,8 @@ export type ClientMemberScalarWhereInput = {
   title?: Prisma.StringNullableFilter<"ClientMember"> | string | null
   department?: Prisma.StringNullableFilter<"ClientMember"> | string | null
   notes?: Prisma.StringNullableFilter<"ClientMember"> | string | null
+  image?: Prisma.StringNullableFilter<"ClientMember"> | string | null
+  persona?: Prisma.JsonNullableFilter<"ClientMember">
   role?: Prisma.EnumClientMemberRoleFilter<"ClientMember"> | $Enums.ClientMemberRole
   createdAt?: Prisma.DateTimeFilter<"ClientMember"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ClientMember"> | Date | string
@@ -578,6 +622,8 @@ export type ClientMemberCreateManyClientInput = {
   title?: string | null
   department?: string | null
   notes?: string | null
+  image?: string | null
+  persona?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   role?: $Enums.ClientMemberRole
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -591,6 +637,8 @@ export type ClientMemberUpdateWithoutClientInput = {
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  persona?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -604,6 +652,8 @@ export type ClientMemberUncheckedUpdateWithoutClientInput = {
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  persona?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -617,6 +667,8 @@ export type ClientMemberUncheckedUpdateManyWithoutClientInput = {
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   department?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  image?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  persona?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   role?: Prisma.EnumClientMemberRoleFieldUpdateOperationsInput | $Enums.ClientMemberRole
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -633,6 +685,8 @@ export type ClientMemberSelect<ExtArgs extends runtime.Types.Extensions.Internal
   title?: boolean
   department?: boolean
   notes?: boolean
+  image?: boolean
+  persona?: boolean
   role?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -648,6 +702,8 @@ export type ClientMemberSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   title?: boolean
   department?: boolean
   notes?: boolean
+  image?: boolean
+  persona?: boolean
   role?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -663,6 +719,8 @@ export type ClientMemberSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   title?: boolean
   department?: boolean
   notes?: boolean
+  image?: boolean
+  persona?: boolean
   role?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -678,12 +736,14 @@ export type ClientMemberSelectScalar = {
   title?: boolean
   department?: boolean
   notes?: boolean
+  image?: boolean
+  persona?: boolean
   role?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ClientMemberOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clientId" | "name" | "email" | "phone" | "title" | "department" | "notes" | "role" | "createdAt" | "updatedAt", ExtArgs["result"]["clientMember"]>
+export type ClientMemberOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clientId" | "name" | "email" | "phone" | "title" | "department" | "notes" | "image" | "persona" | "role" | "createdAt" | "updatedAt", ExtArgs["result"]["clientMember"]>
 export type ClientMemberInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
 }
@@ -708,6 +768,8 @@ export type $ClientMemberPayload<ExtArgs extends runtime.Types.Extensions.Intern
     title: string | null
     department: string | null
     notes: string | null
+    image: string | null
+    persona: runtime.JsonValue | null
     role: $Enums.ClientMemberRole
     createdAt: Date
     updatedAt: Date
@@ -1143,6 +1205,8 @@ export interface ClientMemberFieldRefs {
   readonly title: Prisma.FieldRef<"ClientMember", 'String'>
   readonly department: Prisma.FieldRef<"ClientMember", 'String'>
   readonly notes: Prisma.FieldRef<"ClientMember", 'String'>
+  readonly image: Prisma.FieldRef<"ClientMember", 'String'>
+  readonly persona: Prisma.FieldRef<"ClientMember", 'Json'>
   readonly role: Prisma.FieldRef<"ClientMember", 'ClientMemberRole'>
   readonly createdAt: Prisma.FieldRef<"ClientMember", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"ClientMember", 'DateTime'>
