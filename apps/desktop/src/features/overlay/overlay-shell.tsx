@@ -1,6 +1,7 @@
 import { emit, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useState } from "react";
+import { api } from "../../lib/api";
 import { cx } from "../../lib/ui";
 import { AlertRegion } from "./alert-region";
 import { AmbientStrip } from "./ambient-strip";
@@ -132,6 +133,53 @@ export function OverlayShell() {
           onToggleExpand={data.setExpandedAlertId}
           visibleAlerts={data.visibleAlerts}
         />
+
+        {data.identityGuesses.length > 0 && (
+          <div className="absolute top-8 right-2 z-50 flex w-64 flex-col gap-2">
+            {data.identityGuesses.map((guess) => (
+              <div
+                className="flex flex-col gap-2 rounded border border-white/10 bg-black/80 p-2 shadow-lg backdrop-blur"
+                key={guess.id}
+              >
+                <p className="text-white text-xs">
+                  Map Speaker {guess.index} to Client Member {guess.memberId}?
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button
+                    className="rounded bg-white/10 px-2 py-1 text-[10px] text-white hover:bg-white/20"
+                    onClick={() => {
+                      data.setIdentityGuesses((prev) =>
+                        prev.filter((g) => g.id !== guess.id)
+                      );
+                    }}
+                    type="button"
+                  >
+                    Dismiss
+                  </button>
+                  <button
+                    className="rounded bg-accent px-2 py-1 text-[10px] text-on-accent hover:bg-accent/80"
+                    onClick={() => {
+                      api
+                        .post(`/meetings/${data.sessionId}/speaker-mappings`, {
+                          index: guess.index,
+                          clientMemberId: guess.memberId,
+                        })
+                        .catch((err) =>
+                          console.error("Failed to map speaker:", err)
+                        );
+                      data.setIdentityGuesses((prev) =>
+                        prev.filter((g) => g.id !== guess.id)
+                      );
+                    }}
+                    type="button"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {data.rememberFlash && (
           <div

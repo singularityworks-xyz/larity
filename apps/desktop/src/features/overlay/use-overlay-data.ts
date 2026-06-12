@@ -60,6 +60,9 @@ export function useOverlayData() {
   const [isMicActive, setIsMicActive] = useState(false);
   const [alertsMuted, setAlertsMuted] = useState(false);
   const [rememberFlash, setRememberFlash] = useState(false);
+  const [identityGuesses, setIdentityGuesses] = useState<
+    Array<{ id: string; index: string; memberId: string }>
+  >([]);
 
   const alertQueue = useAlertQueue();
 
@@ -165,6 +168,22 @@ export function useOverlayData() {
       }
     }
 
+    function handleSpeakerGuess(
+      payload: Record<string, unknown> | undefined
+    ): void {
+      if (!payload) {
+        return;
+      }
+      const id =
+        typeof payload.id === "string" ? payload.id : Date.now().toString();
+      const index = typeof payload.index === "string" ? payload.index : null;
+      const memberId =
+        typeof payload.memberId === "string" ? payload.memberId : null;
+      if (index && memberId) {
+        setIdentityGuesses((prev) => [...prev, { id, index, memberId }]);
+      }
+    }
+
     const unlisten = listen<{
       type: string;
       payload?: Record<string, unknown>;
@@ -202,6 +221,9 @@ export function useOverlayData() {
         }
         case "participant_event":
           handleParticipantEvent(payload);
+          break;
+        case "speaker_identity_guessed":
+          handleSpeakerGuess(payload);
           break;
         default:
           break;
@@ -263,5 +285,7 @@ export function useOverlayData() {
     visibleAlerts,
     pendingCount: alertQueue.pendingCount,
     exitingIds: alertQueue.exitingIds,
+    identityGuesses,
+    setIdentityGuesses,
   };
 }
