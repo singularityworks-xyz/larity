@@ -113,17 +113,24 @@ export function StartMeetingPage() {
       // Add participants to the created meeting
       if (expectedMemberIds.size > 0 && members) {
         await Promise.all(
-          Array.from(expectedMemberIds).map((memberId) => {
+          Array.from(expectedMemberIds).map(async (memberId) => {
             const member = members.find((m) => m.id === memberId);
             if (!member) {
-              return Promise.resolve();
+              return;
             }
-            return createParticipant.mutateAsync({
-              meetingId: session.sessionId,
-              externalName: member.name,
-              externalEmail: member.email || undefined,
-              role: "PARTICIPANT",
-            });
+            try {
+              await createParticipant.mutateAsync({
+                meetingId: session.sessionId,
+                externalName: member.name,
+                externalEmail: member.email || undefined,
+                role: "PARTICIPANT",
+              });
+            } catch (err) {
+              console.error(
+                `Failed to create participant for member ${memberId} in meeting session ${session.sessionId}`,
+                err
+              );
+            }
           })
         );
       }
