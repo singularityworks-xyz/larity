@@ -13,6 +13,9 @@ import {
   mapBackendUtteranceToLive,
   mapSpeakerToParticipant,
 } from "../../features/meeting-live/mappers";
+
+const UNIDENTIFIED_SPEAKER_REGEX = /^Speaker \d+$/i;
+
 import { MeetingHeader } from "../../features/meeting-live/meeting-header";
 import { MeetingSidebar } from "../../features/meeting-live/meeting-sidebar";
 import { NameConfigModal } from "../../features/meeting-live/name-config-modal";
@@ -67,6 +70,8 @@ interface AudioDevice {
 const DEFAULT_WS_URL = import.meta.env.VITE_WS_URL ?? "ws://127.0.0.1:9001";
 const FALLBACK_USER_ID = import.meta.env.VITE_WS_USER_ID ?? "desktop-host";
 
+import { useMeeting } from "../../features/meetings/use-meeting";
+
 function getWsBaseUrl(websocketUrl: string | undefined): string {
   if (!websocketUrl) {
     return DEFAULT_WS_URL;
@@ -99,6 +104,8 @@ export function MeetingPage() {
   const { sessionId = "" } = useParams();
   const location = useLocation();
   const session = useAuthSession();
+
+  const { data: meetingData } = useMeeting(sessionId);
 
   const state = (location.state ?? {}) as MeetingLocationState;
   const role = state.role ?? "participant";
@@ -171,6 +178,12 @@ export function MeetingPage() {
   const addAlertRef = useRef(alertQueue.addAlert);
   addAlertRef.current = alertQueue.addAlert;
   const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
+
+  const unidentifiedAlertedRef = useRef<Set<string>>(new Set());
+
+  const [identityGuesses, setIdentityGuesses] = useState<
+    Array<{ id: string; index: string; memberId: string }>
+  >([]);
 
   const teamCommitmentCount = useMemo(
     () =>
@@ -389,10 +402,53 @@ export function MeetingPage() {
         return active;
       });
     }, 1000);
-    return () => {
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, []);
+
+  // Unidentified Speaker Detection (10 minutes)
+  useEffect(() => {
+    if (!(sessionId && isHost)) {
+      return;
+    }
+
+    const checkInterval = setInterval(() => {
+      const now = Date.now();
+      const elapsedMs = now - meetingStartedAtMs;
+
+      // Only check if more than 10 minutes have passed
+      if (elapsedMs < 10 * 60 * 1000) {
+        return;
+      }
+
+      for (const p of participants) {
+        // Speaker is unidentified if EXTERNAL and name is still the generic fallback
+        const isUnidentified =
+          p.type === "EXTERNAL" &&
+          (p.confidence ?? 0) < 0.8 &&
+          UNIDENTIFIED_SPEAKER_REGEX.test(p.name);
+
+        if (isUnidentified && !unidentifiedAlertedRef.current.has(p.id)) {
+          unidentifiedAlertedRef.current.add(p.id);
+          addAlertRef.current({
+            id: `unidentified-speaker-${p.id}`,
+            category: "unidentified_speaker",
+            severity: "medium",
+            title: "Identify Speaker",
+            message: `${p.name} hasn't been identified. Click to assign an identity from your client roster.`,
+            speakerName: p.name,
+            speakerType: "EXTERNAL",
+            routing: "personal",
+            isShared: false,
+            timestamp: Date.now(),
+            confidence: 1.0,
+            triggerTier: 1,
+          });
+        }
+      }
+    }, 30_000); // Check every 30 seconds
+
+    return () => clearInterval(checkInterval);
+  }, [sessionId, meetingStartedAtMs, participants, isHost]);
 
   useEffect(() => {
     const unsubUtterance = streamingClient.subscribe("utterance", (data) => {
@@ -597,6 +653,31 @@ export function MeetingPage() {
       }
     );
 
+    const unsubSpeakerGuess = streamingClient.subscribe(
+      "speaker_identity_guessed",
+      (data: Record<string, unknown>) => {
+        const payload = data.payload as Record<string, unknown>;
+        if (!payload) {
+          return;
+        }
+        const index = String(payload.deepgramIndex);
+        const memberId = String(payload.clientMemberId);
+        if (index && memberId) {
+          const id = Date.now().toString() + Math.random();
+          setIdentityGuesses((prev) => [...prev, { id, index, memberId }]);
+          emitTo("meeting-overlay", "overlay-data", {
+            type: "speaker_identity_guessed",
+            payload: { id, index, memberId },
+          }).catch((err) =>
+            console.warn(
+              "overlay-data speaker_identity_guessed emit failed:",
+              err
+            )
+          );
+        }
+      }
+    );
+
     return () => {
       unsubUtterance();
       unsubTopic();
@@ -606,6 +687,7 @@ export function MeetingPage() {
       unsubAlert();
       unsubParticipantEvent();
       unsubProcessed();
+      unsubSpeakerGuess();
     };
   }, [streamingClient, userId]);
 
@@ -825,7 +907,55 @@ export function MeetingPage() {
           </div>
         )}
 
+        {identityGuesses.length > 0 && (
+          <div className="absolute top-4 right-4 z-50 flex w-80 max-w-full flex-col gap-2">
+            {identityGuesses.map((guess) => (
+              <div
+                className="flex flex-col gap-2 rounded-lg border border-border bg-bg p-3 shadow-md"
+                key={guess.id}
+              >
+                <p className="text-fg text-sm">
+                  Map Speaker {guess.index} to Client Member {guess.memberId}?
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button
+                    className="rounded bg-bg-subtle px-2 py-1 text-fg text-xs hover:bg-bg-hover"
+                    onClick={() => {
+                      setIdentityGuesses((prev) =>
+                        prev.filter((g) => g.id !== guess.id)
+                      );
+                    }}
+                    type="button"
+                  >
+                    Dismiss
+                  </button>
+                  <button
+                    className="rounded bg-accent px-2 py-1 text-on-accent text-xs hover:bg-accent-hover"
+                    onClick={() => {
+                      api
+                        .post(`/meetings/${sessionId}/speaker-mappings`, {
+                          index: guess.index,
+                          clientMemberId: guess.memberId,
+                        })
+                        .catch((err) =>
+                          console.error("Failed to map speaker:", err)
+                        );
+                      setIdentityGuesses((prev) =>
+                        prev.filter((g) => g.id !== guess.id)
+                      );
+                    }}
+                    type="button"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <MeetingSidebar
+          clientId={meetingData?.clientId}
           commitments={commitments}
           meetingStartedAtMs={meetingStartedAtMs}
           onChangeRole={handleRoleChange}
