@@ -133,10 +133,22 @@ export type MeetingInsightsQueryInput = z.infer<
   typeof meetingInsightsQuerySchema
 >;
 
-export const confirmSpeakerMappingSchema = z.object({
-  deepgramIndex: z.string().min(1, "Deepgram index is required"),
-  clientMemberId: z.string().uuid("Invalid client member ID"),
-});
+export const confirmSpeakerMappingSchema = z
+  .object({
+    deepgramIndex: z
+      .string()
+      .min(1, "Deepgram index must be a non-empty string")
+      .optional(),
+    index: z.string().min(1, "Index must be a non-empty string").optional(),
+    clientMemberId: z.string().uuid("Invalid client member ID"),
+  })
+  .refine(
+    (data) => data.deepgramIndex !== undefined || data.index !== undefined,
+    {
+      message: "Either deepgramIndex or index is required",
+      path: ["deepgramIndex"],
+    }
+  );
 export type ConfirmSpeakerMappingInput = z.infer<
   typeof confirmSpeakerMappingSchema
 >;

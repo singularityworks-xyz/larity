@@ -416,9 +416,17 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     "/:id/speaker-mappings",
     async ({ params, body, set }) => {
       try {
+        const deepgramIndex = body.deepgramIndex ?? body.index;
+        if (!deepgramIndex) {
+          set.status = 400;
+          return {
+            success: false,
+            error: "Either deepgramIndex or index is required",
+          };
+        }
         const result = await MeetingService.confirmSpeakerMapping(
           params.id,
-          body.deepgramIndex,
+          deepgramIndex,
           body.clientMemberId
         );
         return { success: true, data: result };

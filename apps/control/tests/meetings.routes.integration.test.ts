@@ -200,7 +200,7 @@ describe("meetingsRoutes integration for insights, processing status, and reproc
     });
   });
   describe("POST /meetings/:id/speaker-mappings", () => {
-    it("should successfully confirm speaker mapping", async () => {
+    it("should successfully confirm speaker mapping using deepgramIndex", async () => {
       const confirmSpeakerMappingSpy = spyOn(
         MeetingService,
         "confirmSpeakerMapping"
@@ -229,6 +229,41 @@ describe("meetingsRoutes integration for insights, processing status, and reproc
       expect(confirmSpeakerMappingSpy).toHaveBeenCalledWith(
         "77777777-7777-4777-a777-777777777777",
         "1001",
+        "123e4567-e89b-12d3-a456-426614174000"
+      );
+
+      confirmSpeakerMappingSpy.mockRestore();
+    });
+
+    it("should successfully confirm speaker mapping using index", async () => {
+      const confirmSpeakerMappingSpy = spyOn(
+        MeetingService,
+        "confirmSpeakerMapping"
+      );
+      confirmSpeakerMappingSpy.mockResolvedValue({ success: true } as any);
+
+      const response = await app.handle(
+        new Request(
+          "http://local/meetings/77777777-7777-4777-a777-777777777777/speaker-mappings",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              index: "1002",
+              clientMemberId: "123e4567-e89b-12d3-a456-426614174000",
+            }),
+          }
+        )
+      );
+
+      const json = (await response.json()) as any;
+
+      expect(response.status).toBe(200);
+      expect(json.success).toBe(true);
+      expect(json.data.success).toBe(true);
+      expect(confirmSpeakerMappingSpy).toHaveBeenCalledWith(
+        "77777777-7777-4777-a777-777777777777",
+        "1002",
         "123e4567-e89b-12d3-a456-426614174000"
       );
 
