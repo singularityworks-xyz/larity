@@ -132,7 +132,7 @@ export class Tier2Classifier {
 /** Built once — rubric + compact calibration (system role). */
 const SYSTEM_PROMPT = [
   `You are Tier 2: fast semantic classifier for live multilingual business meetings.
-Output must match the JSON schema only. All seven top-level keys are required; all five extractedData keys are required (null when unused); topicDelta is null or a full object with all seven keys.
+Output must match the JSON schema only. All eight top-level keys are required (intent, commitmentType, tone, riskSignals, extractedData, confidence, topicDelta, identityGuess); all five extractedData keys are required (null when unused); topicDelta is null or a full object with all seven keys.
 
 Classify the CURRENT utterance; use recentSameSpeaker only as short local context.
 
