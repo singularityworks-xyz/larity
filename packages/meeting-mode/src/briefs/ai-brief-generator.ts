@@ -11,7 +11,7 @@ function getAI() {
 }
 
 export const AIBriefGeneratorService = {
-  async generateBriefData(meetingId: string) {
+  async generateBriefData(meetingId: string, requestUserId?: string) {
     const meeting = await prisma.meeting.findUnique({
       where: { id: meetingId },
       include: {
@@ -27,9 +27,8 @@ export const AIBriefGeneratorService = {
     }
 
     const clientId = meeting.clientId;
-    const participantUserIds = meeting.participants
-      .map((p) => p.userId)
-      .filter((id): id is string => id !== null);
+    const hostParticipant = meeting.participants.find((p) => p.role === "HOST");
+    const targetUserId = requestUserId || hostParticipant?.userId;
 
     // Fetch context for the LLM
     const [pastMeetings, openTasks, openQuestions, landmines] =
@@ -176,12 +175,10 @@ ${contextStr}
 
     // Merge in the commitments accurately from the database
     const mineTasks = openTasks
-      .filter((t) => t.assigneeId && participantUserIds.includes(t.assigneeId))
+      .filter((t) => t.assigneeId === targetUserId)
       .map((t) => ({ id: t.id, text: t.title, status: t.status }));
     const theirsTasks = openTasks
-      .filter(
-        (t) => !(t.assigneeId && participantUserIds.includes(t.assigneeId))
-      )
+      .filter((t) => t.assigneeId !== targetUserId)
       .map((t) => ({ id: t.id, text: t.title, status: t.status }));
 
     const finalBrief = {
@@ -204,8 +201,8 @@ ${contextStr}
     return finalBrief;
   },
 
-  async generateAndSaveBrief(meetingId: string) {
-    const brief = await this.generateBriefData(meetingId);
+  async generateAndSaveBrief(meetingId: string, requestUserId?: string) {
+    const brief = await this.generateBriefData(meetingId, requestUserId);
     await prisma.meeting.update({
       where: { id: meetingId },
       data: { preMeetingBrief: brief },
