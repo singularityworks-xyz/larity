@@ -498,14 +498,18 @@ function IdentifyExternalSpeakerDropdown({
       return;
     }
 
-    onLocalOverride(member.name);
-    onComplete();
+    try {
+      await confirmMapping.mutateAsync({
+        meetingId: sessionId,
+        deepgramIndex,
+        clientMemberId: memberId,
+      });
 
-    await confirmMapping.mutateAsync({
-      meetingId: sessionId,
-      deepgramIndex,
-      clientMemberId: memberId,
-    });
+      onLocalOverride(member.name);
+      onComplete();
+    } catch (err) {
+      console.error("Failed to map speaker:", err);
+    }
   };
 
   const handleCreate = async (e: React.KeyboardEvent) => {
@@ -514,20 +518,24 @@ function IdentifyExternalSpeakerDropdown({
       return;
     }
 
-    onLocalOverride(newName.trim());
-    onComplete();
+    try {
+      const newMember = await createMember.mutateAsync({
+        clientId,
+        name: newName.trim(),
+        role: "CONTACT",
+      });
 
-    const newMember = await createMember.mutateAsync({
-      clientId,
-      name: newName.trim(),
-      role: "CONTACT",
-    });
+      await confirmMapping.mutateAsync({
+        meetingId: sessionId,
+        deepgramIndex,
+        clientMemberId: newMember.id,
+      });
 
-    await confirmMapping.mutateAsync({
-      meetingId: sessionId,
-      deepgramIndex,
-      clientMemberId: newMember.id,
-    });
+      onLocalOverride(newName.trim());
+      onComplete();
+    } catch (err) {
+      console.error("Failed to create client member or map speaker:", err);
+    }
   };
 
   if (isCreatingNew) {
