@@ -1,13 +1,16 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 
+type ISODateString = string;
+
 interface CreateMeetingParticipantInput {
   meetingId: string;
   userId?: string;
   externalName?: string;
   externalEmail?: string;
   role?: string;
-  attendedAt?: string;
+  /** ISO 8601 datetime string */
+  attendedAt?: ISODateString;
 }
 
 export function useCreateMeetingParticipant() {
