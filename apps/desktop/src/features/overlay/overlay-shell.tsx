@@ -33,6 +33,7 @@ export function OverlayShell() {
   const confirmSpeakerMapping = useConfirmSpeakerMapping();
   const [elapsedMs, setElapsedMs] = useState(0);
   const [isEndingBusy, setIsEndingBusy] = useState(false);
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const tick = () => setElapsedMs(Math.max(0, Date.now() - data.startedAtMs));
@@ -145,21 +146,38 @@ export function OverlayShell() {
                 <p className="text-white text-xs">
                   Map Speaker {guess.index} to Client Member {guess.memberId}?
                 </p>
+                {cardErrors[guess.id] && (
+                  <p className="text-[10px] text-red-400 leading-tight">
+                    {cardErrors[guess.id]}
+                  </p>
+                )}
                 <div className="flex justify-end gap-2">
                   <button
-                    className="rounded bg-white/10 px-2 py-1 text-[10px] text-white hover:bg-white/20"
+                    className="rounded bg-white/10 px-2 py-1 text-[10px] text-white hover:bg-white/20 disabled:opacity-50"
+                    disabled={confirmSpeakerMapping.isPending}
                     onClick={() => {
                       data.setIdentityGuesses((prev) =>
                         prev.filter((g) => g.id !== guess.id)
                       );
+                      if (cardErrors[guess.id]) {
+                        setCardErrors((prev) => {
+                          const next = { ...prev };
+                          delete next[guess.id];
+                          return next;
+                        });
+                      }
                     }}
                     type="button"
                   >
                     Dismiss
                   </button>
                   <button
-                    className="rounded bg-accent px-2 py-1 text-[10px] text-on-accent hover:bg-accent/80"
+                    className="rounded bg-accent px-2 py-1 text-[10px] text-on-accent hover:bg-accent/80 disabled:opacity-50"
+                    disabled={confirmSpeakerMapping.isPending}
                     onClick={async () => {
+                      if (confirmSpeakerMapping.isPending) {
+                        return;
+                      }
                       try {
                         await confirmSpeakerMapping.mutateAsync({
                           meetingId: data.sessionId,
@@ -169,13 +187,27 @@ export function OverlayShell() {
                         data.setIdentityGuesses((prev) =>
                           prev.filter((g) => g.id !== guess.id)
                         );
+                        if (cardErrors[guess.id]) {
+                          setCardErrors((prev) => {
+                            const next = { ...prev };
+                            delete next[guess.id];
+                            return next;
+                          });
+                        }
                       } catch (err) {
-                        console.error("Failed to map speaker:", err);
+                        const msg =
+                          err instanceof Error ? err.message : String(err);
+                        setCardErrors((prev) => ({
+                          ...prev,
+                          [guess.id]: `Failed to map speaker ${guess.index} to member ${guess.memberId} for meeting ${data.sessionId}: ${msg}`,
+                        }));
                       }
                     }}
                     type="button"
                   >
-                    Confirm
+                    {confirmSpeakerMapping.isPending
+                      ? "Confirming..."
+                      : "Confirm"}
                   </button>
                 </div>
               </div>
