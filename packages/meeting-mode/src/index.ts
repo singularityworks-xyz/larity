@@ -171,11 +171,12 @@ async function main(): Promise<void> {
       (async () => {
         try {
           const list = await redisClient.lrange(key, 0, -1);
-          for (const item of list) {
+          for (let i = list.length - 1; i >= 0; i--) {
+            const item = list[i];
             try {
               const parsed = JSON.parse(item) as { utteranceId?: string };
               if (parsed.utteranceId === utteranceId) {
-                await redisClient.lrem(key, 1, item);
+                await redisClient.lrem(key, -1, item);
                 rootLogger.info(
                   { sessionId, utteranceId },
                   "Retracted duplicate utterance from Redis list"

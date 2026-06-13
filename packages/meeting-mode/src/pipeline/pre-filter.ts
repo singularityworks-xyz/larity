@@ -1,3 +1,4 @@
+import { ACOUSTIC_BLEED_TIMEOUT_MS } from "../env";
 import type { Utterance } from "../utterance/types";
 import {
   extractSlidingWindows,
@@ -64,7 +65,7 @@ export class PreFilter {
     if (duplicate) {
       const timeDiff = Math.abs(utterance.timestamp - duplicate.timestamp);
       const isBleed =
-        timeDiff <= 5000 &&
+        timeDiff <= ACOUSTIC_BLEED_TIMEOUT_MS &&
         utterance.speaker.isCurrentUser !== duplicate.isCurrentUser;
 
       if (isBleed) {
@@ -96,7 +97,7 @@ export class PreFilter {
         }
       }
 
-      // Default: standard duplicate (same speaker type or timeDiff > 5000)
+      // Default: standard duplicate (same speaker type or timeDiff > timeout)
       return { dropped: true, reason: "near_duplicate" };
     }
 
