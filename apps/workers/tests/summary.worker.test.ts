@@ -161,6 +161,8 @@ describe("SummaryWorker Integration", () => {
     mockRedisGet.mockClear();
     mockExtractInsights.mockClear();
     mockGenerateEmbedding.mockClear();
+    mockTranscriptUtteranceDeleteMany.mockClear();
+    mockTranscriptUtteranceCreate.mockClear();
   });
 
   it("should process transcript, extract insights, and transactionally save to DB", async () => {
