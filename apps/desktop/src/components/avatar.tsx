@@ -3,11 +3,12 @@ import { cx } from "../lib/ui";
 const WHITESPACE_REGEX = /\s+/;
 
 export function getInitials(name: string) {
-  const parts = name.trim().split(WHITESPACE_REGEX);
+  const trimmedName = name.trim();
+  const parts = trimmedName.split(WHITESPACE_REGEX);
   if (parts.length >= 2) {
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   }
-  return name.slice(0, 2).toUpperCase();
+  return trimmedName.slice(0, 2).toUpperCase();
 }
 
 export function InitialsAvatar({
@@ -27,4 +28,29 @@ export function InitialsAvatar({
       {getInitials(name)}
     </div>
   );
+}
+
+export function Avatar({
+  name,
+  image,
+  className,
+  size = 40,
+}: {
+  name: string;
+  image?: string | null;
+  className?: string;
+  size?: number;
+}) {
+  if (image) {
+    return (
+      <img
+        alt={name}
+        className={cx("rounded-full object-cover", className)}
+        height={size}
+        src={image}
+        width={size}
+      />
+    );
+  }
+  return <InitialsAvatar className={className} name={name} />;
 }

@@ -1,6 +1,7 @@
 import { Check, Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import { Avatar } from "../../../components/avatar";
 import { buttonClass, cx, inputClass } from "../../../lib/ui";
 import { useClientMembers } from "../../clients/use-client-members";
 import { useCreateClientMember } from "../../clients/use-create-client-member";
@@ -19,6 +20,7 @@ export function ExpectedParticipantsPicker({
 
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const toggleSelection = (id: string) => {
     const next = new Set(selectedIds);
@@ -35,6 +37,7 @@ export function ExpectedParticipantsPicker({
     if (!newName.trim()) {
       return;
     }
+    setError(null);
     try {
       const newMember = await createMember.mutateAsync({
         clientId,
@@ -46,8 +49,8 @@ export function ExpectedParticipantsPicker({
       onSelectionChange(next);
       setIsAdding(false);
       setNewName("");
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setError("Failed to create participant. Please try again.");
     }
   };
 
@@ -89,19 +92,16 @@ export function ExpectedParticipantsPicker({
                         : "border-border bg-bg"
                     )}
                   >
-                    {isSelected && (
+                    {isSelected ? (
                       <Check className="h-2.5 w-2.5 text-accent-fg" />
-                    )}
-                    {!isSelected && m.image && (
-                      <img
-                        alt={m.name}
-                        className="h-full w-full rounded-full object-cover"
-                        height={16}
-                        src={m.image}
-                        width={16}
+                    ) : (
+                      <Avatar
+                        className="h-full w-full rounded-full border-none text-[8px]"
+                        image={m.image}
+                        name={m.name}
+                        size={16}
                       />
                     )}
-                    {!(isSelected || m.image) && m.name.charAt(0).toUpperCase()}
                   </div>
                   {m.name}
                 </motion.button>
@@ -153,6 +153,9 @@ export function ExpectedParticipantsPicker({
             Cancel
           </button>
         </form>
+      )}
+      {error && (
+        <div className="mt-1.5 text-[11px] text-danger-fg">{error}</div>
       )}
     </div>
   );
