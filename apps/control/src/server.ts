@@ -1,10 +1,14 @@
 import { cors } from "@elysiajs/cors";
+import { cron } from "@elysiajs/cron";
 import { opentelemetry } from "@elysiajs/opentelemetry";
+import { Prisma } from "@larity/infra/prisma/generated/prisma/client";
+import { preMeetingBriefQueue } from "@larity/jobs";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { Elysia } from "elysia";
 import { getMetricsText, startDefaultMetrics } from "meeting-mode";
 import { env } from "./env";
+import { prisma } from "./lib/prisma";
 import { createControlLogger } from "./logger";
 import { requireAuth } from "./middleware/auth";
 import { requestLogger } from "./middleware/logger";
@@ -88,6 +92,32 @@ export const app = new Elysia()
       headers: { "Content-Type": "text/plain; version=0.0.4" },
     });
   })
+  // Cron jobs
+  .use(
+    cron({
+      name: "pre-meeting-brief-generator",
+      pattern: "0 * * * *", // Every hour
+      async run() {
+        log.info("Running pre-meeting brief cron...");
+        const next24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const meetings = await prisma.meeting.findMany({
+          where: {
+            status: "SCHEDULED",
+            scheduledAt: { lte: next24Hours },
+            preMeetingBrief: { equals: Prisma.DbNull },
+          },
+          select: { id: true },
+        });
+
+        for (const meeting of meetings) {
+          await preMeetingBriefQueue.add("generate", { meetingId: meeting.id });
+        }
+        if (meetings.length > 0) {
+          log.info({ count: meetings.length }, "Enqueued pre-meeting briefs");
+        }
+      },
+    })
+  )
   // Auth routes
   .use(authRoutes)
   // Internal server-to-server routes (no user auth required)
