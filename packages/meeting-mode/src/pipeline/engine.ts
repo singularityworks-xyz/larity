@@ -891,7 +891,15 @@ export class MeetingPipelineEngine {
       utterance.topicId
     );
 
-    const knownClientMembers = await this.getKnownClientMembers(sessionId);
+    let knownClientMembers: Array<{ id: string; name: string }> = [];
+    try {
+      knownClientMembers = await this.getKnownClientMembers(sessionId);
+    } catch (error) {
+      log.warn(
+        { err: error, sessionId, utteranceId: utterance.utteranceId },
+        "Known client members lookup failed; proceeding without candidates"
+      );
+    }
 
     const input: Tier2Input = {
       utterance: text,
