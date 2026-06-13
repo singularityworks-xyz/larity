@@ -1,6 +1,25 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ImportantPointCategory } from "@larity/infra/prisma";
 import { prisma } from "@larity/infra/prisma/client";
+import { getRedisClient } from "@larity/infra/redis";
+import { z } from "zod";
+
+export const BriefSchema = z.object({
+  tldr: z.string(),
+  sentiment: z.string(),
+  landmines: z.array(
+    z.object({ id: z.string(), text: z.string(), category: z.string() })
+  ),
+  suggestedAgenda: z.array(z.string()),
+  commitments: z.object({
+    mine: z.array(
+      z.object({ id: z.string(), text: z.string(), status: z.string() })
+    ),
+    theirs: z.array(
+      z.object({ id: z.string(), text: z.string(), status: z.string() })
+    ),
+  }),
+});
 
 let ai: GoogleGenAI | null = null;
 function getAI() {
@@ -224,11 +243,28 @@ ${contextStr}
   },
 
   async generateAndSaveBrief(meetingId: string, requestUserId?: string) {
-    const brief = await this.generateBriefData(meetingId, requestUserId);
-    await prisma.meeting.update({
-      where: { id: meetingId },
-      data: { preMeetingBrief: brief },
-    });
-    return brief;
+    const redisClient = getRedisClient();
+    if (!redisClient) {
+      throw new Error("Redis client not available");
+    }
+
+    const lockKey = `meeting:brief_lock:${meetingId}`;
+    const acquired = await redisClient.set(lockKey, "1", "NX", "EX", 60);
+    if (!acquired) {
+      return null;
+    }
+
+    try {
+      const briefData = await this.generateBriefData(meetingId, requestUserId);
+      const brief = BriefSchema.parse(briefData);
+
+      await prisma.meeting.update({
+        where: { id: meetingId },
+        data: { preMeetingBrief: brief },
+      });
+      return brief;
+    } finally {
+      await redisClient.del(lockKey);
+    }
   },
 };
