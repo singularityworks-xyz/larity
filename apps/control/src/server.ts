@@ -110,7 +110,11 @@ export const app = new Elysia()
         });
 
         for (const meeting of meetings) {
-          await preMeetingBriefQueue.add("generate", { meetingId: meeting.id });
+          await preMeetingBriefQueue.add(
+            "generate",
+            { meetingId: meeting.id },
+            { jobId: `pre-meeting-brief-${meeting.id}` }
+          );
         }
         if (meetings.length > 0) {
           log.info({ count: meetings.length }, "Enqueued pre-meeting briefs");
