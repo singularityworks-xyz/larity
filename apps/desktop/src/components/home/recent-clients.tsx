@@ -3,6 +3,9 @@ import { useClients } from "../../features/clients/use-clients";
 import { cx, panelClass } from "../../lib/ui";
 import { InitialsAvatar } from "../avatar";
 
+const RECENT_CLIENTS_LIMIT = 5;
+const ANIMATION_DELAY_STEP_MS = 30;
+
 export function RecentClientsPanel() {
   const navigate = useNavigate();
   const { data: clients, isLoading } = useClients();
@@ -20,7 +23,7 @@ export function RecentClientsPanel() {
       (a, b) =>
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     )
-    .slice(0, 5);
+    .slice(0, RECENT_CLIENTS_LIMIT);
 
   return (
     <div className={cx(panelClass, "flex flex-col gap-3")}>
@@ -42,7 +45,10 @@ export function RecentClientsPanel() {
             className="fade-in slide-in-from-bottom-1 flex animate-in cursor-pointer items-center gap-2 rounded-[var(--radius-1)] border border-border bg-bg-elevated px-3 py-1.5 transition-colors duration-150 hover:border-border-strong hover:bg-bg-subtle"
             key={client.id}
             onClick={() => navigate(`/clients/${client.id}`)}
-            style={{ animationDelay: `${i * 30}ms`, animationFillMode: "both" }}
+            style={{
+              animationDelay: `${i * ANIMATION_DELAY_STEP_MS}ms`,
+              animationFillMode: "both",
+            }}
             type="button"
           >
             <InitialsAvatar
