@@ -35,3 +35,8 @@ export interface JoinSessionResponse {
   joinedAt: number;
   allowNameCustomization: boolean;
 }
+export interface AgendaItem {
+  id: string;
+  text: string;
+  durationMinutes?: number;
+}

@@ -22,6 +22,7 @@ import {
   internalSessionRoutes,
   meetingSessionRoutes,
   meetingsRoutes,
+  notificationsRoutes,
   openQuestionsRoutes,
   orgsRoutes,
   policyGuardrailsRoutes,
@@ -134,6 +135,7 @@ export const app = new Elysia()
       .use(orgsRoutes)
       .use(clientsRoutes)
       .use(usersRoutes)
+      .use(notificationsRoutes)
       // Home / dashboard
       .use(homeRoutes)
       // Meeting domain

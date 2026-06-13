@@ -13,7 +13,25 @@ export class PreMeetingBriefWorker extends BaseWorker {
     this.log.info({ meetingId }, "Generating pre-meeting brief...");
 
     try {
-      await AIBriefGeneratorService.generateAndSaveBrief(meetingId);
+      const brief =
+        await AIBriefGeneratorService.generateAndSaveBrief(meetingId);
+      if (brief) {
+        // Fetch host to publish
+        const { prisma } = await import("@larity/infra/prisma/client");
+        const meeting = await prisma.meeting.findUnique({
+          where: { id: meetingId },
+        });
+
+        if (meeting?.hostId) {
+          const { publish } = await import("@larity/infra/redis");
+          await publish(`user_notifications:${meeting.hostId}`, {
+            type: "PRE_MEETING_BRIEF_READY",
+            meetingId: meeting.id,
+            message: "Your AI pre-meeting brief is ready.",
+          });
+        }
+      }
+
       this.log.info({ meetingId }, "Successfully generated pre-meeting brief");
     } catch (error) {
       this.log.error(
