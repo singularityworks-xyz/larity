@@ -23,9 +23,13 @@ export const notificationsRoutes = new Elysia({ prefix: "/notifications" })
       ws.data = Object.assign(ws.data, { _notificationListener: listener });
     },
     close(ws) {
-      if (!ws.data.user?.id) return;
+      if (!ws.data.user?.id) {
+        return;
+      }
       const userId = ws.data.user.id;
-      const data = ws.data as unknown as { _notificationListener?: (data: unknown) => void };
+      const data = ws.data as unknown as {
+        _notificationListener?: (data: unknown) => void;
+      };
       const listener = data._notificationListener;
       if (listener) {
         systemEvents.off(`user_notification:${userId}`, listener);

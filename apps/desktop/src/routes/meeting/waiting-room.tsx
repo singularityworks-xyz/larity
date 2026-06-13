@@ -190,6 +190,66 @@ export function WaitingRoomPage() {
                   </div>
                 )}
 
+                {/* Suggested Agenda */}
+                {brief.suggestedAgenda.length > 0 && (
+                  <div className="flex flex-col gap-3 rounded-2xl border border-[rgba(255,255,255,0.03)] bg-[rgba(20,20,22,0.4)] p-5">
+                    <h3 className="font-mono text-[#8A8A93] text-xs uppercase tracking-wider">
+                      Suggested Agenda
+                    </h3>
+                    <ul className="flex flex-col gap-2">
+                      {brief.suggestedAgenda.map((agendaText, i) => {
+                        const id = `agenda-${i}`;
+                        const isSelected = selectedAgenda.some(
+                          (item) => item.id === id
+                        );
+                        return (
+                          <li key={id}>
+                            <button
+                              className={cx(
+                                "group flex w-full cursor-pointer items-start gap-3 rounded-lg border p-3 text-left text-sm transition-all",
+                                isSelected
+                                  ? "border-[#4F8AFF] bg-[rgba(79,138,255,0.1)] text-white"
+                                  : "border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.02)] text-[#A1A1A6] hover:border-[rgba(255,255,255,0.1)] hover:text-white"
+                              )}
+                              onClick={() =>
+                                toggleAgendaItem({ id, text: agendaText })
+                              }
+                              type="button"
+                            >
+                              <div
+                                className={cx(
+                                  "mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-sm border transition-colors",
+                                  isSelected
+                                    ? "border-[#4F8AFF] bg-[#4F8AFF]"
+                                    : "border-[rgba(255,255,255,0.2)]"
+                                )}
+                              >
+                                {isSelected && (
+                                  <svg
+                                    aria-label="Checked"
+                                    fill="none"
+                                    height="10"
+                                    role="img"
+                                    stroke="white"
+                                    strokeWidth="3"
+                                    viewBox="0 0 24 24"
+                                    width="10"
+                                  >
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                )}
+                              </div>
+                              <span className="leading-tight">
+                                {agendaText}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+
                 {/* Commitments & Suggested Agenda */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {/* My Commitments */}

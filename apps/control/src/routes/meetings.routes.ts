@@ -1,5 +1,5 @@
-import { AIBriefGeneratorService } from "@larity/meeting-mode";
 import { Elysia } from "elysia";
+import { AIBriefGeneratorService } from "meeting-mode";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import {

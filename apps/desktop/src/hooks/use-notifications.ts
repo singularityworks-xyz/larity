@@ -5,7 +5,9 @@ export function useNotifications(userId?: string) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      return;
+    }
     const controlUrl =
       import.meta.env.VITE_CONTROL_URL ?? "http://localhost:3000";
     const wsControlUrl = controlUrl.replace("http", "ws");

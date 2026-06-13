@@ -1,3 +1,4 @@
+import type { Prisma } from "@larity/infra/prisma";
 import { prisma } from "../lib/prisma";
 
 function startOfToday(): Date {
@@ -13,7 +14,7 @@ function endOfToday(): Date {
 }
 
 function toBriefStatus(
-  summary: string | null | undefined
+  summary: Prisma.JsonValue | null | undefined
 ): "prepped" | "not_prepped" {
   return summary ? "prepped" : "not_prepped";
 }

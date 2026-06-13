@@ -1,7 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import { cron } from "@elysiajs/cron";
 import { opentelemetry } from "@elysiajs/opentelemetry";
-import { Prisma } from "@larity/infra/prisma/generated/prisma/client";
+import { Prisma } from "@larity/infra/prisma";
 import { preMeetingBriefQueue } from "@larity/jobs";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { GoogleGenAI, Type } from "@google/genai";
 import { ImportantPointCategory } from "@larity/infra/prisma";
 import { prisma } from "@larity/infra/prisma/client";
@@ -156,58 +157,67 @@ ${contextStr}
     const modelName = process.env.GEMINI_TIER4_MODEL || "gemini-3.1-flash-lite";
 
     // Ask LLM to generate the JSON brief
-    const completion = await getAI().models.generateContent({
-      model: modelName,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            sentiment: {
-              type: Type.STRING,
-              description:
-                "Overall relationship tone ('Positive', 'Neutral', 'Negative', or 'Escalation Risk').",
-            },
-            tldr: {
-              type: Type.STRING,
-              description:
-                "A short paragraph (2-3 sentences max) summarizing the context, what was unresolved last time, and what needs immediate attention today. Do NOT use markdown.",
-            },
-            suggestedAgenda: {
-              type: Type.ARRAY,
-              description:
-                "An array of 3-5 short strings representing suggested agenda items based on open tasks and past meeting context.",
-              items: {
-                type: Type.STRING,
-              },
-            },
-            landmines: {
-              type: Type.ARRAY,
-              description:
-                "An array of objects representing true strategic risks or constraints. Pick the most critical 1-3. If none, return an empty array.",
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  text: {
-                    type: Type.STRING,
-                  },
-                  category: {
-                    type: Type.STRING,
-                    description:
-                      "exactly one of: 'WARNING', 'CONSTRAINT', 'RISK'",
-                  },
-                },
-                required: ["text", "category"],
-              },
-            },
-          },
-          required: ["sentiment", "tldr", "suggestedAgenda", "landmines"],
-        },
-      },
-    });
+    const ac = new AbortController();
+    const timeoutId = setTimeout(() => ac.abort(), 15_000);
 
-    const content = completion.text;
+    let completion: { text: string } | undefined;
+    try {
+      completion = await getAI().models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              sentiment: {
+                type: Type.STRING,
+                description:
+                  "Overall relationship tone ('Positive', 'Neutral', 'Negative', or 'Escalation Risk').",
+              },
+              tldr: {
+                type: Type.STRING,
+                description:
+                  "A short paragraph (2-3 sentences max) summarizing the context, what was unresolved last time, and what needs immediate attention today. Do NOT use markdown.",
+              },
+              suggestedAgenda: {
+                type: Type.ARRAY,
+                description:
+                  "An array of 3-5 short strings representing suggested agenda items based on open tasks and past meeting context.",
+                items: {
+                  type: Type.STRING,
+                },
+              },
+              landmines: {
+                type: Type.ARRAY,
+                description:
+                  "An array of objects representing true strategic risks or constraints. Pick the most critical 1-3. If none, return an empty array.",
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    text: {
+                      type: Type.STRING,
+                    },
+                    category: {
+                      type: Type.STRING,
+                      description:
+                        "exactly one of: 'WARNING', 'CONSTRAINT', 'RISK'",
+                    },
+                  },
+                  required: ["text", "category"],
+                },
+              },
+            },
+            required: ["sentiment", "tldr", "suggestedAgenda", "landmines"],
+          },
+        },
+        requestOptions: { signal: ac.signal },
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    const content = completion?.text;
     if (!content) {
       throw new Error("No brief generated");
     }
@@ -226,8 +236,8 @@ ${contextStr}
       tldr: aiOutput.tldr,
       sentiment: aiOutput.sentiment,
       landmines: aiOutput.landmines.map(
-        (l: { text: string; category: string }, idx: number) => ({
-          id: `ai-lm-${idx}`,
+        (l: { text: string; category: string }) => ({
+          id: randomUUID(),
           text: l.text,
           category: l.category,
         })
