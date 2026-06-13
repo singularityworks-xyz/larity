@@ -151,6 +151,7 @@ export interface PipelineEngineDependencies {
     index: string,
     memberId: string
   ) => void;
+  onUtteranceRetracted?: (sessionId: string, utteranceId: string) => void;
   speculativeProcessor?: SpeculativeProcessor;
   predictivePreloader?: PredictivePreloader;
   /** Hook after pipeline session teardown (e.g. clear session-scoped alert publishers) */
@@ -166,6 +167,7 @@ export interface Tier4EvaluationSummary {
 export interface PipelineEvaluationResult {
   dropped: boolean;
   dropReason?: string;
+  retractUtteranceId?: string;
   tier1?: Tier1Result;
   tier2?: Tier2Classification;
   /** Mirrors Tier 2 classifier `shouldStopForDeepReasoning` (shown in traces / QA) */
@@ -186,7 +188,7 @@ export interface PipelineEvaluationResult {
     tier2Ms?: number;
     gateMs?: number;
     tier4Ms?: number;
-    pipelineBudgetMs?: number;
+    pipelineBudgetMs: number;
   };
 }
 
@@ -224,6 +226,7 @@ export class MeetingPipelineEngine {
     PipelineEngineDependencies["getKnownClientMembers"]
   >;
   private readonly onSpeakerIdentityGuessed?: PipelineEngineDependencies["onSpeakerIdentityGuessed"];
+  private readonly onUtteranceRetracted?: PipelineEngineDependencies["onUtteranceRetracted"];
   private readonly speculativeProcessor: SpeculativeProcessor;
   private readonly predictivePreloader: PredictivePreloader;
   private readonly onPipelineSessionClosed?: (sessionId: string) => void;
@@ -250,6 +253,7 @@ export class MeetingPipelineEngine {
     this.getAgendaItems = deps.getAgendaItems ?? (() => []);
     this.getKnownClientMembers = deps.getKnownClientMembers ?? (async () => []);
     this.onSpeakerIdentityGuessed = deps.onSpeakerIdentityGuessed;
+    this.onUtteranceRetracted = deps.onUtteranceRetracted;
     this.speculativeProcessor =
       deps.speculativeProcessor ??
       new SpeculativeProcessor({
@@ -294,6 +298,28 @@ export class MeetingPipelineEngine {
     this.evaluationChains.set(sessionId, recovered);
   }
 
+  private runPreFilter(
+    utterance: Utterance
+  ): PreFilterDecision & { preFilterMs: number } {
+    const preFilterStart = PERF.now();
+    const decision = this.preFilter.evaluate(utterance);
+    const preFilterMs = PERF.now() - preFilterStart;
+
+    pipelinePrefilterDuration.observe(preFilterMs);
+
+    if (decision.retractUtteranceId && this.onUtteranceRetracted) {
+      this.onUtteranceRetracted(
+        utterance.sessionId,
+        decision.retractUtteranceId
+      );
+    }
+
+    return {
+      ...decision,
+      preFilterMs,
+    };
+  }
+
   async evaluateUtterance(
     utterance: Utterance
   ): Promise<PipelineEvaluationResult> {
@@ -307,23 +333,20 @@ export class MeetingPipelineEngine {
 
     const speakerPriority = getSpeakerProcessingPriority(utterance.speaker);
 
-    const preFilterStart = PERF.now();
-    const decision = this.preFilter.evaluate(utterance);
-    const preFilterMs = PERF.now() - preFilterStart;
+    const preFilterResult = this.runPreFilter(utterance);
 
-    pipelinePrefilterDuration.observe(preFilterMs);
-
-    if (decision.dropped) {
-      pipelineDroppedTotal.inc({ reason: decision.reason ?? "unknown" });
+    if (preFilterResult.dropped) {
+      pipelineDroppedTotal.inc({ reason: preFilterResult.reason ?? "unknown" });
       pipelineTotalDuration.observe(PERF.now() - start);
       return {
         dropped: true,
-        dropReason: decision.reason,
+        dropReason: preFilterResult.reason,
+        retractUtteranceId: preFilterResult.retractUtteranceId,
         runTier4: false,
         tier4Outcome: { invoked: false },
         speakerPriority,
         latencies: {
-          preFilterMs,
+          preFilterMs: preFilterResult.preFilterMs,
           pipelineBudgetMs: PERF.now() - start,
         },
       };
@@ -508,6 +531,7 @@ export class MeetingPipelineEngine {
 
     return {
       dropped: false,
+      retractUtteranceId: preFilterResult.retractUtteranceId,
       tier1,
       tier2: tier2.classification,
       tier2StopDeepReasoning: tier2.shouldStopForDeepReasoning,
@@ -521,7 +545,7 @@ export class MeetingPipelineEngine {
       speakerPriority,
       sessionCost,
       latencies: {
-        preFilterMs,
+        preFilterMs: preFilterResult.preFilterMs,
         tier1Ms,
         tier2Ms,
         gateMs,

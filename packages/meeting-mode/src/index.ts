@@ -166,6 +166,43 @@ async function main(): Promise<void> {
     onPipelineSessionClosed: (sessionId) => {
       alertPublisherCache.delete(sessionId);
     },
+    onUtteranceRetracted: (sessionId, utteranceId) => {
+      const key = `meeting.utterance.${sessionId}`;
+      (async () => {
+        try {
+          const list = await redisClient.lrange(key, 0, -1);
+          for (const item of list) {
+            try {
+              const parsed = JSON.parse(item) as { utteranceId?: string };
+              if (parsed.utteranceId === utteranceId) {
+                await redisClient.lrem(key, 1, item);
+                rootLogger.info(
+                  { sessionId, utteranceId },
+                  "Retracted duplicate utterance from Redis list"
+                );
+
+                const retractEvent = {
+                  utteranceId,
+                  retracted: true,
+                };
+                await redisClient.publish(
+                  `meeting.utterance.${sessionId}`,
+                  JSON.stringify(retractEvent)
+                );
+                break;
+              }
+            } catch {
+              // Ignore JSON parse errors for corrupt entries
+            }
+          }
+        } catch (err) {
+          rootLogger.error(
+            { err, sessionId, utteranceId },
+            "Failed to retract utterance from Redis"
+          );
+        }
+      })();
+    },
     getContextPayload: async (sessionId) => {
       const payload = await redisClient.get(
         redisKeys.meetingContext(sessionId)

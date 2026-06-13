@@ -455,17 +455,25 @@ export function MeetingPage() {
 
   useEffect(() => {
     const unsubUtterance = streamingClient.subscribe("utterance", (data) => {
-      const timing = data as unknown as {
+      const raw = data as unknown as {
+        utteranceId: string;
+        retracted?: boolean;
+        speaker?: Record<string, unknown>;
         startOffset?: number;
         duration?: number;
       };
-      const startOffset = timing.startOffset;
-      const duration = timing.duration;
+
+      if (raw.retracted) {
+        setUtterances((prev) => prev.filter((u) => u.id !== raw.utteranceId));
+        return;
+      }
+
+      const startOffset = raw.startOffset;
+      const duration = raw.duration;
 
       const utterance = mapBackendUtteranceToLive(
         data as unknown as Parameters<typeof mapBackendUtteranceToLive>[0]
       );
-      const rawData = data as unknown as { speaker?: Record<string, unknown> };
       setUtterances((prev) => {
         if (prev.some((u) => u.id === utterance.id)) {
           return prev;
@@ -478,11 +486,11 @@ export function MeetingPage() {
         );
       }
       setParticipants((prev) => {
-        if (!rawData.speaker) {
+        if (!raw.speaker) {
           return prev;
         }
         const participant = mapSpeakerToParticipant(
-          rawData.speaker as unknown as Parameters<
+          raw.speaker as unknown as Parameters<
             typeof mapSpeakerToParticipant
           >[0],
           userId
@@ -495,10 +503,10 @@ export function MeetingPage() {
         }
         return [...prev, participant];
       });
-      if (rawData.speaker) {
+      if (raw.speaker) {
         emitTo("meeting-overlay", "overlay-data", {
           type: "utterance",
-          payload: { speaker: rawData.speaker },
+          payload: { speaker: raw.speaker },
         }).catch((err) =>
           console.warn("overlay-data utterance emit failed:", err)
         );
