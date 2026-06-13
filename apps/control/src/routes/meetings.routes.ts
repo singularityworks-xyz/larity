@@ -5,6 +5,7 @@ import {
   MeetingService,
   TranscriptService,
 } from "../services";
+import { ForbiddenError, NotFoundError } from "../services/meeting.service";
 import type {
   MeetingInsightsQueryInput,
   MeetingQueryInput,
@@ -431,6 +432,14 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
         );
         return { success: true, data: result };
       } catch (e: unknown) {
+        if (e instanceof NotFoundError) {
+          set.status = 404;
+          return { success: false, error: e.message };
+        }
+        if (e instanceof ForbiddenError) {
+          set.status = 403;
+          return { success: false, error: e.message };
+        }
         const err = e as { code?: string; message?: string };
         if (err.message === "Meeting not found") {
           set.status = 404;

@@ -9,6 +9,20 @@ import type {
   UpdateMeetingInput,
 } from "../validators";
 
+export class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}
+
+export class ForbiddenError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ForbiddenError";
+  }
+}
+
 export const MeetingService = {
   create(data: CreateMeetingInput) {
     return prisma.meeting.create({
@@ -475,11 +489,13 @@ export const MeetingService = {
     });
 
     if (!member) {
-      throw new Error("Client member not found");
+      throw new NotFoundError("Client member not found");
     }
 
     if (member.clientId !== meeting.clientId) {
-      throw new Error("Client member does not belong to the meeting's client");
+      throw new ForbiddenError(
+        "Client member does not belong to the meeting's client"
+      );
     }
 
     const updatePayload = JSON.stringify({ [deepgramIndex]: clientMemberId });
