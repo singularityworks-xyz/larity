@@ -168,6 +168,7 @@ export function MeetingPage() {
   const [lastTs, setLastTs] = useState<number>(0);
   const [warning, setWarning] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [devices, setDevices] = useState<AudioDevice[]>([]);
   const [micDeviceId, setMicDeviceId] = useState<string | null>(null);
   const [sysDeviceId, setSysDeviceId] = useState<string | null>(null);
@@ -921,6 +922,11 @@ export function MeetingPage() {
                 <p className="text-fg text-sm">
                   Map Speaker {guess.index} to Client Member {guess.memberId}?
                 </p>
+                {cardErrors[guess.id] && (
+                  <p className="text-danger-fg text-xs">
+                    {cardErrors[guess.id]}
+                  </p>
+                )}
                 <div className="flex justify-end gap-2">
                   <button
                     className="rounded bg-bg-subtle px-2 py-1 text-fg text-xs hover:bg-bg-hover"
@@ -928,6 +934,13 @@ export function MeetingPage() {
                       setIdentityGuesses((prev) =>
                         prev.filter((g) => g.id !== guess.id)
                       );
+                      if (cardErrors[guess.id]) {
+                        setCardErrors((prev) => {
+                          const next = { ...prev };
+                          delete next[guess.id];
+                          return next;
+                        });
+                      }
                     }}
                     type="button"
                   >
@@ -945,8 +958,21 @@ export function MeetingPage() {
                         setIdentityGuesses((prev) =>
                           prev.filter((g) => g.id !== guess.id)
                         );
+                        if (cardErrors[guess.id]) {
+                          setCardErrors((prev) => {
+                            const next = { ...prev };
+                            delete next[guess.id];
+                            return next;
+                          });
+                        }
                       } catch (err) {
                         console.error("Failed to map speaker:", err);
+                        const msg =
+                          err instanceof Error ? err.message : String(err);
+                        setCardErrors((prev) => ({
+                          ...prev,
+                          [guess.id]: `Failed to confirm speaker mapping: ${msg}`,
+                        }));
                       }
                     }}
                     type="button"
