@@ -185,8 +185,11 @@ async function main(): Promise<void> {
       finalizer?.getTopicLabel(sessionId, topicId),
     getKnownClientMembers: async (sessionId) => {
       try {
+        const sessionKey = redisKeys.meetingSession(sessionId);
+        const meetingId =
+          (await redisClient.hget(sessionKey, "meetingId")) || sessionId;
         const meeting = await prisma.meeting.findUnique({
-          where: { id: sessionId },
+          where: { id: meetingId },
           select: {
             client: {
               select: { members: { select: { id: true, name: true } } },
