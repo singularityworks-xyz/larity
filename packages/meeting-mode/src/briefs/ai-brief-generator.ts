@@ -46,10 +46,12 @@ export const AIBriefGeneratorService = {
         prisma.task.findMany({
           where: { clientId, status: "OPEN" },
           orderBy: { createdAt: "desc" },
+          take: 15,
         }),
         prisma.openQuestion.findMany({
           where: { clientId, status: "OPEN" },
           orderBy: { createdAt: "desc" },
+          take: 10,
         }),
         prisma.importantPoint.findMany({
           where: {
@@ -66,6 +68,26 @@ export const AIBriefGeneratorService = {
           take: 10,
         }),
       ]);
+
+    if (
+      openTasks.length === 0 &&
+      pastMeetings.length === 0 &&
+      openQuestions.length === 0 &&
+      landmines.length === 0
+    ) {
+      return {
+        tldr: "This is the first meeting with this client. Let's make a great impression and establish mutual goals.",
+        sentiment: "Neutral",
+        landmines: [],
+        suggestedAgenda: [
+          "Introductions",
+          "Understand current challenges",
+          "Define success metrics",
+          "Next steps",
+        ],
+        commitments: { mine: [], theirs: [] },
+      };
+    }
 
     // Build context string
     let contextStr = `Client: ${meeting.client.name}\n\n`;
