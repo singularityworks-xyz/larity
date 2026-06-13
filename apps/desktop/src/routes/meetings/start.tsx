@@ -1,7 +1,10 @@
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useClientMembers } from "../../features/clients/use-client-members";
+import { ExpectedParticipantsPicker } from "../../features/meetings/components/expected-participants-picker";
 import { useClients } from "../../features/meetings/use-clients";
+import { useCreateMeetingParticipant } from "../../features/meetings/use-create-meeting-participant";
 import { useStartMeeting } from "../../features/meetings/use-start-meeting";
 import {
   buttonClass,
@@ -49,10 +52,12 @@ function scheduledIsoFromForm(
 
 export function StartMeetingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const clientsQuery = useClients();
   const startMeetingMutation = useStartMeeting();
+  const createParticipant = useCreateMeetingParticipant();
 
-  const [clientId, setClientId] = useState("");
+  const [clientId, setClientId] = useState(searchParams.get("clientId") || "");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [agenda, setAgenda] = useState("");
@@ -60,13 +65,24 @@ export function StartMeetingPage() {
   const [scheduledAtLocal, setScheduledAtLocal] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const { data: members } = useClientMembers(clientId);
+
+  // New state for expected participants
+  const [expectedMemberIds, setExpectedMemberIds] = useState<Set<string>>(
+    new Set()
+  );
+
   const selectedClient = useMemo(() => {
     return (clientsQuery.data ?? []).find((c) => c.id === clientId);
   }, [clientsQuery.data, clientId]);
 
   const isSubmitDisabled = useMemo(() => {
-    return clientId.trim().length === 0 || startMeetingMutation.isPending;
-  }, [clientId, startMeetingMutation.isPending]);
+    return (
+      clientId.trim().length === 0 ||
+      startMeetingMutation.isPending ||
+      createParticipant.isPending
+    );
+  }, [clientId, startMeetingMutation.isPending, createParticipant.isPending]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -93,6 +109,31 @@ export function StartMeetingPage() {
         ...(agenda.trim() ? { agenda: agenda.trim() } : {}),
         ...(scheduledIso ? { scheduledAt: scheduledIso } : {}),
       });
+
+      // Add participants to the created meeting
+      if (expectedMemberIds.size > 0 && members) {
+        await Promise.all(
+          Array.from(expectedMemberIds).map(async (memberId) => {
+            const member = members.find((m) => m.id === memberId);
+            if (!member) {
+              return;
+            }
+            try {
+              await createParticipant.mutateAsync({
+                meetingId: session.sessionId,
+                externalName: member.name,
+                externalEmail: member.email || undefined,
+                role: "PARTICIPANT",
+              });
+            } catch (err) {
+              console.error(
+                `Failed to create participant for member ${memberId} in meeting session ${session.sessionId}`,
+                err
+              );
+            }
+          })
+        );
+      }
 
       navigate(`/meeting/${session.sessionId}`, {
         state: {
@@ -135,7 +176,10 @@ export function StartMeetingPage() {
               <select
                 className={selectClass}
                 id="meeting-client"
-                onChange={(event) => setClientId(event.target.value)}
+                onChange={(event) => {
+                  setClientId(event.target.value);
+                  setExpectedMemberIds(new Set()); // Reset on client change
+                }}
                 required
                 value={clientId}
               >
@@ -162,6 +206,12 @@ export function StartMeetingPage() {
               />
             </div>
           </div>
+
+          <ExpectedParticipantsPicker
+            clientId={clientId}
+            onSelectionChange={setExpectedMemberIds}
+            selectedIds={expectedMemberIds}
+          />
 
           <div className={formGroupClass}>
             <span className={labelClass}>Start time</span>
@@ -234,7 +284,7 @@ export function StartMeetingPage() {
             disabled={isSubmitDisabled}
             type="submit"
           >
-            {startMeetingMutation.isPending
+            {startMeetingMutation.isPending || createParticipant.isPending
               ? "Starting..."
               : "Start and enter room"}
           </button>

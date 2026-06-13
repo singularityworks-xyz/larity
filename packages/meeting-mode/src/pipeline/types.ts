@@ -77,6 +77,16 @@ export const tier2ClassificationSchema = z
       (val) => (val === null ? undefined : val),
       tier2TopicDeltaSchema.optional()
     ),
+    identityGuess: z.preprocess(
+      (val) => (val === null ? undefined : val),
+      z
+        .object({
+          index: z.string(),
+          memberId: z.string(),
+        })
+        .strict()
+        .optional()
+    ),
   })
   .strict();
 
@@ -90,6 +100,7 @@ export interface Tier2Input {
   topicLabel?: string;
   /** Structural price/currency cue (aligned with Tier1 `pricingHit`) for Tier2 user message. */
   structuralPricingCue?: boolean;
+  knownClientMembers?: Array<{ id: string; name: string }>;
 }
 
 export type Tier2Intent = z.infer<typeof tier2IntentSchema>;

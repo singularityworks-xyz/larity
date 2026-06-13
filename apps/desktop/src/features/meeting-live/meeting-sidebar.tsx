@@ -1,6 +1,9 @@
 import { ChevronDown, Crown, GitBranch, Pencil, UserCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cx, inputClass } from "../../lib/ui";
+import { useClientMembers } from "../clients/use-client-members";
+import { useCreateClientMember } from "../clients/use-create-client-member";
+import { useConfirmSpeakerMapping } from "../meetings/use-confirm-speaker-mapping";
 import { IDENTIFICATION_CONFIDENCE_THRESHOLD } from "./participant-avatars";
 import type { LiveCommitment, LiveParticipant } from "./types";
 
@@ -98,6 +101,7 @@ function formatEvidenceClock(meetingStartMs: number, ts: number): string {
 }
 
 interface MeetingSidebarProps {
+  clientId?: string;
   sessionId: string;
   participants: LiveParticipant[];
   commitments: LiveCommitment[];
@@ -107,6 +111,7 @@ interface MeetingSidebarProps {
 }
 
 export function MeetingSidebar({
+  clientId,
   sessionId,
   participants,
   commitments,
@@ -119,6 +124,10 @@ export function MeetingSidebar({
   const [notesSavedVersion, setNotesSavedVersion] = useState("");
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const { data: members = [] } = useClientMembers(clientId ?? "");
+  const createMember = useCreateClientMember();
+  const confirmMapping = useConfirmSpeakerMapping();
 
   useEffect(() => {
     try {
@@ -162,9 +171,8 @@ export function MeetingSidebar({
       .slice(0, 2)
       .toUpperCase();
 
-    // Determine if unidentified
     const isUnidentified =
-      p.type === "TEAM" &&
+      p.type === "EXTERNAL" &&
       (p.confidence ?? 0) < IDENTIFICATION_CONFIDENCE_THRESHOLD;
 
     return (
@@ -184,7 +192,21 @@ export function MeetingSidebar({
         </div>
 
         <div className="min-w-0 flex-1">
-          {editing ? (
+          {editing && p.type === "EXTERNAL" && clientId && (
+            <IdentifyExternalSpeakerDropdown
+              clientId={clientId}
+              confirmMapping={confirmMapping}
+              createMember={createMember}
+              deepgramIndex={p.id}
+              members={members}
+              onComplete={() => setEditingId(null)}
+              onLocalOverride={(name) =>
+                setOverrides((prev) => ({ ...prev, [p.id]: name }))
+              }
+              sessionId={sessionId}
+            />
+          )}
+          {editing && !(p.type === "EXTERNAL" && clientId) && (
             <input
               aria-label={`Rename ${p.name}`}
               autoFocus
@@ -203,7 +225,8 @@ export function MeetingSidebar({
               }}
               value={display}
             />
-          ) : (
+          )}
+          {!editing && (
             <div className="flex flex-wrap items-center gap-1">
               <span className="truncate font-medium text-[12px] text-fg">
                 {display}
@@ -318,6 +341,23 @@ export function MeetingSidebar({
           ) : (
             external.map(renderParticipantRow)
           )}
+          {clientId && (
+            <div className="mt-2 flex justify-center border-border-subtle/50 border-t pt-2">
+              <button
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 font-medium text-[10px] text-fg-subtle transition-colors hover:bg-bg-subtle hover:text-fg"
+                onClick={() => {
+                  window.open(
+                    `/clients/${clientId}`,
+                    "_blank",
+                    "width=800,height=600"
+                  );
+                }}
+                type="button"
+              >
+                Manage Client Members
+              </button>
+            </div>
+          )}
         </div>
       </CollapsibleSection>
 
@@ -421,5 +461,125 @@ export function MeetingSidebar({
         </div>
       </CollapsibleSection>
     </aside>
+  );
+}
+
+function IdentifyExternalSpeakerDropdown({
+  clientId,
+  sessionId,
+  deepgramIndex,
+  members,
+  createMember,
+  confirmMapping,
+  onComplete,
+  onLocalOverride,
+}: {
+  clientId: string;
+  sessionId: string;
+  deepgramIndex: string;
+  members: { id: string; name: string }[];
+  // biome-ignore lint/suspicious/noExplicitAny: generic bypass
+  createMember: { mutateAsync: (data: any) => Promise<{ id: string }> };
+  // biome-ignore lint/suspicious/noExplicitAny: generic bypass
+  confirmMapping: { mutateAsync: (data: any) => Promise<unknown> };
+  onComplete: () => void;
+  onLocalOverride: (name: string) => void;
+}) {
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newName, setNewName] = useState("");
+
+  const handleSelect = async (memberId: string) => {
+    if (memberId === "new") {
+      setIsCreatingNew(true);
+      return;
+    }
+    const member = members.find((m) => m.id === memberId);
+    if (!member) {
+      return;
+    }
+
+    try {
+      await confirmMapping.mutateAsync({
+        meetingId: sessionId,
+        deepgramIndex,
+        clientMemberId: memberId,
+      });
+
+      onLocalOverride(member.name);
+      onComplete();
+    } catch (err) {
+      console.error("Failed to map speaker:", err);
+    }
+  };
+
+  const handleCreate = async (e: React.KeyboardEvent) => {
+    e.preventDefault();
+    if (!newName.trim()) {
+      return;
+    }
+
+    try {
+      const newMember = await createMember.mutateAsync({
+        clientId,
+        name: newName.trim(),
+        role: "CONTACT",
+      });
+
+      await confirmMapping.mutateAsync({
+        meetingId: sessionId,
+        deepgramIndex,
+        clientMemberId: newMember.id,
+      });
+
+      onLocalOverride(newName.trim());
+      onComplete();
+    } catch (err) {
+      console.error("Failed to create client member or map speaker:", err);
+    }
+  };
+
+  if (isCreatingNew) {
+    return (
+      <input
+        autoFocus
+        className={inputClass}
+        onChange={(e) => setNewName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            handleCreate(e);
+          }
+          if (e.key === "Escape") {
+            onComplete();
+          }
+        }}
+        placeholder="Enter new name..."
+        value={newName}
+      />
+    );
+  }
+
+  return (
+    <select
+      autoFocus
+      className={cx(inputClass, "cursor-pointer")}
+      onBlur={() => {
+        // Only trigger complete on blur if we haven't selected "new"
+        if (!isCreatingNew) {
+          onComplete();
+        }
+      }}
+      onChange={(e) => handleSelect(e.target.value)}
+      value=""
+    >
+      <option disabled value="">
+        Select identity...
+      </option>
+      {members.map((m) => (
+        <option key={m.id} value={m.id}>
+          {m.name}
+        </option>
+      ))}
+      <option value="new">+ Add new client member</option>
+    </select>
   );
 }

@@ -39,3 +39,8 @@ export const audioCleanupQueue = new Queue("meeting.cleanupAudio", {
   connection: getRedisConnection(),
   defaultJobOptions: COMMON_JOB_OPTIONS,
 });
+
+export const clientPersonaQueue = new Queue("client.personaExtraction", {
+  connection: getRedisConnection(),
+  defaultJobOptions: COMMON_JOB_OPTIONS,
+});

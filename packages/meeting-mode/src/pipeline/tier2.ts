@@ -132,7 +132,7 @@ export class Tier2Classifier {
 /** Built once — rubric + compact calibration (system role). */
 const SYSTEM_PROMPT = [
   `You are Tier 2: fast semantic classifier for live multilingual business meetings.
-Output must match the JSON schema only. All seven top-level keys are required; all five extractedData keys are required (null when unused); topicDelta is null or a full object with all seven keys.
+Output must match the JSON schema only. All eight top-level keys are required (intent, commitmentType, tone, riskSignals, extractedData, confidence, topicDelta, identityGuess); all five extractedData keys are required (null when unused); topicDelta is null or a full object with all seven keys.
 
 Classify the CURRENT utterance; use recentSameSpeaker only as short local context.
 
@@ -196,6 +196,7 @@ Classify the CURRENT utterance; use recentSameSpeaker only as short local contex
 - Skip riskSignals for pure filler or STT noise.
 - extractedData: fill only from explicit speech; never infer. Use null for any key not present.
 - topicDelta: null unless the utterance carries a clear topic signal; if set, include all seven keys (unused ones null).
+- identityGuess: null unless the speaker is unidentified (type="external" or similar) AND you can confidently deduce their identity from the text (e.g. "Hi, I'm Aman"). If "knownClientMembers" has a matching name, set { "index": "<speakerId>", "memberId": "<matching id>" }. Leave null if unsure.
 - English, Hindi, Hinglish, code-switching. Broken STT → lower confidence; never invent facts.
 
 ## Examples:
@@ -220,16 +221,22 @@ function buildUserMessage(input: Tier2Input): string {
     isCurrentUser: input.speaker.isCurrentUser,
   };
 
+  const knownMembersStr = input.knownClientMembers?.length
+    ? `knownClientMembers: ${JSON.stringify(input.knownClientMembers)}`
+    : "";
+
   return [
     `utterance: ${input.utterance}`,
     `speaker: ${JSON.stringify(speakerInfo)}`,
     `recentSameSpeaker:\n${recentBlock}`,
     `topicLabel: ${input.topicLabel ?? "unknown"}`,
     input.structuralPricingCue ? "pricingCue: true" : "pricingCue: false",
+    knownMembersStr,
     "Return only JSON.",
-  ].join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
-
 function fallbackClassification(): Tier2Classification {
   return {
     intent: "general",
@@ -238,6 +245,7 @@ function fallbackClassification(): Tier2Classification {
     riskSignals: [],
     extractedData: {},
     confidence: 0,
+    identityGuess: undefined,
   };
 }
 
@@ -343,6 +351,20 @@ function getTier2JsonSchema(): Record<string, unknown> {
       topicDelta: {
         anyOf: [{ type: "null" }, topicDeltaObject],
       },
+      identityGuess: {
+        anyOf: [
+          { type: "null" },
+          {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              index: { type: "string" },
+              memberId: { type: "string" },
+            },
+            required: ["index", "memberId"],
+          },
+        ],
+      },
     },
     required: [
       "intent",
@@ -352,6 +374,7 @@ function getTier2JsonSchema(): Record<string, unknown> {
       "extractedData",
       "confidence",
       "topicDelta",
+      "identityGuess",
     ],
   };
 }

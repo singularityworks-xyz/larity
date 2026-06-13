@@ -2,6 +2,7 @@ import { emit, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useState } from "react";
 import { cx } from "../../lib/ui";
+import { useConfirmSpeakerMapping } from "../meetings/use-confirm-speaker-mapping";
 import { AlertRegion } from "./alert-region";
 import { AmbientStrip } from "./ambient-strip";
 import { OverlayFooter } from "./overlay-footer";
@@ -29,8 +30,10 @@ async function closeSelf() {
 
 export function OverlayShell() {
   const data = useOverlayData();
+  const confirmSpeakerMapping = useConfirmSpeakerMapping();
   const [elapsedMs, setElapsedMs] = useState(0);
   const [isEndingBusy, setIsEndingBusy] = useState(false);
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const tick = () => setElapsedMs(Math.max(0, Date.now() - data.startedAtMs));
@@ -132,6 +135,85 @@ export function OverlayShell() {
           onToggleExpand={data.setExpandedAlertId}
           visibleAlerts={data.visibleAlerts}
         />
+
+        {data.identityGuesses.length > 0 && (
+          <div className="absolute top-8 right-2 z-50 flex w-64 flex-col gap-2">
+            {data.identityGuesses.map((guess) => (
+              <div
+                className="flex flex-col gap-2 rounded border border-white/10 bg-black/80 p-2 shadow-lg backdrop-blur"
+                key={guess.id}
+              >
+                <p className="text-white text-xs">
+                  Map Speaker {guess.index} to Client Member {guess.memberId}?
+                </p>
+                {cardErrors[guess.id] && (
+                  <p className="text-[10px] text-red-400 leading-tight">
+                    {cardErrors[guess.id]}
+                  </p>
+                )}
+                <div className="flex justify-end gap-2">
+                  <button
+                    className="rounded bg-white/10 px-2 py-1 text-[10px] text-white hover:bg-white/20 disabled:opacity-50"
+                    disabled={confirmSpeakerMapping.isPending}
+                    onClick={() => {
+                      data.setIdentityGuesses((prev) =>
+                        prev.filter((g) => g.id !== guess.id)
+                      );
+                      if (cardErrors[guess.id]) {
+                        setCardErrors((prev) => {
+                          const next = { ...prev };
+                          delete next[guess.id];
+                          return next;
+                        });
+                      }
+                    }}
+                    type="button"
+                  >
+                    Dismiss
+                  </button>
+                  <button
+                    className="rounded bg-accent px-2 py-1 text-[10px] text-on-accent hover:bg-accent/80 disabled:opacity-50"
+                    disabled={confirmSpeakerMapping.isPending}
+                    onClick={async () => {
+                      if (confirmSpeakerMapping.isPending) {
+                        return;
+                      }
+                      try {
+                        await confirmSpeakerMapping.mutateAsync({
+                          meetingId: data.sessionId,
+                          deepgramIndex: guess.index,
+                          clientMemberId: guess.memberId,
+                        });
+                        data.setIdentityGuesses((prev) =>
+                          prev.filter((g) => g.id !== guess.id)
+                        );
+                        if (cardErrors[guess.id]) {
+                          setCardErrors((prev) => {
+                            const next = { ...prev };
+                            delete next[guess.id];
+                            return next;
+                          });
+                        }
+                      } catch (err) {
+                        const msg =
+                          err instanceof Error ? err.message : String(err);
+                        setCardErrors((prev) => ({
+                          ...prev,
+                          [guess.id]: `Failed to map speaker ${guess.index} to member ${guess.memberId} for meeting ${data.sessionId}: ${msg}`,
+                        }));
+                      }
+                    }}
+                    type="button"
+                  >
+                    {confirmSpeakerMapping.isPending
+                      ? "Confirming..."
+                      : "Confirm"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {data.rememberFlash && (
           <div

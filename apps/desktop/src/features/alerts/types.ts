@@ -10,7 +10,8 @@ export type AlertCategory =
   | "pressure_detected"
   | "policy_violation"
   | "client_disengagement"
-  | "undiscussed_agenda";
+  | "undiscussed_agenda"
+  | "unidentified_speaker";
 
 export type AlertSeverity = "low" | "medium" | "high" | "critical";
 
@@ -49,7 +50,8 @@ export const ALERT_PRIORITY: Record<AlertCategory, number> = {
   tone_warning: 9,
   client_disengagement: 10,
   missing_clarity: 11,
-  undiscussed_agenda: 12,
+  unidentified_speaker: 12,
+  undiscussed_agenda: 13,
 } as const;
 
 export const ALERT_EXPIRY_MS: Record<AlertSeverity, number> = {
@@ -128,6 +130,11 @@ export const ALERT_CATEGORY_META: Record<AlertCategory, AlertCategoryMeta> = {
     title: "Undiscussed agenda",
     borderClass: "border-l-info-fg",
     iconKey: "list-checks",
+  },
+  unidentified_speaker: {
+    title: "Identify Speaker",
+    borderClass: "border-l-accent",
+    iconKey: "user-circle",
   },
 } as const;
 

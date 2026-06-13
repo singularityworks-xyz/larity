@@ -26,6 +26,8 @@ export const createClientMemberSchema = z.object({
   title: z.string().max(100).optional(),
   department: z.string().max(100).optional(),
   notes: z.string().max(2000).optional(),
+  image: z.string().url("Must be a valid URL").optional(),
+  persona: z.record(z.unknown()).nullable().optional(),
   role: ClientMemberRole.default("CONTACT"),
 });
 
@@ -37,6 +39,8 @@ export const updateClientMemberSchema = z.object({
   title: z.string().max(100).optional(),
   department: z.string().max(100).optional(),
   notes: z.string().max(2000).optional(),
+  image: z.string().url("Must be a valid URL").optional(),
+  persona: z.record(z.unknown()).nullable().optional(),
   role: ClientMemberRole.optional(),
 });
 

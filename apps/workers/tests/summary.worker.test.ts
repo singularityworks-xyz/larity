@@ -16,6 +16,8 @@ const mockOpenQuestionCreate = mock();
 const mockImportantPointDeleteMany = mock();
 const mockImportantPointCreate = mock();
 const mockMeetingUpdate = mock();
+const mockTranscriptUtteranceDeleteMany = mock();
+const mockTranscriptUtteranceCreate = mock().mockResolvedValue({ id: "utt-1" });
 
 const txMock = {
   decision: {
@@ -51,6 +53,10 @@ mock.module("@larity/infra/prisma/client", () => ({
     },
     transcript: {
       findUnique: mockPrismaTranscriptFindUnique,
+    },
+    transcriptUtterance: {
+      deleteMany: mockTranscriptUtteranceDeleteMany,
+      create: mockTranscriptUtteranceCreate,
     },
     $transaction: mock().mockImplementation(async (callback) => {
       return await callback(txMock);
@@ -155,6 +161,8 @@ describe("SummaryWorker Integration", () => {
     mockRedisGet.mockClear();
     mockExtractInsights.mockClear();
     mockGenerateEmbedding.mockClear();
+    mockTranscriptUtteranceDeleteMany.mockClear();
+    mockTranscriptUtteranceCreate.mockClear();
   });
 
   it("should process transcript, extract insights, and transactionally save to DB", async () => {

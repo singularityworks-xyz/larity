@@ -9,6 +9,20 @@ import type {
   UpdateMeetingInput,
 } from "../validators";
 
+export class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}
+
+export class ForbiddenError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ForbiddenError";
+  }
+}
+
 export const MeetingService = {
   create(data: CreateMeetingInput) {
     return prisma.meeting.create({
@@ -450,5 +464,53 @@ export const MeetingService = {
       jobId: job.id,
       sessionId,
     };
+  },
+
+  async confirmSpeakerMapping(
+    meetingId: string,
+    deepgramIndex: string,
+    clientMemberId: string
+  ) {
+    const meeting = await prisma.meeting.findUnique({
+      where: { id: meetingId },
+      select: {
+        clientId: true,
+      },
+    });
+
+    if (!meeting) {
+      throw new Error("Meeting not found");
+    }
+
+    // Load the target member and verify tenant boundaries
+    const member = await prisma.clientMember.findUnique({
+      where: { id: clientMemberId },
+      select: { clientId: true },
+    });
+
+    if (!member) {
+      throw new NotFoundError("Client member not found");
+    }
+
+    if (member.clientId !== meeting.clientId) {
+      throw new ForbiddenError(
+        "Client member does not belong to the meeting's client"
+      );
+    }
+
+    const updatePayload = JSON.stringify({ [deepgramIndex]: clientMemberId });
+
+    const result = await prisma.$queryRaw<unknown[]>`
+      UPDATE meetings
+      SET "speakerMappings" = COALESCE("speakerMappings", '{}'::jsonb) || ${updatePayload}::jsonb
+      WHERE id = ${meetingId}
+      RETURNING *
+    `;
+
+    if (!result || result.length === 0) {
+      throw new Error("Meeting not found");
+    }
+
+    return result[0];
   },
 };

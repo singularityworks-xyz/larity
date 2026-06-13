@@ -1,7 +1,4 @@
-import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
-import { transcribeAudioBuffer } from "../../src/deepgram/batch";
-// biome-ignore lint/performance/noNamespaceImport: needed for spyOn mocking
-import * as clientModule from "../../src/deepgram/client";
+import { afterEach, describe, expect, it, mock } from "bun:test";
 
 const mockTranscribeFile = mock(() => {
   return {
@@ -52,15 +49,19 @@ const mockTranscribeFile = mock(() => {
   };
 });
 
-spyOn(clientModule, "getDeepgramClient").mockReturnValue({
-  listen: {
-    v1: {
-      media: {
-        transcribeFile: mockTranscribeFile,
+mock.module("../../src/deepgram/client", () => ({
+  getDeepgramClient: () => ({
+    listen: {
+      v1: {
+        media: {
+          transcribeFile: mockTranscribeFile,
+        },
       },
     },
-  },
-} as any);
+  }),
+}));
+
+import { transcribeAudioBuffer } from "../../src/deepgram/batch";
 
 describe("transcribeAudioBuffer", () => {
   const dummyBuffer = Buffer.from([0, 1, 2, 3]);

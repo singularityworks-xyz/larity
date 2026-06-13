@@ -40,6 +40,7 @@ export type IncomingMessageType =
   | "stt_partial"
   | "stt_final"
   | "meeting_processed"
+  | "speaker_identity_guessed"
   | "unknown";
 
 export type IncomingMessageHandler = (data: Record<string, unknown>) => void;
@@ -502,6 +503,9 @@ function detectIncomingMessageType(
   data: Record<string, unknown>
 ): IncomingMessageType {
   const dataType = data.type;
+  if (dataType === "SPEAKER_IDENTITY_GUESSED") {
+    return "speaker_identity_guessed";
+  }
   if (dataType === "stt_partial") {
     return "stt_partial";
   }

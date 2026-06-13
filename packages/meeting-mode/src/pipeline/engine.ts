@@ -135,6 +135,9 @@ export interface PipelineEngineDependencies {
   ) => Promise<string | undefined>;
   getTopics?: (sessionId: string) => TopicState[];
   getAgendaItems?: (sessionId: string) => string[];
+  getKnownClientMembers?: (
+    sessionId: string
+  ) => Promise<Array<{ id: string; name: string }>>;
   preFilter?: PreFilter;
   tier1?: Tier1StructuralDetector;
   tier2?: Tier2Classifier;
@@ -143,6 +146,11 @@ export interface PipelineEngineDependencies {
   tier2Cache?: Tier2SemanticCache;
   costManager?: CostManager;
   speakerStateTracker?: SpeakerStateTracker;
+  onSpeakerIdentityGuessed?: (
+    sessionId: string,
+    index: string,
+    memberId: string
+  ) => void;
   speculativeProcessor?: SpeculativeProcessor;
   predictivePreloader?: PredictivePreloader;
   /** Hook after pipeline session teardown (e.g. clear session-scoped alert publishers) */
@@ -212,6 +220,10 @@ export class MeetingPipelineEngine {
   private readonly getAgendaItems: NonNullable<
     PipelineEngineDependencies["getAgendaItems"]
   >;
+  private readonly getKnownClientMembers: NonNullable<
+    PipelineEngineDependencies["getKnownClientMembers"]
+  >;
+  private readonly onSpeakerIdentityGuessed?: PipelineEngineDependencies["onSpeakerIdentityGuessed"];
   private readonly speculativeProcessor: SpeculativeProcessor;
   private readonly predictivePreloader: PredictivePreloader;
   private readonly onPipelineSessionClosed?: (sessionId: string) => void;
@@ -236,6 +248,8 @@ export class MeetingPipelineEngine {
       deps.speakerStateTracker ?? new SpeakerStateTracker();
     this.getTopics = deps.getTopics ?? (() => []);
     this.getAgendaItems = deps.getAgendaItems ?? (() => []);
+    this.getKnownClientMembers = deps.getKnownClientMembers ?? (async () => []);
+    this.onSpeakerIdentityGuessed = deps.onSpeakerIdentityGuessed;
     this.speculativeProcessor =
       deps.speculativeProcessor ??
       new SpeculativeProcessor({
@@ -877,12 +891,23 @@ export class MeetingPipelineEngine {
       utterance.topicId
     );
 
+    let knownClientMembers: Array<{ id: string; name: string }> = [];
+    try {
+      knownClientMembers = await this.getKnownClientMembers(sessionId);
+    } catch (error) {
+      log.warn(
+        { err: error, sessionId, utteranceId: utterance.utteranceId },
+        "Known client members lookup failed; proceeding without candidates"
+      );
+    }
+
     const input: Tier2Input = {
       utterance: text,
       speaker: utterance.speaker,
       recentSameSpeaker,
       topicLabel,
       structuralPricingCue: textMatchesTier1PricingPath(text),
+      knownClientMembers,
     };
 
     const tier2 = await this.tier2.classify(input);
@@ -908,6 +933,26 @@ export class MeetingPipelineEngine {
     }
 
     await this.applyTier2SideEffects(utterance, tier2.classification);
+
+    if (tier2.classification.identityGuess && this.onSpeakerIdentityGuessed) {
+      try {
+        this.onSpeakerIdentityGuessed(
+          sessionId,
+          tier2.classification.identityGuess.index,
+          tier2.classification.identityGuess.memberId
+        );
+      } catch (error) {
+        log.warn(
+          {
+            err: error,
+            sessionId,
+            index: tier2.classification.identityGuess.index,
+            memberId: tier2.classification.identityGuess.memberId,
+          },
+          "onSpeakerIdentityGuessed hook failed"
+        );
+      }
+    }
 
     return { ...tier2, tier2CacheHit: false };
   }

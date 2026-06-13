@@ -7,8 +7,12 @@ import {
   getS3Config,
   type S3Client,
 } from "@larity/infra/s3";
-import type { TranscribeJobData } from "@larity/jobs";
-import { audioCleanupQueue, summaryQueue } from "@larity/jobs";
+import {
+  audioCleanupQueue,
+  clientPersonaQueue,
+  summaryQueue,
+  type TranscribeJobData,
+} from "@larity/jobs";
 import {
   type BatchTranscriptionResult,
   transcribeAudioBuffer,
@@ -355,6 +359,27 @@ export class TranscribeWorker extends BaseWorker<
         orgId,
         meetingId,
       });
+
+      if (meeting?.speakerMappings) {
+        const mappings = meeting.speakerMappings as Record<string, string>;
+        const uniqueMemberIds = Array.from(new Set(Object.values(mappings)));
+        for (const memberId of uniqueMemberIds) {
+          this.log.info(
+            { meetingId, clientMemberId: memberId },
+            "Chaining client persona extraction job"
+          );
+          await clientPersonaQueue.add(
+            "client.personaExtraction",
+            {
+              meetingId,
+              clientMemberId: memberId,
+            },
+            {
+              jobId: `client.personaExtraction:${meetingId}:${memberId}`,
+            }
+          );
+        }
+      }
 
       // 9. Schedule a delayed audio cleanup job (TTL of 3 hours)
       this.log.info({ sessionId }, "Scheduling audio cleanup job (3-hour TTL)");
