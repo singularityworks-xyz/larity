@@ -177,7 +177,7 @@ export function ClientsPage() {
                     )}
                   </div>
                   <span className="text-[12px] text-fg-muted leading-none">
-                    {client.industry || "No industry"}
+                    {client?.industry ?? "No industry"}
                   </span>
                 </div>
               </div>
