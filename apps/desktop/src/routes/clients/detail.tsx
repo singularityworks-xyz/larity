@@ -25,6 +25,8 @@ const STATUS_INDICATORS = {
   },
 } as const;
 
+const ANIMATION_DELAY_MS = 40;
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: keep as is
 export function ClientDetailPage() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -37,6 +39,7 @@ export function ClientDetailPage() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [editForm, setEditForm] = useState({
     name: "",
@@ -60,6 +63,7 @@ export function ClientDetailPage() {
     if (!client) {
       return;
     }
+    setSaveError(null);
     try {
       await updateClient.mutateAsync({
         id: client.id,
@@ -74,7 +78,9 @@ export function ClientDetailPage() {
       });
       setIsEditing(false);
     } catch (e) {
-      console.error("Failed to update client", e);
+      const msg = e instanceof Error ? e.message : String(e);
+      setSaveError(`Failed to update client ${client.id}: ${msg}`);
+      console.warn("Client update exception logged:", e);
     }
   };
 
@@ -92,6 +98,10 @@ export function ClientDetailPage() {
       <div className="py-8 text-[13px] text-fg-muted">Client not found.</div>
     );
   }
+
+  const statusMeta =
+    STATUS_INDICATORS[client.status as keyof typeof STATUS_INDICATORS] ??
+    STATUS_INDICATORS.INACTIVE;
 
   return (
     <div className="fade-in flex animate-in flex-col gap-8 duration-300">
@@ -169,6 +179,7 @@ export function ClientDetailPage() {
                   className={buttonClass({ variant: "ghost", size: "sm" })}
                   onClick={() => {
                     setIsEditing(false);
+                    setSaveError(null);
                     setEditForm({
                       name: client.name,
                       industry: client.industry ?? "",
@@ -193,7 +204,10 @@ export function ClientDetailPage() {
               <>
                 <button
                   className={buttonClass({ variant: "secondary", size: "sm" })}
-                  onClick={() => setIsEditing(true)}
+                  onClick={() => {
+                    setSaveError(null);
+                    setIsEditing(true);
+                  }}
                   type="button"
                 >
                   Edit
@@ -230,23 +244,15 @@ export function ClientDetailPage() {
             </select>
           ) : (
             <div className="flex items-center gap-1.5">
-              {(() => {
-                const meta =
-                  STATUS_INDICATORS[
-                    client.status as keyof typeof STATUS_INDICATORS
-                  ] ?? STATUS_INDICATORS.INACTIVE;
-                return (
-                  <span
-                    aria-label={meta.label}
-                    className={cx(
-                      "flex h-1.5 w-1.5 rounded-full",
-                      meta.className
-                    )}
-                    role="img"
-                    title={meta.title}
-                  />
-                );
-              })()}
+              <span
+                aria-label={statusMeta.label}
+                className={cx(
+                  "flex h-1.5 w-1.5 rounded-full",
+                  statusMeta.className
+                )}
+                role="img"
+                title={statusMeta.title}
+              />
               <span className="font-medium text-fg capitalize">
                 {client.status.toLowerCase()}
               </span>
@@ -262,20 +268,27 @@ export function ClientDetailPage() {
         <div className="col-span-1 flex flex-col gap-2 border-border-subtle border-t pt-5 md:col-span-2 lg:col-span-4">
           <span className="text-fg-muted">Description</span>
           {isEditing ? (
-            <textarea
-              className={cx(
-                inputClass,
-                "min-h-[80px] w-full resize-y px-3 py-2 font-normal text-[13px]"
+            <>
+              <textarea
+                className={cx(
+                  inputClass,
+                  "min-h-[80px] w-full resize-y px-3 py-2 font-normal text-[13px]"
+                )}
+                onChange={(e) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+                placeholder="Add a description..."
+                value={editForm.description}
+              />
+              {saveError && (
+                <p className="mt-1 font-medium text-[12px] text-red-500">
+                  {saveError}
+                </p>
               )}
-              onChange={(e) =>
-                setEditForm((prev) => ({
-                  ...prev,
-                  description: e.target.value,
-                }))
-              }
-              placeholder="Add a description..."
-              value={editForm.description}
-            />
+            </>
           ) : (
             <div className="whitespace-pre-wrap font-medium text-fg leading-relaxed">
               {client.description ? (
@@ -337,7 +350,7 @@ export function ClientDetailPage() {
                   )
                 }
                 style={{
-                  animationDelay: `${i * 40}ms`,
+                  animationDelay: `${i * ANIMATION_DELAY_MS}ms`,
                   animationFillMode: "both",
                 }}
                 type="button"
