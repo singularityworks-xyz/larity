@@ -659,24 +659,26 @@ export function MeetingPage() {
       "speaker_identity_guessed",
       (data: Record<string, unknown>) => {
         const payload = data.payload as Record<string, unknown>;
-        if (!payload) {
+        if (
+          !payload ||
+          typeof payload.deepgramIndex !== "string" ||
+          typeof payload.clientMemberId !== "string"
+        ) {
           return;
         }
-        const index = String(payload.deepgramIndex);
-        const memberId = String(payload.clientMemberId);
-        if (index && memberId) {
-          const id = Date.now().toString() + Math.random();
-          setIdentityGuesses((prev) => [...prev, { id, index, memberId }]);
-          emitTo("meeting-overlay", "overlay-data", {
-            type: "speaker_identity_guessed",
-            payload: { id, index, memberId },
-          }).catch((err) =>
-            console.warn(
-              "overlay-data speaker_identity_guessed emit failed:",
-              err
-            )
-          );
-        }
+        const index = payload.deepgramIndex;
+        const memberId = payload.clientMemberId;
+        const id = Date.now().toString() + Math.random();
+        setIdentityGuesses((prev) => [...prev, { id, index, memberId }]);
+        emitTo("meeting-overlay", "overlay-data", {
+          type: "speaker_identity_guessed",
+          payload: { id, index, memberId },
+        }).catch((err) =>
+          console.warn(
+            "overlay-data speaker_identity_guessed emit failed:",
+            err
+          )
+        );
       }
     );
 
