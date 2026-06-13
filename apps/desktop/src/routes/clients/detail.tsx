@@ -7,6 +7,24 @@ import { useUpdateClient } from "../../features/clients/use-update-client";
 import { useMeetings } from "../../features/meetings/use-meetings";
 import { buttonClass, cx, inputClass } from "../../lib/ui";
 
+const STATUS_INDICATORS = {
+  ACTIVE: {
+    label: "Active status",
+    title: "Active",
+    className: "bg-success-fg",
+  },
+  ARCHIVED: {
+    label: "Archived status",
+    title: "Archived",
+    className: "bg-warning-fg",
+  },
+  INACTIVE: {
+    label: "Inactive status",
+    title: "Inactive",
+    className: "bg-fg-muted",
+  },
+} as const;
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: keep as is
 export function ClientDetailPage() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -212,21 +230,23 @@ export function ClientDetailPage() {
             </select>
           ) : (
             <div className="flex items-center gap-1.5">
-              {client.status === "ACTIVE" ? (
-                <span
-                  aria-label="Active status"
-                  className="flex h-1.5 w-1.5 rounded-full bg-success-fg"
-                  role="img"
-                  title="Active"
-                />
-              ) : (
-                <span
-                  aria-label="Inactive status"
-                  className="flex h-1.5 w-1.5 rounded-full bg-fg-muted"
-                  role="img"
-                  title="Inactive"
-                />
-              )}
+              {(() => {
+                const meta =
+                  STATUS_INDICATORS[
+                    client.status as keyof typeof STATUS_INDICATORS
+                  ] ?? STATUS_INDICATORS.INACTIVE;
+                return (
+                  <span
+                    aria-label={meta.label}
+                    className={cx(
+                      "flex h-1.5 w-1.5 rounded-full",
+                      meta.className
+                    )}
+                    role="img"
+                    title={meta.title}
+                  />
+                );
+              })()}
               <span className="font-medium text-fg capitalize">
                 {client.status.toLowerCase()}
               </span>
