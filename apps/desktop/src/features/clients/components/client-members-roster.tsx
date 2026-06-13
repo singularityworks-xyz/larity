@@ -1,6 +1,6 @@
 import { Info, Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import {
   buttonClass,
   formErrorClass,
@@ -27,7 +27,7 @@ export function ClientMembersRoster({ clientId }: { clientId: string }) {
   const [newMemberImage, setNewMemberImage] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  async function handleAdd(e: React.FormEvent) {
+  async function handleAdd(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!newMemberName.trim()) {
       return;
@@ -197,7 +197,7 @@ function EditableMemberCard({
   const updateMember = useUpdateClientMember();
   const deleteMember = useDeleteClientMember();
 
-  async function handleSave(e: React.FormEvent) {
+  async function handleSave(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!editName.trim()) {
       return;
