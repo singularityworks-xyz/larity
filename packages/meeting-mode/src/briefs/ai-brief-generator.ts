@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ImportantPointCategory } from "@larity/infra/prisma";
-import { prisma } from "../lib/prisma";
+import { prisma } from "@larity/infra/prisma/client";
 
 let ai: GoogleGenAI | null = null;
 function getAI() {
@@ -9,6 +9,7 @@ function getAI() {
   }
   return ai;
 }
+
 export const AIBriefGeneratorService = {
   async generateBriefData(meetingId: string) {
     const meeting = await prisma.meeting.findUnique({

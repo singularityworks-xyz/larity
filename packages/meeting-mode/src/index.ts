@@ -32,6 +32,7 @@ export { AlertQueueManager } from "./alerts/queue";
 export * from "./alerts/router";
 export { AlertSubscriber } from "./alerts/subscriber";
 export * from "./alerts/types";
+export * from "./briefs/ai-brief-generator";
 export * from "./channels";
 export * from "./commitment";
 export * from "./constraint";
