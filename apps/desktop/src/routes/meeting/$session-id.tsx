@@ -70,6 +70,7 @@ interface AudioDevice {
 const DEFAULT_WS_URL = import.meta.env.VITE_WS_URL ?? "ws://127.0.0.1:9001";
 const FALLBACK_USER_ID = import.meta.env.VITE_WS_USER_ID ?? "desktop-host";
 
+import { useConfirmSpeakerMapping } from "../../features/meetings/use-confirm-speaker-mapping";
 import { useMeeting } from "../../features/meetings/use-meeting";
 
 function getWsBaseUrl(websocketUrl: string | undefined): string {
@@ -106,6 +107,7 @@ export function MeetingPage() {
   const session = useAuthSession();
 
   const { data: meetingData } = useMeeting(sessionId);
+  const confirmSpeakerMapping = useConfirmSpeakerMapping();
 
   const state = (location.state ?? {}) as MeetingLocationState;
   const role = state.role ?? "participant";
@@ -931,18 +933,19 @@ export function MeetingPage() {
                   </button>
                   <button
                     className="rounded bg-accent px-2 py-1 text-on-accent text-xs hover:bg-accent-hover"
-                    onClick={() => {
-                      api
-                        .post(`/meetings/${sessionId}/speaker-mappings`, {
-                          index: guess.index,
+                    onClick={async () => {
+                      try {
+                        await confirmSpeakerMapping.mutateAsync({
+                          meetingId: sessionId,
+                          deepgramIndex: guess.index,
                           clientMemberId: guess.memberId,
-                        })
-                        .catch((err) =>
-                          console.error("Failed to map speaker:", err)
+                        });
+                        setIdentityGuesses((prev) =>
+                          prev.filter((g) => g.id !== guess.id)
                         );
-                      setIdentityGuesses((prev) =>
-                        prev.filter((g) => g.id !== guess.id)
-                      );
+                      } catch (err) {
+                        console.error("Failed to map speaker:", err);
+                      }
                     }}
                     type="button"
                   >

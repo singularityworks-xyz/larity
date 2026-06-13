@@ -1,8 +1,8 @@
 import { emit, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../../lib/api";
 import { cx } from "../../lib/ui";
+import { useConfirmSpeakerMapping } from "../meetings/use-confirm-speaker-mapping";
 import { AlertRegion } from "./alert-region";
 import { AmbientStrip } from "./ambient-strip";
 import { OverlayFooter } from "./overlay-footer";
@@ -30,6 +30,7 @@ async function closeSelf() {
 
 export function OverlayShell() {
   const data = useOverlayData();
+  const confirmSpeakerMapping = useConfirmSpeakerMapping();
   const [elapsedMs, setElapsedMs] = useState(0);
   const [isEndingBusy, setIsEndingBusy] = useState(false);
 
@@ -158,18 +159,19 @@ export function OverlayShell() {
                   </button>
                   <button
                     className="rounded bg-accent px-2 py-1 text-[10px] text-on-accent hover:bg-accent/80"
-                    onClick={() => {
-                      api
-                        .post(`/meetings/${data.sessionId}/speaker-mappings`, {
-                          index: guess.index,
+                    onClick={async () => {
+                      try {
+                        await confirmSpeakerMapping.mutateAsync({
+                          meetingId: data.sessionId,
+                          deepgramIndex: guess.index,
                           clientMemberId: guess.memberId,
-                        })
-                        .catch((err) =>
-                          console.error("Failed to map speaker:", err)
+                        });
+                        data.setIdentityGuesses((prev) =>
+                          prev.filter((g) => g.id !== guess.id)
                         );
-                      data.setIdentityGuesses((prev) =>
-                        prev.filter((g) => g.id !== guess.id)
-                      );
+                      } catch (err) {
+                        console.error("Failed to map speaker:", err);
+                      }
                     }}
                     type="button"
                   >
