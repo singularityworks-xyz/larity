@@ -210,17 +210,19 @@ async function main(): Promise<void> {
         type: "SPEAKER_IDENTITY_GUESSED",
         payload: { deepgramIndex: index, clientMemberId: memberId },
       };
-      redisClient
-        .publish(
-          `meeting.speaker_identity_guessed.${sessionId}`,
-          JSON.stringify(event)
-        )
-        .catch((err) =>
+      (async () => {
+        try {
+          await redisClient.publish(
+            `meeting.speaker_identity_guessed.${sessionId}`,
+            JSON.stringify(event)
+          );
+        } catch (err) {
           rootLogger.warn(
             { err, sessionId },
             "Failed to publish SPEAKER_IDENTITY_GUESSED event"
-          )
-        );
+          );
+        }
+      })();
     },
   });
 
