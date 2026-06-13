@@ -935,11 +935,23 @@ export class MeetingPipelineEngine {
     await this.applyTier2SideEffects(utterance, tier2.classification);
 
     if (tier2.classification.identityGuess && this.onSpeakerIdentityGuessed) {
-      this.onSpeakerIdentityGuessed(
-        sessionId,
-        tier2.classification.identityGuess.index,
-        tier2.classification.identityGuess.memberId
-      );
+      try {
+        this.onSpeakerIdentityGuessed(
+          sessionId,
+          tier2.classification.identityGuess.index,
+          tier2.classification.identityGuess.memberId
+        );
+      } catch (error) {
+        log.warn(
+          {
+            err: error,
+            sessionId,
+            index: tier2.classification.identityGuess.index,
+            memberId: tier2.classification.identityGuess.memberId,
+          },
+          "onSpeakerIdentityGuessed hook failed"
+        );
+      }
     }
 
     return { ...tier2, tier2CacheHit: false };
