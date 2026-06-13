@@ -146,7 +146,7 @@ export const confirmSpeakerMappingSchema = z
     (data) => data.deepgramIndex !== undefined || data.index !== undefined,
     {
       message: "Either deepgramIndex or index is required",
-      path: ["deepgramIndex"],
+      path: [],
     }
   );
 export type ConfirmSpeakerMappingInput = z.infer<
