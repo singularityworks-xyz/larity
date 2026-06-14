@@ -166,8 +166,12 @@ export class PreFilter {
     recent: RecentUtteranceEntry[],
     normalizedUtterance: string
   ): RecentUtteranceEntry | undefined {
-    for (const entry of recent) {
-      if (isNearTextMatch(entry.normalizedText, normalizedUtterance, 0.12)) {
+    for (let i = recent.length - 1; i >= 0; i -= 1) {
+      const entry = recent[i];
+      if (
+        entry &&
+        isNearTextMatch(entry.normalizedText, normalizedUtterance, 0.12)
+      ) {
         return entry;
       }
     }
