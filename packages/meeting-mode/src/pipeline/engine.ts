@@ -35,7 +35,7 @@ import {
   pipelineTier4SuppressedTotal,
   pipelineTotalDuration,
 } from "./metrics";
-import { PreFilter } from "./pre-filter";
+import { PreFilter, type PreFilterDecision } from "./pre-filter";
 import { Tier1StructuralDetector, textMatchesTier1PricingPath } from "./tier1";
 import { Tier2Classifier } from "./tier2";
 import { Tier2SemanticCache } from "./tier2-cache";
