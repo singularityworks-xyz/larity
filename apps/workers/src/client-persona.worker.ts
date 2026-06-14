@@ -5,6 +5,17 @@ import type { Job } from "bullmq";
 import { ai } from "./lib/gemini";
 import { BaseWorker } from "./worker";
 
+function namesAreSimilar(name1: string, name2: string) {
+  if (!(name1 && name2)) return false;
+  const n1 = name1.toLowerCase().trim();
+  const n2 = name2.toLowerCase().trim();
+  if (n1 === n2) return true;
+  if (n1.includes(n2) || n2.includes(n1)) return true;
+  const t1 = n1.split(/\s+/);
+  const t2 = n2.split(/\s+/);
+  return t1.some((t) => t.length > 2 && t2.includes(t));
+}
+
 export class ClientPersonaWorker extends BaseWorker<
   ClientPersonaJobData,
   { success: boolean }
@@ -49,9 +60,7 @@ export class ClientPersonaWorker extends BaseWorker<
 
     const clientMemberName = clientMember.name;
     const clientUtterances = utterances.filter(
-      (u) =>
-        u.speaker &&
-        u.speaker.toLowerCase().trim() === clientMemberName.toLowerCase().trim()
+      (u) => u.speaker && namesAreSimilar(u.speaker, clientMemberName)
     );
 
     if (clientUtterances.length === 0) {

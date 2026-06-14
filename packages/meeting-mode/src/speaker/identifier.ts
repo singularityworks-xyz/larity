@@ -184,7 +184,9 @@ export class SpeakerIdentifier {
           userId: mapping.speaker.userId,
           name: mapping.speaker.name,
           role:
-            mapping.speaker.isHost || mapping.speaker.isCurrentUser
+            mapping.speaker.isHost ||
+            mapping.speaker.isCurrentUser ||
+            mapping.speaker.diarizationIndices?.some((idx) => idx < 1000)
               ? "host"
               : "participant",
         });
@@ -601,8 +603,8 @@ export class SpeakerIdentifier {
       speakerId = `spk_${diarizationIndex}_${Date.now()}`;
     }
 
-    const isCurrentUser = false;
     const isHost = this.teamMembers.get(userId)?.role === "host";
+    const isCurrentUser = isHost;
 
     return {
       speakerId,
