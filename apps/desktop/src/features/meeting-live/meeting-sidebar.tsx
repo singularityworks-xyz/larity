@@ -288,9 +288,9 @@ export function MeetingSidebar({
           {isUnidentified && !editing && (
             <button
               className={cx(
-                "mt-1 inline-flex h-[18px] items-center gap-1 rounded-[3px] px-1.5",
-                "border border-accent/30 border-dashed bg-transparent",
-                "font-medium text-[10px] text-accent/70 transition-colors duration-100 hover:border-accent/50 hover:text-accent"
+                "mt-1.5 inline-flex h-5 items-center gap-1 rounded-[var(--radius-button)] px-2",
+                "border border-border bg-bg-elevated",
+                "font-medium text-[10px] text-fg-subtle transition-colors duration-100 hover:border-border-strong hover:bg-bg-overlay hover:text-fg"
               )}
               onClick={() => setEditingId(p.id)}
               type="button"
@@ -428,10 +428,10 @@ export function MeetingSidebar({
           <ul className="flex flex-col gap-2">
             {pendingAgenda.map((item, i) => (
               <li
-                className="flex items-start gap-2 rounded-[5px] border border-border bg-bg-subtle/50 p-2"
+                className="flex items-start gap-2.5 rounded-[var(--radius-panel)] border border-border bg-bg-elevated p-2 shadow-sm"
                 key={item.id}
               >
-                <div className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border border-border bg-bg font-mono text-[9px] text-fg-muted">
+                <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[var(--radius-sharp)] border border-border bg-bg font-mono text-[9px] text-fg-muted">
                   {i + 1}
                 </div>
                 <span className="pt-[1px] text-[12px] text-fg leading-snug">

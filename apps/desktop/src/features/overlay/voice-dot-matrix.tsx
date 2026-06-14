@@ -90,7 +90,7 @@ export function VoiceDotMatrix({ isSpeaking, label }: VoiceDotMatrixProps) {
         {/* Active layer: continuously animating dots, revealed when speaking */}
         <g
           style={{
-            color: "hsl(var(--grad-hue, 252) 80% 70%)",
+            color: "var(--accent)",
             opacity: isSpeaking ? 1 : 0,
             transition: "opacity 200ms ease-out, color 300ms ease-out",
           }}

@@ -39,10 +39,10 @@ export function RecentClientsPanel() {
         </Link>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {topClients.map((client, i) => (
           <button
-            className="fade-in slide-in-from-bottom-1 flex animate-in cursor-pointer items-center gap-2 rounded-[var(--radius-1)] border border-border bg-bg-elevated px-3 py-1.5 transition-colors duration-150 hover:border-border-strong hover:bg-bg-subtle"
+            className="fade-in slide-in-from-bottom-1 flex animate-in cursor-pointer items-center gap-1.5 rounded-full border border-border bg-bg-elevated px-2 py-1 transition-colors duration-150 hover:border-border-strong hover:bg-bg-overlay"
             key={client.id}
             onClick={() => navigate(`/clients/${client.id}`)}
             style={{
@@ -52,10 +52,10 @@ export function RecentClientsPanel() {
             type="button"
           >
             <InitialsAvatar
-              className="h-4 w-4 border-0 text-[9px]"
+              className="h-3 w-3 border-0 bg-accent-muted text-[8px] text-accent-fg"
               name={client.name}
             />
-            <span className="font-medium text-[12px] text-fg leading-none">
+            <span className="font-medium text-[11px] text-fg leading-none">
               {client.name}
             </span>
           </button>

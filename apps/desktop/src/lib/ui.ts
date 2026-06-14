@@ -3,7 +3,7 @@ export function cx(...classes: (string | false | null | undefined)[]): string {
 }
 
 export const panelClass =
-  "rounded-[var(--radius-0)] border border-border bg-bg-elevated px-5 py-4";
+  "rounded-[var(--radius-panel)] border border-border bg-bg-elevated px-5 py-4";
 
 export const heroCardClass = cx(
   panelClass,
@@ -29,7 +29,7 @@ export const labelClass =
   "block text-[11px] font-medium leading-[1.45] text-fg-muted";
 
 const fieldClass =
-  "w-full rounded-[var(--radius-1)] border border-border bg-bg-elevated px-2.5 font-sans text-[13px] font-medium text-fg transition-[border-color,box-shadow] duration-150 ease-[cubic-bezier(0.2,0,0,1)] placeholder:text-fg-subtle focus:border-accent focus:outline-none focus:shadow-[0_0_0_1px_var(--accent)]";
+  "w-full rounded-[var(--radius-button)] border border-border bg-bg-elevated px-2.5 font-sans text-[13px] font-medium text-fg transition-colors duration-150 ease-[cubic-bezier(0.2,0,0,1)] placeholder:text-fg-subtle focus:border-accent focus:outline-none focus:shadow-[0_0_0_1px_var(--accent)]";
 
 export const inputClass = cx(fieldClass, "h-7 min-h-7");
 
@@ -47,18 +47,18 @@ export const successTextClass = "mt-2 mb-0 text-xs font-medium text-success-fg";
 export const controlRowClass = "flex flex-wrap gap-2";
 
 const buttonBaseClass =
-  "inline-flex h-7 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--radius-1)] border-0 px-3 font-sans text-xs font-medium leading-none no-underline transition-[background-color,border-color,color,filter,opacity] duration-150 ease-[cubic-bezier(0.2,0,0,1)] disabled:cursor-not-allowed disabled:bg-bg-subtle disabled:text-fg-subtle disabled:opacity-100";
+  "inline-flex h-7 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--radius-button)] border-0 px-3 font-sans text-xs font-medium leading-none no-underline transition-all duration-150 ease-[cubic-bezier(0.2,0,0,1)] disabled:cursor-not-allowed disabled:bg-bg-overlay disabled:text-fg-subtle disabled:opacity-100";
 
 const buttonVariants = {
   danger:
-    "bg-danger-fg text-white hover:not-disabled:brightness-110 active:not-disabled:brightness-95",
+    "bg-danger text-white hover:not-disabled:brightness-110 active:not-disabled:brightness-95",
   ghost:
-    "bg-transparent text-fg hover:not-disabled:bg-bg-subtle active:not-disabled:bg-bg-emphasis",
+    "bg-transparent text-fg hover:not-disabled:bg-bg-overlay active:not-disabled:bg-bg-elevated",
   link: "h-auto rounded-none bg-transparent p-0 text-accent hover:not-disabled:underline disabled:bg-transparent",
   primary:
-    "bg-accent text-accent-fg hover:not-disabled:bg-accent-hover active:not-disabled:bg-accent-pressed",
+    "bg-accent text-accent-fg hover:not-disabled:brightness-110 active:not-disabled:brightness-95",
   secondary:
-    "border border-border bg-bg-subtle text-fg hover:not-disabled:border-border-strong hover:not-disabled:bg-bg-emphasis active:not-disabled:bg-bg-subtle",
+    "border border-border bg-bg-overlay text-fg hover:not-disabled:border-border-strong hover:not-disabled:bg-bg-elevated active:not-disabled:bg-bg-overlay",
 } as const;
 
 const buttonSizes = {
@@ -148,7 +148,7 @@ export const segmentControlLayoutClass = "flex w-full min-w-0";
 
 /** Border, radius, and clipping for paired segment buttons. */
 export const segmentControlChromeClass =
-  "overflow-hidden rounded-[var(--radius-1)] border border-border";
+  "overflow-hidden rounded-[var(--radius-button)] border border-border";
 
 export const segmentControlClass = cx(
   segmentControlLayoutClass,
@@ -168,7 +168,7 @@ export const segmentButtonActiveClass =
   "bg-bg-subtle text-fg font-medium shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07)] hover:not-disabled:bg-bg-emphasis";
 
 export const permissionStatusClass =
-  "flex items-center justify-between gap-3 rounded-[var(--radius-0)] border border-border-subtle bg-bg-subtle px-3 py-2.5 transition-colors duration-150";
+  "flex items-center justify-between gap-3 rounded-[var(--radius-panel)] border border-border-subtle bg-bg-overlay px-3 py-2.5 transition-colors duration-150";
 
 export const permissionInfoClass = "grid gap-0.5";
 
@@ -264,22 +264,22 @@ export const warningBannerClass =
 
 // Home screen
 export const startMeetingModeClass =
-  "rounded-[var(--radius-0)] border border-border bg-bg-elevated p-4 transition-all duration-150 ease-out";
+  "rounded-[var(--radius-panel)] border border-border bg-bg-elevated p-4 transition-all duration-150 ease-out";
 
 export const homeGridClass = "grid gap-3 md:grid-cols-[1fr_1.2fr]";
 
 export const healthStripClass =
-  "flex items-center gap-2 rounded-[var(--radius-0)] border border-border-subtle bg-bg-subtle px-3.5 py-2";
+  "flex items-center gap-2 rounded-[var(--radius-panel)] border border-border bg-bg-overlay px-3.5 py-2";
 
 export function metricChipClass(
   variant: "success" | "warning" | "muted" = "muted"
 ): string {
   const base =
-    "inline-flex items-center rounded-[5px] border px-1.5 py-px text-[10px] font-medium leading-snug";
+    "inline-flex items-center rounded-[var(--radius-pill)] border px-2 py-0.5 text-[10px] font-medium leading-snug tracking-wide uppercase";
   const variants: Record<string, string> = {
-    success: `${base} border-[rgba(63,185,80,0.25)] bg-[#3FB9501A] text-success-fg`,
-    warning: `${base} border-[rgba(210,153,34,0.25)] bg-[#D299221A] text-warning-fg`,
-    muted: `${base} border-border-subtle bg-bg-subtle text-fg-muted`,
+    success: `${base} border-success bg-success-bg text-success`,
+    warning: `${base} border-warning bg-warning-bg text-warning`,
+    muted: `${base} border-border bg-bg-overlay text-fg-muted`,
   };
   return variants[variant] ?? variants.muted;
 }

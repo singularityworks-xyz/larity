@@ -12,21 +12,15 @@ function formatElapsed(ms: number): string {
 
 function LiveIndicator({ isActive }: { isActive: boolean }) {
   return (
-    <span className="relative inline-flex h-[7px] w-[7px] shrink-0">
+    <span className="relative flex h-2 w-2 shrink-0 items-center justify-center">
       {isActive && (
-        <span
-          aria-hidden
-          className="absolute inset-0 animate-[speak-ring_2.2s_ease-out_infinite] rounded-full"
-          style={{ background: "hsl(var(--grad-hue,252) 70% 55% / 0.45)" }}
-        />
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
       )}
       <span
-        className="relative h-[7px] w-[7px] rounded-full transition-colors duration-500"
-        style={{
-          background: isActive
-            ? "hsl(var(--grad-hue,252) 70% 60%)"
-            : "var(--fg-subtle)",
-        }}
+        className={cx(
+          "relative inline-flex h-1.5 w-1.5 rounded-full",
+          isActive ? "bg-accent" : "bg-fg-subtle"
+        )}
       />
     </span>
   );
@@ -77,15 +71,6 @@ export function MeetingHeader({
 
   return (
     <header className="meeting-header relative sticky top-0 z-20 flex h-[52px] shrink-0 items-center gap-4 border-border border-b bg-bg px-4">
-      {/* Background gradient wash */}
-      <div
-        className="pointer-events-none absolute inset-0 z-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 45% 100% at 0% 50%, rgba(124, 92, 255, 0.06) 0%, transparent 100%)",
-        }}
-      />
-
       <div className="relative z-[1] flex min-w-0 flex-1 items-center gap-2.5">
         <LiveIndicator isActive={isStreamActive} />
         <div className="min-w-0">

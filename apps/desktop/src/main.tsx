@@ -117,11 +117,15 @@ const router = createBrowserRouter([
   },
 ]);
 
+import { ThemeProvider } from "./components/theme-provider";
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <ThemeProvider>
+          <RouterProvider router={router} />
+        </ThemeProvider>
       </QueryClientProvider>
     </AppErrorBoundary>
   </React.StrictMode>

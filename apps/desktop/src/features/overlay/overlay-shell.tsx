@@ -100,8 +100,8 @@ export function OverlayShell() {
             data-tauri-drag-region
           >
             <span className="relative inline-flex h-[5px] w-[5px] shrink-0">
-              <span className="absolute inline-flex h-full w-full animate-[speak-ring_2s_ease-out_infinite] rounded-full bg-[hsl(var(--grad-hue)_70%_55%)/0.5]" />
-              <span className="relative inline-flex h-[5px] w-[5px] rounded-full bg-[hsl(var(--grad-hue)_70%_55%)]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-50" />
+              <span className="relative inline-flex h-[5px] w-[5px] rounded-full bg-accent" />
             </span>
             <span className="truncate font-medium text-[9px] text-fg-subtle">
               {data.clientName}

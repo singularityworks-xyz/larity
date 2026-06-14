@@ -11,8 +11,8 @@ function HeartbeatDot() {
       aria-label="Audio processing active"
       className="relative inline-flex h-[7px] w-[7px] shrink-0 items-center justify-center"
     >
-      <span className="absolute inline-block h-full w-full animate-[speak-ring_2.2s_ease-out_infinite] rounded-full bg-[hsl(var(--grad-hue,252)_70%_55%)/0.45]" />
-      <span className="relative inline-block h-[7px] w-[7px] rounded-full bg-[hsl(var(--grad-hue,252)_70%_60%)]" />
+      <span className="absolute inline-block h-full w-full animate-ping rounded-full bg-accent opacity-[0.45]" />
+      <span className="relative inline-block h-[7px] w-[7px] rounded-full bg-accent" />
     </output>
   );
 }
@@ -85,7 +85,7 @@ function SpeakerIndicator({ speaker }: { speaker: OverlaySpeaker | null }) {
     <span className="inline-flex items-center gap-[6px]">
       <span
         aria-hidden="true"
-        className="inline-block h-[5px] w-[5px] shrink-0 rounded-[1px] bg-[hsl(var(--grad-hue,252)_70%_60%)]"
+        className="inline-block h-[5px] w-[5px] shrink-0 rounded-[1px] bg-accent"
       />
       <span className="truncate font-medium text-[11px] text-fg">
         {speaker.name}
