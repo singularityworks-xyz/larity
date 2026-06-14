@@ -171,7 +171,7 @@ function Header({
       {canManage && (
         <div className="flex items-center gap-3">
           <button
-            className="group relative flex items-center gap-2 overflow-hidden border border-border bg-bg-elevated px-4 py-2.5 transition-all hover:border-accent/50 hover:shadow-[0_0_20px_var(--accent-muted)] active:scale-95"
+            className="group relative flex items-center gap-2 overflow-hidden rounded-xl border border-border bg-bg-elevated px-4 py-2.5 transition-all hover:border-accent/50 hover:shadow-[0_0_20px_var(--accent-muted)] active:scale-95"
             onClick={() => navigate("/clients/add")}
             type="button"
           >
@@ -181,7 +181,7 @@ function Header({
           </button>
           <button
             className={cx(
-              "group flex items-center gap-2 border px-4 py-2.5 transition-all active:scale-95",
+              "group flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-all active:scale-95",
               showMemberPanel
                 ? "border-border-strong bg-bg-subtle text-fg"
                 : "border-border bg-transparent text-fg-muted hover:border-border-strong hover:text-fg"
@@ -228,15 +228,15 @@ function InvitePanel({
       exit={{ opacity: 0, height: 0 }}
       initial={{ opacity: 0, height: 0 }}
     >
-      <div className="relative mt-3 overflow-hidden border border-border-subtle bg-bg-elevated p-4">
-        <div className="pointer-events-none absolute top-0 right-0-full bg-accent/5 p-32 blur-[100px]" />
+      <div className="relative mt-3 overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated p-4">
+        <div className="pointer-events-none absolute top-0 right-0 rounded-full bg-accent/5 p-32 blur-[100px]" />
 
         <div className="relative z-10 mb-3 flex items-center justify-between">
           <h3 className="flex items-center gap-2 font-semibold text-fg text-sm">
             <Users className="h-4 w-4 text-accent" /> Team Invites
           </h3>
           <button
-            className="bg-accent px-3 py-1.5 font-semibold text-accent-fg text-xs transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
+            className="rounded-lg bg-accent px-3 py-1.5 font-semibold text-accent-fg text-xs transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
             disabled={invites.createInvite.isPending}
             onClick={onCreateInvite}
             type="button"
@@ -260,7 +260,7 @@ function InvitePanel({
           {hasInvites ? (
             invites.invitesQuery.data?.map((invite) => (
               <div
-                className="flex items-center justify-between border border-border-subtle bg-bg-subtle px-3 py-2 transition-colors hover:border-border"
+                className="flex items-center justify-between rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2 transition-colors hover:border-border"
                 key={invite.id}
               >
                 <div>
@@ -273,14 +273,14 @@ function InvitePanel({
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    className="p-1.5 text-fg-muted transition-colors hover:bg-bg-overlay hover:text-fg"
+                    className="rounded-md p-1.5 text-fg-muted transition-colors hover:bg-bg-overlay hover:text-fg"
                     onClick={() => onCopyInvite(invite.code)}
                     type="button"
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                   <button
-                    className="p-1.5 text-danger/70 transition-colors hover:bg-danger/10 hover:text-danger"
+                    className="rounded-md p-1.5 text-danger/70 transition-colors hover:bg-danger/10 hover:text-danger"
                     onClick={() => onRevokeInvite(invite.id)}
                     type="button"
                   >
@@ -311,12 +311,12 @@ function ActionGrid({ canManage }: { canManage: boolean }) {
     >
       {canManage && (
         <button
-          className="group relative flex flex-col items-start overflow-hidden border border-border bg-gradient-to-br from-bg-elevated to-bg-overlay p-4 text-left transition-all duration-500 hover:border-accent/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] active:scale-[0.98]"
+          className="group relative flex flex-col items-start overflow-hidden rounded-[16px] border border-border bg-gradient-to-br from-bg-elevated to-bg-overlay p-4 text-left transition-all duration-500 hover:border-accent/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] active:scale-[0.98]"
           onClick={() => navigate("/meetings/start")}
           type="button"
         >
           <div className="absolute -inset-px bg-gradient-to-r from-accent/0 via-accent/10 to-accent/0 opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-100" />
-          <div className="mb-3 flex h-10 w-10 items-center justify-center bg-accent/10 text-accent transition-transform duration-500 ease-out group-hover:scale-110">
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-accent transition-transform duration-500 ease-out group-hover:scale-110">
             <Video className="h-5 w-5" />
           </div>
           <h2 className="mb-0.5 font-semibold text-fg text-sm">
@@ -326,18 +326,18 @@ function ActionGrid({ canManage }: { canManage: boolean }) {
             Start a live meeting with a client and let the agent take notes &
             extract tasks automatically.
           </p>
-          <div className="justify-center-full absolute right-4 bottom-4 flex h-7 w-7 items-center border border-border text-fg-subtle transition-colors duration-300 group-hover:border-accent group-hover:bg-accent group-hover:text-accent-fg">
+          <div className="absolute right-4 bottom-4 flex h-7 w-7 items-center justify-center rounded-full border border-border text-fg-subtle transition-colors duration-300 group-hover:border-accent group-hover:bg-accent group-hover:text-accent-fg">
             <ArrowRight className="h-4 w-4" />
           </div>
         </button>
       )}
       <button
-        className="group relative flex flex-col items-start overflow-hidden border border-border bg-gradient-to-br from-bg-elevated to-bg-overlay p-4 text-left transition-all duration-500 hover:border-info/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] active:scale-[0.98]"
+        className="group relative flex flex-col items-start overflow-hidden rounded-[16px] border border-border bg-gradient-to-br from-bg-elevated to-bg-overlay p-4 text-left transition-all duration-500 hover:border-info/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] active:scale-[0.98]"
         onClick={() => navigate("/meetings/join")}
         type="button"
       >
         <div className="absolute -inset-px bg-gradient-to-r from-info/0 via-info/10 to-info/0 opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-100" />
-        <div className="mb-3 flex h-10 w-10 items-center justify-center bg-info/10 text-info transition-transform duration-500 ease-out group-hover:scale-110">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-info/10 text-info transition-transform duration-500 ease-out group-hover:scale-110">
           <Users className="h-5 w-5" />
         </div>
         <h2 className="mb-0.5 font-semibold text-fg text-sm">
@@ -347,7 +347,7 @@ function ActionGrid({ canManage }: { canManage: boolean }) {
           Enter a session ID or pick from organization active sessions to shadow
           or participate.
         </p>
-        <div className="justify-center-full absolute right-4 bottom-4 flex h-7 w-7 items-center border border-border text-fg-subtle transition-colors duration-300 group-hover:border-info group-hover:bg-info group-hover:text-white">
+        <div className="absolute right-4 bottom-4 flex h-7 w-7 items-center justify-center rounded-full border border-border text-fg-subtle transition-colors duration-300 group-hover:border-info group-hover:bg-info group-hover:text-white">
           <ArrowRight className="h-4 w-4" />
         </div>
       </button>
@@ -367,7 +367,7 @@ function NextMeetingHero({
   if (loading) {
     return (
       <motion.div
-        className="h-32 animate-pulse border border-border bg-bg-elevated"
+        className="h-32 animate-pulse rounded-[16px] border border-border bg-bg-elevated"
         variants={itemVariants}
       />
     );
@@ -376,7 +376,7 @@ function NextMeetingHero({
   if (!meeting) {
     return (
       <motion.div
-        className="flex h-32 flex-col items-center justify-center border border-border border-dashed bg-bg-overlay p-4 text-center"
+        className="flex h-32 flex-col items-center justify-center rounded-[16px] border border-border border-dashed bg-bg-overlay p-4 text-center"
         variants={itemVariants}
       >
         <CalendarClock className="mb-2 h-6 w-6 text-fg-subtle opacity-50" />
@@ -396,7 +396,7 @@ function NextMeetingHero({
   return (
     <motion.div
       className={cx(
-        "relative overflow-hidden border p-4 lg:p-5",
+        "relative overflow-hidden rounded-[16px] border p-4 lg:p-5",
         startsSoon
           ? "border-accent/20 bg-accent/5"
           : "border-border bg-bg-elevated"
@@ -404,13 +404,13 @@ function NextMeetingHero({
       variants={itemVariants}
     >
       {startsSoon && (
-        <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64-full bg-accent/20 blur-[80px]" />
+        <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-accent/20 blur-[80px]" />
       )}
 
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div>
           <div className="mb-2 flex items-center gap-2">
-            <span className="flex items-center gap-1 border border-border bg-bg-overlay px-2 py-0.5 font-bold text-[10px] text-fg-muted uppercase tracking-wider">
+            <span className="flex items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-0.5 font-bold text-[10px] text-fg-muted uppercase tracking-wider">
               <Zap className="h-3 w-3 text-accent" /> Next Up
             </span>
             <span
@@ -434,12 +434,12 @@ function NextMeetingHero({
               <Users className="h-4 w-4" />
               {meeting.client.name}
             </div>
-            <div className="h-1 w-1-full bg-border-strong" />
+            <div className="h-1 w-1 rounded-full bg-border-strong" />
             <div className="flex items-center gap-1.5 text-fg-muted">
               <Activity className="h-4 w-4" />
               {attendeesLabel}
             </div>
-            <div className="h-1 w-1-full bg-border-strong" />
+            <div className="h-1 w-1 rounded-full bg-border-strong" />
             <div
               className={cx(
                 "flex items-center gap-1.5",
@@ -458,13 +458,13 @@ function NextMeetingHero({
 
         <div className="flex shrink-0 flex-col gap-1.5">
           <button
-            className="flex h-8 w-full items-center justify-center gap-1.5 bg-accent px-4 font-semibold text-accent-fg text-xs transition-all hover:bg-accent/90 hover:shadow-[0_0_20px_var(--accent-muted)] active:scale-95"
+            className="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-4 font-semibold text-accent-fg text-xs transition-all hover:bg-accent/90 hover:shadow-[0_0_20px_var(--accent-muted)] active:scale-95"
             type="button"
           >
             <Play className="h-3.5 w-3.5 fill-current" /> Start Focus
           </button>
           <button
-            className="flex h-8 w-full items-center justify-center gap-1.5 border border-border bg-bg-overlay px-4 font-medium text-fg text-xs transition-all hover:bg-bg-subtle active:scale-95"
+            className="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-overlay px-4 font-medium text-fg text-xs transition-all hover:bg-bg-subtle active:scale-95"
             type="button"
           >
             Open Brief
@@ -487,7 +487,7 @@ function TodayAgenda({
   const isEmpty = !loading && meetings.length === 0;
   return (
     <motion.div
-      className="col-span-1 flex flex-col border border-border bg-bg-elevated p-4 shadow-sm md:col-span-4 lg:col-span-3"
+      className="col-span-1 flex flex-col rounded-[16px] border border-border bg-bg-elevated p-4 shadow-sm md:col-span-4 lg:col-span-3"
       variants={itemVariants}
     >
       <div className="mb-3 flex items-center justify-between">
@@ -495,7 +495,7 @@ function TodayAgenda({
           <Calendar className="h-3.5 w-3.5 text-fg-muted" /> Today's Agenda
         </h3>
         {!loading && (
-          <span className="bg-bg-overlay px-2 py-0.5 font-semibold text-fg-muted text-xs">
+          <span className="rounded-full bg-bg-overlay px-2 py-0.5 font-semibold text-fg-muted text-xs">
             {meetings.length}
           </span>
         )}
@@ -504,7 +504,10 @@ function TodayAgenda({
       {loading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div className="h-8 animate-pulse bg-bg-subtle" key={i} />
+            <div
+              className="h-8 animate-pulse rounded-lg bg-bg-subtle"
+              key={i}
+            />
           ))}
         </div>
       ) : null}
@@ -521,7 +524,7 @@ function TodayAgenda({
         >
           {meetings.map((m) => (
             <button
-              className="group flex cursor-pointer items-center gap-2 border border-transparent px-2 py-1.5 text-left transition-all hover:border-border hover:bg-bg-overlay"
+              className="group flex cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-left transition-all hover:border-border hover:bg-bg-overlay"
               key={m.id}
               type="button"
             >
@@ -530,7 +533,7 @@ function TodayAgenda({
                   {formatTime(m.scheduledAt)}
                 </div>
               </div>
-              <div className="h-5 w-0.5-full bg-border transition-colors group-hover:bg-accent" />
+              <div className="h-5 w-0.5 rounded-full bg-border transition-colors group-hover:bg-accent" />
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium text-fg text-sm">
                   {m.title}
@@ -558,7 +561,7 @@ function RecentActivityList({
   const isEmpty = !loading && activity.length === 0;
   return (
     <motion.div
-      className="col-span-1 flex flex-col border border-border bg-bg-elevated p-4 shadow-sm md:col-span-4 lg:col-span-3"
+      className="col-span-1 flex flex-col rounded-[16px] border border-border bg-bg-elevated p-4 shadow-sm md:col-span-4 lg:col-span-3"
       variants={itemVariants}
     >
       <div className="mb-3 flex items-center justify-between">
@@ -570,7 +573,10 @@ function RecentActivityList({
       {loading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div className="h-9 animate-pulse bg-bg-subtle" key={i} />
+            <div
+              className="h-9 animate-pulse rounded-lg bg-bg-subtle"
+              key={i}
+            />
           ))}
         </div>
       ) : null}
@@ -589,7 +595,7 @@ function RecentActivityList({
         >
           {activity.map((item) => (
             <button
-              className="group flex cursor-pointer flex-col gap-1 border border-transparent px-2 py-1.5 text-left transition-all hover:border-border hover:bg-bg-overlay"
+              className="group flex cursor-pointer flex-col gap-1 rounded-lg border border-transparent px-2 py-1.5 text-left transition-all hover:border-border hover:bg-bg-overlay"
               key={item.id}
               onClick={() => navigate(`/meeting-post/${item.id}`)}
               type="button"
@@ -603,18 +609,18 @@ function RecentActivityList({
                     {item.client.name} &bull; {formatDateActivity(item.endedAt)}
                   </div>
                 </div>
-                <div className="shrink-0 border border-border bg-bg px-1.5 py-0.5 font-bold text-[10px] text-fg-subtle shadow-sm">
+                <div className="shrink-0 rounded border border-border bg-bg px-1.5 py-0.5 font-bold text-[10px] text-fg-subtle shadow-sm">
                   {formatDuration(item.durationMs)}
                 </div>
               </div>
               <div className="flex items-center gap-1.5 opacity-60 transition-opacity group-hover:opacity-100">
                 {item.tasksCreated > 0 ? (
-                  <span className="bg-info/10 px-1.5 font-medium text-[10px] text-info">
+                  <span className="rounded bg-info/10 px-1.5 font-medium text-[10px] text-info">
                     {item.tasksCreated} tasks
                   </span>
                 ) : null}
                 {item.commitmentsCaptured > 0 ? (
-                  <span className="bg-warning/10 px-1.5 font-medium text-[10px] text-warning">
+                  <span className="rounded bg-warning/10 px-1.5 font-medium text-[10px] text-warning">
                     {item.commitmentsCaptured} commits
                   </span>
                 ) : null}
@@ -637,7 +643,7 @@ function ActiveCommitments({
   const isEmpty = !loading && commitments.length === 0;
   return (
     <motion.div
-      className="col-span-1 flex flex-col border border-border bg-gradient-to-b from-bg-elevated to-bg p-4 shadow-sm md:col-span-4 lg:col-span-3"
+      className="col-span-1 flex flex-col rounded-[16px] border border-border bg-gradient-to-b from-bg-elevated to-bg p-4 shadow-sm md:col-span-4 lg:col-span-3"
       variants={itemVariants}
     >
       <div className="mb-3 flex items-center justify-between">
@@ -659,7 +665,10 @@ function ActiveCommitments({
       {loading ? (
         <div className="space-y-2">
           {[1, 2].map((i) => (
-            <div className="h-8 animate-pulse bg-bg-subtle" key={i} />
+            <div
+              className="h-8 animate-pulse rounded-lg bg-bg-subtle"
+              key={i}
+            />
           ))}
         </div>
       ) : null}
@@ -673,10 +682,10 @@ function ActiveCommitments({
         <div className="flex flex-col gap-2">
           {commitments.slice(0, 4).map((c) => (
             <div
-              className="flex items-start gap-2 border border-border bg-bg-elevated px-2.5 py-2 shadow-sm"
+              className="flex items-start gap-2 rounded-lg border border-border bg-bg-elevated px-2.5 py-2 shadow-sm"
               key={c.id}
             >
-              <div className="mt-0.5 h-4 w-4 shrink-0-full border-2 border-warning/50" />
+              <div className="mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 border-warning/50" />
               <div className="min-w-0">
                 <p className="font-medium text-fg text-xs leading-snug">
                   {c.content}
@@ -718,13 +727,13 @@ function ClientShortcuts() {
         </span>
         {top.map((c) => (
           <button
-            className="flex items-center gap-2-full border border-border bg-bg-elevated py-1 pr-3 pl-1 transition-all hover:border-accent hover:bg-accent/5"
+            className="flex items-center gap-2 rounded-full border border-border bg-bg-elevated py-1 pr-3 pl-1 transition-all hover:border-accent hover:bg-accent/5"
             key={c.id}
             onClick={() => navigate(`/clients/${c.id}`)}
             type="button"
           >
             <InitialsAvatar
-              className="justify-center-full flex h-6 w-6 items-center border border-border-strong bg-bg font-bold text-[9px] text-fg"
+              className="flex h-6 w-6 items-center justify-center rounded-full border border-border-strong bg-bg font-bold text-[9px] text-fg"
               name={c.name}
             />
             <span className="font-semibold text-[11px] text-fg">{c.name}</span>
@@ -751,7 +760,9 @@ function StatusDot({
   };
   return (
     <div className="flex items-center gap-2">
-      <span className={cx("inline-block h-2 w-2-full", colors[state])} />
+      <span
+        className={cx("inline-block h-2 w-2 rounded-full", colors[state])}
+      />
       <span className="font-semibold text-[10px] text-fg-subtle uppercase tracking-widest">
         {label}
       </span>
@@ -770,11 +781,11 @@ function HealthStrip({ health }: { health: HealthState }) {
     : "Not Synced";
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3 border border-border bg-bg-elevated/50 px-3 py-2 backdrop-blur-sm sm:justify-start">
+    <div className="flex flex-wrap items-center justify-center gap-3 rounded-xl border border-border bg-bg-elevated/50 px-3 py-2 backdrop-blur-sm sm:justify-start">
       <StatusDot label="Server Connected" state={serverState} />
-      <span className="h-1 w-1-full bg-border-strong" />
+      <span className="h-1 w-1 rounded-full bg-border-strong" />
       <StatusDot label={audioLabel} state={audioState} />
-      <span className="h-1 w-1-full bg-border-strong" />
+      <span className="h-1 w-1 rounded-full bg-border-strong" />
       <span className="font-semibold text-[10px] text-fg-subtle uppercase tracking-widest">
         {syncLabel}
       </span>
@@ -832,7 +843,7 @@ export function HomePage() {
 
   if (error) {
     return (
-      <div className="mx-auto mt-20 max-w-xl border border-danger/20 bg-danger-bg p-6 text-center">
+      <div className="mx-auto mt-20 max-w-xl rounded-2xl border border-danger/20 bg-danger-bg p-6 text-center">
         <ServerCrash className="mx-auto mb-4 h-10 w-10 text-danger" />
         <h2 className="mb-2 font-bold text-danger text-lg">Systems Offline</h2>
         <p className="mb-6 text-danger/80 text-sm">
@@ -841,7 +852,7 @@ export function HomePage() {
             : "Unknown error connecting to home data"}
         </p>
         <button
-          className="bg-danger px-6 py-2 font-semibold text-white hover:brightness-110"
+          className="rounded-lg bg-danger px-6 py-2 font-semibold text-white hover:brightness-110"
           onClick={() => window.location.reload()}
           type="button"
         >
