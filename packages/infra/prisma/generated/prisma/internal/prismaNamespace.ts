@@ -2001,6 +2001,7 @@ export const MeetingScalarFieldEnum = {
   startedAt: 'startedAt',
   endedAt: 'endedAt',
   calendarEventId: 'calendarEventId',
+  preMeetingBrief: 'preMeetingBrief',
   summary: 'summary',
   speakerMappings: 'speakerMappings',
   createdAt: 'createdAt',

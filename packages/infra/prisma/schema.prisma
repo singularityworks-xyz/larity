@@ -227,6 +227,7 @@ model Meeting {
   startedAt     DateTime?
   endedAt       DateTime?
   calendarEventId String?
+  preMeetingBrief Json?
   summary       Json?
   speakerMappings Json?
   createdAt     DateTime      @default(now())
