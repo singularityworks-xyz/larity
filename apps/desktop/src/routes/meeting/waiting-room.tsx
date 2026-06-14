@@ -490,8 +490,12 @@ export function WaitingRoomPage() {
                 }
               }}
             >
+              <label className="sr-only" htmlFor="custom-agenda-input">
+                Add discussion point
+              </label>
               <input
                 className="flex-1 rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(0,0,0,0.2)] px-4 py-2.5 text-[#E8E8ED] text-sm placeholder:text-[#8A8A93] focus:border-[#4F8AFF] focus:outline-none focus:ring-1 focus:ring-[#4F8AFF]"
+                id="custom-agenda-input"
                 onChange={(e) => setCustomAgendaText(e.target.value)}
                 placeholder="Add discussion point..."
                 type="text"
