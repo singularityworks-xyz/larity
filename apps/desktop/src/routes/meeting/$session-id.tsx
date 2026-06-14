@@ -75,6 +75,7 @@ const FALLBACK_USER_ID = import.meta.env.VITE_WS_USER_ID ?? "desktop-host";
 import { useClientMembers } from "../../features/clients/use-client-members";
 import { useConfirmSpeakerMapping } from "../../features/meetings/use-confirm-speaker-mapping";
 import { useMeeting } from "../../features/meetings/use-meeting";
+import { useMeetingSessionStatus } from "../../features/meetings/use-meeting-session-status";
 
 function getWsBaseUrl(websocketUrl: string | undefined): string {
   if (!websocketUrl) {
@@ -110,7 +111,8 @@ export function MeetingPage() {
   const session = useAuthSession();
 
   const state = (location.state ?? {}) as MeetingLocationState;
-  const meetingId = state.meetingId ?? sessionId;
+  const { data: sessionStatus } = useMeetingSessionStatus(sessionId);
+  const meetingId = state.meetingId ?? sessionStatus?.meetingId;
   const { data: meetingData } = useMeeting(meetingId);
   const { data: members = [] } = useClientMembers(meetingData?.clientId ?? "");
   const confirmSpeakerMapping = useConfirmSpeakerMapping();
@@ -962,8 +964,12 @@ export function MeetingPage() {
                     Dismiss
                   </button>
                   <button
-                    className="rounded bg-accent px-2 py-1 text-on-accent text-xs hover:bg-accent-hover"
+                    className="rounded bg-accent px-2 py-1 text-on-accent text-xs hover:bg-accent-hover disabled:opacity-50"
+                    disabled={!meetingId}
                     onClick={async () => {
+                      if (!meetingId) {
+                        return;
+                      }
                       try {
                         await confirmSpeakerMapping.mutateAsync({
                           meetingId,
