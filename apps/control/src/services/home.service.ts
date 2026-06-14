@@ -14,9 +14,9 @@ function endOfToday(): Date {
 }
 
 function toBriefStatus(
-  summary: Prisma.JsonValue | null | undefined
+  preMeetingBrief: Prisma.JsonValue | null | undefined
 ): "prepped" | "not_prepped" {
-  return summary ? "prepped" : "not_prepped";
+  return preMeetingBrief ? "prepped" : "not_prepped";
 }
 
 function computeDurationMs(
@@ -88,7 +88,7 @@ export const HomeService = {
         id: true,
         title: true,
         scheduledAt: true,
-        summary: true,
+        preMeetingBrief: true,
         client: { select: { id: true, name: true, slug: true } },
         _count: { select: { participants: true } },
       },
@@ -105,7 +105,7 @@ export const HomeService = {
         title: true,
         scheduledAt: true,
         status: true,
-        summary: true,
+        preMeetingBrief: true,
         client: { select: { id: true, name: true } },
         _count: { select: { participants: true } },
       },
@@ -180,7 +180,7 @@ export const HomeService = {
             title: nextMeeting.title,
             client: nextMeeting.client,
             scheduledAt: nextMeeting.scheduledAt?.toISOString() ?? null,
-            briefStatus: toBriefStatus(nextMeeting.summary),
+            briefStatus: toBriefStatus(nextMeeting.preMeetingBrief),
             attendeeCount: nextMeeting._count.participants ?? 0,
             startsInMinutes: minutesUntil(nextMeeting.scheduledAt ?? now),
           }
@@ -193,7 +193,7 @@ export const HomeService = {
         scheduledAt: m.scheduledAt?.toISOString() ?? null,
         status: m.status,
         attendeeCount: m._count.participants ?? 0,
-        briefStatus: toBriefStatus(m.summary),
+        briefStatus: toBriefStatus(m.preMeetingBrief),
       })),
 
       recentActivity: activityWithCommitments,
