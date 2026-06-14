@@ -57,7 +57,8 @@ export async function startSubscriber(): Promise<void> {
     "meeting.pipeline.*",
     "meeting.stt.*",
     "meeting.processed.*",
-    "meeting.speaker_identity_guessed.*"
+    "meeting.speaker_identity_guessed.*",
+    "meeting.system_event.*"
   );
 
   subscriber.on("pmessage", (pattern, channel, message) => {
@@ -79,6 +80,11 @@ function handleMessage(
   try {
     if (channel.startsWith("meeting.pipeline.")) {
       handlePipelineTraceMessage(message);
+      return;
+    }
+
+    if (channel.startsWith("meeting.system_event.")) {
+      handleSystemEventChannel(channel, message);
       return;
     }
 
@@ -195,6 +201,28 @@ function handleBroadcastSessionChannel(
   }
 
   broadcast(sessionId, message);
+  return true;
+}
+
+function handleSystemEventChannel(channel: string, message: string): boolean {
+  if (!channel.startsWith("meeting.system_event.")) {
+    return false;
+  }
+
+  const parts = channel.split(".");
+  const sessionId = parts[2];
+  if (!sessionId) {
+    return true;
+  }
+
+  try {
+    const payload = JSON.parse(message) as Record<string, unknown>;
+    const wrapped = JSON.stringify({ ...payload, type: "system_event" });
+    broadcast(sessionId, wrapped);
+  } catch (error) {
+    log.warn({ err: error, channel }, "Invalid system event JSON from Redis");
+  }
+
   return true;
 }
 

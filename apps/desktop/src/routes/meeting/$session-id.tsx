@@ -103,6 +103,30 @@ function pendingOverlapsSttRange(
   return p0 < u1 && p1 > u0;
 }
 
+function getSystemEventBannerClass(
+  severity: "info" | "warning" | "error"
+): string {
+  if (severity === "error") {
+    return "rounded-[var(--radius-0)] border border-danger-fg bg-danger-bg p-3 text-xs font-medium text-danger-fg flex items-start justify-between gap-2";
+  }
+  if (severity === "warning") {
+    return "rounded-[var(--radius-0)] border border-warning-fg bg-warning-bg p-3 text-xs font-medium text-warning-fg flex items-start justify-between gap-2";
+  }
+  return "rounded-[var(--radius-0)] border border-border bg-bg-elevated p-3 text-xs font-medium text-fg-muted flex items-start justify-between gap-2";
+}
+
+function getSystemEventSourceLabel(
+  source: "deepgram" | "sambanova" | "gemini"
+): string {
+  if (source === "deepgram") {
+    return "STT";
+  }
+  if (source === "sambanova") {
+    return "AI Classifier";
+  }
+  return "AI Reasoner";
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: pre-existing, refactor deferred
 export function MeetingPage() {
   const navigate = useNavigate();
@@ -173,6 +197,16 @@ export function MeetingPage() {
   const [framesDropped, setFramesDropped] = useState(0);
   const [lastTs, setLastTs] = useState<number>(0);
   const [warning, setWarning] = useState("");
+  const [systemEvents, setSystemEvents] = useState<
+    Array<{
+      eventId: string;
+      source: "deepgram" | "sambanova" | "gemini";
+      severity: "info" | "warning" | "error";
+      code: string;
+      message: string;
+      timestamp: number;
+    }>
+  >([]);
   const [isBusy, setIsBusy] = useState(false);
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [devices, setDevices] = useState<AudioDevice[]>([]);
@@ -697,6 +731,52 @@ export function MeetingPage() {
       }
     );
 
+    const unsubSystemEvent = streamingClient.subscribe(
+      "system_event",
+      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: pre-existing, refactor deferred
+      (data: Record<string, unknown>) => {
+        const eventId =
+          typeof data.eventId === "string"
+            ? data.eventId
+            : Math.random().toString();
+        const source =
+          typeof data.source === "string" ? data.source : "deepgram";
+        const severity =
+          typeof data.severity === "string" ? data.severity : "warning";
+        const code = typeof data.code === "string" ? data.code : "unknown";
+        const message = typeof data.message === "string" ? data.message : "";
+        const timestamp =
+          typeof data.timestamp === "number" ? data.timestamp : Date.now();
+
+        const newEvent = {
+          eventId,
+          source: source as "deepgram" | "sambanova" | "gemini",
+          severity: severity as "info" | "warning" | "error",
+          code,
+          message,
+          timestamp,
+        };
+
+        setSystemEvents((prev) => {
+          const index = prev.findIndex((e) => e.code === code);
+          if (index !== -1) {
+            const copy = [...prev];
+            copy[index] = newEvent;
+            return copy;
+          }
+          return [...prev, newEvent];
+        });
+
+        if (severity !== "error") {
+          setTimeout(() => {
+            setSystemEvents((prev) =>
+              prev.filter((e) => e.eventId !== eventId)
+            );
+          }, 8000);
+        }
+      }
+    );
+
     return () => {
       unsubUtterance();
       unsubTopic();
@@ -707,6 +787,7 @@ export function MeetingPage() {
       unsubParticipantEvent();
       unsubProcessed();
       unsubSpeakerGuess();
+      unsubSystemEvent();
     };
   }, [streamingClient, userId]);
 
@@ -879,6 +960,38 @@ export function MeetingPage() {
           className={cx(warningBannerClass, "rounded-none border-x-0")}
         >
           {warning}
+        </div>
+      ) : null}
+
+      {systemEvents.length > 0 ? (
+        <div aria-live="assertive">
+          {systemEvents.map((event) => (
+            <div
+              className={getSystemEventBannerClass(event.severity)}
+              key={event.eventId}
+            >
+              <span>
+                <span className="font-semibold">
+                  [{getSystemEventSourceLabel(event.source)}]
+                </span>{" "}
+                {event.message}
+              </span>
+              {event.severity !== "error" ? (
+                <button
+                  aria-label="Dismiss"
+                  className="ml-2 shrink-0 text-xs opacity-60 hover:opacity-100"
+                  onClick={() =>
+                    setSystemEvents((prev) =>
+                      prev.filter((e) => e.eventId !== event.eventId)
+                    )
+                  }
+                  type="button"
+                >
+                  ✕
+                </button>
+              ) : null}
+            </div>
+          ))}
         </div>
       ) : null}
 

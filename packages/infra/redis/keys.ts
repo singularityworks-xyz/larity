@@ -40,4 +40,6 @@ export const redisKeys = {
     `meeting.job.${sessionId}.${step}.status` as const,
   meetingProcessingComplete: (sessionId: string) =>
     `meeting.processed.${sessionId}` as const,
+  meetingSystemEvent: (sessionId: string) =>
+    `meeting.system_event.${sessionId}` as const,
 };
