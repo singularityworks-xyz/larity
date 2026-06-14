@@ -377,16 +377,52 @@ function EditableMemberCard({
           <div className="relative flex h-5 w-5 items-center justify-center rounded-full bg-accent/20 text-accent">
             <Info className="h-3 w-3" />
 
-            <div className="pointer-events-none absolute top-full right-0 z-10 mt-2 w-48 translate-y-2 rounded-lg border border-white/10 bg-zinc-900 p-3 font-medium text-[11px] text-fg-muted opacity-0 shadow-xl transition-all group-hover:translate-y-0 group-hover:opacity-100">
-              <div className="mb-1 font-semibold text-white">Known Traits</div>
-              <ul className="m-0 list-disc space-y-1 pl-3">
-                {Array.isArray(member.persona.traits) &&
-                  member.persona.traits
-                    .slice(0, 3)
-                    .map((trait: string, _idx: number) => (
-                      <li key={trait}>{trait}</li>
-                    ))}
-              </ul>
+            <div className="pointer-events-none absolute top-full right-0 z-20 mt-2 w-64 translate-y-2 rounded-xl border border-border-strong bg-bg-elevated p-4 font-medium text-[11px] text-fg-muted opacity-0 shadow-2xl transition-all group-hover:translate-y-0 group-hover:opacity-100">
+              <div className="mb-3 border-border-subtle border-b pb-2 font-semibold text-[13px] text-fg">
+                AI Persona Profile
+              </div>
+              <div className="flex flex-col gap-3">
+                {member.persona.tone && (
+                  <div>
+                    <span className="mb-0.5 block text-[10px] text-fg-subtle uppercase tracking-wider">
+                      Tone
+                    </span>
+                    <span className="text-fg capitalize leading-tight">
+                      {member.persona.tone}
+                    </span>
+                  </div>
+                )}
+                {member.persona.communicationStyle && (
+                  <div>
+                    <span className="mb-0.5 block text-[10px] text-fg-subtle uppercase tracking-wider">
+                      Style
+                    </span>
+                    <span className="text-fg leading-tight">
+                      {member.persona.communicationStyle}
+                    </span>
+                  </div>
+                )}
+                {Array.isArray(member.persona.keyPriorities) &&
+                  member.persona.keyPriorities.length > 0 && (
+                    <div>
+                      <span className="mb-1 block text-[10px] text-fg-subtle uppercase tracking-wider">
+                        Key Priorities
+                      </span>
+                      <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0">
+                        {member.persona.keyPriorities
+                          .slice(0, 3)
+                          .map((priority: string) => (
+                            <li
+                              className="rounded border border-accent/20 bg-accent/10 px-1.5 py-0.5 font-medium text-[9px] text-accent"
+                              key={priority}
+                            >
+                              {priority}
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  )}
+              </div>
             </div>
           </div>
         </div>
