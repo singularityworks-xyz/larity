@@ -21,6 +21,19 @@ export const MeetingBriefService = {
     // Fallback: Generate on the fly (e.g. for ad-hoc meetings where the cron hasn't run)
     const newBrief =
       await AIBriefGeneratorService.generateAndSaveBrief(meetingId);
+
+    if (!newBrief) {
+      const refreshed = await prisma.meeting.findUnique({
+        where: { id: meetingId },
+        select: { preMeetingBrief: true },
+      });
+      if (!refreshed?.preMeetingBrief) {
+        throw new Error("Brief generation in progress");
+      }
+      const parsed = BriefSchema.parse(refreshed.preMeetingBrief);
+      return { meetingId, ...parsed };
+    }
+
     return { meetingId, ...newBrief };
   },
 };
