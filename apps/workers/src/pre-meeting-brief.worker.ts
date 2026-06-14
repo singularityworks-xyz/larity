@@ -23,12 +23,19 @@ export class PreMeetingBriefWorker extends BaseWorker {
         });
 
         if (meeting?.hostId) {
-          const { publish } = await import("@larity/infra/redis");
-          await publish(`user_notifications:${meeting.hostId}`, {
-            type: "PRE_MEETING_BRIEF_READY",
-            meetingId: meeting.id,
-            message: "Your AI pre-meeting brief is ready.",
-          });
+          try {
+            const { publish } = await import("@larity/infra/redis");
+            await publish(`user_notifications:${meeting.hostId}`, {
+              type: "PRE_MEETING_BRIEF_READY",
+              meetingId: meeting.id,
+              message: "Your AI pre-meeting brief is ready.",
+            });
+          } catch (error) {
+            this.log.warn(
+              { meetingId, error },
+              "Brief saved, but notification publish failed"
+            );
+          }
         }
       }
 
