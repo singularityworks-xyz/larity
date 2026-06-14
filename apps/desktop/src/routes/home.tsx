@@ -112,7 +112,7 @@ function TickingClock() {
 
   return (
     <div className="flex flex-col">
-      <span className="font-medium font-sans text-[2.5rem] text-fg leading-none tracking-tight shadow-accent/20 drop-shadow-sm md:text-[3.5rem]">
+      <span className="font-medium font-sans text-[2rem] text-fg leading-none tracking-tight shadow-accent/20 drop-shadow-sm md:text-[2.75rem]">
         {time.toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -151,12 +151,12 @@ function Header({
   const firstName = userName?.split(" ")[0] ?? "Agent";
   return (
     <motion.header
-      className="flex flex-col justify-between gap-6 border-border-subtle/40 border-b pb-6 md:flex-row md:items-end"
+      className="flex flex-col justify-between gap-3 border-border-subtle/40 border-b pb-4 md:flex-row md:items-end"
       variants={itemVariants}
     >
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1">
         <TickingClock />
-        <h1 className="mt-2 font-medium text-fg-muted text-xl tracking-tight">
+        <h1 className="font-medium text-fg-muted text-lg tracking-tight">
           Ready to focus, <span className="text-fg">{firstName}</span>
           {orgName ? (
             <span className="text-fg-subtle">
@@ -228,10 +228,10 @@ function InvitePanel({
       exit={{ opacity: 0, height: 0 }}
       initial={{ opacity: 0, height: 0 }}
     >
-      <div className="relative mt-6 overflow-hidden rounded-2xl border border-border-subtle bg-bg-elevated p-5">
+      <div className="relative mt-3 overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated p-4">
         <div className="pointer-events-none absolute top-0 right-0 rounded-full bg-accent/5 p-32 blur-[100px]" />
 
-        <div className="relative z-10 mb-4 flex items-center justify-between">
+        <div className="relative z-10 mb-3 flex items-center justify-between">
           <h3 className="flex items-center gap-2 font-semibold text-fg text-sm">
             <Users className="h-4 w-4 text-accent" /> Team Invites
           </h3>
@@ -260,7 +260,7 @@ function InvitePanel({
           {hasInvites ? (
             invites.invitesQuery.data?.map((invite) => (
               <div
-                className="flex items-center justify-between rounded-xl border border-border-subtle bg-bg-subtle p-3 transition-colors hover:border-border"
+                className="flex items-center justify-between rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2 transition-colors hover:border-border"
                 key={invite.id}
               >
                 <div>
@@ -306,46 +306,48 @@ function ActionGrid({ canManage }: { canManage: boolean }) {
   const navigate = useNavigate();
   return (
     <motion.div
-      className="grid grid-cols-1 gap-4 md:grid-cols-2"
+      className="grid grid-cols-1 gap-3 md:grid-cols-2"
       variants={itemVariants}
     >
       {canManage && (
         <button
-          className="group relative flex flex-col items-start overflow-hidden rounded-[24px] border border-border bg-gradient-to-br from-bg-elevated to-bg-overlay p-6 text-left transition-all duration-500 hover:border-accent/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] active:scale-[0.98]"
+          className="group relative flex flex-col items-start overflow-hidden rounded-[16px] border border-border bg-gradient-to-br from-bg-elevated to-bg-overlay p-4 text-left transition-all duration-500 hover:border-accent/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] active:scale-[0.98]"
           onClick={() => navigate("/meetings/start")}
           type="button"
         >
           <div className="absolute -inset-px bg-gradient-to-r from-accent/0 via-accent/10 to-accent/0 opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-100" />
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10 text-accent transition-transform duration-500 ease-out group-hover:scale-110">
-            <Video className="h-6 w-6" />
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-accent transition-transform duration-500 ease-out group-hover:scale-110">
+            <Video className="h-5 w-5" />
           </div>
-          <h2 className="mb-1 font-semibold text-fg text-lg">Host a Session</h2>
-          <p className="max-w-[80%] text-fg-muted text-xs leading-relaxed">
+          <h2 className="mb-0.5 font-semibold text-fg text-sm">
+            Host a Session
+          </h2>
+          <p className="max-w-[85%] text-[11px] text-fg-muted leading-relaxed">
             Start a live meeting with a client and let the agent take notes &
             extract tasks automatically.
           </p>
-          <div className="absolute right-6 bottom-6 flex h-8 w-8 items-center justify-center rounded-full border border-border text-fg-subtle transition-colors duration-300 group-hover:border-accent group-hover:bg-accent group-hover:text-accent-fg">
+          <div className="absolute right-4 bottom-4 flex h-7 w-7 items-center justify-center rounded-full border border-border text-fg-subtle transition-colors duration-300 group-hover:border-accent group-hover:bg-accent group-hover:text-accent-fg">
             <ArrowRight className="h-4 w-4" />
           </div>
         </button>
       )}
       <button
-        className="group relative flex flex-col items-start overflow-hidden rounded-[24px] border border-border bg-gradient-to-br from-bg-elevated to-bg-overlay p-6 text-left transition-all duration-500 hover:border-info/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] active:scale-[0.98]"
+        className="group relative flex flex-col items-start overflow-hidden rounded-[16px] border border-border bg-gradient-to-br from-bg-elevated to-bg-overlay p-4 text-left transition-all duration-500 hover:border-info/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] active:scale-[0.98]"
         onClick={() => navigate("/meetings/join")}
         type="button"
       >
         <div className="absolute -inset-px bg-gradient-to-r from-info/0 via-info/10 to-info/0 opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-100" />
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-info/10 text-info transition-transform duration-500 ease-out group-hover:scale-110">
-          <Users className="h-6 w-6" />
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-info/10 text-info transition-transform duration-500 ease-out group-hover:scale-110">
+          <Users className="h-5 w-5" />
         </div>
-        <h2 className="mb-1 font-semibold text-fg text-lg">
+        <h2 className="mb-0.5 font-semibold text-fg text-sm">
           Join an Active Session
         </h2>
-        <p className="max-w-[80%] text-fg-muted text-xs leading-relaxed">
+        <p className="max-w-[85%] text-[11px] text-fg-muted leading-relaxed">
           Enter a session ID or pick from organization active sessions to shadow
           or participate.
         </p>
-        <div className="absolute right-6 bottom-6 flex h-8 w-8 items-center justify-center rounded-full border border-border text-fg-subtle transition-colors duration-300 group-hover:border-info group-hover:bg-info group-hover:text-white">
+        <div className="absolute right-4 bottom-4 flex h-7 w-7 items-center justify-center rounded-full border border-border text-fg-subtle transition-colors duration-300 group-hover:border-info group-hover:bg-info group-hover:text-white">
           <ArrowRight className="h-4 w-4" />
         </div>
       </button>
@@ -365,7 +367,7 @@ function NextMeetingHero({
   if (loading) {
     return (
       <motion.div
-        className="h-40 animate-pulse rounded-[24px] border border-border bg-bg-elevated"
+        className="h-32 animate-pulse rounded-[16px] border border-border bg-bg-elevated"
         variants={itemVariants}
       />
     );
@@ -374,12 +376,12 @@ function NextMeetingHero({
   if (!meeting) {
     return (
       <motion.div
-        className="flex h-40 flex-col items-center justify-center rounded-[24px] border border-border border-dashed bg-bg-overlay p-6 text-center"
+        className="flex h-32 flex-col items-center justify-center rounded-[16px] border border-border border-dashed bg-bg-overlay p-4 text-center"
         variants={itemVariants}
       >
-        <CalendarClock className="mb-3 h-8 w-8 text-fg-subtle opacity-50" />
-        <h3 className="font-semibold text-fg text-sm">No upcoming meetings</h3>
-        <p className="mt-1 text-fg-muted text-xs">
+        <CalendarClock className="mb-2 h-6 w-6 text-fg-subtle opacity-50" />
+        <h3 className="font-semibold text-fg text-xs">No upcoming meetings</h3>
+        <p className="mt-0.5 text-[11px] text-fg-muted">
           Take a breather, you're all caught up for now.
         </p>
       </motion.div>
@@ -394,7 +396,7 @@ function NextMeetingHero({
   return (
     <motion.div
       className={cx(
-        "relative overflow-hidden rounded-[24px] border p-6 lg:p-8",
+        "relative overflow-hidden rounded-[16px] border p-4 lg:p-5",
         startsSoon
           ? "border-accent/20 bg-accent/5"
           : "border-border bg-bg-elevated"
@@ -405,10 +407,10 @@ function NextMeetingHero({
         <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-accent/20 blur-[80px]" />
       )}
 
-      <div className="relative z-10 flex items-start justify-between gap-6">
+      <div className="relative z-10 flex items-start justify-between gap-4">
         <div>
-          <div className="mb-3 flex items-center gap-3">
-            <span className="flex items-center gap-1.5 rounded-md border border-border bg-bg-overlay px-2.5 py-1 font-bold text-[10px] text-fg-muted uppercase tracking-wider">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-0.5 font-bold text-[10px] text-fg-muted uppercase tracking-wider">
               <Zap className="h-3 w-3 text-accent" /> Next Up
             </span>
             <span
@@ -423,11 +425,11 @@ function NextMeetingHero({
             </span>
           </div>
 
-          <h2 className="mb-2 font-bold text-2xl text-fg tracking-tight lg:text-3xl">
+          <h2 className="mb-1 font-bold text-fg text-xl tracking-tight lg:text-2xl">
             {meeting.title}
           </h2>
 
-          <div className="flex items-center gap-4 font-medium text-sm">
+          <div className="flex items-center gap-3 font-medium text-xs">
             <div className="flex items-center gap-1.5 text-fg-muted">
               <Users className="h-4 w-4" />
               {meeting.client.name}
@@ -454,15 +456,15 @@ function NextMeetingHero({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col gap-2">
+        <div className="flex shrink-0 flex-col gap-1.5">
           <button
-            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 font-semibold text-accent-fg text-sm transition-all hover:bg-accent/90 hover:shadow-[0_0_20px_var(--accent-muted)] active:scale-95"
+            className="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-4 font-semibold text-accent-fg text-xs transition-all hover:bg-accent/90 hover:shadow-[0_0_20px_var(--accent-muted)] active:scale-95"
             type="button"
           >
-            <Play className="h-4 w-4 fill-current" /> Start Focus
+            <Play className="h-3.5 w-3.5 fill-current" /> Start Focus
           </button>
           <button
-            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-border bg-bg-overlay px-5 font-medium text-fg text-sm transition-all hover:bg-bg-subtle active:scale-95"
+            className="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-overlay px-4 font-medium text-fg text-xs transition-all hover:bg-bg-subtle active:scale-95"
             type="button"
           >
             Open Brief
@@ -485,12 +487,12 @@ function TodayAgenda({
   const isEmpty = !loading && meetings.length === 0;
   return (
     <motion.div
-      className="col-span-1 flex flex-col rounded-[24px] border border-border bg-bg-elevated p-6 shadow-sm md:col-span-4 lg:col-span-3"
+      className="col-span-1 flex flex-col rounded-[16px] border border-border bg-bg-elevated p-4 shadow-sm md:col-span-4 lg:col-span-3"
       variants={itemVariants}
     >
-      <div className="mb-5 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 font-semibold text-fg text-sm">
-          <Calendar className="h-4 w-4 text-fg-muted" /> Today's Agenda
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="flex items-center gap-1.5 font-semibold text-fg text-xs">
+          <Calendar className="h-3.5 w-3.5 text-fg-muted" /> Today's Agenda
         </h3>
         {!loading && (
           <span className="rounded-full bg-bg-overlay px-2 py-0.5 font-semibold text-fg-muted text-xs">
@@ -500,18 +502,18 @@ function TodayAgenda({
       </div>
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div
-              className="h-12 animate-pulse rounded-xl bg-bg-subtle"
+              className="h-8 animate-pulse rounded-lg bg-bg-subtle"
               key={i}
             />
           ))}
         </div>
       ) : null}
       {isEmpty ? (
-        <div className="flex flex-1 flex-col items-center justify-center py-10 opacity-60">
-          <Calendar className="mb-2 h-8 w-8 text-border-strong" />
+        <div className="flex flex-1 flex-col items-center justify-center py-6 opacity-60">
+          <Calendar className="mb-1.5 h-6 w-6 text-border-strong" />
           <p className="font-medium text-fg-muted text-xs">Clear schedule</p>
         </div>
       ) : null}
@@ -522,16 +524,16 @@ function TodayAgenda({
         >
           {meetings.map((m) => (
             <button
-              className="group flex cursor-pointer items-center gap-3 rounded-xl border border-transparent p-3 text-left transition-all hover:border-border hover:bg-bg-overlay"
+              className="group flex cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-left transition-all hover:border-border hover:bg-bg-overlay"
               key={m.id}
               type="button"
             >
-              <div className="w-12 shrink-0 text-right">
-                <div className="font-bold text-fg text-xs tabular-nums">
+              <div className="w-10 shrink-0 text-right">
+                <div className="font-bold text-[11px] text-fg tabular-nums">
                   {formatTime(m.scheduledAt)}
                 </div>
               </div>
-              <div className="h-8 w-1 rounded-full bg-border transition-colors group-hover:bg-accent" />
+              <div className="h-5 w-0.5 rounded-full bg-border transition-colors group-hover:bg-accent" />
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium text-fg text-sm">
                   {m.title}
@@ -559,28 +561,28 @@ function RecentActivityList({
   const isEmpty = !loading && activity.length === 0;
   return (
     <motion.div
-      className="col-span-1 flex flex-col rounded-[24px] border border-border bg-bg-elevated p-6 shadow-sm md:col-span-4 lg:col-span-3"
+      className="col-span-1 flex flex-col rounded-[16px] border border-border bg-bg-elevated p-4 shadow-sm md:col-span-4 lg:col-span-3"
       variants={itemVariants}
     >
-      <div className="mb-5 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 font-semibold text-fg text-sm">
-          <Clock className="h-4 w-4 text-fg-muted" /> Recent Activity
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="flex items-center gap-1.5 font-semibold text-fg text-xs">
+          <Clock className="h-3.5 w-3.5 text-fg-muted" /> Recent Activity
         </h3>
       </div>
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div
-              className="h-12 animate-pulse rounded-xl bg-bg-subtle"
+              className="h-9 animate-pulse rounded-lg bg-bg-subtle"
               key={i}
             />
           ))}
         </div>
       ) : null}
       {isEmpty ? (
-        <div className="flex flex-1 flex-col items-center justify-center py-10 opacity-60">
-          <Activity className="mb-2 h-8 w-8 text-border-strong" />
+        <div className="flex flex-1 flex-col items-center justify-center py-6 opacity-60">
+          <Activity className="mb-1.5 h-6 w-6 text-border-strong" />
           <p className="font-medium text-fg-muted text-xs">
             No recent sessions
           </p>
@@ -593,7 +595,7 @@ function RecentActivityList({
         >
           {activity.map((item) => (
             <button
-              className="group flex cursor-pointer flex-col gap-2 rounded-xl border border-transparent p-3 text-left transition-all hover:border-border hover:bg-bg-overlay"
+              className="group flex cursor-pointer flex-col gap-1 rounded-lg border border-transparent px-2 py-1.5 text-left transition-all hover:border-border hover:bg-bg-overlay"
               key={item.id}
               onClick={() => navigate(`/meeting-post/${item.id}`)}
               type="button"
@@ -641,12 +643,12 @@ function ActiveCommitments({
   const isEmpty = !loading && commitments.length === 0;
   return (
     <motion.div
-      className="col-span-1 flex flex-col rounded-[24px] border border-border bg-gradient-to-b from-bg-elevated to-bg p-6 shadow-sm md:col-span-4 lg:col-span-3"
+      className="col-span-1 flex flex-col rounded-[16px] border border-border bg-gradient-to-b from-bg-elevated to-bg p-4 shadow-sm md:col-span-4 lg:col-span-3"
       variants={itemVariants}
     >
-      <div className="mb-5 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 font-semibold text-fg text-sm">
-          <CheckCircle2 className="h-4 w-4 text-warning" /> Open Commitments
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="flex items-center gap-1.5 font-semibold text-fg text-xs">
+          <CheckCircle2 className="h-3.5 w-3.5 text-warning" /> Open Commitments
         </h3>
         {!loading && commitments.length > 0 && (
           <a
@@ -661,18 +663,18 @@ function ActiveCommitments({
       </div>
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {[1, 2].map((i) => (
             <div
-              className="h-10 animate-pulse rounded-xl bg-bg-subtle"
+              className="h-8 animate-pulse rounded-lg bg-bg-subtle"
               key={i}
             />
           ))}
         </div>
       ) : null}
       {isEmpty ? (
-        <div className="flex flex-1 flex-col items-center justify-center py-6 opacity-60">
-          <CheckCircle2 className="mb-2 h-8 w-8 text-border-strong" />
+        <div className="flex flex-1 flex-col items-center justify-center py-4 opacity-60">
+          <CheckCircle2 className="mb-1.5 h-6 w-6 text-border-strong" />
           <p className="font-medium text-fg-muted text-xs">All caught up</p>
         </div>
       ) : null}
@@ -680,7 +682,7 @@ function ActiveCommitments({
         <div className="flex flex-col gap-2">
           {commitments.slice(0, 4).map((c) => (
             <div
-              className="flex items-start gap-3 rounded-xl border border-border bg-bg-elevated p-3 shadow-sm"
+              className="flex items-start gap-2 rounded-lg border border-border bg-bg-elevated px-2.5 py-2 shadow-sm"
               key={c.id}
             >
               <div className="mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 border-warning/50" />
@@ -716,7 +718,7 @@ function ClientShortcuts() {
 
   return (
     <motion.div
-      className="col-span-1 pt-4 md:col-span-8 lg:col-span-9"
+      className="col-span-1 pt-2 md:col-span-8 lg:col-span-9"
       variants={itemVariants}
     >
       <div className="flex flex-wrap gap-2">
@@ -779,7 +781,7 @@ function HealthStrip({ health }: { health: HealthState }) {
     : "Not Synced";
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-4 rounded-2xl border border-border bg-bg-elevated/50 p-3 backdrop-blur-sm sm:justify-start">
+    <div className="flex flex-wrap items-center justify-center gap-3 rounded-xl border border-border bg-bg-elevated/50 px-3 py-2 backdrop-blur-sm sm:justify-start">
       <StatusDot label="Server Connected" state={serverState} />
       <span className="h-1 w-1 rounded-full bg-border-strong" />
       <StatusDot label={audioLabel} state={audioState} />
@@ -863,7 +865,7 @@ export function HomePage() {
   return (
     <motion.div
       animate="show"
-      className="mx-auto flex min-h-screen w-full max-w-[1200px] flex-col gap-8 px-4 py-8 sm:px-6 md:px-8 md:py-12"
+      className="mx-auto flex min-h-screen w-full max-w-[1200px] flex-col gap-4 px-4 py-4 sm:px-6 md:px-8 md:py-6"
       initial="hidden"
       variants={containerVariants}
     >
@@ -895,7 +897,7 @@ export function HomePage() {
         meeting={data?.nextMeeting ?? null}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-8 lg:grid-cols-9">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-8 lg:grid-cols-9">
         <TodayAgenda loading={isLoading} meetings={data?.todayMeetings ?? []} />
         <RecentActivityList
           activity={data?.recentActivity ?? []}
@@ -909,7 +911,7 @@ export function HomePage() {
         <ClientShortcuts />
       </div>
 
-      <motion.div className="mt-auto pt-6" variants={itemVariants}>
+      <motion.div className="mt-auto pt-3" variants={itemVariants}>
         <HealthStrip health={health} />
       </motion.div>
     </motion.div>
