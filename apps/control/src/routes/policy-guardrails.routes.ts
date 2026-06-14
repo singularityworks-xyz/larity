@@ -78,6 +78,22 @@ export const policyGuardrailsRoutes = new Elysia({
     },
     { body: createPolicyGuardrailSchema }
   )
+  // Seed default guardrails for an org
+  .post(
+    "/seed",
+    async ({ body, set }) => {
+      try {
+        const result = await PolicyGuardrailService.seedDefaultForOrg(
+          body.orgId
+        );
+        return { success: true, data: result };
+      } catch (e: unknown) {
+        set.status = 500;
+        return { success: false, error: String(e) };
+      }
+    },
+    { body: z.object({ orgId: z.string().uuid() }) }
+  )
   // Update policy guardrail
   .patch(
     "/:id",

@@ -3,6 +3,7 @@ import type {
   CreatePolicyGuardrailInput,
   UpdatePolicyGuardrailInput,
 } from "../validators";
+import { DEFAULT_POLICY_GUARDRAILS } from "./default-guardrails";
 
 export const PolicyGuardrailService = {
   create(data: CreatePolicyGuardrailInput) {
@@ -100,5 +101,37 @@ export const PolicyGuardrailService = {
     return prisma.policyGuardrail.delete({
       where: { id },
     });
+  },
+
+  async seedDefaultForOrg(orgId: string) {
+    // Check if they already have guardrails to prevent duplicate seeding
+    const existingCount = await prisma.policyGuardrail.count({
+      where: { orgId, clientId: null },
+    });
+
+    if (existingCount > 0) {
+      return {
+        seeded: false,
+        message: "Guardrails already exist for this org.",
+      };
+    }
+
+    const payload = DEFAULT_POLICY_GUARDRAILS.map((g) => ({
+      ...g,
+      orgId,
+      ruleType: g.ruleType as
+        | "NDA"
+        | "LEGAL"
+        | "TERMINOLOGY"
+        | "INTERNAL"
+        | "CUSTOM",
+      severity: g.severity as "INFO" | "WARNING" | "BLOCK",
+    }));
+
+    await prisma.policyGuardrail.createMany({
+      data: payload,
+    });
+
+    return { seeded: true, count: payload.length };
   },
 };
