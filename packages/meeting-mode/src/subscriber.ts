@@ -33,6 +33,39 @@ let constraintManagerRef: ConstraintManager | null = null;
 let pipelineEngineRef: MeetingPipelineEngine | null = null;
 let _redisClientRef: Redis | null = null;
 
+async function loadIdentifierFromDb(
+  client: Redis,
+  sessionId: string,
+  identifier: SpeakerIdentifier
+): Promise<void> {
+  const meetingId = await client.hget(
+    redisKeys.meetingSession(sessionId),
+    "meetingId"
+  );
+  if (!meetingId) {
+    return;
+  }
+  const meeting = await prisma.meeting.findUnique({
+    where: { id: meetingId },
+    select: { speakerMappings: true },
+  });
+  if (meeting?.speakerMappings) {
+    const mappingsObj = meeting.speakerMappings as unknown as Record<
+      string,
+      SpeakerMapping
+    >;
+    const map = new Map<number, SpeakerMapping>();
+    for (const [idxStr, mapping] of Object.entries(mappingsObj)) {
+      map.set(Number(idxStr), mapping);
+    }
+    identifier.hydrate(map);
+    log.info(
+      { sessionId, meetingId, count: map.size },
+      "Hydrated SpeakerIdentifier from DB"
+    );
+  }
+}
+
 async function getHydratedIdentifier(
   sessionId: string
 ): Promise<SpeakerIdentifier | null> {
@@ -51,31 +84,25 @@ async function getHydratedIdentifier(
   try {
     const client = _redisClientRef ?? redis;
     if (client) {
-      const meetingId = await client.hget(
-        redisKeys.meetingSession(sessionId),
-        "meetingId"
-      );
-      if (meetingId) {
-        const meeting = await prisma.meeting.findUnique({
-          where: { id: meetingId },
-          select: { speakerMappings: true },
-        });
-        if (meeting?.speakerMappings) {
-          const mappingsObj = meeting.speakerMappings as unknown as Record<
-            string,
-            SpeakerMapping
-          >;
-          const map = new Map<number, SpeakerMapping>();
-          for (const [idxStr, mapping] of Object.entries(mappingsObj)) {
-            map.set(Number(idxStr), mapping);
-          }
-          identifier.hydrate(map);
-          log.info(
-            { sessionId, meetingId, count: map.size },
-            "Hydrated SpeakerIdentifier from DB"
-          );
+      // 1. Try to load from intermediate session state in Redis first (e.g. across mic switches or network drops)
+      const stateKey = redisKeys.meetingSessionState(sessionId);
+      const rawState = await client.get(stateKey);
+      if (rawState) {
+        const stateObj = JSON.parse(rawState) as Record<string, SpeakerMapping>;
+        const map = new Map<number, SpeakerMapping>();
+        for (const [idxStr, mapping] of Object.entries(stateObj)) {
+          map.set(Number(idxStr), mapping);
         }
+        identifier.hydrate(map);
+        log.info(
+          { sessionId, count: map.size },
+          "Hydrated SpeakerIdentifier from Redis session state"
+        );
+        return identifier;
       }
+
+      // 2. Fall back to Prisma DB state
+      await loadIdentifierFromDb(client, sessionId, identifier);
     }
   } catch (err) {
     log.error(
