@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useMemo, useState } from "react";
-import { useSession } from "../features/auth/use-session";
+import { useAuthSession } from "../features/auth/use-session";
 import { api } from "../lib/api";
 import { VadManager } from "../services/vad";
 
@@ -48,8 +48,8 @@ export function SettingsPage() {
   const vadManager = useMemo(() => new VadManager(), []);
 
   // Auth State
-  const { session } = useSession();
-  const orgId = session?.user?.orgId;
+  const { user } = useAuthSession();
+  const orgId = user?.orgId;
 
   // Tab State
   const [activeTab, setActiveTab] = useState<TabId>("guardrails");
