@@ -22,6 +22,7 @@ const mockPrisma = {
 const mockRedis = {
   set: mock(),
   del: mock(),
+  eval: mock(),
 };
 
 mock.module("@larity/infra/prisma/client", () => ({ prisma: mockPrisma }));
@@ -57,6 +58,7 @@ describe("AIBriefGeneratorService", () => {
     mockPrisma.importantPoint.findMany.mockClear();
     mockRedis.set.mockClear();
     mockRedis.del.mockClear();
+    mockRedis.eval.mockClear();
   });
 
   describe("generateBriefData", () => {
@@ -132,14 +134,17 @@ describe("AIBriefGeneratorService", () => {
       expect(result).toBeDefined();
       expect(mockRedis.set).toHaveBeenCalledWith(
         `meeting:brief_lock:${meetingId}`,
-        "1",
+        expect.any(String),
         "NX",
         "EX",
         60
       );
       expect(mockPrisma.meeting.update).toHaveBeenCalled();
-      expect(mockRedis.del).toHaveBeenCalledWith(
-        `meeting:brief_lock:${meetingId}`
+      expect(mockRedis.eval).toHaveBeenCalledWith(
+        expect.any(String),
+        1,
+        `meeting:brief_lock:${meetingId}`,
+        expect.any(String)
       );
     });
 

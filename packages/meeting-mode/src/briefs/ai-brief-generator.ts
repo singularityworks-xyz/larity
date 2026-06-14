@@ -259,7 +259,8 @@ ${contextStr}
     }
 
     const lockKey = `meeting:brief_lock:${meetingId}`;
-    const acquired = await redisClient.set(lockKey, "1", "NX", "EX", 60);
+    const lockToken = randomUUID();
+    const acquired = await redisClient.set(lockKey, lockToken, "NX", "EX", 60);
     if (!acquired) {
       return null;
     }
@@ -274,7 +275,16 @@ ${contextStr}
       });
       return brief;
     } finally {
-      await redisClient.del(lockKey);
+      await redisClient.eval(
+        `if redis.call("GET", KEYS[1]) == ARGV[1] then
+           return redis.call("DEL", KEYS[1])
+         else
+           return 0
+         end`,
+        1,
+        lockKey,
+        lockToken
+      );
     }
   },
 };
