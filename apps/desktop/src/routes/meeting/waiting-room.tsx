@@ -165,13 +165,17 @@ export function WaitingRoomPage() {
                       <h3 className="mb-4 flex items-center gap-2 font-mono text-[#FF453A] text-xs uppercase tracking-wider">
                         <svg
                           aria-label="Warning icon"
+                          className="text-[#FF453A]"
                           fill="none"
                           height="14"
                           stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                           strokeWidth="2"
                           viewBox="0 0 24 24"
                           width="14"
                         >
+                          <title>Warning icon</title>
                           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                           <line x1="12" x2="12" y1="9" y2="13" />
                           <line x1="12" x2="12.01" y1="17" y2="17" />
@@ -204,7 +208,9 @@ export function WaitingRoomPage() {
                           const isSelected = selectedAgenda.some(
                             (item) => item.id === id
                           );
-                          if (isSelected) return null;
+                          if (isSelected) {
+                            return null;
+                          }
                           return (
                             <li key={id}>
                               <button
@@ -270,7 +276,9 @@ export function WaitingRoomPage() {
                             const isSelected = selectedAgenda.some(
                               (i) => i.id === c.id
                             );
-                            if (isSelected) return null;
+                            if (isSelected) {
+                              return null;
+                            }
                             return (
                               <li key={c.id}>
                                 <button
@@ -337,7 +345,9 @@ export function WaitingRoomPage() {
                             const isSelected = selectedAgenda.some(
                               (i) => i.id === c.id
                             );
-                            if (isSelected) return null;
+                            if (isSelected) {
+                              return null;
+                            }
                             return (
                               <li key={c.id}>
                                 <button
@@ -449,10 +459,13 @@ export function WaitingRoomPage() {
                         fill="none"
                         height="14"
                         stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         strokeWidth="2"
                         viewBox="0 0 24 24"
                         width="14"
                       >
+                        <title>Remove icon</title>
                         <line x1="18" x2="6" y1="6" y2="18" />
                         <line x1="6" x2="18" y1="6" y2="18" />
                       </svg>
@@ -493,10 +506,13 @@ export function WaitingRoomPage() {
                   fill="none"
                   height="18"
                   stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                   strokeWidth="2"
                   viewBox="0 0 24 24"
                   width="18"
                 >
+                  <title>Add icon</title>
                   <line x1="12" x2="12" y1="5" y2="19" />
                   <line x1="5" x2="19" y1="12" y2="12" />
                 </svg>
