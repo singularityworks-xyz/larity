@@ -108,6 +108,7 @@ interface MeetingSidebarProps {
   meetingStartedAtMs: number;
   onEvidenceClick: (utteranceId: string) => void;
   onChangeRole?: (speakerId: string, role: "TEAM" | "EXTERNAL") => void;
+  pendingAgenda?: Array<{ id: string; text: string }>;
 }
 
 export function MeetingSidebar({
@@ -118,6 +119,7 @@ export function MeetingSidebar({
   meetingStartedAtMs,
   onEvidenceClick,
   onChangeRole,
+  pendingAgenda = [],
 }: MeetingSidebarProps) {
   const storageKey = `larity-meeting-notes-${sessionId}`;
   const [notes, setNotes] = useState("");
@@ -416,6 +418,30 @@ export function MeetingSidebar({
           </ul>
         )}
       </CollapsibleSection>
+
+      {pendingAgenda.length > 0 && (
+        <CollapsibleSection
+          badge={pendingAgenda.length}
+          defaultOpen={true}
+          title="Agenda"
+        >
+          <ul className="flex flex-col gap-2">
+            {pendingAgenda.map((item, i) => (
+              <li
+                className="flex items-start gap-2 rounded-[5px] border border-border bg-bg-subtle/50 p-2"
+                key={item.id}
+              >
+                <div className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border border-border bg-bg font-mono text-[9px] text-fg-muted">
+                  {i + 1}
+                </div>
+                <span className="pt-[1px] text-[12px] text-fg leading-snug">
+                  {item.text}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </CollapsibleSection>
+      )}
 
       <CollapsibleSection defaultOpen={false} title="Notes">
         <div className="space-y-2">

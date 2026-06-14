@@ -60,7 +60,6 @@ export function StartMeetingPage() {
   const [clientId, setClientId] = useState(searchParams.get("clientId") || "");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [agenda, setAgenda] = useState("");
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("now");
   const [scheduledAtLocal, setScheduledAtLocal] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -106,7 +105,6 @@ export function StartMeetingPage() {
         clientId,
         ...(trimmedTitle ? { title: trimmedTitle } : {}),
         ...(description.trim() ? { description: description.trim() } : {}),
-        ...(agenda.trim() ? { agenda: agenda.trim() } : {}),
         ...(scheduledIso ? { scheduledAt: scheduledIso } : {}),
       });
 
@@ -135,7 +133,7 @@ export function StartMeetingPage() {
         );
       }
 
-      navigate(`/meeting/${session.sessionId}`, {
+      navigate(`/meeting/${session.sessionId}/waiting-room`, {
         state: {
           role: "host",
           websocketUrl: session.websocketUrl,
@@ -143,6 +141,7 @@ export function StartMeetingPage() {
           meetingTitle: trimmedTitle || "Untitled meeting",
           startedAt: Date.now(),
           allowNameCustomization: session.allowNameCustomization,
+          meetingId: session.meetingId,
         },
       });
     } catch (requestError) {
@@ -260,19 +259,6 @@ export function StartMeetingPage() {
                 placeholder="Context or objectives"
                 rows={4}
                 value={description}
-              />
-            </div>
-            <div className={formGroupClass}>
-              <label className={labelClass} htmlFor="meeting-agenda">
-                Agenda (optional, one item per line)
-              </label>
-              <textarea
-                className={cx(textareaClass, "font-mono text-[12px]")}
-                id="meeting-agenda"
-                onChange={(event) => setAgenda(event.target.value)}
-                placeholder={"Kickoff\nRoadmap review\nQ&A"}
-                rows={4}
-                value={agenda}
               />
             </div>
           </div>

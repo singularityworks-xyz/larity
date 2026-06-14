@@ -59,6 +59,8 @@ interface MeetingLocationState {
   meetingTitle?: string;
   startedAt?: number;
   allowNameCustomization?: boolean;
+  meetingId?: string;
+  pendingAgenda?: Array<{ id: string; text: string }>;
 }
 
 interface AudioDevice {
@@ -70,6 +72,7 @@ interface AudioDevice {
 const DEFAULT_WS_URL = import.meta.env.VITE_WS_URL ?? "ws://127.0.0.1:9001";
 const FALLBACK_USER_ID = import.meta.env.VITE_WS_USER_ID ?? "desktop-host";
 
+import { useClientMembers } from "../../features/clients/use-client-members";
 import { useConfirmSpeakerMapping } from "../../features/meetings/use-confirm-speaker-mapping";
 import { useMeeting } from "../../features/meetings/use-meeting";
 
@@ -106,10 +109,11 @@ export function MeetingPage() {
   const location = useLocation();
   const session = useAuthSession();
 
-  const { data: meetingData } = useMeeting(sessionId);
-  const confirmSpeakerMapping = useConfirmSpeakerMapping();
-
   const state = (location.state ?? {}) as MeetingLocationState;
+  const meetingId = state.meetingId ?? sessionId;
+  const { data: meetingData } = useMeeting(meetingId);
+  const { data: members = [] } = useClientMembers(meetingData?.clientId ?? "");
+  const confirmSpeakerMapping = useConfirmSpeakerMapping();
   const role = state.role ?? "participant";
   const wsBaseUrl = getWsBaseUrl(state.websocketUrl);
   const userId = session.user?.id ?? FALLBACK_USER_ID;
@@ -928,7 +932,10 @@ export function MeetingPage() {
                 key={guess.id}
               >
                 <p className="text-fg text-sm">
-                  Map Speaker {guess.index} to Client Member {guess.memberId}?
+                  Map Speaker {guess.index} to Client Member{" "}
+                  {members.find((m) => m.id === guess.memberId)?.name ??
+                    guess.memberId}
+                  ?
                 </p>
                 {cardErrors[guess.id] && (
                   <p className="text-danger-fg text-xs">
@@ -959,7 +966,7 @@ export function MeetingPage() {
                     onClick={async () => {
                       try {
                         await confirmSpeakerMapping.mutateAsync({
-                          meetingId: sessionId,
+                          meetingId,
                           deepgramIndex: guess.index,
                           clientMemberId: guess.memberId,
                         });
@@ -1000,6 +1007,7 @@ export function MeetingPage() {
           onChangeRole={handleRoleChange}
           onEvidenceClick={handleEvidenceClick}
           participants={participants}
+          pendingAgenda={state.pendingAgenda}
           sessionId={sessionId || "unknown"}
         />
       </div>
