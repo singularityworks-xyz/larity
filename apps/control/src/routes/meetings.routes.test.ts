@@ -97,7 +97,7 @@ describe("Meetings Routes - Pre Meeting Brief", () => {
     expect(result.error).toBe("Meeting not found");
   });
 
-  it("should return 500 if generation fails", async () => {
+  it("should return 202 if brief generation is in progress", async () => {
     const meetingId = "123e4567-e89b-12d3-a456-426614174004";
     mockPrisma.meeting.findUnique.mockResolvedValue({
       id: meetingId,
@@ -115,8 +115,8 @@ describe("Meetings Routes - Pre Meeting Brief", () => {
     );
 
     const result = await response.json();
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(202);
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Failed to generate brief");
+    expect(result.error).toBe("Brief generation in progress");
   });
 });

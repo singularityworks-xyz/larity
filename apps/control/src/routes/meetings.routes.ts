@@ -76,8 +76,8 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
       );
 
       if (!brief) {
-        set.status = 500;
-        return { success: false, error: "Failed to generate brief" };
+        set.status = 202;
+        return { success: false, error: "Brief generation in progress" };
       }
 
       return { success: true, data: brief };
