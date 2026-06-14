@@ -100,22 +100,30 @@ export const app = new Elysia()
       pattern: "0 * * * *", // Every hour
       async run() {
         log.info("Running pre-meeting brief cron...");
+        const now = new Date();
         const next24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000);
         const meetings = await prisma.meeting.findMany({
           where: {
             status: "SCHEDULED",
-            scheduledAt: { lte: next24Hours },
+            scheduledAt: { gte: now, lte: next24Hours },
             preMeetingBrief: { equals: Prisma.DbNull },
           },
           select: { id: true },
         });
 
         for (const meeting of meetings) {
-          await preMeetingBriefQueue.add(
-            "generate",
-            { meetingId: meeting.id },
-            { jobId: `pre-meeting-brief-${meeting.id}` }
-          );
+          try {
+            await preMeetingBriefQueue.add(
+              "generate",
+              { meetingId: meeting.id },
+              { jobId: `pre-meeting-brief-${meeting.id}` }
+            );
+          } catch (error) {
+            log.error(
+              { err: error, meetingId: meeting.id },
+              "Failed to enqueue pre-meeting brief job"
+            );
+          }
         }
         if (meetings.length > 0) {
           log.info({ count: meetings.length }, "Enqueued pre-meeting briefs");
