@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-interface HealthState {
+export interface HealthState {
   serverOnline: boolean;
   audioDeviceAvailable: boolean;
   lastSync: Date | null;
