@@ -16,12 +16,16 @@ function namesAreSimilar(name1: string, name2: string) {
   if (n1 === n2) {
     return true;
   }
-  if (n1.includes(n2) || n2.includes(n1)) {
-    return true;
-  }
   const t1 = n1.split(WHITESPACE_REGEX);
   const t2 = n2.split(WHITESPACE_REGEX);
-  return t1.some((t) => t.length > 2 && t2.includes(t));
+  const overlappingTokens = t1.filter(
+    (token) => token.length > 2 && t2.includes(token)
+  );
+
+  if (t1.length > 1 && t2.length > 1) {
+    return overlappingTokens.length >= 2;
+  }
+  return overlappingTokens.length >= 1;
 }
 
 export class ClientPersonaWorker extends BaseWorker<
