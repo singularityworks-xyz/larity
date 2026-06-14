@@ -1,3 +1,4 @@
+import { ACOUSTIC_BLEED_TIMEOUT_MS } from "../env";
 import type { Utterance } from "../utterance/types";
 import {
   extractSlidingWindows,
@@ -30,10 +31,18 @@ const ACKNOWLEDGEMENT_PHRASES = new Set([
 export interface PreFilterDecision {
   dropped: boolean;
   reason?: "too_short" | "acknowledgement" | "near_duplicate";
+  retractUtteranceId?: string;
+}
+
+interface RecentUtteranceEntry {
+  normalizedText: string;
+  isCurrentUser: boolean;
+  utteranceId: string;
+  timestamp: number;
 }
 
 interface SessionPreFilterState {
-  recentNormalized: string[];
+  recent: RecentUtteranceEntry[];
 }
 
 export class PreFilter {
@@ -51,13 +60,55 @@ export class PreFilter {
     }
 
     const state = this.getSessionState(utterance.sessionId);
-    if (this.hasNearDuplicate(state.recentNormalized, normalized)) {
+    const duplicate = this.findNearDuplicate(state.recent, normalized);
+
+    if (duplicate) {
+      const timeDiff = Math.abs(utterance.timestamp - duplicate.timestamp);
+      const isBleed =
+        timeDiff <= ACOUSTIC_BLEED_TIMEOUT_MS &&
+        utterance.speaker.isCurrentUser !== duplicate.isCurrentUser;
+
+      if (isBleed) {
+        if (duplicate.isCurrentUser && !utterance.speaker.isCurrentUser) {
+          // Case 2: Clean loopback (EXTERNAL) arrives after mic bleed (USER)
+          // Keep loopback, retract previous mic bleed
+          const idx = state.recent.indexOf(duplicate);
+          if (idx !== -1) {
+            state.recent[idx] = {
+              normalizedText: normalized,
+              isCurrentUser: false,
+              utteranceId: utterance.utteranceId,
+              timestamp: utterance.timestamp,
+            };
+          }
+          return {
+            dropped: false,
+            retractUtteranceId: duplicate.utteranceId,
+          };
+        }
+        if (!duplicate.isCurrentUser && utterance.speaker.isCurrentUser) {
+          // Case 3: Mic bleed (USER) arrives after clean loopback (EXTERNAL)
+          // Drop mic bleed, retract it so it's not saved/cluttering
+          return {
+            dropped: true,
+            reason: "near_duplicate",
+            retractUtteranceId: utterance.utteranceId,
+          };
+        }
+      }
+
+      // Default: standard duplicate (same speaker type or timeDiff > timeout)
       return { dropped: true, reason: "near_duplicate" };
     }
 
-    state.recentNormalized.push(normalized);
-    if (state.recentNormalized.length > RECENT_WINDOW_SIZE) {
-      state.recentNormalized.shift();
+    state.recent.push({
+      normalizedText: normalized,
+      isCurrentUser: utterance.speaker.isCurrentUser,
+      utteranceId: utterance.utteranceId,
+      timestamp: utterance.timestamp,
+    });
+    if (state.recent.length > RECENT_WINDOW_SIZE) {
+      state.recent.shift();
     }
 
     return { dropped: false };
@@ -74,7 +125,7 @@ export class PreFilter {
   private getSessionState(sessionId: string): SessionPreFilterState {
     let state = this.sessions.get(sessionId);
     if (!state) {
-      state = { recentNormalized: [] };
+      state = { recent: [] };
       this.sessions.set(sessionId, state);
     }
 
@@ -111,16 +162,19 @@ export class PreFilter {
     return false;
   }
 
-  private hasNearDuplicate(
-    recent: string[],
+  private findNearDuplicate(
+    recent: RecentUtteranceEntry[],
     normalizedUtterance: string
-  ): boolean {
-    for (const candidate of recent) {
-      if (isNearTextMatch(candidate, normalizedUtterance, 0.12)) {
-        return true;
+  ): RecentUtteranceEntry | undefined {
+    for (let i = recent.length - 1; i >= 0; i -= 1) {
+      const entry = recent[i];
+      if (
+        entry &&
+        isNearTextMatch(entry.normalizedText, normalizedUtterance, 0.12)
+      ) {
+        return entry;
       }
     }
-
-    return false;
+    return undefined;
   }
 }

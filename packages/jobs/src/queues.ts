@@ -44,3 +44,8 @@ export const clientPersonaQueue = new Queue("client.personaExtraction", {
   connection: getRedisConnection(),
   defaultJobOptions: COMMON_JOB_OPTIONS,
 });
+
+export const preMeetingBriefQueue = new Queue("meeting.preMeetingBrief", {
+  connection: getRedisConnection(),
+  defaultJobOptions: COMMON_JOB_OPTIONS,
+});

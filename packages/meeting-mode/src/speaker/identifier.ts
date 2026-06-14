@@ -180,13 +180,19 @@ export class SpeakerIdentifier {
       this.speakerMappings.set(speakerId, mapping);
 
       if (mapping.speaker.type === "TEAM" && mapping.speaker.userId) {
+        const isHost =
+          mapping.speaker.isHost ||
+          mapping.speaker.isCurrentUser ||
+          (mapping.speaker.diarizationIndices?.some((idx) => idx < 1000) ??
+            false);
+
+        mapping.speaker.isHost = isHost;
+        mapping.speaker.isCurrentUser = isHost;
+
         this.teamMembers.set(mapping.speaker.userId, {
           userId: mapping.speaker.userId,
           name: mapping.speaker.name,
-          role:
-            mapping.speaker.isHost || mapping.speaker.isCurrentUser
-              ? "host"
-              : "participant",
+          role: isHost ? "host" : "participant",
         });
         this.userIdToSpeakerId.set(mapping.speaker.userId, speakerId);
 
@@ -601,8 +607,8 @@ export class SpeakerIdentifier {
       speakerId = `spk_${diarizationIndex}_${Date.now()}`;
     }
 
-    const isCurrentUser = false;
     const isHost = this.teamMembers.get(userId)?.role === "host";
+    const isCurrentUser = isHost;
 
     return {
       speakerId,

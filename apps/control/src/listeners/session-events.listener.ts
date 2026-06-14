@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import { systemEvents } from "../lib/events";
 import { createControlLogger } from "../logger";
 import { meetingSessionService } from "../services/meeting-session.service";
 
@@ -99,6 +100,29 @@ export async function startSessionEventListener(): Promise<void> {
     "Subscribed to channels"
   );
 
+  // Subscribe to user notifications pattern
+  await subscriber.psubscribe("user_notifications:*");
+  log.info("Subscribed to pattern user_notifications:*");
+
+  subscriber.on(
+    "pmessage",
+    (pattern: string, channel: string, message: string) => {
+      try {
+        if (pattern === "user_notifications:*") {
+          const userId = channel.split(":")[1];
+          if (userId) {
+            systemEvents.emit(
+              `user_notification:${userId}`,
+              JSON.parse(message)
+            );
+          }
+        }
+      } catch (error) {
+        log.error({ err: error, channel }, "Error handling pmessage");
+      }
+    }
+  );
+
   // Handle incoming messages
   subscriber.on("message", async (channel: string, message: string) => {
     try {
@@ -130,6 +154,7 @@ export async function startSessionEventListener(): Promise<void> {
 export async function stopSessionEventListener(): Promise<void> {
   if (subscriber) {
     await subscriber.unsubscribe();
+    await subscriber.punsubscribe();
     subscriber.disconnect();
     subscriber = null;
     log.info("Stopped");

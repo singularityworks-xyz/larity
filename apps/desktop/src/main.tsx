@@ -4,6 +4,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./app";
+import { AppErrorBoundary } from "./components/app-error-boundary";
+import { RouteErrorBoundary } from "./components/route-error-boundary";
 import { queryClient } from "./lib/query";
 import {
   authGateLoader,
@@ -17,6 +19,7 @@ import { ClientsPage } from "./routes/clients/index";
 import { HomePage } from "./routes/home";
 import { LoginPage } from "./routes/login";
 import { MeetingPage } from "./routes/meeting/$session-id";
+import { WaitingRoomPage } from "./routes/meeting/waiting-room";
 import { MeetingPostPage } from "./routes/meeting-post/$meeting-id";
 import { JoinMeetingPage } from "./routes/meetings/join";
 import { StartMeetingPage } from "./routes/meetings/start";
@@ -54,6 +57,7 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         index: true,
@@ -90,6 +94,11 @@ const router = createBrowserRouter([
         element: <JoinMeetingPage />,
       },
       {
+        path: "meeting/:sessionId/waiting-room",
+        loader: authGateLoader,
+        element: <WaitingRoomPage />,
+      },
+      {
         path: "meeting/:sessionId",
         loader: authGateLoader,
         element: <MeetingPage />,
@@ -110,8 +119,10 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <AppErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </AppErrorBoundary>
   </React.StrictMode>
 );

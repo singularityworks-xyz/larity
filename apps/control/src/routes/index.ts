@@ -12,6 +12,7 @@ export { internalSessionRoutes } from "./internal-session.routes";
 export { meetingSessionRoutes } from "./meeting-session.routes";
 // Meeting domain
 export { meetingsRoutes } from "./meetings.routes";
+export { notificationsRoutes } from "./notifications.routes";
 export { openQuestionsRoutes } from "./open-questions.routes";
 export { orgsRoutes } from "./orgs.routes";
 // Policy & compliance

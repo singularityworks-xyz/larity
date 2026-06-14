@@ -32,6 +32,7 @@ export { AlertQueueManager } from "./alerts/queue";
 export * from "./alerts/router";
 export { AlertSubscriber } from "./alerts/subscriber";
 export * from "./alerts/types";
+export * from "./briefs/ai-brief-generator";
 export * from "./channels";
 export * from "./commitment";
 export * from "./constraint";
@@ -165,6 +166,44 @@ async function main(): Promise<void> {
     },
     onPipelineSessionClosed: (sessionId) => {
       alertPublisherCache.delete(sessionId);
+    },
+    onUtteranceRetracted: (sessionId, utteranceId) => {
+      const key = `meeting.utterance.${sessionId}`;
+      (async () => {
+        try {
+          const list = await redisClient.lrange(key, 0, -1);
+          for (let i = list.length - 1; i >= 0; i--) {
+            const item = list[i];
+            try {
+              const parsed = JSON.parse(item) as { utteranceId?: string };
+              if (parsed.utteranceId === utteranceId) {
+                await redisClient.lrem(key, -1, item);
+                rootLogger.info(
+                  { sessionId, utteranceId },
+                  "Retracted duplicate utterance from Redis list"
+                );
+
+                const retractEvent = {
+                  utteranceId,
+                  retracted: true,
+                };
+                await redisClient.publish(
+                  `meeting.utterance.${sessionId}`,
+                  JSON.stringify(retractEvent)
+                );
+                break;
+              }
+            } catch {
+              // Ignore JSON parse errors for corrupt entries
+            }
+          }
+        } catch (err) {
+          rootLogger.error(
+            { err, sessionId, utteranceId },
+            "Failed to retract utterance from Redis"
+          );
+        }
+      })();
     },
     getContextPayload: async (sessionId) => {
       const payload = await redisClient.get(

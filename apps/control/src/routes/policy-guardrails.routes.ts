@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { z } from "zod";
+import { createControlLogger } from "../logger";
 import { PolicyGuardrailService } from "../services";
 import {
   createPolicyGuardrailSchema,
@@ -7,6 +8,8 @@ import {
   policyGuardrailQuerySchema,
   updatePolicyGuardrailSchema,
 } from "../validators";
+
+const log = createControlLogger("policy-guardrails-routes");
 
 export const policyGuardrailsRoutes = new Elysia({
   prefix: "/policy-guardrails",
@@ -77,6 +80,39 @@ export const policyGuardrailsRoutes = new Elysia({
       }
     },
     { body: createPolicyGuardrailSchema }
+  )
+  // Seed default guardrails for an org
+  .post(
+    "/seed",
+    async ({ body, user, set }) => {
+      try {
+        const orgId = user?.orgId;
+        if (!orgId) {
+          set.status = 400;
+          return { success: false, error: "User has no organization context" };
+        }
+        if (body.orgId !== orgId) {
+          set.status = 403;
+          return {
+            success: false,
+            error: "Forbidden: cross-org seeding is not allowed",
+          };
+        }
+        const result = await PolicyGuardrailService.seedDefaultForOrg(orgId);
+        return { success: true, data: result };
+      } catch (e: unknown) {
+        log.error(
+          { err: e, orgId: user?.orgId },
+          "Failed to seed default policy guardrails"
+        );
+        set.status = 500;
+        return {
+          success: false,
+          error: "Failed to seed default policy guardrails",
+        };
+      }
+    },
+    { body: z.object({ orgId: z.string().uuid() }) }
   )
   // Update policy guardrail
   .patch(

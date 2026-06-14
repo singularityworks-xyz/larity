@@ -9,6 +9,13 @@ export interface Meeting {
   status: "SCHEDULED" | "LIVE" | "ENDED" | "CANCELLED";
   scheduledAt: string | null;
   createdAt: string;
+  participants?: Array<{
+    id: string;
+    role: string;
+    externalName?: string | null;
+    externalEmail?: string | null;
+    user?: { id: string; name: string | null; email: string } | null;
+  }>;
 }
 
 export function useMeetings(filters?: { clientId?: string }) {

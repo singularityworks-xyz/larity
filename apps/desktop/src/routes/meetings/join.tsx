@@ -100,7 +100,7 @@ export function JoinMeetingPage() {
     setError(null);
     try {
       const joined = await joinMeeting.mutateAsync({ sessionId });
-      navigate(`/meeting/${joined.sessionId}`, {
+      navigate(`/meeting/${joined.sessionId}/waiting-room`, {
         state: {
           role: "participant",
           websocketUrl: joined.websocketUrl,
@@ -114,6 +114,7 @@ export function JoinMeetingPage() {
             joined.allowNameCustomization ??
             meta?.allowNameCustomization ??
             true,
+          meetingId: joined.meetingId,
         },
       });
     } catch (requestError) {
