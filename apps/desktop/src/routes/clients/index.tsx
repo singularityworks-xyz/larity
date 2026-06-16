@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { InitialsAvatar } from "../../components/avatar";
@@ -65,9 +66,19 @@ export function ClientsPage() {
           <span className="text-fg">Clients</span>
         </nav>
         <div className="flex items-center justify-between">
-          <h1 className="m-0 font-semibold text-fg text-xl tracking-tight">
-            Clients
-          </h1>
+          <div className="flex items-center gap-3">
+            <button
+              aria-label="Go back"
+              className="group flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-elevated text-fg-subtle transition-all [-webkit-app-region:no-drag] [app-region:no-drag] hover:bg-bg-subtle hover:text-fg active:scale-95"
+              onClick={() => navigate(-1)}
+              type="button"
+            >
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+            </button>
+            <h1 className="m-0 font-semibold text-fg text-xl tracking-tight">
+              Clients
+            </h1>
+          </div>
           <button
             className={buttonClass({ variant: "primary", size: "sm" })}
             onClick={() => navigate("/clients/add")}

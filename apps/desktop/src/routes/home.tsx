@@ -1,7 +1,6 @@
 import {
   Activity,
-  AlertTriangle,
-  ArrowRight,
+  BookOpen,
   Calendar,
   CalendarClock,
   CheckCircle2,
@@ -9,6 +8,7 @@ import {
   Copy,
   Play,
   Plus,
+  Radio,
   ServerCrash,
   Trash2,
   Users,
@@ -19,6 +19,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { InitialsAvatar } from "../components/avatar";
+import { useTheme } from "../components/theme-provider";
 import { useAuthSession } from "../features/auth/use-session";
 import { useClients } from "../features/clients/use-clients";
 import type {
@@ -30,6 +31,9 @@ import type {
 import type { HealthState } from "../features/home/use-health";
 import { useHealth } from "../features/home/use-health";
 import { useHome } from "../features/home/use-home";
+import { useActiveSessions } from "../features/meetings/use-active-sessions";
+import { useJoinMeeting } from "../features/meetings/use-join-meeting";
+import { useStartSession } from "../features/meetings/use-start-session";
 import { useOrgInvites } from "../features/org-invites/use-org-invites";
 import { useOrg } from "../features/orgs/use-org";
 import { cx } from "../lib/ui";
@@ -100,36 +104,6 @@ const itemVariants = {
   },
 };
 
-/* ── Ticking Clock ──────────────────────────────── */
-
-function TickingClock() {
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  return (
-    <div className="flex flex-col">
-      <span className="font-medium font-sans text-[2rem] text-fg leading-none tracking-tight shadow-accent/20 drop-shadow-sm md:text-[2.75rem]">
-        {time.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        })}
-      </span>
-      <span className="mt-1 font-medium text-accent text-sm uppercase tracking-wide">
-        {time.toLocaleDateString([], {
-          weekday: "long",
-          month: "short",
-          day: "numeric",
-        })}
-      </span>
-    </div>
-  );
-}
-
 /* ── Header ─────────────────────────────────────── */
 
 interface HeaderProps {
@@ -138,6 +112,8 @@ interface HeaderProps {
   canManage: boolean;
   showMemberPanel: boolean;
   onToggleMemberPanel: () => void;
+  openCommitmentsCount: number;
+  todayMeetingsCount: number;
 }
 
 function Header({
@@ -146,56 +122,105 @@ function Header({
   canManage,
   showMemberPanel,
   onToggleMemberPanel,
+  openCommitmentsCount,
+  todayMeetingsCount,
 }: HeaderProps) {
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const firstName = userName?.split(" ")[0] ?? "Agent";
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const timeStr = time.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const dateStr = time.toLocaleDateString([], {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  });
+
   return (
     <motion.header
-      className="flex flex-col justify-between gap-3 border-border-subtle/40 border-b pb-4 md:flex-row md:items-end"
+      className="relative overflow-hidden rounded-xl border-border-subtle/40 border-b px-5 py-5 md:flex-row md:items-end"
       variants={itemVariants}
     >
-      <div className="flex flex-col gap-1">
-        <TickingClock />
-        <h1 className="font-medium text-fg-muted text-lg tracking-tight">
-          Ready to focus, <span className="text-fg">{firstName}</span>
-          {orgName ? (
-            <span className="text-fg-subtle">
-              {" "}
-              at <span className="text-fg">{orgName}</span>
-            </span>
-          ) : null}
-          ?
-        </h1>
-      </div>
-
-      {canManage && (
-        <div className="flex items-center gap-3">
-          <button
-            className="group relative flex items-center gap-2 overflow-hidden rounded-xl border border-border bg-bg-elevated px-4 py-2.5 transition-all hover:border-accent/50 hover:shadow-[0_0_20px_var(--accent-muted)] active:scale-95"
-            onClick={() => navigate("/clients/add")}
-            type="button"
-          >
-            <div className="absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-accent/0 via-accent/5 to-accent/0 transition-transform duration-700 group-hover:translate-x-[100%]" />
-            <Plus className="h-4 w-4 text-accent" />
-            <span className="font-semibold text-fg text-xs">New Client</span>
-          </button>
-          <button
-            className={cx(
-              "group flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-all active:scale-95",
-              showMemberPanel
-                ? "border-border-strong bg-bg-subtle text-fg"
-                : "border-border bg-transparent text-fg-muted hover:border-border-strong hover:text-fg"
-            )}
-            onClick={onToggleMemberPanel}
-            type="button"
-          >
-            <Users className="h-4 w-4" />
-            <span className="font-semibold text-xs">
-              {showMemberPanel ? "Close Panel" : "Invite Team"}
-            </span>
-          </button>
-        </div>
+      <div
+        className="pointer-events-none absolute inset-0 bg-bottom bg-cover"
+        style={{
+          backgroundImage:
+            "url(https://pub-7499bc1836a04bc988d92a1fb64db638.r2.dev/images/larity-banner-full.png)",
+        }}
+      />
+      {theme === "dark" && (
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#0c0c10]/90 via-[#0c0c10]/20 to-[#0c0c10]/50" />
       )}
+
+      <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <span className="font-bold font-heading text-lg text-white leading-none tracking-tight drop-shadow-sm dark:text-white/80">
+              {timeStr}
+            </span>
+            <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
+            <span className="font-bold font-heading text-lg text-white leading-none tracking-tight drop-shadow-sm dark:text-white/80">
+              {dateStr}
+            </span>
+          </div>
+          <h1 className="font-medium text-2xl text-white/90 tracking-tight">
+            Ready to focus, <span className="text-white">{firstName}</span>?
+          </h1>
+          <div className="flex items-center gap-2 text-white/60 text-xs">
+            {orgName && (
+              <>
+                <span className="font-medium">{orgName}</span>
+                <span className="h-1 w-1 rounded-full bg-white/40" />
+              </>
+            )}
+            <span>{openCommitmentsCount} open commitments</span>
+            <span className="h-1 w-1 rounded-full bg-white/40" />
+            <span>{todayMeetingsCount} sessions today</span>
+          </div>
+        </div>
+
+        {canManage && (
+          <div className="flex items-center gap-3">
+            <button
+              className="group relative flex items-center gap-2 overflow-hidden rounded-xl border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur-sm transition-all hover:border-[#a8d62e]/50 hover:shadow-[0_0_20px_rgba(168,214,46,0.15)] active:scale-95"
+              onClick={() => navigate("/clients/add")}
+              type="button"
+            >
+              <div className="absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-[#a8d62e]/0 via-[#a8d62e]/5 to-[#a8d62e]/0 transition-transform duration-700 group-hover:translate-x-[100%]" />
+              <Plus className="h-4 w-4 text-[#a8d62e]" />
+              <span className="font-semibold text-white text-xs">
+                New Client
+              </span>
+            </button>
+            <button
+              className={cx(
+                "group flex items-center gap-2 rounded-xl border px-4 py-2.5 backdrop-blur-sm transition-all active:scale-95",
+                showMemberPanel
+                  ? "border-white/20 bg-white/15 text-white"
+                  : "border-white/10 bg-transparent text-white/70 hover:border-white/20 hover:text-white"
+              )}
+              onClick={onToggleMemberPanel}
+              type="button"
+            >
+              <Users className="h-4 w-4" />
+              <span className="font-semibold text-xs">
+                {showMemberPanel ? "Close Panel" : "Invite Team"}
+              </span>
+            </button>
+          </div>
+        )}
+      </div>
     </motion.header>
   );
 }
@@ -300,57 +325,116 @@ function InvitePanel({
   );
 }
 
-/* ── Primary Action Cards ───────────────────────── */
+/* ── Primary Action Card ────────────────────────── */
 
 function ActionGrid({ canManage }: { canManage: boolean }) {
   const navigate = useNavigate();
+  const [mode, setMode] = useState<"host" | "join">("host");
+  const { data: activeSessions } = useActiveSessions();
+
+  const isHost = mode === "host";
+  const showHost = canManage && isHost;
+  const activeCount = activeSessions?.length ?? 0;
+
   return (
     <motion.div
-      className="grid grid-cols-1 gap-3 md:grid-cols-2"
+      className="overflow-hidden rounded-xl border border-border bg-bg-elevated"
       variants={itemVariants}
     >
-      {canManage && (
-        <button
-          className="group relative flex flex-col items-start overflow-hidden rounded-[16px] border border-border bg-gradient-to-br from-bg-elevated to-bg-overlay p-4 text-left transition-all duration-500 hover:border-accent/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] active:scale-[0.98]"
-          onClick={() => navigate("/meetings/start")}
-          type="button"
-        >
-          <div className="absolute -inset-px bg-gradient-to-r from-accent/0 via-accent/10 to-accent/0 opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-100" />
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10 text-accent transition-transform duration-500 ease-out group-hover:scale-110">
-            <Video className="h-5 w-5" />
-          </div>
-          <h2 className="mb-0.5 font-semibold text-fg text-sm">
-            Host a Session
-          </h2>
-          <p className="max-w-[85%] text-[11px] text-fg-muted leading-relaxed">
-            Start a live meeting with a client and let the agent take notes &
-            extract tasks automatically.
-          </p>
-          <div className="absolute right-4 bottom-4 flex h-7 w-7 items-center justify-center rounded-full border border-border text-fg-subtle transition-colors duration-300 group-hover:border-accent group-hover:bg-accent group-hover:text-accent-fg">
-            <ArrowRight className="h-4 w-4" />
-          </div>
-        </button>
-      )}
-      <button
-        className="group relative flex flex-col items-start overflow-hidden rounded-[16px] border border-border bg-gradient-to-br from-bg-elevated to-bg-overlay p-4 text-left transition-all duration-500 hover:border-info/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] active:scale-[0.98]"
-        onClick={() => navigate("/meetings/join")}
-        type="button"
-      >
-        <div className="absolute -inset-px bg-gradient-to-r from-info/0 via-info/10 to-info/0 opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-100" />
-        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-info/10 text-info transition-transform duration-500 ease-out group-hover:scale-110">
-          <Users className="h-5 w-5" />
+      <div className="px-6 pt-6">
+        <div className="flex w-full rounded-full border border-border/60 bg-bg-subtle/50 p-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] backdrop-blur-sm dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.1),inset_0_2px_4px_rgba(0,0,0,0.2)]">
+          {canManage && (
+            <button
+              className={cx(
+                "flex-1 rounded-full py-2 text-center font-semibold text-sm transition-all duration-300",
+                isHost
+                  ? "bg-gradient-to-b from-accent to-accent/90 text-accent-fg shadow-[0_2px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.2)] ring-1 ring-black/5 ring-inset dark:ring-white/10"
+                  : "text-fg-muted hover:bg-fg/5 hover:text-fg"
+              )}
+              onClick={() => setMode("host")}
+              type="button"
+            >
+              Host a Session
+            </button>
+          )}
+          <button
+            className={cx(
+              "flex-1 rounded-full py-2 text-center font-semibold text-sm transition-all duration-300",
+              isHost
+                ? "text-fg-muted hover:bg-fg/5 hover:text-fg"
+                : "bg-gradient-to-b from-info to-info/90 text-white shadow-[0_2px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.2)] ring-1 ring-black/5 ring-inset dark:ring-white/10"
+            )}
+            onClick={() => setMode("join")}
+            type="button"
+          >
+            Join a Session
+          </button>
         </div>
-        <h2 className="mb-0.5 font-semibold text-fg text-sm">
-          Join an Active Session
-        </h2>
-        <p className="max-w-[85%] text-[11px] text-fg-muted leading-relaxed">
-          Enter a session ID or pick from organization active sessions to shadow
-          or participate.
-        </p>
-        <div className="absolute right-4 bottom-4 flex h-7 w-7 items-center justify-center rounded-full border border-border text-fg-subtle transition-colors duration-300 group-hover:border-info group-hover:bg-info group-hover:text-white">
-          <ArrowRight className="h-4 w-4" />
-        </div>
-      </button>
+      </div>
+
+      <div className="px-6 py-6">
+        {showHost ? (
+          <button
+            className="group flex w-full items-end gap-4 text-left transition-all active:scale-[0.99]"
+            onClick={() => navigate("/meetings/start")}
+            type="button"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent transition-transform duration-300 group-hover:scale-110">
+              <Video className="h-6 w-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold font-heading text-fg text-md">
+                  Start a Live Meeting
+                </h2>
+                <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 font-semibold text-[10px] text-success uppercase tracking-wider ring-1 ring-success/20">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+                  Recording Ready
+                </span>
+              </div>
+              <p className="mt-0.5 font-body text-fg-muted text-xs leading-relaxed">
+                The agent joins automatically, takes notes, guards you, and
+                extracts tasks as you talk.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-b from-accent to-accent/90 px-4 py-2.5 font-semibold text-accent-fg text-xs shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.2)] ring-1 ring-black/5 ring-inset transition-all duration-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.2)] hover:brightness-110 active:scale-95 dark:ring-white/10">
+              <Radio className="h-3.5 w-3.5" />
+              Go Live
+            </div>
+          </button>
+        ) : (
+          <button
+            className="group flex w-full items-end gap-4 text-left transition-all active:scale-[0.99]"
+            onClick={() => navigate("/meetings/join")}
+            type="button"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-info/10 text-info transition-transform duration-300 group-hover:scale-110">
+              <Users className="h-6 w-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold font-heading text-fg text-md">
+                  Join an Active Session
+                </h2>
+                <span className="inline-flex items-center gap-1 rounded-full bg-info/10 px-2 py-0.5 font-semibold text-[10px] text-info uppercase tracking-wider ring-1 ring-info/20">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-info" />
+                  {activeCount > 0
+                    ? `${activeCount} active now`
+                    : "No active sessions"}
+                </span>
+              </div>
+              <p className="muted mt-0.5 text-fg-font-body text-xs leading-relaxed">
+                Enter a session ID or pick from active sessions to shadow or
+                participate.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 rounded-xl bg-gradient-to-b from-info to-info/90 px-4 py-2.5 font-semibold text-white text-xs shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.2)] ring-1 ring-black/5 ring-inset transition-all duration-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.2)] hover:brightness-110 active:scale-95 dark:ring-white/10">
+              <Activity className="h-3.5 w-3.5" />
+              Active Sessions
+            </div>
+          </button>
+        )}
+      </div>
     </motion.div>
   );
 }
@@ -364,6 +448,8 @@ function NextMeetingHero({
   meeting: NextMeeting | null;
   loading: boolean;
 }) {
+  const navigate = useNavigate();
+
   if (loading) {
     return (
       <motion.div
@@ -396,7 +482,7 @@ function NextMeetingHero({
   return (
     <motion.div
       className={cx(
-        "relative overflow-hidden rounded-[16px] border p-4 lg:p-5",
+        "relative overflow-hidden rounded-xl border p-4 lg:p-6",
         startsSoon
           ? "border-accent/20 bg-accent/5"
           : "border-border bg-bg-elevated"
@@ -409,7 +495,7 @@ function NextMeetingHero({
 
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div>
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-4 flex items-center gap-2">
             <span className="flex items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-0.5 font-bold text-[10px] text-fg-muted uppercase tracking-wider">
               <Zap className="h-3 w-3 text-accent" /> Next Up
             </span>
@@ -425,48 +511,39 @@ function NextMeetingHero({
             </span>
           </div>
 
-          <h2 className="mb-1 font-bold text-fg text-xl tracking-tight lg:text-2xl">
+          <h2 className="mb-3 font-bold text-fg text-xl tracking-tight lg:text-2xl">
             {meeting.title}
           </h2>
 
           <div className="flex items-center gap-3 font-medium text-xs">
-            <div className="flex items-center gap-1.5 text-fg-muted">
-              <Users className="h-4 w-4" />
-              {meeting.client.name}
-            </div>
+            <span className="text-fg-muted">{meeting.client.name}</span>
             <div className="h-1 w-1 rounded-full bg-border-strong" />
-            <div className="flex items-center gap-1.5 text-fg-muted">
-              <Activity className="h-4 w-4" />
-              {attendeesLabel}
-            </div>
+            <span className="text-fg-muted">{attendeesLabel}</span>
             <div className="h-1 w-1 rounded-full bg-border-strong" />
-            <div
+            <span
               className={cx(
-                "flex items-center gap-1.5",
-                isPrepped ? "text-success-fg" : "text-warning-fg"
+                "font-semibold",
+                isPrepped ? "text-accent" : "text-danger"
               )}
             >
-              {isPrepped ? (
-                <CheckCircle2 className="h-4 w-4" />
-              ) : (
-                <AlertTriangle className="h-4 w-4" />
-              )}
               {isPrepped ? "Prepped" : "Needs Brief"}
-            </div>
+            </span>
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col gap-1.5">
+        <div className="flex shrink-0 flex-col gap-2">
           <button
-            className="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-4 font-semibold text-accent-fg text-xs transition-all hover:bg-accent/90 hover:shadow-[0_0_20px_var(--accent-muted)] active:scale-95"
+            className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-b from-accent to-accent/90 px-4 font-semibold text-accent-fg text-xs shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.2)] ring-1 ring-black/5 ring-inset transition-all duration-300 hover:shadow-[0_4px_16px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.2)] hover:brightness-110 active:scale-95 dark:ring-white/10"
             type="button"
           >
-            <Play className="h-3.5 w-3.5 fill-current" /> Start Focus
+            <Play className="h-3.5 w-3.5 fill-current" /> Start Now
           </button>
           <button
-            className="flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-bg-overlay px-4 font-medium text-fg text-xs transition-all hover:bg-bg-subtle active:scale-95"
+            className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-border/60 bg-bg-elevated px-4 font-semibold text-fg text-xs shadow-sm ring-1 ring-black/5 ring-inset transition-all duration-300 hover:bg-bg-subtle hover:shadow-md hover:brightness-105 active:scale-95 dark:ring-white/5"
+            onClick={() => navigate(`/meetings/${meeting.id}/brief`)}
             type="button"
           >
+            <BookOpen className="h-3.5 w-3.5 text-accent" />
             Open Brief
           </button>
         </div>
@@ -477,6 +554,79 @@ function NextMeetingHero({
 
 /* ── Bento Grid Sections ────────────────────────── */
 
+function TodayMeetingAction({
+  m,
+  activeSessionInfo,
+  startingMeetingId,
+  rejoiningMeetingId,
+  onStart,
+  onRejoin,
+}: {
+  m: TodayMeeting;
+  activeSessionInfo: { sessionId: string } | undefined;
+  startingMeetingId: string | null;
+  rejoiningMeetingId: string | null;
+  onStart: (e: React.MouseEvent, m: TodayMeeting) => void;
+  onRejoin: (e: React.MouseEvent, sessionId: string, m: TodayMeeting) => void;
+}) {
+  const navigate = useNavigate();
+
+  if (m.status === "SCHEDULED") {
+    return (
+      <div className="flex shrink-0 items-center gap-1.5 opacity-0 transition-all duration-300 group-hover:opacity-100">
+        <button
+          className="flex items-center gap-1 rounded-lg border border-border bg-bg-elevated px-2.5 py-1.5 font-semibold text-fg-subtle text-xs transition-all hover:bg-bg-subtle hover:text-fg active:scale-95"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/meetings/${m.id}/brief`);
+          }}
+          type="button"
+        >
+          <BookOpen className="h-3.5 w-3.5 text-accent" />
+          Brief
+        </button>
+        <button
+          className="flex items-center gap-1 rounded-lg bg-accent/10 px-2.5 py-1.5 font-semibold text-accent text-xs transition-all hover:bg-accent hover:text-accent-fg active:scale-95 disabled:opacity-50"
+          disabled={startingMeetingId === m.id}
+          onClick={(e) => onStart(e, m)}
+          type="button"
+        >
+          {startingMeetingId === m.id ? (
+            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          ) : (
+            <Play className="h-3.5 w-3.5 fill-current" />
+          )}
+          {startingMeetingId === m.id ? "Starting..." : "Start"}
+        </button>
+      </div>
+    );
+  }
+
+  if (m.status === "LIVE" && activeSessionInfo) {
+    return (
+      <button
+        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-info/20 bg-info/10 px-3 py-1.5 font-semibold text-info text-xs transition-all duration-300 hover:bg-info hover:text-white active:scale-95 disabled:opacity-50"
+        disabled={rejoiningMeetingId === m.id}
+        onClick={(e) => onRejoin(e, activeSessionInfo.sessionId, m)}
+        type="button"
+      >
+        {rejoiningMeetingId === m.id ? (
+          <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        ) : (
+          <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+        )}
+        {rejoiningMeetingId === m.id ? "Rejoining..." : "Rejoin"}
+      </button>
+    );
+  }
+
+  return (
+    <span className="shrink-0 font-bold text-[9px] text-fg-subtle uppercase tracking-wider opacity-0 transition-opacity group-hover:opacity-100">
+      {m.status}
+    </span>
+  );
+}
+
 function TodayAgenda({
   meetings,
   loading,
@@ -484,6 +634,65 @@ function TodayAgenda({
   meetings: TodayMeeting[];
   loading: boolean;
 }) {
+  const navigate = useNavigate();
+  const startSession = useStartSession();
+  const joinMeeting = useJoinMeeting();
+  const activeSessions = useActiveSessions();
+  const [startingMeetingId, setStartingMeetingId] = useState<string | null>(
+    null
+  );
+  const [rejoiningMeetingId, setRejoiningMeetingId] = useState<string | null>(
+    null
+  );
+
+  const handleStart = async (e: React.MouseEvent, m: TodayMeeting) => {
+    e.stopPropagation();
+    try {
+      setStartingMeetingId(m.id);
+      const session = await startSession.mutateAsync({ meetingId: m.id });
+      navigate(`/meeting/${session.sessionId}/waiting-room`, {
+        state: {
+          role: "host",
+          websocketUrl: session.websocketUrl,
+          clientName: m.client.name,
+          meetingTitle: m.title,
+          startedAt: Date.now(),
+          allowNameCustomization: session.allowNameCustomization,
+          meetingId: m.id,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to start session from schedule:", err);
+      setStartingMeetingId(null);
+    }
+  };
+
+  const handleRejoin = async (
+    e: React.MouseEvent,
+    sessionId: string,
+    m: TodayMeeting
+  ) => {
+    e.stopPropagation();
+    try {
+      setRejoiningMeetingId(m.id);
+      const joined = await joinMeeting.mutateAsync({ sessionId });
+      navigate(`/meeting/${joined.sessionId}/waiting-room`, {
+        state: {
+          role: joined.role,
+          websocketUrl: joined.websocketUrl,
+          clientName: m.client.name,
+          meetingTitle: m.title,
+          startedAt: Date.now(),
+          allowNameCustomization: joined.allowNameCustomization,
+          meetingId: m.id,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to rejoin session:", err);
+      setRejoiningMeetingId(null);
+    }
+  };
+
   const isEmpty = !loading && meetings.length === 0;
   return (
     <motion.div
@@ -492,10 +701,10 @@ function TodayAgenda({
     >
       <div className="mb-3 flex items-center justify-between">
         <h3 className="flex items-center gap-1.5 font-semibold text-fg text-xs">
-          <Calendar className="h-3.5 w-3.5 text-fg-muted" /> Today's Agenda
+          <Calendar className="h-3.5 w-3.5 text-fg-muted" /> Scheduled Today
         </h3>
         {!loading && (
-          <span className="rounded-full bg-bg-overlay px-2 py-0.5 font-semibold text-fg-muted text-xs">
+          <span className="rounded-full bg-bg-overlay px-2 py-0.5 font-bold text-[10px] text-fg-muted">
             {meetings.length}
           </span>
         )}
@@ -505,7 +714,7 @@ function TodayAgenda({
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div
-              className="h-8 animate-pulse rounded-lg bg-bg-subtle"
+              className="h-10 animate-pulse rounded-lg bg-bg-subtle"
               key={i}
             />
           ))}
@@ -519,31 +728,46 @@ function TodayAgenda({
       ) : null}
       {loading || isEmpty ? null : (
         <div
-          className="-mr-2 flex flex-col gap-2 overflow-y-auto pr-2"
+          className="-mr-2 flex flex-col gap-1.5 overflow-y-auto pr-2"
           style={{ maxHeight: "300px" }}
         >
-          {meetings.map((m) => (
-            <button
-              className="group flex cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-left transition-all hover:border-border hover:bg-bg-overlay"
-              key={m.id}
-              type="button"
-            >
-              <div className="w-10 shrink-0 text-right">
-                <div className="font-bold text-[11px] text-fg tabular-nums">
-                  {formatTime(m.scheduledAt)}
+          {meetings.map((m) => {
+            const activeSessionInfo = activeSessions.data?.find(
+              (s) => s.meetingId === m.id
+            );
+            return (
+              <div
+                className="group flex items-center justify-between gap-3 rounded-xl border border-transparent px-3 py-2.5 transition-all hover:border-border hover:bg-bg-subtle hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)]"
+                key={m.id}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="w-10 shrink-0 text-right">
+                    <div className="font-bold text-[11px] text-fg tabular-nums tracking-tight">
+                      {formatTime(m.scheduledAt)}
+                    </div>
+                  </div>
+                  <div className="h-6 w-1 rounded-full bg-border transition-colors group-hover:bg-accent/60" />
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold text-fg text-sm">
+                      {m.title}
+                    </div>
+                    <div className="mt-0.5 truncate text-[11px] text-fg-muted">
+                      {m.client.name}
+                    </div>
+                  </div>
                 </div>
+
+                <TodayMeetingAction
+                  activeSessionInfo={activeSessionInfo}
+                  m={m}
+                  onRejoin={handleRejoin}
+                  onStart={handleStart}
+                  rejoiningMeetingId={rejoiningMeetingId}
+                  startingMeetingId={startingMeetingId}
+                />
               </div>
-              <div className="h-5 w-0.5 rounded-full bg-border transition-colors group-hover:bg-accent" />
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-medium text-fg text-sm">
-                  {m.title}
-                </div>
-                <div className="truncate text-[11px] text-fg-muted">
-                  {m.client.name}
-                </div>
-              </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
     </motion.div>
@@ -723,7 +947,7 @@ function ClientShortcuts() {
     >
       <div className="flex flex-wrap gap-2">
         <span className="mr-2 py-2 font-semibold text-fg-muted text-xs">
-          Quick Access:
+          Active Clients:
         </span>
         {top.map((c) => (
           <button
@@ -872,8 +1096,10 @@ export function HomePage() {
       <Header
         canManage={canManage}
         onToggleMemberPanel={() => setShowMemberPanel(!showMemberPanel)}
+        openCommitmentsCount={data?.openCommitments?.length ?? 0}
         orgName={orgName}
         showMemberPanel={showMemberPanel}
+        todayMeetingsCount={data?.todayMeetings?.length ?? 0}
         userName={user?.name ?? user?.email}
       />
 
