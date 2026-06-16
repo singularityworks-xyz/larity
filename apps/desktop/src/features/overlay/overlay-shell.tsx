@@ -73,26 +73,29 @@ export function OverlayShell() {
     }
   }, [data.sessionId]);
 
+  const isVisuallySpeaking = data.micAmplitude > 0.05 || data.isMicActive;
+
   return (
     <div
       className={cx(
         "relative flex h-screen w-screen select-none flex-col overflow-hidden",
-        "rounded-[12px] border border-white/[0.06]",
-        "bg-[#0E0E0EE6]",
-        "shadow-[0_8px_32px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.03)]"
+        "rounded-[12px] border border-border",
+        "bg-bg/50",
+        "shadow-2xl"
       )}
       data-tauri-drag-region
     >
       <VoiceGradient
         alertSeverity={data.visibleAlerts[0]?.severity ?? null}
         alertsMuted={data.alertsMuted}
+        amplitude={data.micAmplitude}
         hasActiveAlert={data.visibleAlerts.length > 0}
-        isSpeaking={data.isMicActive}
+        isSpeaking={isVisuallySpeaking}
       />
 
       <div className="relative z-[1] flex flex-1 flex-col overflow-hidden">
         <div
-          className="flex h-7 items-center justify-between border-white/[0.05] border-b bg-black/[0.2] px-3"
+          className="flex h-7 items-center justify-between border-border-subtle border-b bg-bg-subtle/50 px-3"
           data-tauri-drag-region
         >
           <div
@@ -125,6 +128,8 @@ export function OverlayShell() {
           currentSpeaker={data.currentSpeaker}
           currentTopic={data.currentTopic}
           isMicActive={data.isMicActive}
+          isVisuallySpeaking={isVisuallySpeaking}
+          micAmplitude={data.micAmplitude}
         />
 
         <AlertRegion
@@ -140,10 +145,10 @@ export function OverlayShell() {
           <div className="absolute top-8 right-2 z-50 flex w-64 flex-col gap-2">
             {data.identityGuesses.map((guess) => (
               <div
-                className="flex flex-col gap-2 rounded border border-white/10 bg-black/80 p-2 shadow-lg backdrop-blur"
+                className="flex flex-col gap-2 rounded border border-border bg-bg/80 p-2 shadow-lg backdrop-blur"
                 key={guess.id}
               >
-                <p className="text-white text-xs">
+                <p className="text-fg text-xs">
                   Map Speaker {guess.index} to Client Member {guess.memberId}?
                 </p>
                 {cardErrors[guess.id] && (
@@ -153,7 +158,7 @@ export function OverlayShell() {
                 )}
                 <div className="flex justify-end gap-2">
                   <button
-                    className="rounded bg-white/10 px-2 py-1 text-[10px] text-white hover:bg-white/20 disabled:opacity-50"
+                    className="rounded bg-bg-subtle px-2 py-1 text-[10px] text-fg hover:bg-bg-hover disabled:opacity-50"
                     disabled={confirmSpeakerMapping.isPending}
                     onClick={() => {
                       data.setIdentityGuesses((prev) =>
@@ -181,6 +186,11 @@ export function OverlayShell() {
                       try {
                         await confirmSpeakerMapping.mutateAsync({
                           meetingId: data.sessionId,
+                          deepgramIndex: guess.index,
+                          clientMemberId: guess.memberId,
+                        });
+                        await emit("overlay:speaker-mapped", {
+                          sessionId: data.sessionId,
                           deepgramIndex: guess.index,
                           clientMemberId: guess.memberId,
                         });
@@ -215,6 +225,7 @@ export function OverlayShell() {
           </div>
         )}
 
+        {/* 
         {data.rememberFlash && (
           <div
             aria-hidden
@@ -226,17 +237,22 @@ export function OverlayShell() {
             }}
           />
         )}
+        */}
 
         <OverlayFooter
           alertsMuted={data.alertsMuted}
+          autoExpiryEnabled={data.autoExpiryEnabled}
           isEndingBusy={isEndingBusy}
           isHost={data.role === "host"}
           onEndMeeting={handleEndMeeting}
           onExpandToPanel={handleExpandToPanel}
           onMuteAlerts={() => data.setAlertsMuted(!data.alertsMuted)}
-          onRememberThis={data.handleRememberThis}
+          // onRememberThis={data.handleRememberThis}
+          onToggleAutoExpiry={() =>
+            data.setAutoExpiryEnabled(!data.autoExpiryEnabled)
+          }
           pendingCount={data.pendingCount}
-          rememberFlash={data.rememberFlash}
+          // rememberFlash={data.rememberFlash}
         />
       </div>
     </div>

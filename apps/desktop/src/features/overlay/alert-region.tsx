@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { AlertCard } from "../alerts/alert-card";
 import type { MeetingAlert } from "../alerts/types";
 
@@ -20,6 +21,24 @@ export function AlertRegion({
   onDismiss,
   onToggleExpand,
 }: AlertRegionProps) {
+  const containerRef = useRef<HTMLElement>(null);
+  const prevLengthRef = useRef(visibleAlerts.length);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    if (visibleAlerts.length > prevLengthRef.current) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+    prevLengthRef.current = visibleAlerts.length;
+  }, [visibleAlerts]);
+
   if (alertsMuted) {
     return (
       <section aria-live="polite" className="flex-1 overflow-y-auto px-3 py-2">
@@ -32,6 +51,7 @@ export function AlertRegion({
     <section
       aria-live="polite"
       className="z-[1] flex-1 overflow-y-auto px-3 py-2"
+      ref={containerRef}
     >
       <div className="grid gap-2">
         {visibleAlerts.map((alert, index) => (
