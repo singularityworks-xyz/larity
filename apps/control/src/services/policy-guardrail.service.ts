@@ -3,6 +3,7 @@ import type {
   CreatePolicyGuardrailInput,
   UpdatePolicyGuardrailInput,
 } from "../validators";
+import { DEFAULT_POLICY_GUARDRAILS } from "./default-guardrails";
 
 export const PolicyGuardrailService = {
   create(data: CreatePolicyGuardrailInput) {
@@ -99,6 +100,42 @@ export const PolicyGuardrailService = {
   delete(id: string) {
     return prisma.policyGuardrail.delete({
       where: { id },
+    });
+  },
+
+  async seedDefaultForOrg(orgId: string) {
+    return await prisma.$transaction(async (tx) => {
+      // Lock the Org row to prevent concurrent seeding race conditions
+      await tx.$executeRaw`SELECT id FROM orgs WHERE id = ${orgId} FOR UPDATE`;
+
+      const existingCount = await tx.policyGuardrail.count({
+        where: { orgId, clientId: null },
+      });
+
+      if (existingCount > 0) {
+        return {
+          seeded: false,
+          message: "Guardrails already exist for this org.",
+        };
+      }
+
+      const payload = DEFAULT_POLICY_GUARDRAILS.map((g) => ({
+        ...g,
+        orgId,
+        ruleType: g.ruleType as
+          | "NDA"
+          | "LEGAL"
+          | "TERMINOLOGY"
+          | "INTERNAL"
+          | "CUSTOM",
+        severity: g.severity as "INFO" | "WARNING" | "BLOCK",
+      }));
+
+      await tx.policyGuardrail.createMany({
+        data: payload,
+      });
+
+      return { seeded: true, count: payload.length };
     });
   },
 };

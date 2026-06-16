@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { InitialsAvatar } from "../../components/avatar";
+import { ClientGuardrails } from "../../features/clients/components/client-guardrails";
 import { ClientMembersRoster } from "../../features/clients/components/client-members-roster";
 import { useClient } from "../../features/clients/use-client";
 import { useUpdateClient } from "../../features/clients/use-update-client";
@@ -418,6 +419,7 @@ export function ClientDetailPage() {
         )}
       </section>
       <ClientMembersRoster clientId={client.id} />
+      <ClientGuardrails clientId={client.id} />
     </div>
   );
 }

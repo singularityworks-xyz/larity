@@ -59,6 +59,8 @@ interface MeetingLocationState {
   meetingTitle?: string;
   startedAt?: number;
   allowNameCustomization?: boolean;
+  meetingId?: string;
+  pendingAgenda?: Array<{ id: string; text: string }>;
 }
 
 interface AudioDevice {
@@ -70,8 +72,10 @@ interface AudioDevice {
 const DEFAULT_WS_URL = import.meta.env.VITE_WS_URL ?? "ws://127.0.0.1:9001";
 const FALLBACK_USER_ID = import.meta.env.VITE_WS_USER_ID ?? "desktop-host";
 
+import { useClientMembers } from "../../features/clients/use-client-members";
 import { useConfirmSpeakerMapping } from "../../features/meetings/use-confirm-speaker-mapping";
 import { useMeeting } from "../../features/meetings/use-meeting";
+import { useMeetingSessionStatus } from "../../features/meetings/use-meeting-session-status";
 
 function getWsBaseUrl(websocketUrl: string | undefined): string {
   if (!websocketUrl) {
@@ -106,10 +110,12 @@ export function MeetingPage() {
   const location = useLocation();
   const session = useAuthSession();
 
-  const { data: meetingData } = useMeeting(sessionId);
-  const confirmSpeakerMapping = useConfirmSpeakerMapping();
-
   const state = (location.state ?? {}) as MeetingLocationState;
+  const { data: sessionStatus } = useMeetingSessionStatus(sessionId);
+  const meetingId = state.meetingId ?? sessionStatus?.meetingId;
+  const { data: meetingData } = useMeeting(meetingId);
+  const { data: members = [] } = useClientMembers(meetingData?.clientId ?? "");
+  const confirmSpeakerMapping = useConfirmSpeakerMapping();
   const role = state.role ?? "participant";
   const wsBaseUrl = getWsBaseUrl(state.websocketUrl);
   const userId = session.user?.id ?? FALLBACK_USER_ID;
@@ -455,17 +461,25 @@ export function MeetingPage() {
 
   useEffect(() => {
     const unsubUtterance = streamingClient.subscribe("utterance", (data) => {
-      const timing = data as unknown as {
+      const raw = data as unknown as {
+        utteranceId: string;
+        retracted?: boolean;
+        speaker?: Record<string, unknown>;
         startOffset?: number;
         duration?: number;
       };
-      const startOffset = timing.startOffset;
-      const duration = timing.duration;
+
+      if (raw.retracted) {
+        setUtterances((prev) => prev.filter((u) => u.id !== raw.utteranceId));
+        return;
+      }
+
+      const startOffset = raw.startOffset;
+      const duration = raw.duration;
 
       const utterance = mapBackendUtteranceToLive(
         data as unknown as Parameters<typeof mapBackendUtteranceToLive>[0]
       );
-      const rawData = data as unknown as { speaker?: Record<string, unknown> };
       setUtterances((prev) => {
         if (prev.some((u) => u.id === utterance.id)) {
           return prev;
@@ -478,11 +492,11 @@ export function MeetingPage() {
         );
       }
       setParticipants((prev) => {
-        if (!rawData.speaker) {
+        if (!raw.speaker) {
           return prev;
         }
         const participant = mapSpeakerToParticipant(
-          rawData.speaker as unknown as Parameters<
+          raw.speaker as unknown as Parameters<
             typeof mapSpeakerToParticipant
           >[0],
           userId
@@ -495,10 +509,10 @@ export function MeetingPage() {
         }
         return [...prev, participant];
       });
-      if (rawData.speaker) {
+      if (raw.speaker) {
         emitTo("meeting-overlay", "overlay-data", {
           type: "utterance",
-          payload: { speaker: rawData.speaker },
+          payload: { speaker: raw.speaker },
         }).catch((err) =>
           console.warn("overlay-data utterance emit failed:", err)
         );
@@ -920,7 +934,10 @@ export function MeetingPage() {
                 key={guess.id}
               >
                 <p className="text-fg text-sm">
-                  Map Speaker {guess.index} to Client Member {guess.memberId}?
+                  Map Speaker {guess.index} to Client Member{" "}
+                  {members.find((m) => m.id === guess.memberId)?.name ??
+                    guess.memberId}
+                  ?
                 </p>
                 {cardErrors[guess.id] && (
                   <p className="text-danger-fg text-xs">
@@ -947,11 +964,15 @@ export function MeetingPage() {
                     Dismiss
                   </button>
                   <button
-                    className="rounded bg-accent px-2 py-1 text-on-accent text-xs hover:bg-accent-hover"
+                    className="rounded bg-accent px-2 py-1 text-on-accent text-xs hover:bg-accent-hover disabled:opacity-50"
+                    disabled={!meetingId}
                     onClick={async () => {
+                      if (!meetingId) {
+                        return;
+                      }
                       try {
                         await confirmSpeakerMapping.mutateAsync({
-                          meetingId: sessionId,
+                          meetingId,
                           deepgramIndex: guess.index,
                           clientMemberId: guess.memberId,
                         });
@@ -992,6 +1013,7 @@ export function MeetingPage() {
           onChangeRole={handleRoleChange}
           onEvidenceClick={handleEvidenceClick}
           participants={participants}
+          pendingAgenda={state.pendingAgenda}
           sessionId={sessionId || "unknown"}
         />
       </div>

@@ -196,7 +196,7 @@ Classify the CURRENT utterance; use recentSameSpeaker only as short local contex
 - Skip riskSignals for pure filler or STT noise.
 - extractedData: fill only from explicit speech; never infer. Use null for any key not present.
 - topicDelta: null unless the utterance carries a clear topic signal; if set, include all seven keys (unused ones null).
-- identityGuess: null unless the speaker is unidentified (type="external" or similar) AND you can confidently deduce their identity from the text (e.g. "Hi, I'm Aman"). If "knownClientMembers" has a matching name, set { "index": "<speakerId>", "memberId": "<matching id>" }. Leave null if unsure.
+- identityGuess: null unless the speaker is unidentified (type="external" or similar) AND you can confidently deduce their identity from the text (e.g. "Hi, I'm Aman"). If "knownClientMembers" has a matching or partially matching name (fuzzy match), set { "index": "<speakerId>", "memberId": "<matching id>" }. Leave null if unsure.
 - English, Hindi, Hinglish, code-switching. Broken STT → lower confidence; never invent facts.
 
 ## Examples:

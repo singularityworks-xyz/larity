@@ -17,7 +17,12 @@ export type ClientMemberRole =
   | "DECISION_MAKER";
 
 export interface MemberPersona {
-  traits?: string[];
+  tone?: string;
+  communicationStyle?: string;
+  likes?: string[];
+  dislikes?: string[];
+  keyPriorities?: string[];
+  notes?: string;
   [key: string]: unknown;
 }
 

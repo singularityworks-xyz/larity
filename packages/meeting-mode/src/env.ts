@@ -11,6 +11,14 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 }
 
 /**
+ * Max time between identical utterances to be considered acoustic bleed
+ */
+export const ACOUSTIC_BLEED_TIMEOUT_MS = parsePositiveInt(
+  process.env.ACOUSTIC_BLEED_TIMEOUT_MS,
+  5000
+);
+
+/**
  * Max silence between same-speaker finals to merge into one utterance (`UtteranceMerger`).
  * Legacy: `MERGE_GAP_MS` applies when `MERGE_GROUPING_MS` is unset.
  */

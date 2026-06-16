@@ -1,4 +1,7 @@
 import { Elysia } from "elysia";
+import { AIBriefGeneratorService } from "meeting-mode";
+import { prisma } from "../lib/prisma";
+import { requireAuth } from "../middleware/auth";
 import {
   MeetingInsightsService,
   MeetingParticipantService,
@@ -26,6 +29,7 @@ import {
 } from "../validators";
 
 export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
+  .use(requireAuth)
   // List all meetings (with optional filters)
   .get(
     "/",
@@ -47,6 +51,36 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
         return { success: false, error: "Meeting not found" };
       }
       return { success: true, data: meeting };
+    },
+    { params: meetingIdSchema }
+  )
+  // Get meeting brief (dynamically generates for ad-hoc if missing)
+  .get(
+    "/:id/brief",
+    async ({ params, user, set }) => {
+      const meeting = await prisma.meeting.findUnique({
+        where: { id: params.id },
+        select: { preMeetingBrief: true },
+      });
+      if (!meeting) {
+        set.status = 404;
+        return { success: false, error: "Meeting not found" };
+      }
+      if (meeting.preMeetingBrief) {
+        return { success: true, data: meeting.preMeetingBrief };
+      }
+
+      const brief = await AIBriefGeneratorService.generateAndSaveBrief(
+        params.id,
+        user?.id
+      );
+
+      if (!brief) {
+        set.status = 202;
+        return { success: false, error: "Brief generation in progress" };
+      }
+
+      return { success: true, data: brief };
     },
     { params: meetingIdSchema }
   )
