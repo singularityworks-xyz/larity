@@ -11,8 +11,11 @@ interface UseAlertQueueResult {
   exitingIds: Set<string>;
 }
 
-const sortAlerts = (alerts: MeetingAlert[]) => {
+const sortAlerts = (alerts: MeetingAlert[], chronological = false) => {
   return [...alerts].sort((a, b) => {
+    if (chronological) {
+      return a.timestamp - b.timestamp;
+    }
     const priorityDiff =
       ALERT_PRIORITY[a.category] - ALERT_PRIORITY[b.category];
     if (priorityDiff !== 0) {
@@ -22,7 +25,11 @@ const sortAlerts = (alerts: MeetingAlert[]) => {
   });
 };
 
-export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
+export function useAlertQueue(
+  maxVisible = 2,
+  chronological = false,
+  disableExpiry = false
+): UseAlertQueueResult {
   const [visibleAlerts, setVisibleAlerts] = useState<MeetingAlert[]>([]);
   const [alertHistory, setAlertHistory] = useState<MeetingAlert[]>([]);
   const [queue, setQueue] = useState<MeetingAlert[]>([]);
@@ -79,17 +86,25 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
           window.clearTimeout(existingTimer);
         }
 
-        const expiryMs = ALERT_EXPIRY_MS[nextAlert.severity];
-        const timerId = window.setTimeout(() => {
-          dismissAlert(nextAlert.id);
-        }, expiryMs);
+        if (!disableExpiry) {
+          const expiryMs = ALERT_EXPIRY_MS[nextAlert.severity];
+          const timerId = window.setTimeout(() => {
+            dismissAlert(nextAlert.id);
+          }, expiryMs);
+          autoDismissTimeoutsRef.current.set(nextAlert.id, timerId);
+        }
 
-        autoDismissTimeoutsRef.current.set(nextAlert.id, timerId);
-
-        return sortAlerts([...prev, nextAlert]);
+        return sortAlerts([...prev, nextAlert], chronological);
       });
     }
-  }, [queue, visibleAlerts.length, maxVisible, dismissAlert]);
+  }, [
+    queue,
+    visibleAlerts.length,
+    maxVisible,
+    dismissAlert,
+    chronological,
+    disableExpiry,
+  ]);
 
   const addAlert = useCallback(
     (alert: MeetingAlert) => {
@@ -110,7 +125,7 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
           // between reading visibleAlerts.length and writing to the queue)
           setQueue((q) => {
             const filtered = q.filter((a) => a.id !== alert.id);
-            return sortAlerts([...filtered, alert]);
+            return sortAlerts([...filtered, alert], chronological);
           });
           return prev;
         }
@@ -120,18 +135,19 @@ export function useAlertQueue(maxVisible = 2): UseAlertQueueResult {
           window.clearTimeout(existingTimer);
         }
 
-        const expiryMs = ALERT_EXPIRY_MS[alert.severity];
-        const timerId = window.setTimeout(() => {
-          dismissAlert(alert.id);
-        }, expiryMs);
+        if (!disableExpiry) {
+          const expiryMs = ALERT_EXPIRY_MS[alert.severity];
+          const timerId = window.setTimeout(() => {
+            dismissAlert(alert.id);
+          }, expiryMs);
+          autoDismissTimeoutsRef.current.set(alert.id, timerId);
+        }
 
-        autoDismissTimeoutsRef.current.set(alert.id, timerId);
-
-        const newAlerts = sortAlerts([...prev, alert]);
+        const newAlerts = sortAlerts([...prev, alert], chronological);
         return newAlerts.slice(0, maxVisible);
       });
     },
-    [maxVisible, dismissAlert]
+    [maxVisible, dismissAlert, chronological, disableExpiry]
   );
 
   const clearAll = useCallback(() => {
