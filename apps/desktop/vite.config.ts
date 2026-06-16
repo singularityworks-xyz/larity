@@ -17,6 +17,13 @@ export default defineConfig(async () => ({
     port: 1420,
     strictPort: true,
     host,
+    // These headers allow the secondary overlay WebviewWindow (which also
+    // loads from localhost:1420) to satisfy COEP if it is ever re-enabled,
+    // and prevent resource-blocking on the overlay page.
+    headers: {
+      "Cross-Origin-Resource-Policy": "same-origin",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
     hmr: host
       ? {
           protocol: "ws",
