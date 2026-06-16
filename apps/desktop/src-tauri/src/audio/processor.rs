@@ -1,8 +1,7 @@
 use rubato::{FastFixedIn, PolynomialDegree, Resampler};
 
 const TARGET_SAMPLE_RATE: usize = 16000;
-const FRAME_DURATION_MS: usize = 50;
-const SAMPLES_PER_FRAME: usize = (TARGET_SAMPLE_RATE * FRAME_DURATION_MS) / 1000; // 800
+const SAMPLES_PER_FRAME: usize = 512; // 32ms at 16kHz — matches Silero VAD chunk_size exactly
 
 pub struct AudioProcessor {
     resampler: Option<FastFixedIn<f32>>,
@@ -59,7 +58,7 @@ impl AudioProcessor {
             self.post_buffer.append(&mut self.pre_buffer);
         }
 
-        // 3. Chunk into 50ms (800 samples) frames of i16
+        // 3. Chunk into 512-sample frames of i16 (matches Silero VAD chunk_size)
         let mut chunks = Vec::new();
         while self.post_buffer.len() >= SAMPLES_PER_FRAME {
             let chunk_f32: Vec<f32> = self.post_buffer.drain(0..SAMPLES_PER_FRAME).collect();
@@ -83,17 +82,17 @@ mod tests {
     #[test]
     fn test_process_no_resample_mono() {
         let mut processor = AudioProcessor::new(16000, 1);
-        let samples = vec![0.5; 1600]; // 100ms
+        let samples = vec![0.5; 1024]; // 2 frames worth
         let chunks = processor.process(&samples);
         assert_eq!(chunks.len(), 2);
-        assert_eq!(chunks[0].len(), SAMPLES_PER_FRAME); // 800 samples
+        assert_eq!(chunks[0].len(), SAMPLES_PER_FRAME); // 512 samples
     }
 
     #[test]
     fn test_process_downmix_stereo() {
         let mut processor = AudioProcessor::new(16000, 2);
         let mut samples = Vec::new();
-        for _ in 0..1600 {
+        for _ in 0..1024 {
             samples.push(0.5); // L
             samples.push(0.5); // R
         }
@@ -106,11 +105,9 @@ mod tests {
         let mut processor = AudioProcessor::new(48000, 1);
         let samples = vec![0.0; 48000]; // 1 second of audio
         let chunks = processor.process(&samples);
-        // It processes in chunk_size (1024), 48000 / 1024 = 46.8 chunks -> 46 full chunks
-        // output rate is 1/3, each chunk produces 1024 / 3 ≈ 341 samples
-        // 46 * 341 = 15686 samples
-        // Should yield roughly 15686 / 800 ≈ 19 chunks (50ms frames of 16kHz)
-        // 1 sec of 16kHz is 20 chunks. With leftover, 19 chunks should definitely be ready.
-        assert!(chunks.len() >= 18 && chunks.len() <= 20);
+        // 48000 input -> 16000 output = 16000 samples/sec
+        // Each output frame = 512 samples
+        // 16000 / 512 ≈ 31.25 frames per second
+        assert!(chunks.len() >= 30 && chunks.len() <= 33);
     }
 }

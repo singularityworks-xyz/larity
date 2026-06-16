@@ -17,13 +17,22 @@ interface VadDebugEvent {
 
 const TEAM_MEMBER_STATE: CorrelationState = "TEAM MEMBER";
 const EXTERNAL_STATE: CorrelationState = "EXTERNAL";
-const SPEECH_ACTIVE_MS = 2500;
 
 function formatTimestamp(ts: number | null): string {
   if (!ts) {
     return "Never";
   }
   return new Date(ts).toLocaleTimeString();
+}
+
+function getAmplitudeColor(rms: number): string {
+  if (rms > 0.8) {
+    return "var(--color-danger-fg)";
+  }
+  if (rms > 0.5) {
+    return "var(--color-warning-fg)";
+  }
+  return "var(--color-success-fg)";
 }
 
 type TabId = "guardrails" | "audio";
@@ -146,6 +155,7 @@ export function SettingsPage() {
     null
   );
   const [lastSpeechEndTs, setLastSpeechEndTs] = useState<number | null>(null);
+  const [amplitude, setAmplitude] = useState(0);
 
   const [events, setEvents] = useState<VadDebugEvent[]>([]);
   const [warning, setWarning] = useState("");
@@ -202,23 +212,6 @@ export function SettingsPage() {
       .catch(() => setPermissionDecision("unknown"));
   }, []);
 
-  // VAD Loop
-  useEffect(() => {
-    if (!isRunning) {
-      return;
-    }
-    const interval = window.setInterval(() => {
-      const now = Date.now();
-      if (!lastSpeechStartTs) {
-        setSpeechDetected(false);
-        return;
-      }
-      const active = now - lastSpeechStartTs <= SPEECH_ACTIVE_MS;
-      setSpeechDetected(active);
-    }, 200);
-    return () => window.clearInterval(interval);
-  }, [isRunning, lastSpeechStartTs]);
-
   const correlationState: CorrelationState = speechDetected
     ? TEAM_MEMBER_STATE
     : EXTERNAL_STATE;
@@ -270,12 +263,16 @@ export function SettingsPage() {
           setLastSpeechEndTs(now);
           setLastSpeechStartTs(null);
           setSpeechDetected(false);
+          setAmplitude(0);
           setEvents((prev) =>
             [
               { id: `speech_end_${now}`, type: "speech_end" as const, ts: now },
               ...prev,
             ].slice(0, 30)
           );
+        },
+        onAmplitude: (rms: number) => {
+          setAmplitude(rms);
         },
       });
       setIsRunning(true);
@@ -294,6 +291,7 @@ export function SettingsPage() {
     });
     setIsRunning(false);
     setSpeechDetected(false);
+    setAmplitude(0);
   }
 
   function clearDebugHistory() {
@@ -432,6 +430,28 @@ export function SettingsPage() {
               </span>
             </div>
           </div>
+
+          {isRunning && (
+            <div className="mt-4">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="font-semibold text-[10px] text-fg-subtle uppercase tracking-wider">
+                  Mic Level
+                </span>
+                <span className="font-mono text-[10px] text-fg-muted">
+                  {(amplitude * 100).toFixed(0)}%
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-border-subtle">
+                <div
+                  className="h-full rounded-full transition-all duration-75"
+                  style={{
+                    width: `${Math.min(amplitude * 100, 100)}%`,
+                    backgroundColor: getAmplitudeColor(amplitude),
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="mt-5 flex items-center justify-between border-border-subtle border-t pt-5">
             <div className="flex flex-col gap-1">
