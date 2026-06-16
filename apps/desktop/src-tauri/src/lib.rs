@@ -321,8 +321,15 @@ fn create_overlay_window(app: AppHandle, url: String) -> Result<(), String> {
         .decorations(false)
         .always_on_top(true)
         .resizable(true)
+        .transparent(true)
         .build()
-        .map(|_| ())
+        .map(|window| {
+            #[cfg(target_os = "macos")]
+            let _ = window_vibrancy::apply_vibrancy(&window, window_vibrancy::NSVisualEffectMaterial::HudWindow, None, None);
+
+            #[cfg(target_os = "windows")]
+            let _ = window_vibrancy::apply_blur(&window, Some((18, 18, 18, 125)));
+        })
         .map_err(|e| e.to_string())
 }
 

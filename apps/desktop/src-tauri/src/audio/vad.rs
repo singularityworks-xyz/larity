@@ -58,6 +58,9 @@ fn run_vad_loop(
                 .map(|&s| (s as f32 / i16::MAX as f32 * INPUT_GAIN).clamp(-1.0, 1.0))
                 .collect();
 
+            let sum_sq: f32 = f32_window.iter().map(|&x| x * x).sum();
+            let rms = (sum_sq / f32_window.len() as f32).sqrt();
+
             let probability = detector.predict(f32_window);
 
             if probability >= THRESHOLD {
@@ -72,6 +75,10 @@ fn run_vad_loop(
                 is_speaking = true;
                 silence_counter = 0;
                 let _ = app.emit("vad-speech-start", ());
+            }
+
+            if is_speaking {
+                let _ = app.emit("vad-amplitude", rms);
             }
 
             if silence_counter >= SPEECH_END_HOLDOVER && is_speaking {
