@@ -302,35 +302,63 @@ fn meeting_detection_check_heuristic() -> Result<Option<MeetingDetectionHint>, S
 }
 
 #[tauri::command]
-fn create_overlay_window(app: AppHandle, url: String) -> Result<(), String> {
-    let parsed = tauri::Url::parse(&url).map_err(|e| e.to_string())?;
+async fn create_overlay_window(app: AppHandle, url: String) -> Result<(), String> {
+    // Extract path+query from the URL so we can use WebviewUrl::App.
+    // WebviewUrl::External skips Tauri IPC bridge injection on Windows WebView2,
+    // which causes the overlay to render completely blank (no JS runs).
+    let path_and_query = if let Ok(parsed) = tauri::Url::parse(&url) {
+        let path = parsed.path();
+        match parsed.query() {
+            Some(q) => format!("{path}?{q}"),
+            None => path.to_string(),
+        }
+    } else {
+        // Fall back to treating the raw string as a path
+        url
+    };
 
-    let main_window = app.get_webview_window("main").ok_or("Main window not found")?;
-    let main_url = main_window.url().map_err(|e| e.to_string())?;
-    let main_origin = main_url.origin();
+    // Start hidden: show only after the page has painted to avoid white flash.
+    // On Windows, WebView2's .build() must NOT be called from a sync command
+    // handler — it blocks the IPC thread causing a deadlock → blank window.
+    // Making the command `async` moves it off the IPC thread, fixing this.
+    // on_page_load is a *builder* method in Tauri 2.x (not a window method).
+    let _window = WebviewWindowBuilder::new(
+        &app,
+        "meeting-overlay",
+        WebviewUrl::App(path_and_query.into()),
+    )
+    .title("Larity Meeting")
+    .inner_size(376.0, 480.0)
+    .min_inner_size(320.0, 360.0)
+    .max_inner_size(420.0, 540.0)
+    .decorations(false)
+    .always_on_top(true)
+    .resizable(true)
+    .transparent(true)
+    .visible(false)
+    // Reveal only after the page finishes loading to avoid blank white flash.
+    .on_page_load(|win, payload| {
+        use tauri::webview::PageLoadEvent;
+        if payload.event() == PageLoadEvent::Finished {
+            let _ = win.show();
+            let _ = win.set_focus();
+        }
+    })
+    .build()
+    .map_err(|e| e.to_string())?;
 
-    if parsed.origin() != main_origin {
-        return Err("External URL origin does not match app origin".to_string());
-    }
+    #[cfg(target_os = "macos")]
+    let _ = window_vibrancy::apply_vibrancy(
+        &_window,
+        window_vibrancy::NSVisualEffectMaterial::HudWindow,
+        None,
+        None,
+    );
 
-    WebviewWindowBuilder::new(&app, "meeting-overlay", WebviewUrl::External(parsed))
-        .title("Larity Meeting")
-        .inner_size(376.0, 480.0)
-        .min_inner_size(320.0, 360.0)
-        .max_inner_size(420.0, 540.0)
-        .decorations(false)
-        .always_on_top(true)
-        .resizable(true)
-        .transparent(true)
-        .build()
-        .map(|window| {
-            #[cfg(target_os = "macos")]
-            let _ = window_vibrancy::apply_vibrancy(&window, window_vibrancy::NSVisualEffectMaterial::HudWindow, None, None);
+    #[cfg(target_os = "windows")]
+    let _ = window_vibrancy::apply_blur(&_window, Some((18, 18, 18, 125)));
 
-            #[cfg(target_os = "windows")]
-            let _ = window_vibrancy::apply_blur(&window, Some((18, 18, 18, 125)));
-        })
-        .map_err(|e| e.to_string())
+    Ok(())
 }
 
 #[tauri::command]
