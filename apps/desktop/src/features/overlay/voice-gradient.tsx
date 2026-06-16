@@ -13,6 +13,7 @@ export function VoiceGradient({
   hasActiveAlert,
   alertSeverity,
   alertsMuted = false,
+  amplitude = 0,
 }: VoiceGradientProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -20,11 +21,12 @@ export function VoiceGradient({
     isSpeaking,
     hasActiveAlert,
     alertSeverity,
+    amplitude,
   });
 
   useEffect(() => {
-    propsRef.current = { isSpeaking, hasActiveAlert, alertSeverity };
-  }, [isSpeaking, hasActiveAlert, alertSeverity]);
+    propsRef.current = { isSpeaking, hasActiveAlert, alertSeverity, amplitude };
+  }, [isSpeaking, hasActiveAlert, alertSeverity, amplitude]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -70,10 +72,10 @@ export function VoiceGradient({
       if (!speaking) {
         return 0;
       }
-      const flutter = Math.sin(time * 0.014) * Math.cos(time * 0.008) * 0.18;
-      const breath = Math.sin(time * 0.003) * 0.12;
-      const tick = Math.sin(time * 0.025) * 0.06;
-      return Math.max(0, Math.min(1, 0.6 + flutter + breath + tick));
+      const flutter = Math.sin(time * 0.014) * Math.cos(time * 0.008) * 0.12;
+      const breath = Math.sin(time * 0.003) * 0.08;
+      const tick = Math.sin(time * 0.025) * 0.04;
+      return Math.max(0, Math.min(1, 0.35 + flutter + breath + tick));
     };
 
     const drawFrame = (time: number) => {
@@ -84,6 +86,7 @@ export function VoiceGradient({
         isSpeaking: pIsSpeaking,
         hasActiveAlert: pHasActiveAlert,
         alertSeverity: pAlertSeverity,
+        amplitude: pAmplitude = 0,
       } = propsRef.current;
 
       const dpr = window.devicePixelRatio || 1;
@@ -95,7 +98,11 @@ export function VoiceGradient({
         pAlertSeverity,
         pIsSpeaking
       );
-      const targetAmp = getDynamicAmp(time, pIsSpeaking);
+
+      const simulatedAmp = getDynamicAmp(time, pIsSpeaking);
+      const targetAmp = pIsSpeaking
+        ? Math.max(simulatedAmp, pAmplitude * 1.1)
+        : 0;
 
       // Asymmetric smoothing: snap up on speech, ease down gracefully
       const attack = 0.15;
