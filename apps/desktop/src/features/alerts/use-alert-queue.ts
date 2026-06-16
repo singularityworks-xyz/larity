@@ -108,12 +108,9 @@ export function useAlertQueue(
 
   const addAlert = useCallback(
     (alert: MeetingAlert) => {
-      setAlertHistory((prev) => {
-        if (prev.some((a) => a.id === alert.id)) {
-          return prev;
-        }
-        return [alert, ...prev];
-      });
+      setAlertHistory((prev) =>
+        prev.some((a) => a.id === alert.id) ? prev : [alert, ...prev]
+      );
 
       setVisibleAlerts((prev) => {
         if (prev.some((a) => a.id === alert.id)) {
@@ -121,13 +118,13 @@ export function useAlertQueue(
         }
 
         if (prev.length >= maxVisible) {
-          // Queue it instead — inside setVisibleAlerts for atomicity (avoids race
-          // between reading visibleAlerts.length and writing to the queue)
-          setQueue((q) => {
-            const filtered = q.filter((a) => a.id !== alert.id);
-            return sortAlerts([...filtered, alert], chronological);
-          });
-          return prev;
+          // Immediately dismiss the oldest active alert
+          const oldestAlert = [...prev].sort(
+            (a, b) => a.timestamp - b.timestamp
+          )[0];
+          if (oldestAlert) {
+            dismissAlert(oldestAlert.id);
+          }
         }
 
         const existingTimer = autoDismissTimeoutsRef.current.get(alert.id);
@@ -144,7 +141,7 @@ export function useAlertQueue(
         }
 
         const newAlerts = sortAlerts([...prev, alert], chronological);
-        return newAlerts.slice(0, maxVisible);
+        return newAlerts;
       });
     },
     [maxVisible, dismissAlert, chronological, disableExpiry]

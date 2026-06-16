@@ -1,4 +1,4 @@
-import { Bell, BellOff, Bookmark, PhoneOff, UserCog } from "lucide-react";
+import { Bell, BellOff, PhoneOff, UserCog } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cx } from "../../lib/ui";
 
@@ -36,7 +36,7 @@ interface MeetingHeaderProps {
   isEndingBusy: boolean;
   allowNameCustomization: boolean;
   onMuteAlertsToggle: () => void;
-  onRememberThis: () => void;
+  // onRememberThis: () => void;
   onEndMeeting: () => void;
   onToggleNameCustomization: () => void;
 }
@@ -51,7 +51,7 @@ export function MeetingHeader({
   isEndingBusy,
   allowNameCustomization,
   onMuteAlertsToggle,
-  onRememberThis,
+  // onRememberThis,
   onEndMeeting,
   onToggleNameCustomization,
 }: MeetingHeaderProps) {
@@ -113,6 +113,7 @@ export function MeetingHeader({
             <UserCog className="h-4 w-4" strokeWidth={1.5} />
           </button>
         )}
+        {/* 
         <button
           aria-label="Remember this moment"
           className={ghostButtonClass}
@@ -122,6 +123,7 @@ export function MeetingHeader({
         >
           <Bookmark className="h-4 w-4" strokeWidth={1.5} />
         </button>
+        */}
         <button
           aria-label={alertsMuted ? "Unmute alerts" : "Mute alerts"}
           className={ghostButtonClass}
@@ -139,10 +141,10 @@ export function MeetingHeader({
           aria-busy={isEndingBusy}
           className={cx(
             "inline-flex h-7 items-center gap-1.5 rounded-[5px] px-3",
-            "border font-medium text-[11px] transition-all duration-100",
+            "font-semibold text-[11px] transition-all duration-150",
             isHost
-              ? "border-danger-fg/25 bg-danger-fg/10 text-danger-fg hover:border-danger-fg/40 hover:bg-danger-fg/18"
-              : "border-border bg-bg-subtle text-fg-muted hover:bg-bg-emphasis hover:text-fg"
+              ? "border border-transparent bg-danger text-danger-fg shadow-sm hover:brightness-110 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+              : "border border-border bg-bg-subtle text-fg-muted hover:bg-bg-emphasis hover:text-fg active:scale-95 disabled:pointer-events-none disabled:opacity-50"
           )}
           disabled={isEndingBusy}
           onClick={onEndMeeting}

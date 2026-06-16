@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
+import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuthSession } from "../features/auth/use-session";
 import { api } from "../lib/api";
 import { VadManager } from "../services/vad";
@@ -127,6 +129,7 @@ function GuardrailCard({
 }
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const vadManager = useMemo(() => new VadManager(), []);
 
   // Auth State
@@ -265,6 +268,7 @@ export function SettingsPage() {
         onSpeechEnd: () => {
           const now = Date.now();
           setLastSpeechEndTs(now);
+          setLastSpeechStartTs(null);
           setSpeechDetected(false);
           setEvents((prev) =>
             [
@@ -692,8 +696,16 @@ export function SettingsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-2 pt-4 pb-12">
-      <div className="flex items-center justify-between border-border border-b pb-4">
-        <div>
+      <div className="flex items-center gap-4 border-border border-b pb-4">
+        <button
+          aria-label="Go back"
+          className="group flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-elevated text-fg-subtle transition-all [-webkit-app-region:no-drag] [app-region:no-drag] hover:bg-bg-subtle hover:text-fg active:scale-95"
+          onClick={() => navigate(-1)}
+          type="button"
+        >
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+        </button>
+        <div className="flex-grow">
           <h1 className="font-semibold text-fg text-lg tracking-tight">
             Configuration
           </h1>

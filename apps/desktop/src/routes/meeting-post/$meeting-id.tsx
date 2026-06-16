@@ -190,13 +190,9 @@ function ProcessingBanner({
     (status?.steps.transcribe === "failed" ||
       status?.steps.summary === "failed");
 
-  if (isLoading || !(inProgress || settled)) {
-    return null;
-  }
-  if (inProgress) {
-    return <InProgressBanner status={status} />;
-  }
-  if (failed) {
+  if (isLoading || !(inProgress || settled)) return null;
+  if (inProgress) return <InProgressBanner status={status} />;
+  if (failed)
     return (
       <FailedBanner
         onReprocessSuccess={onReprocessSuccess}
@@ -204,7 +200,6 @@ function ProcessingBanner({
         status={status}
       />
     );
-  }
   return null;
 }
 
@@ -240,20 +235,18 @@ function SkeletonRows({ count = 4 }: { count?: number }) {
 // ── Status Badges & Chips ───────────────────────────────────────────────────
 
 function DecisionStatusBadge({ status }: { status: Decision["status"] }) {
-  if (status === "SUPERSEDED") {
+  if (status === "SUPERSEDED")
     return (
       <span className="inline-flex items-center rounded-full border border-fg-muted/30 bg-bg-subtle px-2 py-0.5 font-bold text-[10px] text-fg-muted uppercase tracking-wider line-through">
         Superseded
       </span>
     );
-  }
-  if (status === "REVOKED") {
+  if (status === "REVOKED")
     return (
       <span className="inline-flex items-center rounded-full border border-danger/30 bg-danger/10 px-2 py-0.5 font-bold text-[10px] text-danger uppercase tracking-wider">
         Revoked
       </span>
     );
-  }
   return (
     <span className="inline-flex items-center rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-bold text-[10px] text-success uppercase tracking-wider shadow-[0_0_10px_rgba(var(--color-success),0.1)]">
       Active
@@ -352,16 +345,13 @@ function TranscriptTab({ meetingId }: { meetingId: string }) {
     error,
   } = useMeetingTranscript(meetingId);
 
-  if (isLoading) {
-    return <SkeletonRows count={6} />;
-  }
-  if (error || !transcript) {
+  if (isLoading) return <SkeletonRows count={6} />;
+  if (error || !transcript)
     return (
       <p className="py-8 text-center font-medium text-fg-muted text-sm">
         No transcript available.
       </p>
     );
-  }
 
   let utterances: TranscriptUtterance[] = [];
   try {
@@ -374,13 +364,12 @@ function TranscriptTab({ meetingId }: { meetingId: string }) {
     );
   }
 
-  if (utterances.length === 0) {
+  if (utterances.length === 0)
     return (
       <p className="py-8 text-center font-medium text-fg-muted text-sm">
         Transcript is empty.
       </p>
     );
-  }
 
   return (
     <motion.div
@@ -421,13 +410,12 @@ function TranscriptTab({ meetingId }: { meetingId: string }) {
 
 function DecisionsTab({ decisions }: { decisions: Decision[] }) {
   const safeDecisions = Array.isArray(decisions) ? decisions : [];
-  if (safeDecisions.length === 0) {
+  if (safeDecisions.length === 0)
     return (
       <p className="py-8 text-center font-medium text-fg-muted text-sm">
         No decisions were extracted.
       </p>
     );
-  }
 
   return (
     <motion.div
@@ -485,13 +473,12 @@ function DecisionsTab({ decisions }: { decisions: Decision[] }) {
 
 function TasksTab({ tasks }: { tasks: Task[] }) {
   const safeTasks = Array.isArray(tasks) ? tasks : [];
-  if (safeTasks.length === 0) {
+  if (safeTasks.length === 0)
     return (
       <p className="py-8 text-center font-medium text-fg-muted text-sm">
         No tasks were extracted.
       </p>
     );
-  }
 
   return (
     <motion.div
@@ -536,13 +523,12 @@ function TasksTab({ tasks }: { tasks: Task[] }) {
 
 function OpenQuestionsTab({ questions }: { questions: OpenQuestion[] }) {
   const safeQuestions = Array.isArray(questions) ? questions : [];
-  if (safeQuestions.length === 0) {
+  if (safeQuestions.length === 0)
     return (
       <p className="py-8 text-center font-medium text-fg-muted text-sm">
         No open questions were extracted.
       </p>
     );
-  }
 
   return (
     <motion.div
@@ -601,22 +587,17 @@ function ImportantPointsTab({ points }: { points: ImportantPoint[] }) {
 
   const grouped = useMemo(() => {
     const map = new Map<ImportantPointCategory, ImportantPoint[]>();
-    for (const cat of ORDER) {
-      map.set(cat, []);
-    }
-    for (const p of safePoints) {
-      map.get(p.category)?.push(p);
-    }
+    for (const cat of ORDER) map.set(cat, []);
+    for (const p of safePoints) map.get(p.category)?.push(p);
     return map;
   }, [safePoints]);
 
-  if (safePoints.length === 0) {
+  if (safePoints.length === 0)
     return (
       <p className="py-8 text-center font-medium text-fg-muted text-sm">
         No highlights were extracted.
       </p>
     );
-  }
 
   return (
     <motion.div
@@ -627,9 +608,7 @@ function ImportantPointsTab({ points }: { points: ImportantPoint[] }) {
     >
       {ORDER.map((cat) => {
         const items = grouped.get(cat) ?? [];
-        if (items.length === 0) {
-          return null;
-        }
+        if (items.length === 0) return null;
         return (
           <motion.section key={cat} variants={itemVariants}>
             <div className="mb-4 flex items-center gap-3 border-border/50 border-b pb-2">
@@ -672,13 +651,12 @@ function BriefTab({
 }: {
   analysis: MeetingAnalysis | null | undefined;
 }) {
-  if (!analysis) {
+  if (!analysis)
     return (
       <p className="py-8 text-center font-medium text-fg-muted text-sm">
         No brief available.
       </p>
     );
-  }
 
   const TONE_CLASSES: Record<string, string> = {
     POSITIVE:
@@ -803,16 +781,13 @@ function NotesTab({ meetingId }: { meetingId: string }) {
     }
   }, [meetingId]);
 
-  if (notes === null) {
-    return <SkeletonRows count={1} />;
-  }
-  if (!notes.trim()) {
+  if (notes === null) return <SkeletonRows count={1} />;
+  if (!notes.trim())
     return (
       <p className="py-8 text-center font-medium text-fg-muted text-sm">
         No personal notes were taken.
       </p>
     );
-  }
 
   return (
     <motion.div
@@ -857,7 +832,8 @@ interface Tab {
   count?: number;
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: main review page coordinating multiple tabs
+// ── Main Page ────────────────────────────────────────────────────────────────
+
 export function MeetingPostPage() {
   const { meetingId = "" } = useParams<{ meetingId: string }>();
   const navigate = useNavigate();
@@ -918,9 +894,7 @@ export function MeetingPostPage() {
     },
   ];
 
-  const handleReprocessSuccess = useCallback(() => {
-    // No-op for reprocess success callback
-  }, []);
+  const handleReprocessSuccess = useCallback(() => {}, []);
 
   return (
     <div className="absolute inset-0 flex flex-col overflow-hidden bg-bg text-fg">

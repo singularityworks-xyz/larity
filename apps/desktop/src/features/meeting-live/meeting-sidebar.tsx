@@ -1,3 +1,4 @@
+import { listen } from "@tauri-apps/api/event";
 import { ChevronDown, Crown, GitBranch, Pencil, UserCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cx, inputClass } from "../../lib/ui";
@@ -142,6 +143,33 @@ export function MeetingSidebar({
       // localStorage may be unavailable
     }
   }, [storageKey]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    listen<{
+      sessionId: string;
+      deepgramIndex: string;
+      clientMemberId: string;
+    }>("overlay:speaker-mapped", (evt) => {
+      const {
+        sessionId: evtSessionId,
+        deepgramIndex,
+        clientMemberId,
+      } = evt.payload;
+      if (evtSessionId !== sessionId) {
+        return;
+      }
+      const member = members.find((m) => m.id === clientMemberId);
+      if (member) {
+        setOverrides((prev) => ({ ...prev, [deepgramIndex]: member.name }));
+      }
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      unlisten?.();
+    };
+  }, [sessionId, members]);
 
   const dirty = notes !== notesSavedVersion;
 

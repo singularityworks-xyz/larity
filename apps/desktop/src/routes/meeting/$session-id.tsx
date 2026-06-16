@@ -186,7 +186,7 @@ export function MeetingPage() {
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
   const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
   const [alertsMuted, setAlertsMuted] = useState(false);
-  const [rememberBanner, setRememberBanner] = useState<string | null>(null);
+  // const [rememberBanner, setRememberBanner] = useState<string | null>(null);
   const [constraintCount, setConstraintCount] = useState(0);
   const [ambientTopic, setAmbientTopic] = useState<string | null>(null);
   const [isStreamActive, setIsStreamActive] = useState(true);
@@ -883,12 +883,12 @@ export function MeetingPage() {
     state.websocketUrl,
   ]);
 
-  function handleRememberThis() {
-    setRememberBanner(
-      "Marked this moment — last ~30s will be structured when capture pipeline runs."
-    );
-    window.setTimeout(() => setRememberBanner(null), 8000);
-  }
+  // function handleRememberThis() {
+  //   setRememberBanner(
+  //     "Marked this moment — last ~30s will be structured when capture pipeline runs."
+  //   );
+  //   window.setTimeout(() => setRememberBanner(null), 8000);
+  // }
 
   async function handleToggleNameCustomization() {
     const next = !allowNameCustomization;
@@ -940,11 +940,12 @@ export function MeetingPage() {
           });
         }}
         onMuteAlertsToggle={() => setAlertsMuted((previous) => !previous)}
-        onRememberThis={handleRememberThis}
+        // onRememberThis={handleRememberThis}
         onToggleNameCustomization={handleToggleNameCustomization}
         startedAtMs={meetingStartedAtMs}
       />
 
+      {/* 
       {rememberBanner ? (
         <div
           aria-live="polite"
@@ -953,6 +954,7 @@ export function MeetingPage() {
           {rememberBanner}
         </div>
       ) : null}
+      */}
 
       {warning ? (
         <div
