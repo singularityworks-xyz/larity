@@ -30,7 +30,7 @@ export interface JoinSessionResponse {
   success: boolean;
   sessionId: string;
   meetingId: string;
-  role: "participant";
+  role: "host" | "participant";
   websocketUrl: string;
   joinedAt: number;
   allowNameCustomization: boolean;
