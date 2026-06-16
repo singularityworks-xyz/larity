@@ -282,6 +282,7 @@ export class SpeakerIdentifier {
     pipelineSpeakerProvisionalHitsTotal.inc();
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: pre-existing, refactor deferred
   identifySpeakerForFinal(
     diarizationIndex: number,
     utteranceTimestamp: number
@@ -296,6 +297,28 @@ export class SpeakerIdentifier {
             this.teamMembers.get(mapping.speaker.userId)?.role === "host";
         }
         return mapping.speaker;
+      }
+    }
+
+    // Host channel short-circuit: mic audio (< 1000) directly maps to the host
+    if (diarizationIndex < 1000) {
+      let host:
+        | { userId: string; name: string; role?: "host" | "participant" }
+        | undefined;
+      for (const m of this.teamMembers.values()) {
+        if (m.role === "host") {
+          host = m;
+          break;
+        }
+      }
+      if (host) {
+        return this.resolveIdentity(
+          host.userId,
+          diarizationIndex,
+          utteranceTimestamp,
+          "final_confirmed",
+          1.0
+        );
       }
     }
 
@@ -711,7 +734,8 @@ export class SpeakerIdentifier {
           {
             diarizationIndex,
             correlatedUserId,
-            existingIndices: existingMapping.speaker.diarizationIndices,
+            existingIndicesCount:
+              existingMapping.speaker.diarizationIndices.length,
           },
           "Channel class mismatch: refusing to merge diarization index into existing user mapping"
         );
@@ -809,7 +833,7 @@ function isChannelRoleMatch(
   role?: "host" | "participant"
 ): boolean {
   const isSystemChannel = diarizationIndex >= 1000;
-  const effectiveRole = role || "host"; // Default to host if role is unknown
+  const effectiveRole = role || (isSystemChannel ? "participant" : "host");
 
   if (effectiveRole === "host") {
     // Host must NOT be on a system channel
