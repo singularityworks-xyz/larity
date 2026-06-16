@@ -280,10 +280,21 @@ function shouldStopAtTier2(classification: Tier2Classification): boolean {
 }
 
 function parseTier2Response(raw: string): unknown {
-  const trimmed = raw.trim();
+  let trimmed = raw.trim();
   if (!trimmed) {
     throw new Error("Tier2 returned empty response");
   }
+
+  // Strip markdown formatting if SambaNova wraps the JSON
+  if (trimmed.startsWith("```json")) {
+    trimmed = trimmed.substring(7);
+  } else if (trimmed.startsWith("```")) {
+    trimmed = trimmed.substring(3);
+  }
+  if (trimmed.endsWith("```")) {
+    trimmed = trimmed.substring(0, trimmed.length - 3);
+  }
+  trimmed = trimmed.trim();
 
   return JSON.parse(trimmed);
 }
