@@ -36,11 +36,11 @@ function renderContent(commitments: OpenCommitmentItem[], loading: boolean) {
       {commitments.map((c) => (
         <li key={c.id}>
           <div className="flex items-center gap-3 rounded-lg px-1.5 py-1.5">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning-fg" />
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
             <span className="min-w-0 truncate font-medium text-[12.5px] text-fg leading-snug">
               {c.content}
             </span>
-            <span className="ml-auto shrink-0 rounded-[5px] border border-border-subtle bg-bg-subtle px-1.5 py-px font-medium text-[10px] text-fg-muted leading-snug">
+            <span className="ml-auto shrink-0 rounded-full border border-border bg-bg-overlay px-2 py-0.5 font-medium text-[10px] text-fg-muted leading-snug">
               {c.client.name}
             </span>
           </div>
@@ -57,7 +57,7 @@ export function OpenCommitments({
   return (
     <div className={panelClass}>
       <div className="mb-2.5 flex items-center justify-between">
-        <p className="font-medium text-[11px] text-fg-muted uppercase leading-none tracking-[0.06em]">
+        <p className="font-medium text-[11px] text-text-tertiary uppercase leading-none tracking-[0.06em]">
           Open Commitments
         </p>
         {!loading && commitments.length > 0 ? (

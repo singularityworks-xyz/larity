@@ -17,6 +17,7 @@
   "dependencies": {
     "@fontsource/geist-mono": "^5.2.7",
     "@fontsource/geist-sans": "^5.2.5",
+    "@fontsource/manrope": "^5.2.8",
     "@fontsource/share-tech-mono": "^5.2.7",
     "@larity/infra": "workspace:*",
     "@tanstack/react-query": "^5.90.3",

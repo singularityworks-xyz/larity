@@ -934,7 +934,7 @@ export class MeetingPipelineEngine {
       knownClientMembers,
     };
 
-    const tier2 = await this.tier2.classify(input);
+    const tier2 = await this.tier2.classify(input, sessionId);
 
     // Record Tier2 cost
     if (

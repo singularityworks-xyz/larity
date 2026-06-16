@@ -58,10 +58,35 @@ export const AIBriefGeneratorService = {
             where: { clientId, status: "ENDED" },
             orderBy: { endedAt: "desc" },
             take: 10,
-            select: { title: true, startedAt: true, summary: true },
+            select: {
+              title: true,
+              startedAt: true,
+              summary: true,
+              transcript: {
+                select: {
+                  content: true,
+                  wordCount: true,
+                },
+              },
+            },
           })
           .then((meetings) =>
-            meetings.filter((m) => m.summary != null).slice(0, 3)
+            meetings
+              .filter((m) => {
+                if (m.summary == null || m.transcript == null) {
+                  return false;
+                }
+                if (m.transcript.wordCount !== null) {
+                  return m.transcript.wordCount > 0;
+                }
+                try {
+                  const utterances = JSON.parse(m.transcript.content);
+                  return Array.isArray(utterances) && utterances.length > 0;
+                } catch {
+                  return false;
+                }
+              })
+              .slice(0, 3)
           ),
         prisma.task.findMany({
           where: { clientId, status: "OPEN" },

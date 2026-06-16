@@ -11,8 +11,8 @@ function HeartbeatDot() {
       aria-label="Audio processing active"
       className="relative inline-flex h-[7px] w-[7px] shrink-0 items-center justify-center"
     >
-      <span className="absolute inline-block h-full w-full animate-[speak-ring_2.2s_ease-out_infinite] rounded-full bg-[hsl(var(--grad-hue,252)_70%_55%)/0.45]" />
-      <span className="relative inline-block h-[7px] w-[7px] rounded-full bg-[hsl(var(--grad-hue,252)_70%_60%)]" />
+      <span className="absolute inline-block h-full w-full animate-ping rounded-full bg-accent opacity-[0.45]" />
+      <span className="relative inline-block h-[7px] w-[7px] rounded-full bg-accent" />
     </output>
   );
 }
@@ -85,7 +85,7 @@ function SpeakerIndicator({ speaker }: { speaker: OverlaySpeaker | null }) {
     <span className="inline-flex items-center gap-[6px]">
       <span
         aria-hidden="true"
-        className="inline-block h-[5px] w-[5px] shrink-0 rounded-[1px] bg-[hsl(var(--grad-hue,252)_70%_60%)]"
+        className="inline-block h-[5px] w-[5px] shrink-0 rounded-[1px] bg-accent"
       />
       <span className="truncate font-medium text-[11px] text-fg">
         {speaker.name}
@@ -109,7 +109,7 @@ function TeammateAvatars({ teammates }: { teammates: OverlayTeammate[] }) {
     <span className="inline-flex items-center -space-x-1">
       {visible.map((t) => (
         <span
-          className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border-[#0E0E0E] border-[1.5px] bg-bg-subtle font-semibold text-[8px] text-fg-muted"
+          className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border-[1.5px] border-bg bg-bg-subtle font-semibold text-[8px] text-fg-muted"
           key={t.id}
           title={t.name}
         >
@@ -117,7 +117,7 @@ function TeammateAvatars({ teammates }: { teammates: OverlayTeammate[] }) {
         </span>
       ))}
       {overflow > 0 ? (
-        <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border-[#0E0E0E] border-[1.5px] bg-bg-emphasis font-medium text-[8px] text-fg-subtle">
+        <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-[4px] border-[1.5px] border-bg bg-bg-emphasis font-medium text-[8px] text-fg-subtle">
           +{overflow}
         </span>
       ) : null}
@@ -131,6 +131,8 @@ interface AmbientStripProps {
   currentSpeaker: OverlaySpeaker | null;
   connectedTeammates: OverlayTeammate[];
   isMicActive: boolean;
+  isVisuallySpeaking: boolean;
+  micAmplitude?: number;
 }
 
 export function AmbientStrip({
@@ -138,7 +140,9 @@ export function AmbientStrip({
   constraintCount,
   currentSpeaker,
   connectedTeammates,
-  isMicActive,
+  isMicActive: _isMicActive,
+  isVisuallySpeaking,
+  micAmplitude = 0,
 }: AmbientStripProps) {
   return (
     <div className="relative flex w-full flex-col gap-2.5 px-3.5 pt-3 pb-2.5">
@@ -149,7 +153,10 @@ export function AmbientStrip({
         <TeammateAvatars teammates={connectedTeammates} />
       </div>
       <div className="flex w-full min-w-0 items-center gap-2.5">
-        <VoiceDotMatrix isSpeaking={isMicActive} />
+        <VoiceDotMatrix
+          amplitude={micAmplitude}
+          isSpeaking={isVisuallySpeaking}
+        />
         <SpeakerIndicator speaker={currentSpeaker} />
       </div>
       {/* Bottom separator — gradient mask instead of border */}
@@ -157,7 +164,7 @@ export function AmbientStrip({
         className="absolute right-0 bottom-0 left-0 h-[1px]"
         style={{
           background:
-            "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 20%, rgba(255,255,255,0.06) 80%, transparent 100%)",
+            "linear-gradient(90deg, transparent 0%, var(--border-subtle) 20%, var(--border-subtle) 80%, transparent 100%)",
         }}
       />
     </div>

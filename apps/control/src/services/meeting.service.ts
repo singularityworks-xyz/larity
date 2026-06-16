@@ -23,6 +23,23 @@ export class ForbiddenError extends Error {
   }
 }
 
+function hasValidTranscript(
+  transcript: { content: string; wordCount: number | null } | null | undefined
+): boolean {
+  if (!transcript) {
+    return false;
+  }
+  if (transcript.wordCount !== null && transcript.wordCount !== undefined) {
+    return transcript.wordCount > 0;
+  }
+  try {
+    const utterances = JSON.parse(transcript.content);
+    return Array.isArray(utterances) && utterances.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export const MeetingService = {
   create(data: CreateMeetingInput) {
     return prisma.meeting.create({
@@ -336,6 +353,24 @@ export const MeetingService = {
       overall = "queued";
     }
 
+    let errorReason: "NO_TRANSCRIPT" | null = null;
+    if (transcribeStatus === "failed" || summaryStatus === "failed") {
+      const meeting = await prisma.meeting.findUnique({
+        where: { id: meetingId },
+        select: {
+          transcript: {
+            select: {
+              content: true,
+              wordCount: true,
+            },
+          },
+        },
+      });
+      if (!hasValidTranscript(meeting?.transcript)) {
+        errorReason = "NO_TRANSCRIPT";
+      }
+    }
+
     return {
       meetingId,
       sessionId,
@@ -344,17 +379,19 @@ export const MeetingService = {
         summary: summaryStatus,
       },
       overall,
+      errorReason,
     };
   },
 
   getDbSessionStatus(meeting: {
     id: string;
     status: string;
-    transcript: unknown;
+    transcript: { content: string; wordCount: number | null } | null;
     summary: string | null;
   }) {
     if (meeting.status === "ENDED") {
-      const transcribeStatus = meeting.transcript ? "done" : "failed";
+      const hasTranscript = hasValidTranscript(meeting.transcript);
+      const transcribeStatus = hasTranscript ? "done" : "failed";
       const summaryStatus = meeting.summary ? "done" : "failed";
       const overall =
         transcribeStatus === "done" && summaryStatus === "done"
@@ -369,6 +406,7 @@ export const MeetingService = {
           summary: summaryStatus,
         },
         overall,
+        errorReason: hasTranscript ? null : "NO_TRANSCRIPT",
       };
     }
 
@@ -380,6 +418,7 @@ export const MeetingService = {
         summary: "queued",
       },
       overall: "queued",
+      errorReason: null,
     };
   },
 
@@ -400,6 +439,8 @@ export const MeetingService = {
 
     let sessionId = await redis.get(redisKeys.meetingToSession(meetingId));
 
+    const hasTranscript = hasValidTranscript(meeting.transcript);
+
     if (!sessionId && meeting.transcript) {
       try {
         const utterances = JSON.parse(meeting.transcript.content);
@@ -419,6 +460,11 @@ export const MeetingService = {
     }
 
     if (!sessionId) {
+      if (!hasTranscript) {
+        throw new Error(
+          "Cannot reprocess meeting because transcripts are not available. This usually happens when the meeting did not have any transcription/audio (e.g. it was an accidental meeting)."
+        );
+      }
       throw new Error("Could not resolve session ID for meeting");
     }
 
@@ -467,10 +513,19 @@ export const MeetingService = {
   },
 
   async confirmSpeakerMapping(
-    meetingId: string,
+    meetingIdOrSessionId: string,
     deepgramIndex: string,
     clientMemberId: string
   ) {
+    let meetingId = meetingIdOrSessionId;
+    const mappedMeetingId = await redis.hget(
+      redisKeys.meetingSession(meetingIdOrSessionId),
+      "meetingId"
+    );
+    if (mappedMeetingId) {
+      meetingId = mappedMeetingId;
+    }
+
     const meeting = await prisma.meeting.findUnique({
       where: { id: meetingId },
       select: {

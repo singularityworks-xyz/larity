@@ -502,7 +502,7 @@ export const meetingSessionService = {
     success: boolean;
     sessionId: string;
     meetingId: string;
-    role: "participant";
+    role: "host" | "participant";
     websocketUrl: string;
     joinedAt: number;
     allowNameCustomization: boolean;
@@ -549,6 +549,10 @@ export const meetingSessionService = {
       );
     }
 
+    const isHost = sessionData.userId === userId;
+    const resolvedRole = isHost ? "HOST" : "PARTICIPANT";
+    const responseRole = isHost ? "host" : "participant";
+
     await prisma.meetingParticipant.upsert({
       where: {
         meetingId_userId: {
@@ -557,13 +561,13 @@ export const meetingSessionService = {
         },
       },
       update: {
-        role: "PARTICIPANT",
+        role: resolvedRole,
         attendedAt: new Date(),
       },
       create: {
         meetingId,
         userId,
-        role: "PARTICIPANT",
+        role: resolvedRole,
         attendedAt: new Date(),
       },
     });
@@ -579,13 +583,13 @@ export const meetingSessionService = {
     const allowNameCustomization = configData !== "false";
 
     // 5. Return connection details
-    const websocketUrl = `${REALTIME_WS_URL}?sessionId=${sessionId}&userId=${userId}&role=participant`;
+    const websocketUrl = `${REALTIME_WS_URL}?sessionId=${sessionId}&userId=${userId}&role=${responseRole}`;
 
     return {
       success: true,
       sessionId,
       meetingId,
-      role: "participant",
+      role: responseRole,
       websocketUrl,
       joinedAt: Date.now(),
       allowNameCustomization,

@@ -6,7 +6,7 @@
  * Handles transcript events and publishes to Redis.
  */
 
-import { redis } from "@larity/infra/redis";
+import { publishSystemEvent, redis } from "@larity/infra/redis";
 import { partialChannel, transcriptChannel } from "../channels";
 import { createSttLogger } from "../logger";
 import type { SttResult } from "../types";
@@ -488,6 +488,13 @@ export class DeepgramConnection {
 
     if (this.retryCount >= this.maxRetries) {
       log.error(`Max retries exceeded for ${this.sessionId}`);
+      publishSystemEvent(this.sessionId, {
+        source: "deepgram",
+        severity: "error",
+        code: "DEEPGRAM_OFFLINE",
+        message:
+          "Speech-to-Text connection failed. Live transcription is offline.",
+      }).catch(() => undefined);
       return;
     }
 
@@ -497,6 +504,13 @@ export class DeepgramConnection {
     log.info(
       `Reconnecting ${this.sessionId} in ${delay}ms (attempt ${this.retryCount})`
     );
+
+    publishSystemEvent(this.sessionId, {
+      source: "deepgram",
+      severity: "warning",
+      code: "DEEPGRAM_RECONNECTING",
+      message: `Speech-to-Text disconnected. Reconnecting... (attempt ${this.retryCount}/${this.maxRetries})`,
+    }).catch(() => undefined);
 
     await sleep(delay);
     await this.connect();

@@ -1,7 +1,8 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X } from "lucide-react";
+import { Minus, Moon, Square, Sun, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cx } from "../lib/ui";
+import { useTheme } from "./theme-provider";
 
 async function minimize() {
   try {
@@ -35,7 +36,9 @@ async function close() {
 
 export function TitleBar({ children }: { children?: ReactNode }) {
   const titleBarButtonClass =
-    "flex h-full w-[46px] cursor-pointer items-center justify-center rounded-none border-0 bg-transparent p-0 text-[rgba(161,161,161,0.55)] transition-colors duration-[140ms] ease-in [-webkit-app-region:no-drag] [app-region:no-drag] hover:bg-white/6 hover:text-[rgba(237,237,237,0.9)] active:bg-white/4";
+    "flex h-full w-[46px] cursor-pointer items-center justify-center rounded-none border-0 bg-transparent p-0 text-neutral-700 dark:text-neutral-400 transition-colors duration-[140ms] ease-in [-webkit-app-region:no-drag] [app-region:no-drag] hover:bg-black/5 hover:text-neutral-900 dark:hover:bg-white/6 dark:hover:text-neutral-100 active:bg-black/4 dark:active:bg-white/4";
+
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <header
@@ -43,13 +46,25 @@ export function TitleBar({ children }: { children?: ReactNode }) {
       data-tauri-drag-region
     >
       <div className="flex flex-1 items-center gap-3" data-tauri-drag-region>
-        <span className="font-['Share_Tech_Mono','Courier_New',monospace] font-normal text-[11px] text-[rgba(161,161,161,0.5)] tracking-[0.22em]">
+        <span className="font-['Share_Tech_Mono','Courier_New',monospace] font-normal text-neutral-700 text-xs tracking-[0.22em] dark:text-neutral-400">
           LARITY
         </span>
         {children}
       </div>
 
       <div className="flex h-full items-stretch">
+        <button
+          aria-label="Toggle Theme"
+          className={titleBarButtonClass}
+          onClick={toggleTheme}
+          type="button"
+        >
+          {theme === "dark" ? (
+            <Sun size={11} strokeWidth={1.5} />
+          ) : (
+            <Moon size={11} strokeWidth={1.5} />
+          )}
+        </button>
         <button
           aria-label="Minimize"
           className={titleBarButtonClass}

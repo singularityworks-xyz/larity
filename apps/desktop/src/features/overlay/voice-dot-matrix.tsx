@@ -44,6 +44,8 @@ const DOTS: Dot[] = Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
 interface VoiceDotMatrixProps {
   /** Whether the user is currently speaking — drives the animation. */
   isSpeaking: boolean;
+  /** Current voice intensity (0 to 1). */
+  amplitude?: number;
   /** Accessible label for the indicator. */
   label?: string;
 }
@@ -52,7 +54,11 @@ interface VoiceDotMatrixProps {
  * A 5×5 dot matrix that idles at near-invisible opacity and shifts to
  * a rippling hue effect while the user is speaking.
  */
-export function VoiceDotMatrix({ isSpeaking, label }: VoiceDotMatrixProps) {
+export function VoiceDotMatrix({
+  isSpeaking,
+  amplitude = 0,
+  label,
+}: VoiceDotMatrixProps) {
   const ariaLabel =
     label ?? (isSpeaking ? "You are speaking" : "Microphone silent");
 
@@ -64,7 +70,15 @@ export function VoiceDotMatrix({ isSpeaking, label }: VoiceDotMatrixProps) {
     >
       <svg
         aria-hidden="true"
-        style={{ width: 28, height: 28, overflow: "visible" }}
+        style={{
+          width: 28,
+          height: 28,
+          overflow: "visible",
+          transform: isSpeaking
+            ? `scale(${1 + Math.min(0.2, amplitude * 0.5)})`
+            : "scale(1)",
+          transition: "transform 75ms ease-out",
+        }}
         viewBox="0 0 28 28"
         xmlns="http://www.w3.org/2000/svg"
       >
@@ -90,9 +104,9 @@ export function VoiceDotMatrix({ isSpeaking, label }: VoiceDotMatrixProps) {
         {/* Active layer: continuously animating dots, revealed when speaking */}
         <g
           style={{
-            color: "hsl(var(--grad-hue, 252) 80% 70%)",
-            opacity: isSpeaking ? 1 : 0,
-            transition: "opacity 200ms ease-out, color 300ms ease-out",
+            color: "var(--accent)",
+            opacity: isSpeaking ? Math.min(1, 0.3 + amplitude * 4) : 0,
+            transition: "opacity 75ms ease-out, color 300ms ease-out",
           }}
         >
           {DOTS.map((dot) => (

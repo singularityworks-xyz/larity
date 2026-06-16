@@ -141,7 +141,7 @@ export class SpeculativeProcessor {
       structuralPricingCue: textMatchesTier1PricingPath(partial.text),
     };
 
-    const tier2Outcome = await this.tier2.classify(input);
+    const tier2Outcome = await this.tier2.classify(input, partial.sessionId);
 
     if (
       this.costManager &&

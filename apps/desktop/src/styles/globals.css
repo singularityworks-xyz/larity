@@ -1,91 +1,118 @@
 @import "tailwindcss";
-
 @import "@fontsource/geist-sans/latin-400.css";
 @import "@fontsource/geist-sans/latin-500.css";
 @import "@fontsource/geist-sans/latin-600.css";
+@import "@fontsource/manrope/latin-400.css";
+@import "@fontsource/manrope/latin-500.css";
+@import "@fontsource/manrope/latin-600.css";
+@import "@fontsource/manrope/latin-700.css";
+@import "@fontsource/manrope/latin-800.css";
 @import "@fontsource/geist-mono/latin-400.css";
 @import "@fontsource/geist-mono/latin-500.css";
 @import "@fontsource/share-tech-mono/latin-400.css";
 @import "./meeting-mode.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-bg: var(--bg);
   --color-bg-elevated: var(--bg-elevated);
-  --color-bg-elevated-a: var(--bg-elevated-a);
-  --color-bg-subtle: var(--bg-subtle);
-  --color-bg-emphasis: var(--bg-emphasis);
-  --color-surface-overlay: var(--surface-overlay);
+  --color-bg-overlay: var(--bg-overlay);
 
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
-  --color-border-subtle: var(--border-subtle);
 
-  --color-fg: var(--fg);
-  --color-fg-muted: var(--fg-muted);
-  --color-fg-subtle: var(--fg-subtle);
-  --color-fg-on-accent: var(--fg-on-accent);
+  --color-fg: var(--text-primary);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
 
   --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-pressed: var(--accent-pressed);
-  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-muted: var(--accent-muted);
   --color-accent-fg: var(--accent-fg);
 
-  --color-success-fg: var(--success-fg);
-  --color-success-bg: var(--success-bg);
-  --color-warning-fg: var(--warning-fg);
-  --color-warning-bg: var(--warning-bg);
-  --color-danger-fg: var(--danger-fg);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-success: var(--success);
+
   --color-danger-bg: var(--danger-bg);
-  --color-info-fg: var(--info-fg);
+  --color-warning-bg: var(--warning-bg);
   --color-info-bg: var(--info-bg);
+  --color-success-bg: var(--success-bg);
 
-  --font-sans: "Geist Sans", "Inter", system-ui, sans-serif;
-  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: "Geist", "Inter Tight", "Inter", system-ui, sans-serif;
+  --font-heading: "Manrope", "Inter Tight", "Inter", system-ui, sans-serif;
+  --font-body: "Geist", "Inter Tight", "Inter", system-ui, sans-serif;
+  --font-mono:
+    "Geist Mono", "JetBrains Mono", "Berkeley Mono", ui-monospace, monospace;
 
-  --radius-none: 0px;
-  --radius-0: var(--radius-0);
-  --radius-1: var(--radius-1);
+  --radius-panel: 8px;
+  --radius-button: 6px;
+  --radius-pill: 9999px;
+  --radius-sharp: 2px;
 }
 
 @layer base {
   :root {
-    --bg: #000000;
-    --bg-elevated: #0a0a0a;
-    --bg-elevated-a: #0a0a0a1a;
-    --bg-subtle: #111111;
-    --bg-emphasis: #171717;
-    --surface-overlay: #0e0e0ee6;
+    /* Light Theme - Paper & Signal */
+    --bg: #fafaf8;
+    --bg-elevated: #ffffff;
+    --bg-overlay: #f0f0ee;
 
-    --border: #262626;
-    --border-strong: #3a3a3a;
-    --border-subtle: #1a1a1a;
+    --border: rgba(15, 15, 15, 0.08);
+    --border-strong: rgba(15, 15, 15, 0.14);
 
-    --fg: #ededed;
-    --fg-muted: #a1a1a1;
-    --fg-subtle: #6b6b6b;
-    --fg-on-accent: #0a0a0a;
+    --text-primary: #1a1b1d;
+    --text-secondary: #6b6e73;
+    --text-tertiary: #a0a3a8;
 
-    --accent: #ffffff;
-    --accent-hover: #e0e0e0;
-    --accent-pressed: #c0c0c0;
-    --accent-subtle: #ffffff1a;
-    --accent-fg: #000000;
+    --accent: #7a9e1e;
+    --accent-muted: rgba(122, 158, 30, 0.1);
+    --accent-fg: #ffffff;
 
-    --success-fg: #3fb950;
-    --success-bg: #3fb9501a;
-    --warning-fg: #d29922;
-    --warning-bg: #d299221a;
-    --danger-fg: #f85149;
-    --danger-bg: #f851491a;
-    --info-fg: #58a6ff;
-    --info-bg: #58a6ff1a;
+    --danger: #c2493d;
+    --warning: #b8893a;
+    --info: #5a7e96;
+    --success: #6d9261;
 
-    --radius-0: 12px;
-    --radius-1: 8px;
+    --danger-bg: rgba(194, 73, 61, 0.08);
+    --warning-bg: rgba(184, 137, 58, 0.08);
+    --info-bg: rgba(90, 126, 150, 0.08);
+    --success-bg: rgba(109, 146, 97, 0.08);
 
     --ring: var(--accent);
+    color-scheme: light;
+  }
 
+  .dark {
+    /* Dark Theme - Graphite & Signal */
+    --bg: #0b0c0e;
+    --bg-elevated: #141517;
+    --bg-overlay: #1c1e21;
+
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
+
+    --text-primary: #f2f2f0;
+    --text-secondary: #9a9da3;
+    --text-tertiary: #6b6e73;
+
+    --accent: #a8d62e;
+    --accent-muted: rgba(168, 214, 46, 0.12);
+    --accent-fg: #1a2406;
+
+    --danger: #d9665a;
+    --warning: #d4a853;
+    --info: #7c9cb3;
+    --success: #8fae82;
+
+    --danger-bg: rgba(217, 102, 90, 0.1);
+    --warning-bg: rgba(212, 168, 83, 0.1);
+    --info-bg: rgba(124, 156, 179, 0.1);
+    --success-bg: rgba(143, 174, 130, 0.1);
+
+    --ring: var(--accent);
     color-scheme: dark;
   }
 
@@ -96,7 +123,7 @@
 
   html {
     background: var(--bg);
-    color: var(--fg);
+    color: var(--text-primary);
     font-family: var(--font-sans);
     font-feature-settings:
       "tnum" 1,
@@ -109,7 +136,7 @@
     margin: 0;
     min-height: 100vh;
     background: var(--bg);
-    color: var(--fg);
+    color: var(--text-primary);
     font-family: inherit;
   }
 
@@ -123,9 +150,7 @@
   :where(textarea):focus-visible,
   :where(select):focus-visible {
     outline: none;
-    box-shadow:
-      0 0 0 1px var(--bg),
-      0 0 0 2px var(--ring);
+    box-shadow: 0 0 0 1px var(--ring);
   }
 
   code,
@@ -139,7 +164,6 @@
     opacity: 0.5;
     transform: scale(0.9);
   }
-
   to {
     opacity: 1;
     transform: scale(1.12);
@@ -151,7 +175,6 @@
     opacity: 0.7;
     transform: scale(1);
   }
-
   to {
     opacity: 1;
     transform: scale(1.04);
@@ -163,7 +186,6 @@
   100% {
     box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.4);
   }
-
   50% {
     box-shadow: 0 0 0 5px rgba(63, 185, 80, 0);
   }
@@ -188,7 +210,6 @@
     opacity: 0;
     transform: translateY(-6px) scale(0.97);
   }
-
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -200,7 +221,6 @@
     opacity: 0;
     transform: translateY(4px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -211,11 +231,9 @@
   0% {
     box-shadow: 0 0 0 0 rgba(210, 153, 34, 0.5);
   }
-
   70% {
     box-shadow: 0 0 0 5px rgba(210, 153, 34, 0);
   }
-
   100% {
     box-shadow: 0 0 0 0 rgba(210, 153, 34, 0);
   }
@@ -225,7 +243,6 @@
   0% {
     background-color: rgba(248, 81, 73, 0.3);
   }
-
   100% {
     background-color: transparent;
   }
@@ -236,7 +253,6 @@
     opacity: 0;
     transform: translateY(-2px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);

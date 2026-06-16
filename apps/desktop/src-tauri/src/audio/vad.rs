@@ -3,10 +3,11 @@ use std::thread;
 use tauri::{AppHandle, Emitter};
 use voice_activity_detector::VoiceActivityDetector;
 
-const THRESHOLD: f32 = 0.5;
-const SPEECH_START_FRAMES: usize = 5;
+const POSITIVE_THRESHOLD: f32 = 0.3;
+const NEGATIVE_THRESHOLD: f32 = 0.15;
+const SPEECH_START_FRAMES: usize = 3;
 const SPEECH_END_HOLDOVER: usize = 10;
-const INPUT_GAIN: f32 = 5.0;
+const INPUT_GAIN: f32 = 1.5;
 const VAD_CHANNEL_CAPACITY: usize = 4;
 
 #[derive(Clone)]
@@ -58,26 +59,38 @@ fn run_vad_loop(
                 .map(|&s| (s as f32 / i16::MAX as f32 * INPUT_GAIN).clamp(-1.0, 1.0))
                 .collect();
 
+            let sum_sq: f32 = f32_window.iter().map(|&x| x * x).sum();
+            let rms = (sum_sq / f32_window.len() as f32).sqrt();
+
             let probability = detector.predict(f32_window);
 
-            if probability >= THRESHOLD {
-                speech_counter += 1;
-                silence_counter = 0;
+            if !is_speaking {
+                if probability >= POSITIVE_THRESHOLD {
+                    speech_counter += 1;
+                } else {
+                    speech_counter = 0;
+                }
+
+                if speech_counter >= SPEECH_START_FRAMES {
+                    is_speaking = true;
+                    silence_counter = 0;
+                    speech_counter = 0;
+                    let _ = app.emit("vad-speech-start", ());
+                }
             } else {
-                speech_counter = 0;
-                silence_counter += 1;
-            }
+                let _ = app.emit("vad-amplitude", rms);
 
-            if speech_counter >= SPEECH_START_FRAMES && !is_speaking {
-                is_speaking = true;
-                silence_counter = 0;
-                let _ = app.emit("vad-speech-start", ());
-            }
+                if probability <= NEGATIVE_THRESHOLD {
+                    silence_counter += 1;
+                } else {
+                    silence_counter = 0;
+                }
 
-            if silence_counter >= SPEECH_END_HOLDOVER && is_speaking {
-                is_speaking = false;
-                speech_counter = 0;
-                let _ = app.emit("vad-speech-end", ());
+                if silence_counter >= SPEECH_END_HOLDOVER {
+                    is_speaking = false;
+                    silence_counter = 0;
+                    let _ = app.emit("vad-speech-end", ());
+                }
             }
         }
     }
@@ -97,8 +110,9 @@ mod tests {
 
     #[test]
     fn test_threshold_range() {
-        assert!(THRESHOLD > 0.0);
-        assert!(THRESHOLD < 1.0);
-        assert!(INPUT_GAIN > 1.0);
+        assert!(POSITIVE_THRESHOLD > 0.0);
+        assert!(POSITIVE_THRESHOLD < 1.0);
+        assert!(NEGATIVE_THRESHOLD < POSITIVE_THRESHOLD);
+        assert!(INPUT_GAIN >= 1.0);
     }
 }

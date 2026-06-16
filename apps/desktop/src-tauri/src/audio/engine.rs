@@ -4,7 +4,7 @@ use crate::audio::mixer::{AudioMixer, MixerMessage, SourceType};
 use crate::audio::VadState;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Sample, Stream};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Emitter};
 use std::sync::Arc;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -117,6 +117,14 @@ pub fn start_capture(
                                 }
                             }
                         }
+                        
+                        // Emit raw amplitude bypassing VAD
+                        let sum_sq: f32 = chunk.iter().map(|&x| {
+                            let f = (x as f32 / i16::MAX as f32 * 5.0).clamp(-1.0, 1.0);
+                            f * f
+                        }).sum();
+                        let rms = (sum_sq / chunk.len() as f32).sqrt();
+                        let _ = app_vad.emit("raw-mic-amplitude", rms);
                         mixer_clone.send(MixerMessage {
                             source: SourceType::Mic,
                             timestamp_ms: ts,
@@ -147,6 +155,14 @@ pub fn start_capture(
                                 }
                             }
                         }
+
+                        // Emit raw amplitude bypassing VAD
+                        let sum_sq: f32 = chunk.iter().map(|&x| {
+                            let f = (x as f32 / i16::MAX as f32 * 5.0).clamp(-1.0, 1.0);
+                            f * f
+                        }).sum();
+                        let rms = (sum_sq / chunk.len() as f32).sqrt();
+                        let _ = app_vad.emit("raw-mic-amplitude", rms);
                         mixer_clone.send(MixerMessage {
                             source: SourceType::Mic,
                             timestamp_ms: ts,

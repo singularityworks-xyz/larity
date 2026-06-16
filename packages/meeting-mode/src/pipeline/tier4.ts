@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { publishSystemEvent } from "@larity/infra/redis";
 import {
   GEMINI_API_KEY,
   GEMINI_TIER4_MODEL,
@@ -224,6 +225,7 @@ export class Tier4DeepReasoner {
    * Returns parsed Tier 4 structured JSON or **null** on timeout / malformed / schema violation.
    * Callers MUST still enforce surfacing thresholds (confidence, shouldSurface).
    */
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: pre-existing, refactor deferred
   async reason(context: Tier4Context): Promise<{
     response: Tier4Response | null;
     promptTokens: number;
@@ -231,6 +233,7 @@ export class Tier4DeepReasoner {
     tokenCount: number;
   }> {
     const prompt = buildTier4Prompt(context);
+    const sessionId = context.utterance.sessionId;
 
     try {
       const raw = await this.invoke(prompt, this.timeoutMs);
@@ -241,6 +244,15 @@ export class Tier4DeepReasoner {
           { issues: validation.error.issues.map((issue) => issue.message) },
           "Tier4 returned invalid schema"
         );
+        if (sessionId) {
+          publishSystemEvent(sessionId, {
+            source: "gemini",
+            severity: "warning",
+            code: "GEMINI_SCHEMA_ERROR",
+            message:
+              "Deep reasoning returned an invalid response format. Falling back safely.",
+          }).catch(() => undefined);
+        }
         return {
           response: null,
           promptTokens: this.lastPromptTokens || 0,
@@ -258,6 +270,18 @@ export class Tier4DeepReasoner {
       };
     } catch (error) {
       log.warn({ err: error }, "Tier4 reasoning failed silently");
+      if (sessionId) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        const isTimeout = errMsg.toLowerCase().includes("timeout");
+        publishSystemEvent(sessionId, {
+          source: "gemini",
+          severity: "warning",
+          code: isTimeout ? "GEMINI_TIMEOUT" : "GEMINI_ERROR",
+          message: isTimeout
+            ? "Deep reasoning request timed out (>1500ms). Falling back safely."
+            : "Deep reasoning engine is offline or overloaded. Falling back safely.",
+        }).catch(() => undefined);
+      }
       return {
         response: null,
         promptTokens: this.lastPromptTokens || 0,

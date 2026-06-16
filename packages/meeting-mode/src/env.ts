@@ -77,15 +77,15 @@ export const SAMBANOVA_TIER2_MODEL =
   process.env.SAMBANOVA_TIER2_MODEL || "gpt-oss-120b";
 
 const tier2TimeoutParsed = Number.parseInt(
-  process.env.SAMBANOVA_TIER2_TIMEOUT_MS || "3000",
+  process.env.SAMBANOVA_TIER2_TIMEOUT_MS || "8000",
   10
 );
 
-/** SambaNova Tier 2 request timeout (`tier2.ts`). Override via `SAMBANOVA_TIER2_TIMEOUT_MS`. Default 3000ms (raised from 1500ms when Tier2 `max_tokens` was increased to 1024). */
+/** SambaNova Tier 2 request timeout (`tier2.ts`). Override via `SAMBANOVA_TIER2_TIMEOUT_MS`. Default 8000ms. */
 export const SAMBANOVA_TIER2_TIMEOUT_MS =
   Number.isFinite(tier2TimeoutParsed) && tier2TimeoutParsed > 0
     ? tier2TimeoutParsed
-    : 3000;
+    : 8000;
 
 export const GEMINI_TIER4_MODEL =
   process.env.GEMINI_TIER4_MODEL || "gemini-3.1-flash-lite";
