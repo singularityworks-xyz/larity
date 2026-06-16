@@ -36,7 +36,7 @@ async function close() {
 
 export function TitleBar({ children }: { children?: ReactNode }) {
   const titleBarButtonClass =
-    "flex h-full w-[46px] cursor-pointer items-center justify-center rounded-none border-0 bg-transparent p-0 text-[rgba(161,161,161,0.55)] transition-colors duration-[140ms] ease-in [-webkit-app-region:no-drag] [app-region:no-drag] hover:bg-white/6 hover:text-[rgba(237,237,237,0.9)] active:bg-white/4";
+    "flex h-full w-[46px] cursor-pointer items-center justify-center rounded-none border-0 bg-transparent p-0 text-neutral-700 dark:text-neutral-400 transition-colors duration-[140ms] ease-in [-webkit-app-region:no-drag] [app-region:no-drag] hover:bg-black/5 hover:text-neutral-900 dark:hover:bg-white/6 dark:hover:text-neutral-100 active:bg-black/4 dark:active:bg-white/4";
 
   const { theme, toggleTheme } = useTheme();
 
@@ -46,7 +46,7 @@ export function TitleBar({ children }: { children?: ReactNode }) {
       data-tauri-drag-region
     >
       <div className="flex flex-1 items-center gap-3" data-tauri-drag-region>
-        <span className="font-['Share_Tech_Mono','Courier_New',monospace] font-normal text-[11px] text-[rgba(161,161,161,0.5)] tracking-[0.22em] dark:text-[rgba(161,161,161,0.5)]">
+        <span className="font-['Share_Tech_Mono','Courier_New',monospace] font-normal text-neutral-700 text-xs tracking-[0.22em] dark:text-neutral-400">
           LARITY
         </span>
         {children}
