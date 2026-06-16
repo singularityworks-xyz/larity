@@ -85,6 +85,7 @@ describe("MeetingService reprocessing and status check", () => {
           summary: "processing",
         },
         overall: "processing",
+        errorReason: null,
       });
     });
 
@@ -92,7 +93,11 @@ describe("MeetingService reprocessing and status check", () => {
       mockPrisma.meeting.findUnique.mockResolvedValue({
         id: meetingId,
         status: "ENDED",
-        transcript: { id: "transcript-1" },
+        transcript: {
+          id: "transcript-1",
+          content: JSON.stringify([{ id: "session-123:ch0:0-10" }]),
+          wordCount: 1,
+        },
         summary: null,
       });
       mockRedis.get.mockResolvedValue(null);
@@ -106,6 +111,7 @@ describe("MeetingService reprocessing and status check", () => {
           summary: "failed",
         },
         overall: "failed",
+        errorReason: null,
       });
     });
   });
@@ -182,7 +188,7 @@ describe("MeetingService reprocessing and status check", () => {
       mockRedis.get.mockResolvedValue(null);
 
       await expect(MeetingService.reprocessMeeting(meetingId)).rejects.toThrow(
-        "Could not resolve session ID for meeting"
+        "Cannot reprocess meeting because transcripts are not available. This usually happens when the meeting did not have any transcription/audio (e.g. it was an accidental meeting)."
       );
     });
   });
