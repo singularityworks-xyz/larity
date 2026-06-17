@@ -1,13 +1,11 @@
 import { Footer } from "./components/footer.tsx";
 import { Navbar } from "./components/navbar.tsx";
-import { BentoGrid } from "./sections/bento-grid.tsx";
 import { ContextStrip } from "./sections/context-strip.tsx";
 import { CtaBand } from "./sections/cta-band.tsx";
 import { Faq } from "./sections/faq.tsx";
 import { Hero } from "./sections/hero.tsx";
 import { HowItWorks } from "./sections/how-it-works.tsx";
 import { MemoryDeepDive } from "./sections/memory-deep-dive.tsx";
-import { Spotlight } from "./sections/spotlight.tsx";
 
 export default function App() {
   return (
@@ -19,8 +17,6 @@ export default function App() {
         <div className="h-96 bg-bg" />
         <ContextStrip />
         <HowItWorks />
-        <BentoGrid />
-        <Spotlight />
         <MemoryDeepDive />
         <CtaBand />
         <Faq />
