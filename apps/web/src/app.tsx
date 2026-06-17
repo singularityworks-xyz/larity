@@ -1,3 +1,4 @@
+import { Footer } from "./components/footer.tsx";
 import { Navbar } from "./components/navbar.tsx";
 import { BentoGrid } from "./sections/bento-grid.tsx";
 import { ContextStrip } from "./sections/context-strip.tsx";
@@ -25,14 +26,7 @@ export default function App() {
         <Faq />
       </main>
 
-      <footer className="w-full border-accent/10 border-t bg-bg py-8 text-center text-xs text-zinc-400">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
-          <div>
-            &copy; {new Date().getFullYear()} Larity. All rights reserved.
-          </div>
-          <div>Quietly resolving commitments, in real time.</div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
