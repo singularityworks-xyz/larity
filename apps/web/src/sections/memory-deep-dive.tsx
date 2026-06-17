@@ -3,17 +3,17 @@ import { Clock, Key, Search } from "lucide-react";
 export function MemoryDeepDive() {
   const points = [
     {
-      icon: <Clock className="h-5 w-5 text-[#B0472A]" />,
+      Icon: Clock,
       title: "Versioned Decisions",
       copy: "Every decision stored with: the exact transcript evidence, who said it, what meeting it came from, and full version history if it was revised or overturned.",
     },
     {
-      icon: <Key className="h-5 w-5 text-[#B0472A]" />,
+      Icon: Key,
       title: "Commitment Ledger",
       copy: "Every pricing figure, timeline, scope boundary, and deliverable tracked across meetings. If a client says something contradicts a prior commitment — Larity already knows.",
     },
     {
-      icon: <Search className="h-5 w-5 text-[#B0472A]" />,
+      Icon: Search,
       title: "Searchable by meaning",
       copy: 'Ask "What did we say about the Q3 timeline?" and Larity searches by semantic meaning across your full meeting history — not just keyword matching.',
     },
@@ -65,7 +65,7 @@ export function MemoryDeepDive() {
 
                   <div className="relative z-10 flex items-start gap-5">
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-black/40 ring-1 ring-white/10">
-                      {point.icon}
+                      <point.Icon className="h-5 w-5 text-[#B0472A]" />
                     </div>
                     <div>
                       <h3 className="mb-2 font-display text-2xl text-white">
