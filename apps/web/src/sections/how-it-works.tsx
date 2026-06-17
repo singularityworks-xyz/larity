@@ -50,24 +50,27 @@ export function HowItWorks() {
 
   return (
     <section className="w-full select-none bg-bg py-24" id="how-it-works">
-      <div className="mx-auto max-w-5xl px-6 md:px-8">
+      <div className="mx-auto max-w-6xl px-6 md:px-8">
         <div className="flex flex-col gap-24 md:gap-32">
-          {acts.map((act) => (
-            <div className="flex flex-col gap-6" key={act.num}>
+          {acts.map((act, i) => (
+            <div
+              className={`flex flex-col items-center gap-12 md:flex-row md:gap-16 ${i % 2 !== 0 ? "md:flex-row-reverse" : ""}`}
+              key={act.num}
+            >
               {/* Text block */}
-              <div className="flex flex-col gap-3">
+              <div className="flex w-full flex-col gap-4 md:w-1/2">
                 <span className="font-mono text-[10px] text-accent uppercase tracking-[0.25em]">
                   {act.num} — {act.phase}
                 </span>
                 <h3 className="font-display text-3xl text-zinc-900 leading-tight tracking-tight sm:text-4xl">
                   {act.heading}
                 </h3>
-                <p className="max-w-xl font-light text-zinc-500 leading-relaxed">
+                <p className="font-light text-zinc-500 leading-relaxed">
                   {act.body}
                 </p>
               </div>
               {/* Media */}
-              <div className="overflow-hidden rounded-2xl border border-zinc-100 shadow-sm shadow-zinc-900/5">
+              <div className="w-full overflow-hidden rounded-2xl border border-zinc-100 shadow-sm shadow-zinc-900/5 md:w-1/2">
                 {act.media}
               </div>
             </div>
