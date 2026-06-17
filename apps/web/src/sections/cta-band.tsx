@@ -1,6 +1,6 @@
 export function CtaBand() {
   return (
-    <section className="relative w-full overflow-hidden bg-[#B0472A] py-24 text-white sm:py-32">
+    <section className="relative w-full overflow-hidden bg-accent py-24 text-white sm:py-32">
       {/* Decorative background elements */}
       <div className="absolute top-0 right-0 -mt-20 -mr-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
       <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-80 w-80 rounded-full bg-black/10 blur-3xl" />
