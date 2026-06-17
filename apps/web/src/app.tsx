@@ -1,6 +1,8 @@
 import { Navbar } from "./components/navbar.tsx";
 import { BentoGrid } from "./sections/bento-grid.tsx";
 import { ContextStrip } from "./sections/context-strip.tsx";
+import { CtaBand } from "./sections/cta-band.tsx";
+import { Faq } from "./sections/faq.tsx";
 import { Hero } from "./sections/hero.tsx";
 import { HowItWorks } from "./sections/how-it-works.tsx";
 import { MemoryDeepDive } from "./sections/memory-deep-dive.tsx";
@@ -19,6 +21,8 @@ export default function App() {
         <BentoGrid />
         <Spotlight />
         <MemoryDeepDive />
+        <CtaBand />
+        <Faq />
       </main>
 
       <footer className="w-full border-accent/10 border-t bg-bg py-8 text-center text-xs text-zinc-400">
