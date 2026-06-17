@@ -1,4 +1,8 @@
+import { useState } from "react";
+
 export function Faq() {
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+
   const faqs = [
     {
       q: "Does Larity join my meetings as a bot?",
@@ -28,8 +32,8 @@ export function Faq() {
 
   return (
     <section className="w-full bg-bg py-24 text-zinc-900 sm:py-32" id="faq">
-      <div className="mx-auto max-w-6xl px-6 md:px-8">
-        <div className="mb-16">
+      <div className="mx-auto flex max-w-3xl flex-col items-center px-6 md:px-8">
+        <div className="mb-16 text-center">
           <h2 className="font-display text-4xl tracking-tight sm:text-5xl">
             Frequently Asked Questions
           </h2>
@@ -38,25 +42,65 @@ export function Faq() {
           </p>
         </div>
 
-        <div className="divide-y divide-zinc-900/10 border-zinc-900/10 border-t">
-          {faqs.map((faq, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: Static content list
-            <div
-              className="grid grid-cols-1 gap-4 py-8 md:grid-cols-12 md:gap-8"
-              key={index}
-            >
-              <div className="md:col-span-5">
-                <h3 className="font-display text-xl text-zinc-900 sm:text-2xl">
-                  {faq.q}
-                </h3>
+        <div className="w-full divide-y divide-zinc-900/10 border-zinc-900/10 border-t">
+          {faqs.map((faq, index) => {
+            const isOpen = openIndex === index;
+            return (
+              <div className="group py-6" key={`faq-${index}`}>
+                <button
+                  aria-expanded={isOpen}
+                  className="flex w-full items-center justify-between text-left focus:outline-none"
+                  onClick={() => setOpenIndex(isOpen ? null : index)}
+                  type="button"
+                >
+                  <h3
+                    className={`font-display text-xl transition-colors duration-300 sm:text-2xl ${
+                      isOpen ? "text-[#B0472A]" : "text-zinc-900"
+                    }`}
+                  >
+                    {faq.q}
+                  </h3>
+                  <div
+                    className={`ml-6 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-all duration-500 ${
+                      isOpen
+                        ? "border-[#B0472A]/30 bg-[#B0472A]/5 text-[#B0472A]"
+                        : "border-zinc-200 bg-white text-zinc-400 group-hover:border-zinc-300"
+                    }`}
+                  >
+                    <svg
+                      aria-hidden="true"
+                      className={`h-4 w-4 transition-transform duration-500 ${
+                        isOpen ? "rotate-45" : ""
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M12 5v14m-7-7h14"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                </button>
+                <div
+                  className={`grid transition-all duration-500 ease-in-out ${
+                    isOpen
+                      ? "grid-rows-[1fr] opacity-100"
+                      : "grid-rows-[0fr] opacity-0"
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <p className="pt-4 pr-12 font-light text-base text-zinc-600 leading-relaxed sm:text-lg">
+                      {faq.a}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="md:col-span-7">
-                <p className="font-light text-base text-zinc-600 leading-relaxed sm:text-lg">
-                  {faq.a}
-                </p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
