@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Instrument Serif", serif;
+  --font-body: "Inter Tight", sans-serif;
+
+  --color-accent: #84a62f;
+  --color-bg: #f7f4ea;
+}
