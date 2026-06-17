@@ -1,87 +1,93 @@
-import { Clock, Key, Search } from "lucide-react";
-
 export function MemoryDeepDive() {
-  const points = [
-    {
-      Icon: Clock,
-      title: "Versioned Decisions",
-      copy: "Every decision stored with: the exact transcript evidence, who said it, what meeting it came from, and full version history if it was revised or overturned.",
-    },
-    {
-      Icon: Key,
-      title: "Commitment Ledger",
-      copy: "Every pricing figure, timeline, scope boundary, and deliverable tracked across meetings. If a client says something contradicts a prior commitment — Larity already knows.",
-    },
-    {
-      Icon: Search,
-      title: "Searchable by meaning",
-      copy: 'Ask "What did we say about the Q3 timeline?" and Larity searches by semantic meaning across your full meeting history — not just keyword matching.',
-    },
-  ];
-
   return (
-    <section className="relative w-full overflow-hidden bg-[#161616] py-32 text-zinc-100">
-      {/* Background glow effects */}
-      <div className="pointer-events-none absolute top-0 -left-1/4 h-[800px] w-[800px] rounded-full bg-[#B0472A]/10 blur-[120px]" />
-      <div className="pointer-events-none absolute -right-1/4 bottom-0 h-[600px] w-[600px] rounded-full bg-accent/5 blur-[100px]" />
-
+    <section className="w-full bg-bg py-32 text-zinc-900">
       <div className="mx-auto max-w-6xl px-6">
-        <div className="grid grid-cols-1 gap-16 lg:grid-cols-12 lg:gap-8">
-          {/* Left Column: Context & Copy */}
-          <div className="flex flex-col justify-center lg:col-span-5">
-            <h2 className="font-display text-5xl text-white leading-[1.1] tracking-tight sm:text-6xl">
-              The version of your company that remembers everything.
-            </h2>
-            <div className="mt-8 space-y-6 text-lg text-zinc-400">
-              <p>
-                Most teams run on informal memory. What was decided in March?
-                Who committed to what scope? What was the reason we didn't
-                pursue option B? Nobody knows. The notes are somewhere. The
-                person who was in the room has half the context.
-              </p>
-              <p className="text-zinc-300">
-                Larity builds an organisational memory from your meetings —
-                versioned decisions with evidence, commitments linked to the
-                people who made them, open questions tracked until they're
-                resolved. It answers questions your team didn't think to write
-                down.
-              </p>
+        {/* Minimal Editorial Header */}
+        <div className="mb-24 max-w-3xl">
+          <h2 className="font-display text-5xl text-zinc-900 leading-[1.05] tracking-tight sm:text-7xl">
+            The version of your company that remembers everything.
+          </h2>
+          <p className="mt-8 max-w-xl font-light text-lg text-zinc-600 leading-relaxed">
+            Informal memory fails. Larity builds a structured, evidence-backed
+            organisational memory from your meetings. It answers questions your
+            team didn't think to write down.
+          </p>
+        </div>
+
+        {/* 3-Column Minimal Grid */}
+        <div className="grid grid-cols-1 gap-12 border-zinc-900/10 border-t pt-12 md:grid-cols-3 md:gap-8">
+          {/* Point 1: Versioned Decisions */}
+          <div className="group flex flex-col">
+            {/* Utilitarian Visual */}
+            <div className="mb-8 flex aspect-square w-full items-center justify-center overflow-hidden bg-zinc-100 p-8 transition-colors duration-500 group-hover:bg-zinc-200/50">
+              <div className="relative flex h-full w-full flex-col gap-3">
+                {/* Visual: Version History Tree */}
+                <div className="absolute top-1/2 left-[20%] h-px w-[60%] -translate-y-1/2 bg-zinc-300" />
+                <div className="absolute top-1/4 left-[40%] h-1/4 w-px bg-zinc-300" />
+                <div className="absolute top-[20%] left-[40%] h-2 w-2 -translate-x-1/2 rounded-full bg-zinc-400" />
+                <div className="absolute top-1/2 left-[20%] h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-zinc-400" />
+                <div className="absolute top-1/2 left-[60%] h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-zinc-400 bg-zinc-100" />
+                <div className="absolute top-1/2 left-[80%] h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#B0472A] shadow-[0_0_15px_rgba(176,71,42,0.4)]" />
+              </div>
             </div>
+            <h3 className="mb-3 font-display text-2xl text-zinc-900">
+              Versioned Decisions
+            </h3>
+            <p className="text-sm text-zinc-600 leading-relaxed">
+              Decisions stored with exact transcript evidence, speaker
+              attribution, and full revision history when they evolve.
+            </p>
           </div>
 
-          {/* Right Column: 3 Supporting Points as floating, frosted cards */}
-          <div className="relative lg:col-span-6 lg:col-start-7">
-            <div className="flex flex-col gap-6">
-              {points.map((point, index) => (
-                <div
-                  className="group relative overflow-hidden rounded-3xl border border-white/5 bg-white/5 p-8 backdrop-blur-xl transition-all duration-500 hover:border-white/10 hover:bg-white/10"
-                  key={point.title}
-                  style={{
-                    transform: `translateX(${index % 2 === 1 ? "2rem" : "0"})`,
-                  }}
-                >
-                  {/* Subtle hover gradient */}
-                  <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/5 to-transparent transition-transform duration-1000 group-hover:translate-x-full" />
-
-                  <div className="relative z-10 flex items-start gap-5">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-black/40 ring-1 ring-white/10">
-                      <point.Icon className="h-5 w-5 text-[#B0472A]" />
-                    </div>
-                    <div>
-                      <h3 className="mb-2 font-display text-2xl text-white">
-                        {point.title}
-                      </h3>
-                      <p className="text-base text-zinc-400 leading-relaxed">
-                        {point.copy}
-                      </p>
-                    </div>
-                  </div>
+          {/* Point 2: Commitment Ledger */}
+          <div className="group flex flex-col">
+            {/* Utilitarian Visual */}
+            <div className="mb-8 flex aspect-square w-full items-center justify-center overflow-hidden bg-zinc-100 p-8 transition-colors duration-500 group-hover:bg-zinc-200/50">
+              <div className="flex h-full w-full flex-col justify-center gap-2">
+                {/* Visual: Abstract Ledger */}
+                <div className="h-6 w-full border border-zinc-200 bg-white" />
+                <div className="h-6 w-[85%] border border-zinc-200 bg-white" />
+                <div className="flex h-6 w-[95%] items-center gap-2 border border-[#B0472A]/30 bg-[#B0472A]/5 px-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-[#B0472A]" />
+                  <div className="h-1.5 w-1/3 bg-[#B0472A]/20" />
                 </div>
-              ))}
+                <div className="h-6 w-full border border-zinc-200 bg-white" />
+              </div>
             </div>
+            <h3 className="mb-3 font-display text-2xl text-zinc-900">
+              Commitment Ledger
+            </h3>
+            <p className="text-sm text-zinc-600 leading-relaxed">
+              Pricing, timelines, and scope parameters tracked permanently
+              across all sessions to flag contradictions instantly.
+            </p>
+          </div>
 
-            {/* Decorative connection line down the cards */}
-            <div className="absolute top-10 bottom-10 left-[2.25rem] hidden w-px bg-gradient-to-b from-transparent via-[#B0472A]/30 to-transparent lg:block" />
+          {/* Point 3: Semantic Search */}
+          <div className="group flex flex-col">
+            {/* Utilitarian Visual */}
+            <div className="mb-8 flex aspect-square w-full items-center justify-center overflow-hidden bg-zinc-100 p-8 transition-colors duration-500 group-hover:bg-zinc-200/50">
+              <div className="flex h-full w-full flex-col items-center justify-center gap-4">
+                {/* Visual: Search Input & Semantic Nodes */}
+                <div className="h-8 w-[80%] border-zinc-300 border-b pb-2">
+                  <div className="h-2 w-1/2 bg-zinc-300" />
+                </div>
+                <div className="flex w-[80%] flex-wrap justify-center gap-2">
+                  <div className="h-4 w-12 rounded-full border border-zinc-200 bg-white" />
+                  <div className="h-4 w-16 rounded-full border border-zinc-200 bg-white" />
+                  <div className="h-4 w-10 rounded-full bg-zinc-200" />
+                  <div className="h-4 w-14 rounded-full border border-[#B0472A]/30 bg-[#B0472A]/10" />
+                  <div className="h-4 w-20 rounded-full border border-zinc-200 bg-white" />
+                </div>
+              </div>
+            </div>
+            <h3 className="mb-3 font-display text-2xl text-zinc-900">
+              Semantic Meaning
+            </h3>
+            <p className="text-sm text-zinc-600 leading-relaxed">
+              Search by conceptual meaning across your entire meeting history —
+              not just relying on exact keyword matches.
+            </p>
           </div>
         </div>
       </div>
