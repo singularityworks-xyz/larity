@@ -1,13 +1,14 @@
 export function Footer() {
   return (
-    <footer className="w-full border-zinc-900/10 border-t bg-bg py-12 text-zinc-600 sm:py-16">
-      <div className="mx-auto max-w-6xl px-6 md:px-8">
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-4 md:gap-8">
-          {/* Logo & Tagline */}
-          <div className="flex flex-col items-start md:col-span-2">
+    <footer className="relative w-full overflow-hidden bg-bg pt-16 sm:pt-24">
+      <div className="mx-auto flex max-w-6xl flex-col px-6 md:px-8">
+        {/* Sleek Top Section */}
+        <div className="flex flex-col justify-between gap-12 sm:flex-row sm:items-end">
+          {/* Brand & Tagline */}
+          <div className="flex flex-col items-start">
             <img
-              alt="Larity"
-              className="mb-6 h-8 w-auto"
+              alt="Larity Logo"
+              className="mb-8 h-8 w-auto"
               height={33}
               src="/larity-logo-dark.svg"
               width={36}
@@ -17,44 +18,28 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Links */}
-          <div className="flex flex-col gap-4">
-            <h4 className="mb-2 font-mono font-semibold text-xs text-zinc-900 uppercase tracking-widest">
-              Larity
-            </h4>
+          {/* Minimalist Navigation */}
+          <div className="flex flex-wrap gap-x-8 gap-y-4 font-medium text-sm text-zinc-600 sm:justify-end">
             <a
-              className="font-light text-sm transition-colors hover:text-zinc-900"
+              className="transition-colors hover:text-zinc-900"
               href="#product"
             >
               Product
             </a>
             <a
-              className="font-light text-sm transition-colors hover:text-zinc-900"
+              className="transition-colors hover:text-zinc-900"
               href="#privacy"
             >
               Privacy
             </a>
-            <a
-              className="font-light text-sm transition-colors hover:text-zinc-900"
-              href="#terms"
-            >
+            <a className="transition-colors hover:text-zinc-900" href="#terms">
               Terms
             </a>
-          </div>
-
-          {/* Socials */}
-          <div className="flex flex-col gap-4">
-            <h4 className="mb-2 font-mono font-semibold text-xs text-zinc-900 uppercase tracking-widest">
-              Social
-            </h4>
-            <a
-              className="font-light text-sm transition-colors hover:text-zinc-900"
-              href="#x"
-            >
+            <a className="transition-colors hover:text-zinc-900" href="#x">
               Twitter / X
             </a>
             <a
-              className="font-light text-sm transition-colors hover:text-zinc-900"
+              className="transition-colors hover:text-zinc-900"
               href="#linkedin"
             >
               LinkedIn
@@ -62,12 +47,20 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Copyright */}
-        <div className="mt-16 flex flex-col items-center justify-between border-zinc-900/10 border-t pt-8 sm:flex-row">
+        {/* Copyright separator */}
+        <div className="mt-16 flex items-center justify-between border-zinc-900/10 border-t pt-8 pb-4">
           <p className="font-light text-xs text-zinc-500">
             &copy; {new Date().getFullYear()} Larity. All rights reserved.
           </p>
+          <p className="font-light text-xs text-zinc-500">Designed for macOS</p>
         </div>
+      </div>
+
+      {/* Massive Edge-to-Edge Typography */}
+      <div className="mt-4 flex w-full select-none justify-center overflow-hidden leading-none">
+        <h2 className="font-bold font-display text-[22vw] text-zinc-900/5 tracking-tighter sm:text-[18vw]">
+          LARITY
+        </h2>
       </div>
     </footer>
   );
