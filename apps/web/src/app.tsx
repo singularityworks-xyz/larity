@@ -3,6 +3,7 @@ import { BentoGrid } from "./sections/bento-grid.tsx";
 import { ContextStrip } from "./sections/context-strip.tsx";
 import { Hero } from "./sections/hero.tsx";
 import { HowItWorks } from "./sections/how-it-works.tsx";
+import { MemoryDeepDive } from "./sections/memory-deep-dive.tsx";
 import { Spotlight } from "./sections/spotlight.tsx";
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
         <HowItWorks />
         <BentoGrid />
         <Spotlight />
+        <MemoryDeepDive />
       </main>
 
       <footer className="w-full border-accent/10 border-t bg-bg py-8 text-center text-xs text-zinc-400">
