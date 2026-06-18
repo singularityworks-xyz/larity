@@ -1,7 +1,19 @@
 export function Footer() {
   return (
     <footer className="relative w-full overflow-hidden bg-bg pt-16 sm:pt-24">
-      <div className="mx-auto flex max-w-6xl flex-col px-6 md:px-8">
+      {/* Background Image with Opacity Gradient */}
+      <div
+        className="pointer-events-none absolute inset-0 z-0 bg-bottom bg-cover bg-no-repeat"
+        style={{
+          backgroundImage:
+            "url('https://pub-7499bc1836a04bc988d92a1fb64db638.r2.dev/images/hero3.png')",
+          maskImage:
+            "linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.4) 100%)",
+          WebkitMaskImage:
+            "linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.4) 100%)",
+        }}
+      />
+      <div className="relative z-10 mx-auto flex max-w-6xl flex-col px-6 md:px-8">
         {/* Sleek Top Section */}
         <div className="flex flex-col justify-between gap-12 sm:flex-row sm:items-end">
           {/* Brand & Tagline */}
@@ -10,7 +22,7 @@ export function Footer() {
               alt="Larity Logo"
               className="mb-8 h-8 w-auto"
               height={33}
-              src="/larity-logo-dark.svg"
+              src="/larity-logo-light.svg"
               width={36}
             />
             <p className="font-display text-2xl text-zinc-900 tracking-tight">
@@ -52,13 +64,15 @@ export function Footer() {
           <p className="font-light text-xs text-zinc-500">
             &copy; {new Date().getFullYear()} Larity. All rights reserved.
           </p>
-          <p className="font-light text-xs text-zinc-500">Designed for macOS</p>
+          <p className="font-light text-xs text-zinc-500">
+            Designed for Windows & Linux
+          </p>
         </div>
       </div>
 
       {/* Massive Edge-to-Edge Typography */}
-      <div className="mt-4 flex w-full select-none justify-center overflow-hidden leading-none">
-        <h2 className="font-bold font-display text-[22vw] text-zinc-900/5 tracking-tighter sm:text-[18vw]">
+      <div className="relative z-10 mt-4 flex w-full select-none justify-center overflow-hidden leading-none">
+        <h2 className="font-bold font-display text-[22vw] text-accent/30 tracking-wide sm:text-[18vw]">
           LARITY
         </h2>
       </div>
