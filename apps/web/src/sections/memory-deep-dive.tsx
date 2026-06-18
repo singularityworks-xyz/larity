@@ -187,7 +187,7 @@ export function MemoryDeepDive() {
             <div className="relative aspect-[2.39/1] w-full overflow-hidden rounded-xl border border-zinc-900/30 bg-zinc-50/50">
               <img
                 alt="Calendar Sync Integration"
-                className="h-full w-full object-cover object-[center_75%]"
+                className="h-full w-full object-cover object-[center_45%]"
                 height={1204}
                 src="/calendar-sync.png"
                 width={1204}
@@ -252,7 +252,7 @@ export function MemoryDeepDive() {
             <div className="relative aspect-[2.39/1] w-full overflow-hidden rounded-xl border border-zinc-900/30 bg-zinc-50/50">
               <img
                 alt="Versioned Decisions Record"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover object-[center_0%]"
                 height={742}
                 src="/decisions.png"
                 width={921}
