@@ -52,7 +52,21 @@ export const app = new Elysia()
   // CORS
   .use(
     cors({
-      origin: env.FRONTEND_ORIGINS,
+      origin: (context) => {
+        const origin = context.request.headers.get("origin");
+        if (!origin) {
+          return false;
+        }
+
+        // Public waitlist route can be accessed from any origin
+        const url = new URL(context.request.url);
+        if (url.pathname === "/api/waitlist") {
+          return true;
+        }
+
+        // Restrict all other routes to trusted frontend origins
+        return env.FRONTEND_ORIGINS.includes(origin);
+      },
       credentials: true,
     })
   )
