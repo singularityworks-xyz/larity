@@ -7,7 +7,7 @@ FROM base AS install
 COPY package.json bun.lock ./
 COPY apps/workers/package.json ./apps/workers/
 COPY packages ./packages
-RUN bun install --frozen-lockfile
+RUN bun install
 
 FROM base AS release
 COPY --from=install /app/node_modules ./node_modules

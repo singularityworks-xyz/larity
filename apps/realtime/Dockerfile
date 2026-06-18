@@ -13,7 +13,7 @@ COPY apps/realtime/package.json ./apps/realtime/
 # If other packages have package.json, they should be copied here as well.
 COPY packages ./packages
 
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Stage 2: Production Release
 FROM base AS release
