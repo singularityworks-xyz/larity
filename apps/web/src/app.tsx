@@ -17,8 +17,8 @@ export default function App() {
         {/* Spacer to show the overflowed bottom 12% of the video on scroll */}
         <div className="h-96 bg-bg" />
         <ContextStrip />
-        <MeetingMode />
         <HowItWorks />
+        <MeetingMode />
         <MemoryDeepDive />
         <CtaBand />
         <Faq />
