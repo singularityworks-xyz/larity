@@ -143,7 +143,7 @@ export function MeetingMode() {
                 className={`absolute z-40 hidden w-64 md:block ${card.positionClass} transition-all duration-300 hover:-translate-y-1`}
                 key={`float-${card.id}`}
               >
-                <div className="rounded-xl border border-white/50 bg-white/45 p-4 text-left shadow-[0_8px_30px_rgba(0,0,0,0.06)] backdrop-blur-md transition-all duration-300 hover:border-white/80 hover:bg-white/60 hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
+                <div className="rounded-xl border border-white/60 bg-white/80 p-4 text-left shadow-[0_8px_30px_rgba(0,0,0,0.06)] backdrop-blur-md transition-all duration-300 hover:border-white/90 hover:bg-white/90 hover:shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
                   <div className="flex items-center gap-2">
                     {card.icon}
                     <span className="font-bold font-mono text-[9px] text-accent uppercase tracking-wider">
@@ -165,7 +165,7 @@ export function MeetingMode() {
           <div className="mt-12 grid w-full grid-cols-1 gap-6 text-left sm:grid-cols-2 md:hidden">
             {cards.map((card) => (
               <div
-                className="rounded-xl border border-white/50 bg-white/50 p-5 text-left shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-md transition-all duration-300 hover:border-white/80 hover:bg-white/70"
+                className="rounded-xl border border-white/60 bg-white/85 p-5 text-left shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-md transition-all duration-300 hover:border-white/90 hover:bg-white/95"
                 key={`mobile-${card.id}`}
               >
                 <div className="flex items-center gap-2">
