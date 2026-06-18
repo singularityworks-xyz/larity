@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { defineConfig } from "prisma/config";
 
 // Load dotenv dynamically in development
 try {
@@ -11,7 +12,7 @@ try {
   // In production, environment variables are already injected
 }
 
-export default {
+export default defineConfig({
   schema: "./packages/infra/prisma/schema.prisma",
   migrations: {
     path: "./packages/infra/prisma/migrations",
@@ -19,4 +20,4 @@ export default {
   datasource: {
     url: process.env.DATABASE_URL,
   },
-};
+});
