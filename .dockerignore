@@ -1,0 +1,11 @@
+node_modules
+.git
+.turbo
+dist
+.next
+out
+.vscode
+*.log
+coverage
+apps/desktop
+mock-overlay
