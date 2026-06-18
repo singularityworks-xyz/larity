@@ -56,6 +56,9 @@ COPY --from=builder /app/packages /app/packages
 COPY --from=builder /app/apps/control/dist /app/apps/control/dist
 COPY --from=builder /app/apps/control/package.json /app/apps/control/package.json
 
+# Copy prisma config for database migrations
+COPY --from=builder /app/prisma.config.ts /app/prisma.config.ts
+
 WORKDIR /app/apps/control
 EXPOSE 3000
 USER bun
