@@ -24,6 +24,10 @@ COPY --from=install /app/node_modules ./node_modules
 # Copy only the pruned source code (realtime + required packages)
 COPY --from=pruner /app/out/full/ .
 
+WORKDIR /app/packages/infra
+RUN bunx prisma generate
+WORKDIR /app
+
 EXPOSE 9001
 USER bun
 ENTRYPOINT [ "bun", "run", "apps/realtime/src/index.ts" ]

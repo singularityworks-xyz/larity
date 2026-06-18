@@ -26,6 +26,8 @@ FROM base AS builder
 COPY --from=install /app/node_modules ./node_modules
 # Copy all local workspace packages & source code for the app
 COPY --from=pruner /app/out/full/ .
+WORKDIR /app/packages/infra
+RUN bunx prisma generate
 WORKDIR /app/apps/control
 RUN bun run build
 
