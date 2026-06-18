@@ -15,15 +15,11 @@ mock.module("ioredis", () => ({
 // Mock bullmq Worker before any imports
 const mockWorkerOn = mock();
 const mockWorkerClose = mock(() => Promise.resolve());
-const mockGetJobCounts = mock(() =>
-  Promise.resolve({ active: 0, waiting: 0, failed: 0, completed: 0 })
-);
 
 class MockWorker {
   readonly name: string;
   on = mockWorkerOn;
   close = mockWorkerClose;
-  getJobCounts = mockGetJobCounts;
   isPaused = () => false;
 
   constructor(
@@ -53,7 +49,6 @@ describe("BaseWorker", () => {
   beforeEach(() => {
     mockWorkerOn.mockClear();
     mockWorkerClose.mockClear();
-    mockGetJobCounts.mockClear();
     mockWorkerConstructor.mockClear();
     mockRedisQuit.mockClear();
   });
@@ -103,12 +98,8 @@ describe("BaseWorker", () => {
     await worker.close();
   });
 
-  it("should report health with job counts", async () => {
+  it("should report health", async () => {
     const { BaseWorker } = await import("../src/worker");
-
-    mockGetJobCounts.mockImplementation(() =>
-      Promise.resolve({ active: 2, waiting: 5, failed: 1, completed: 100 })
-    );
 
     class HealthWorker extends BaseWorker<unknown, void> {
       // biome-ignore lint/suspicious/noEmptyBlockStatements: test stub
@@ -119,11 +110,6 @@ describe("BaseWorker", () => {
     const health = await worker.getHealth();
 
     expect(health.name).toContain("health-queue");
-    expect(health.jobCounts).toBeDefined();
-    expect(health.jobCounts?.active).toBe(2);
-    expect(health.jobCounts?.waiting).toBe(5);
-    expect(health.jobCounts?.failed).toBe(1);
-    expect(health.jobCounts?.completed).toBe(100);
     expect(health.uptimeMs).toBeGreaterThanOrEqual(0);
 
     await worker.close();

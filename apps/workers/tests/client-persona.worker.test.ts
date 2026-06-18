@@ -13,14 +13,6 @@ mock.module("bullmq", () => ({
     close() {
       return Promise.resolve();
     }
-    getJobCounts() {
-      return Promise.resolve({
-        active: 0,
-        waiting: 0,
-        failed: 0,
-        completed: 0,
-      });
-    }
   },
 }));
 

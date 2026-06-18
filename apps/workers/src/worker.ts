@@ -118,21 +118,9 @@ export abstract class BaseWorker<TJobData = unknown, TJobResult = unknown> {
   }
 
   async getHealth(): Promise<WorkerHealth> {
-    const counts = await this.worker.getJobCounts(
-      "active",
-      "waiting",
-      "failed",
-      "completed"
-    );
     return {
       name: this.worker.name,
       active: !this.worker.isPaused(),
-      jobCounts: {
-        active: counts.active ?? 0,
-        waiting: counts.waiting ?? 0,
-        failed: counts.failed ?? 0,
-        completed: counts.completed ?? 0,
-      },
       lastError: this.lastError,
       uptimeMs: Date.now() - this.startedAt,
     };
