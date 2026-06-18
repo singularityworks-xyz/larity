@@ -6,16 +6,16 @@ WORKDIR /app
 # Install all dependencies (development + production)
 FROM base AS install
 COPY package.json bun.lock ./
-COPY apps/control/package.json ./apps/control/
+COPY apps ./apps
 COPY packages ./packages
-RUN bun install --no-frozen-lockfile
+RUN bun install --frozen-lockfile
 
 # Install only production dependencies
 FROM base AS prod-install
 COPY package.json bun.lock ./
-COPY apps/control/package.json ./apps/control/
+COPY apps ./apps
 COPY packages ./packages
-RUN bun install --no-frozen-lockfile --production
+RUN bun install --frozen-lockfile --production
 
 # Build the application
 FROM base AS builder

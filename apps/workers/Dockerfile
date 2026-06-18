@@ -5,9 +5,9 @@ WORKDIR /app
 
 FROM base AS install
 COPY package.json bun.lock ./
-COPY apps/workers/package.json ./apps/workers/
+COPY apps ./apps
 COPY packages ./packages
-RUN bun install --no-frozen-lockfile
+RUN bun install --frozen-lockfile
 
 FROM base AS release
 COPY --from=install /app/node_modules ./node_modules
