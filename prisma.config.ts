@@ -1,6 +1,5 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "prisma/config";
 
 // Load dotenv dynamically in development
 try {
@@ -11,6 +10,8 @@ try {
 } catch {
   // In production, environment variables are already injected
 }
+
+const defineConfig = (config: unknown) => config;
 
 export default defineConfig({
   schema: "./packages/infra/prisma/schema.prisma",
