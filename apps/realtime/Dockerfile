@@ -12,24 +12,28 @@ COPY . .
 RUN turbo prune realtime --docker
 
 # ────────────────────────────────────────────────────────────────────────────
-# Stage 2: INSTALL (dev + prod deps)
-# --ignore-scripts prevents husky (devDep) from crashing the install.
+# Stage 2: BUILDER (dev + prod deps)
+# We run `bun install` and then `COPY out/full` IN THE SAME STAGE.
+# This prevents Docker from dropping the nested node_modules folders
+# (e.g. /app/packages/infra/node_modules) created by `bun install`.
 # ────────────────────────────────────────────────────────────────────────────
-FROM base AS install
+FROM base AS builder
 COPY --from=pruner /app/out/json/ .
 COPY --from=pruner /app/out/bun.lock* ./
 RUN bun install --frozen-lockfile --ignore-scripts
 
-# ────────────────────────────────────────────────────────────────────────────
-# Stage 3: BUILD
-# realtime runs raw TS via bun (no compile step), but we still need a builder
-# stage with full dev deps so that prisma generate can access @prisma/config.
-# ────────────────────────────────────────────────────────────────────────────
-FROM base AS builder
-COPY --from=install /app/node_modules ./node_modules
 COPY --from=pruner /app/out/full/ .
+
 WORKDIR /app/packages/infra
 RUN bunx prisma generate
+
+# ────────────────────────────────────────────────────────────────────────────
+# Stage 3: PROD-INSTALL (production deps only)
+# ────────────────────────────────────────────────────────────────────────────
+FROM base AS prod-install
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/bun.lock* ./
+RUN bun install --frozen-lockfile --production --ignore-scripts
 
 # ────────────────────────────────────────────────────────────────────────────
 # Stage 4: RELEASE
@@ -37,11 +41,14 @@ RUN bunx prisma generate
 FROM base AS release
 ENV NODE_ENV=production
 
-COPY --from=install /app/node_modules ./node_modules
-COPY --from=pruner /app/out/full/ .
+# Copy ALL node_modules (root and nested workspaces) from prod-install
+COPY --from=prod-install /app /app
 
-# Copy Prisma generated client from builder (where devDeps were available)
-COPY --from=builder /app/packages/infra/prisma/generated ./packages/infra/prisma/generated
+# Copy the pruned source code (since realtime runs raw TS)
+COPY --from=pruner /app/out/full/ /app
+
+# Overwrite infra with the one that has the generated prisma client
+COPY --from=builder /app/packages/infra/prisma/generated /app/packages/infra/prisma/generated
 
 WORKDIR /app
 EXPOSE 9001
