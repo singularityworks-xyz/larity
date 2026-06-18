@@ -103,14 +103,17 @@ export function MeetingMode() {
       <div className="mx-auto max-w-7xl px-6 md:px-8">
         <div className="flex flex-col items-center text-center">
           <span className="font-mono text-[10px] text-accent uppercase tracking-[0.25em]">
-            Meeting Mode
+            Meeting Console
           </span>
           <h2 className="mt-4 max-w-3xl font-display text-4xl text-zinc-950 leading-tight tracking-tight sm:text-5xl md:text-6xl">
-            The co-pilot that watches in silence.
+            The console behind the conversation.
           </h2>
           <p className="mt-4 max-w-2xl font-light text-zinc-500 leading-relaxed sm:text-lg">
-            No active window. No recording indicator. Just a silent observer
-            translating spoken commitments into actionable items in real-time.
+            While the lightweight live overlay stays on screen to flag real-time
+            alerts, the complete Meeting Console runs quietly behind the scenes.
+            Surface it anytime to review diarized transcripts, manage
+            participant roles, sync agendas, and track commitments in one
+            thorough control center.
           </p>
 
           {/* Interactive Image Frame */}
