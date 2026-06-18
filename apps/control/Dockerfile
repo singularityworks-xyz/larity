@@ -3,29 +3,33 @@ ENV CI=true
 ENV HUSKY=0
 WORKDIR /app
 
-# Install all dependencies (development + production)
+# Stage 1: Prune
+FROM base AS pruner
+RUN bun install -g turbo
+COPY . .
+RUN turbo prune control --docker
+
+# Stage 2: Install dependencies (Development + Production)
 FROM base AS install
-COPY package.json bun.lock ./
-COPY apps ./apps
-COPY packages ./packages
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/bun.lock* ./
 RUN bun install --frozen-lockfile
 
-# Install only production dependencies
+# Stage 3: Install only production dependencies
 FROM base AS prod-install
-COPY package.json bun.lock ./
-COPY apps ./apps
-COPY packages ./packages
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/bun.lock* ./
 RUN bun install --frozen-lockfile --production
 
-# Build the application
+# Stage 4: Build
 FROM base AS builder
 COPY --from=install /app/node_modules ./node_modules
-COPY --from=install /app/apps/control/node_modules ./apps/control/node_modules
-COPY . .
+# Copy all local workspace packages & source code for the app
+COPY --from=pruner /app/out/full/ .
 WORKDIR /app/apps/control
 RUN bun run build
 
-# Final minimal runtime image containing no source or dev dependencies
+# Stage 5: Release
 FROM base AS release
 ENV NODE_ENV=production
 
