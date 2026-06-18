@@ -48,15 +48,15 @@ const catArt = [
 
 console.log(
   `%c${art.join("\n")}`,
-  "color: #1a1a1a; font-family: monospace; font-size: 11px; font-weight: bold; line-height: 1.4;"
+  "color: #F7F4EA; font-family: monospace; font-size: 11px; font-weight: bold; line-height: 1.4;"
 );
 console.log(
   `%c${catArt.join("\n")}`,
-  "color: #8a7a5f; font-family: monospace; font-size: 10px; line-height: 1.1;"
+  "color: #A9CA41; font-family: monospace; font-size: 10px; line-height: 1.1;"
 );
 console.log(
-  "%c  Your meeting memory. Organised.\n  ─────────────────────────────────────\n  👋  Curious about how Larity works?\n  🔗  larity.ai   |   hi@larity.ai\n  🐦  x.com/amancooks   |   💼  linkedin.com/in/aman-aziz",
-  "color: #555; font-family: monospace; font-size: 11px; line-height: 1.8;"
+  "%c  Your meeting memory. Organised.\n  ─────────────────────────────────────\n  👋  Curious about how Larity works?\n  🔗  www.itssingularity.com\n  🐦  x.com/amancooks   |   💼  linkedin.com/in/aman-aziz",
+  "color: #f7f4ea; font-family: monospace; font-size: 11px; line-height: 1.8;"
 );
 // ─────────────────────────────────────────────────────────────────────────────
 
