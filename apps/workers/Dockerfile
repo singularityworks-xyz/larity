@@ -12,8 +12,8 @@ COPY . .
 RUN turbo prune workers --docker
 
 # ────────────────────────────────────────────────────────────────────────────
-# Stage 2: INSTALL
-# --ignore-scripts prevents husky (devDep) from crashing the install
+# Stage 2: INSTALL (dev + prod deps)
+# --ignore-scripts prevents husky (devDep) from crashing the install.
 # ────────────────────────────────────────────────────────────────────────────
 FROM base AS install
 COPY --from=pruner /app/out/json/ .
@@ -21,9 +21,18 @@ COPY --from=pruner /app/out/bun.lock* ./
 RUN bun install --frozen-lockfile --ignore-scripts
 
 # ────────────────────────────────────────────────────────────────────────────
-# Stage 3: RELEASE
-# workers runs raw TS via bun, so no build step needed.
-# We run prisma generate here since the schema is available after full copy.
+# Stage 3: BUILD
+# workers runs raw TS via bun (no compile step), but we still need a builder
+# stage with full dev deps so that prisma generate can access @prisma/config.
+# ────────────────────────────────────────────────────────────────────────────
+FROM base AS builder
+COPY --from=install /app/node_modules ./node_modules
+COPY --from=pruner /app/out/full/ .
+WORKDIR /app/packages/infra
+RUN bunx prisma generate
+
+# ────────────────────────────────────────────────────────────────────────────
+# Stage 4: RELEASE
 # ────────────────────────────────────────────────────────────────────────────
 FROM base AS release
 ENV NODE_ENV=production
@@ -31,9 +40,8 @@ ENV NODE_ENV=production
 COPY --from=install /app/node_modules ./node_modules
 COPY --from=pruner /app/out/full/ .
 
-# Generate Prisma client for the Linux runtime
-WORKDIR /app/packages/infra
-RUN bunx prisma generate
+# Copy Prisma generated client from builder (where devDeps were available)
+COPY --from=builder /app/packages/infra/prisma/generated ./packages/infra/prisma/generated
 
 WORKDIR /app
 EXPOSE 8080
