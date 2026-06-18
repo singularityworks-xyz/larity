@@ -17,7 +17,7 @@ export function CtaBand() {
     setErrorMessage("");
 
     try {
-      const apiHost = import.meta.env.VITE_API_URL || "http://localhost:3000";
+      const apiHost = import.meta.env.VITE_API_URL || "";
       const response = await fetch(`${apiHost}/api/waitlist`, {
         method: "POST",
         headers: {
