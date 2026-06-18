@@ -4,6 +4,7 @@ WORKDIR /app
 FROM base AS install
 COPY package.json bun.lock ./
 COPY apps/workers/package.json ./apps/workers/
+COPY packages ./packages
 RUN bun install --frozen-lockfile
 
 FROM base AS release

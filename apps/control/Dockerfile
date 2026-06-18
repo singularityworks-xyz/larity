@@ -5,12 +5,14 @@ WORKDIR /app
 FROM base AS install
 COPY package.json bun.lock ./
 COPY apps/control/package.json ./apps/control/
+COPY packages ./packages
 RUN bun install --frozen-lockfile
 
 # Install only production dependencies
 FROM base AS prod-install
 COPY package.json bun.lock ./
 COPY apps/control/package.json ./apps/control/
+COPY packages ./packages
 RUN bun install --frozen-lockfile --production
 
 # Build the application
