@@ -99,7 +99,7 @@ export function MeetingMode() {
   ];
 
   return (
-    <section className="w-full select-none bg-bg pt-16 pb-24" id="meeting-mode">
+    <section className="w-full select-none bg-bg pt-16 pb-24" id="features">
       <div className="mx-auto max-w-7xl px-6 md:px-8">
         <div className="flex flex-col items-center text-center">
           <span className="font-mono text-[10px] text-accent uppercase tracking-[0.25em]">

@@ -62,12 +62,12 @@ export function Navbar() {
             </a>
           </div>
 
-          <button
+          <a
             className="cursor-pointer rounded-full bg-accent px-5 py-2 font-semibold text-[#f7f4ea] text-xs shadow-accent/10 shadow-sm transition-all duration-200 hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 active:scale-95"
-            type="button"
+            href="#early-access"
           >
             Get Early Access
-          </button>
+          </a>
         </div>
       </div>
     </nav>
