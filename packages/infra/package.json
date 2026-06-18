@@ -20,6 +20,7 @@
     "@prisma/client": "^7.2.0"
   },
   "devDependencies": {
+    "@prisma/config": "^7.8.0",
     "@testcontainers/redis": "^12.0.1",
     "testcontainers": "^12.0.1"
   }
