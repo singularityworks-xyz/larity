@@ -96,7 +96,6 @@ const router = createBrowserRouter([
       },
       {
         path: "meeting/:sessionId/waiting-room",
-        loader: authGateLoader,
         element: <WaitingRoomPage />,
       },
       {
@@ -106,12 +105,10 @@ const router = createBrowserRouter([
       },
       {
         path: "meeting/:sessionId",
-        loader: authGateLoader,
         element: <MeetingPage />,
       },
       {
         path: "meeting-post/:meetingId",
-        loader: authGateLoader,
         element: <MeetingPostPage />,
       },
       {

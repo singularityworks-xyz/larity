@@ -23,6 +23,7 @@ import type {
   Decision,
   ImportantPoint,
   ImportantPointCategory,
+  MeetingTranscript,
   OpenQuestion,
   ProcessingStatus,
   Task,
@@ -39,6 +40,418 @@ import {
 } from "../../features/meeting-post/use-processing-status";
 import { useReprocess } from "../../features/meeting-post/use-reprocess";
 import { cx } from "../../lib/ui";
+
+// ── Mock Data for Demo ────────────────────────────────────────────────────────
+
+const USE_MOCK = true; // Easily toggleable flag for product demo/screenshots
+
+const MOCK_STATUS: ProcessingStatus = {
+  sessionId: "mock-session-id",
+  steps: {
+    transcribe: "done",
+    summary: "done",
+  },
+};
+
+const MOCK_ANALYSIS: MeetingAnalysis = {
+  schemaVersion: 1,
+  purpose:
+    "Align on Acme's enterprise-wide rollout of Larity, Q4 roadmap requests, and security compliance sign-off.",
+  outcome:
+    "Acme agreed to initiate a 30-day sandboxed trial of the self-hosted runner starting next month. NDA extension will be signed this week to allow sharing the runner package.",
+  prose:
+    "The meeting was highly productive, aligning on Acme's enterprise rollout of Larity. We successfully resolved the primary concerns raised by Elena Rostova regarding SOC2 Type II compliance and our self-hosted runner architecture. Sarah Jenkins walked the team through the data retention policy configuration, which alleviated Elena's compliance team's worries.\n\nMarcus Chen expressed strong interest in testing our incoming webhook features, specifically looking for real-time notifications on slack for speaker mapping corrections. Alex Rivera agreed to send the NDA extension package by EOD, and Marcus committed to returning the VPC configuration checklist by next Tuesday.\n\nThe client's overall sentiment was interested, and the tone remained collaborative and focused throughout the session.",
+  tone: "POSITIVE",
+  clientSentiment: "INTERESTED",
+  keyMoments: [
+    {
+      timestamp: 24,
+      description:
+        "Elena raised security concerns about the self-hosted runner architecture.",
+      category: "RISK",
+    },
+    {
+      timestamp: 38,
+      description:
+        "Sarah Jenkins committed to sharing the detailed SOC2 packet and architectural diagram.",
+      category: "COMMITMENT",
+    },
+    {
+      timestamp: 65,
+      description:
+        "Alex Rivera offered to lift sandbox API rate limits to 10k calls/hour.",
+      category: "OPPORTUNITY",
+    },
+    {
+      timestamp: 80,
+      description:
+        "Agreed to start sandbox trial on July 15th contingent on NDA extension.",
+      category: "DECISION",
+    },
+  ],
+  speakers: [
+    {
+      speakerLabel: "Sarah Jenkins",
+      name: "Sarah Jenkins",
+      role: "TEAM_MEMBER",
+      talkTimePercent: 40,
+      utteranceCount: 15,
+      commitmentCount: 1,
+      assignedQuestionCount: 0,
+    },
+    {
+      speakerLabel: "Elena Rostova",
+      name: "Elena Rostova",
+      role: "EXTERNAL",
+      talkTimePercent: 25,
+      utteranceCount: 8,
+      commitmentCount: 1,
+      assignedQuestionCount: 1,
+    },
+    {
+      speakerLabel: "Marcus Chen",
+      name: "Marcus Chen",
+      role: "EXTERNAL",
+      talkTimePercent: 20,
+      utteranceCount: 6,
+      commitmentCount: 1,
+      assignedQuestionCount: 1,
+    },
+    {
+      speakerLabel: "Alex Rivera",
+      name: "Alex Rivera",
+      role: "TEAM_MEMBER",
+      talkTimePercent: 15,
+      utteranceCount: 5,
+      commitmentCount: 1,
+      assignedQuestionCount: 0,
+    },
+  ],
+  durationSeconds: 3200,
+  participantCount: 4,
+  generatedAt: new Date().toISOString(),
+};
+
+const MOCK_INSIGHTS = {
+  analysis: MOCK_ANALYSIS,
+  decisions: [
+    {
+      id: "d-1",
+      decisionRef: "DEC-001",
+      version: 1,
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      title: "30-Day Sandbox Trial Authorization",
+      content:
+        "Initiate a 30-day trial of Larity's self-hosted runner in a sandboxed VPC environment starting July 15th.",
+      rationale:
+        "Allows Acme's security team to validate data retention isolation before signing the full multi-year contract.",
+      evidence:
+        "If we can get that NDA signed this week, we'll aim to start the 30-day sandbox trial on July 15th.",
+      status: "ACTIVE" as const,
+      tags: ["trial", "vpc", "security"],
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "d-2",
+      decisionRef: "DEC-002",
+      version: 1,
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      title: "Webhook API Rate Limits Increase",
+      content:
+        "Increase sandbox API limits to 10,000 calls per hour for Acme's trial runner.",
+      rationale:
+        "Ensures Marcus's team can stress test the Slack notifications under peak synthetic load.",
+      evidence:
+        "We can increase the sandbox API limits to 10,000 calls per hour for the trial so you can stress test it.",
+      status: "ACTIVE" as const,
+      tags: ["api", "rate-limits", "webhooks"],
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "d-3",
+      decisionRef: "DEC-003",
+      version: 1,
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      title: "VPC Isolation Routing Strategy",
+      content:
+        "Deploy the sandbox runner utilizing Acme's secure VPC private link configuration for outbound traffic.",
+      rationale:
+        "Maintains strict corporate firewall restrictions while allowing essential status sync queries.",
+      evidence:
+        "Larity cannot send any metrics back to their home servers. It must be fully isolated.",
+      status: "ACTIVE" as const,
+      tags: ["vpc", "routing", "aws"],
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "d-4",
+      decisionRef: "DEC-004",
+      version: 1,
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      title: "Custom GDPR Addendum",
+      content:
+        "Draft a localized GDPR Data Processing Addendum (DPA) to cover ephemeral file transfers.",
+      rationale:
+        "Ensures full legal compliance for developer activities across Acme's European engineering units.",
+      evidence:
+        "EU-based developers on their team might be subject to strict GDPR controls under their current DPA.",
+      status: "ACTIVE" as const,
+      tags: ["gdpr", "legal", "compliance"],
+      createdAt: new Date().toISOString(),
+    },
+  ],
+  tasks: [
+    {
+      id: "t-1",
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      decisionId: null,
+      assigneeId: null,
+      title:
+        "Send SOC2 compliance packet and self-hosted architectural diagram",
+      description:
+        "Include detailed documentation on local data storage controls and retention periods.",
+      status: "IN_PROGRESS" as const,
+      priority: "CRITICAL" as const,
+      dueAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+      completedAt: null,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "t-2",
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      decisionId: null,
+      assigneeId: null,
+      title: "Prepare and share NDA extension document",
+      description:
+        "Extend the current pilot NDA to cover the proprietary runner binaries.",
+      status: "DONE" as const,
+      priority: "HIGH" as const,
+      dueAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
+      completedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "t-3",
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      decisionId: null,
+      assigneeId: null,
+      title: "Provide VPC security checklist and network requirements",
+      description:
+        "Acme's security team needs to document VPC rules for Larity's outbound connection.",
+      status: "OPEN" as const,
+      priority: "MEDIUM" as const,
+      dueAt: new Date(Date.now() + 5 * 24 * 3600 * 1000).toISOString(),
+      completedAt: null,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "t-4",
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      decisionId: "d-4",
+      assigneeId: null,
+      title: "Draft GDPR DPA amendment for self-hosted runner deployment",
+      description:
+        "Liaise with the corporate legal officer to adjust telemetry caching definitions.",
+      status: "OPEN" as const,
+      priority: "HIGH" as const,
+      dueAt: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString(),
+      completedAt: null,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "t-5",
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      decisionId: "d-2",
+      assigneeId: null,
+      title: "Adjust Redis configuration parameters for Acme VPC runner IPs",
+      description: "Set high-throughput rates for the sandbox staging ranges.",
+      status: "DONE" as const,
+      priority: "MEDIUM" as const,
+      dueAt: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
+      completedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    },
+  ],
+  openQuestions: [
+    {
+      id: "q-1",
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      assigneeId: null,
+      resolvedByDecisionId: null,
+      question:
+        "Does Acme require a custom data processing agreement (DPA) alongside the NDA extension?",
+      context:
+        "Elena mentioned that EU-based developers on their team might be subject to strict GDPR controls under their current DPA.",
+      status: "OPEN" as const,
+      dueAt: null,
+      createdAt: new Date().toISOString(),
+      resolvedAt: null,
+    },
+    {
+      id: "q-2",
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      assigneeId: null,
+      resolvedByDecisionId: "d-1",
+      question: "Can we host the sandboxed runner in AWS eu-central-1 region?",
+      context:
+        "Marcus prefers eu-central-1 due to proximity to their primary engineering office.",
+      status: "RESOLVED" as const,
+      dueAt: null,
+      createdAt: new Date().toISOString(),
+      resolvedAt: new Date().toISOString(),
+    },
+  ],
+  importantPoints: [
+    {
+      id: "ip-1",
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      speakerId: null,
+      content:
+        "Elena noted that any delay in receiving the SOC2 packet will push their review cycle to the next quarter.",
+      category: "WARNING" as const,
+      transcriptEvidence:
+        "If I don't get the SOC2 audit details by Friday, our internal audit team won't review this until October.",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "ip-2",
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      speakerId: null,
+      content:
+        "Acme's engineering team is highly dependent on our upcoming webhook API stability.",
+      category: "RISK" as const,
+      transcriptEvidence:
+        "Our main worry is the API breaking mid-trial. We need strong guarantees on webhook delivery.",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "ip-3",
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      speakerId: null,
+      content:
+        "All data must reside strictly within their VPC; no external telemetry is allowed.",
+      category: "CONSTRAINT" as const,
+      transcriptEvidence:
+        "Larity cannot send any metrics back to their home servers. It must be fully isolated.",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "ip-4",
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      speakerId: null,
+      content:
+        "Marcus suggested a potential expansion to 500 seats if the Slack integration trial succeeds.",
+      category: "OPPORTUNITY" as const,
+      transcriptEvidence:
+        "If this Slack webhook sync works well for our dev team, we can easily see this rolling out to all 500 engineers.",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "ip-5",
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      speakerId: null,
+      content:
+        "Marcus Chen committed to coordinating the engineering kickoff for the sandboxed runner installation.",
+      category: "COMMITMENT" as const,
+      transcriptEvidence:
+        "I'll coordinate with the platform engineering squad to get the installation slots scheduled for July 15th.",
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "ip-6",
+      clientId: "mock-client-id",
+      meetingId: "mock-meeting-id",
+      speakerId: null,
+      content:
+        "The Acme team is open to evaluating Larity's enterprise workspace dashboard if the runner trial meets their SLA.",
+      category: "INSIGHT" as const,
+      transcriptEvidence:
+        "If we can hit our 99.9% uptime target with this trial, we'll expand the evaluation to the workspace dashboard.",
+      createdAt: new Date().toISOString(),
+    },
+  ],
+};
+
+const MOCK_TRANSCRIPT: MeetingTranscript = {
+  id: "mock-transcript-id",
+  meetingId: "mock-meeting-id",
+  format: "STRUCTURED",
+  duration: 3200,
+  wordCount: 150,
+  createdAt: new Date().toISOString(),
+  content: JSON.stringify([
+    {
+      id: "ut-1",
+      speaker: "Sarah Jenkins",
+      text: "Good morning everyone. Let's get started. Today we are aligning on Acme's enterprise-wide rollout of Larity, specifically focusing on Q4 roadmap requests and security compliance sign-off.",
+      timestamp: 12,
+      duration: 8,
+      channel: 0,
+      type: "TEAM",
+    },
+    {
+      id: "ut-2",
+      speaker: "Elena Rostova",
+      text: "Thanks Sarah. From our side, the big blocker is security. We need the latest SOC2 packet and a diagram of how the self-hosted runner isolates our code data.",
+      timestamp: 24,
+      duration: 12,
+      channel: 1,
+      type: "EXTERNAL",
+    },
+    {
+      id: "ut-3",
+      speaker: "Sarah Jenkins",
+      text: "Absolutely, Elena. I'll make sure you get the SOC2 packet and the runner architecture diagram by tomorrow. We completely isolate the telemetry and all data stays inside your VPC.",
+      timestamp: 38,
+      duration: 10,
+      channel: 0,
+      type: "TEAM",
+    },
+    {
+      id: "ut-4",
+      speaker: "Marcus Chen",
+      text: "On the engineering side, my devs are really excited about the webhook integration. We'd love to test the Slack notifications under peak load in the sandbox.",
+      timestamp: 52,
+      duration: 11,
+      channel: 2,
+      type: "EXTERNAL",
+    },
+    {
+      id: "ut-5",
+      speaker: "Alex Rivera",
+      text: "We can increase the sandbox API limits to 10,000 calls per hour for the trial so you can stress test it. I'll draft the NDA extension today so we can share the binaries.",
+      timestamp: 65,
+      duration: 12,
+      channel: 3,
+      type: "TEAM",
+    },
+    {
+      id: "ut-6",
+      speaker: "Elena Rostova",
+      text: "Perfect. If we can get that NDA signed this week, we'll aim to start the 30-day sandbox trial on July 15th.",
+      timestamp: 80,
+      duration: 9,
+      channel: 1,
+      type: "EXTERNAL",
+    },
+  ]),
+};
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -347,10 +760,14 @@ function CategoryChip({ category }: { category: ImportantPointCategory }) {
 
 function TranscriptTab({ meetingId }: { meetingId: string }) {
   const {
-    data: transcript,
-    isLoading,
-    error,
+    data: fetchedTranscript,
+    isLoading: fetchedIsLoading,
+    error: fetchedError,
   } = useMeetingTranscript(meetingId);
+
+  const transcript = USE_MOCK ? MOCK_TRANSCRIPT : fetchedTranscript;
+  const isLoading = USE_MOCK ? false : fetchedIsLoading;
+  const error = USE_MOCK ? null : fetchedError;
 
   if (isLoading) {
     return <SkeletonRows count={6} />;
@@ -904,17 +1321,25 @@ export function MeetingPostPage() {
   const [activeTab, setActiveTab] = useState<TabId>("brief");
   const queryClient = useQueryClient();
 
-  const { data: insights, isLoading: insightsLoading } =
+  const { data: fetchedInsights, isLoading: fetchedInsightsLoading } =
     useMeetingInsights(meetingId);
-  const { data: status } = useProcessingStatus(
+  const { data: fetchedStatus } = useProcessingStatus(
     meetingId,
     !isProcessingSettled(undefined)
   );
 
+  const insights = USE_MOCK ? MOCK_INSIGHTS : fetchedInsights;
+  const insightsLoading = USE_MOCK ? false : fetchedInsightsLoading;
+  const status = USE_MOCK ? MOCK_STATUS : fetchedStatus;
+
   const reprocess = useReprocess(meetingId);
   const settled = isProcessingSettled(status);
 
-  const { data: polledStatus } = useProcessingStatus(meetingId, !settled);
+  const { data: fetchedPolledStatus } = useProcessingStatus(
+    meetingId,
+    !settled
+  );
+  const polledStatus = USE_MOCK ? MOCK_STATUS : fetchedPolledStatus;
   const complete = isProcessingComplete(polledStatus);
 
   useEffect(() => {
@@ -969,18 +1394,18 @@ export function MeetingPostPage() {
         {/* Hero Header */}
         <motion.div
           animate="show"
-          className="relative shrink-0 overflow-hidden rounded-2xl border border-border/40 px-6 py-8 md:flex-row md:items-end"
+          className="relative shrink-0 overflow-hidden rounded-2xl border border-border/40 bg-[#0A0A0C] px-6 py-8 md:flex-row md:items-end"
           initial="hidden"
           variants={itemVariants}
         >
           <div
-            className="pointer-events-none absolute inset-0 bg-bottom bg-cover opacity-50 mix-blend-overlay"
+            className="pointer-events-none absolute inset-0 bg-bottom bg-cover opacity-80"
             style={{
               backgroundImage:
                 "url(https://pub-7499bc1836a04bc988d92a1fb64db638.r2.dev/images/larity-banner-full.png)",
             }}
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-bg-base/90 via-bg-base/50 to-bg-base/20" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent" />
           <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-accent/20 blur-[120px]" />
 
           <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
@@ -996,11 +1421,13 @@ export function MeetingPostPage() {
               </button>
               <div>
                 <h1 className="font-bold font-heading text-3xl text-white tracking-tight drop-shadow-md sm:text-4xl">
-                  Meeting Review
+                  {USE_MOCK
+                    ? "Acme Corp × Larity: Enterprise Expansion Alignment"
+                    : "Meeting Review"}
                 </h1>
                 <div className="mt-2 flex items-center gap-3">
                   <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1 font-mono text-white/90 text-xs backdrop-blur-sm">
-                    ID: {meetingId}
+                    {USE_MOCK ? "July 18, 2026" : `ID: ${meetingId}`}
                   </span>
                   {isProcessingComplete(polledStatus) && (
                     <span className="inline-flex items-center gap-1.5 rounded-md bg-success/20 px-2.5 py-1 font-bold text-[10px] text-success uppercase tracking-wider shadow-[0_0_15px_rgba(var(--color-success),0.2)] backdrop-blur-sm">

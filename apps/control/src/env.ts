@@ -58,6 +58,8 @@ export const env = {
   GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
   LOG_LEVEL: process.env.LOG_LEVEL,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  PERSONAL_EMAIL: process.env.PERSONAL_EMAIL,
 };
 
 // Log unused optionalEnvVars to satisfy linter or just remove it if it's purely for documentation
