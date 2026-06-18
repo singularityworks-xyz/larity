@@ -7,6 +7,7 @@ import { Hero } from "./sections/hero.tsx";
 import { HowItWorks } from "./sections/how-it-works.tsx";
 import { MeetingMode } from "./sections/meeting-mode.tsx";
 import { MemoryDeepDive } from "./sections/memory-deep-dive.tsx";
+import { Supports } from "./sections/supports.tsx";
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <ContextStrip />
         <HowItWorks />
         <MeetingMode />
+        <Supports />
         <MemoryDeepDive />
         <CtaBand />
         <Faq />
