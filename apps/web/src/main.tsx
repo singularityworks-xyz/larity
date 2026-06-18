@@ -55,7 +55,7 @@ console.log(
   "color: #8a7a5f; font-family: monospace; font-size: 10px; line-height: 1.1;"
 );
 console.log(
-  "%c  Your meeting memory. Organised.\n  ─────────────────────────────────────\n  👋  Curious about how Larity works?\n  🔗  larity.ai   |   hi@larity.ai\n  ⭐  We're hiring — careers@larity.ai",
+  "%c  Your meeting memory. Organised.\n  ─────────────────────────────────────\n  👋  Curious about how Larity works?\n  🔗  larity.ai   |   hi@larity.ai\n  🐦  x.com/amancooks   |   💼  linkedin.com/in/aman-aziz",
   "color: #555; font-family: monospace; font-size: 11px; line-height: 1.8;"
 );
 // ─────────────────────────────────────────────────────────────────────────────
