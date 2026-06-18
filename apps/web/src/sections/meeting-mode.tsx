@@ -53,7 +53,7 @@ export function MeetingMode() {
       title: "Commitment Ledger",
       headline: "Every commitment you make, tracked",
       copy: "Automatic extraction of tasks, promises, and deadlines without manual note-taking.",
-      positionClass: "top-[48%] right-[2%] lg:right-[5%] xl:right-[8%]",
+      positionClass: "top-[48%] right-[-4%] lg:right-[-1%] xl:right-[2%]",
       dotClass: "top-[64%] right-[20%]",
       icon: (
         <svg
@@ -77,7 +77,7 @@ export function MeetingMode() {
       title: "Agenda Sync",
       headline: "agenda synced from pre meeting briefs",
       copy: "Tracks discussed topics dynamically to ensure no critical items are overlooked.",
-      positionClass: "bottom-[12%] right-[2%] lg:right-[5%] xl:right-[8%]",
+      positionClass: "bottom-[3%] right-[2%] lg:right-[5%] xl:right-[8%]",
       dotClass: "bottom-[12%] right-[20%]",
       icon: (
         <svg
