@@ -8,14 +8,14 @@ FROM base AS install
 COPY package.json bun.lock ./
 COPY apps/control/package.json ./apps/control/
 COPY packages ./packages
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Install only production dependencies
 FROM base AS prod-install
 COPY package.json bun.lock ./
 COPY apps/control/package.json ./apps/control/
 COPY packages ./packages
-RUN bun install --frozen-lockfile --production
+RUN bun install --production
 
 # Build the application
 FROM base AS builder
