@@ -9,6 +9,7 @@ FROM base AS install
 COPY package.json bun.lock ./
 COPY apps/realtime/package.json ./apps/realtime/
 # If other packages have package.json, they should be copied here as well.
+COPY packages ./packages
 
 RUN bun install --frozen-lockfile
 
