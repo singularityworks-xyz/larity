@@ -1,4 +1,6 @@
-FROM oven/bun:1.1.34-slim AS base
+FROM oven/bun:1-slim AS base
+ENV CI=true
+ENV HUSKY=0
 WORKDIR /app
 
 # Install all dependencies (development + production)
