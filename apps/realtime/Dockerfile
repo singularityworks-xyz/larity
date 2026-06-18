@@ -1,38 +1,33 @@
-# Use the official Bun image
 FROM oven/bun:1-slim AS base
 ENV CI=true
 ENV HUSKY=0
 WORKDIR /app
 
-# Stage 1: Install dependencies
-# We copy the root package.json and lockfile, plus the app's package.json
-# to leverage Docker's layer caching for node_modules.
-FROM base AS install
-COPY package.json bun.lock ./
-COPY apps/realtime/package.json ./apps/realtime/
-# If other packages have package.json, they should be copied here as well.
-COPY packages ./packages
-
-RUN bun install
-
-# Stage 2: Production Release
-FROM base AS release
-
-# Copy node_modules from install stage
-COPY --from=install /app/node_modules ./node_modules
-COPY --from=install /app/apps/realtime/node_modules ./apps/realtime/node_modules
-
-# Copy the rest of the application code
-# This includes apps/realtime/src and packages/infra/redis
+# Stage 1: Prune
+FROM base AS pruner
+RUN bun install -g turbo
 COPY . .
+RUN turbo prune realtime --docker
 
-# Set environment variables
+# Stage 2: Install dependencies
+FROM base AS install
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/bun.lock* ./
+RUN bun install --frozen-lockfile
+
+# Stage 3: Release
+FROM base AS release
 ENV NODE_ENV=production
 
-# The port specified in apps/realtime/src/env.ts
-EXPOSE 9001
+# Copy node_modules
+COPY --from=install /app/node_modules ./node_modules
+# Copy only the pruned source code (realtime + required packages)
+COPY --from=pruner /app/out/full/ .
 
-# Run the application
-# We use the path relative to the root since we're in a monorepo
+WORKDIR /app/packages/infra
+RUN bunx prisma generate
+WORKDIR /app
+
+EXPOSE 9001
 USER bun
 ENTRYPOINT [ "bun", "run", "apps/realtime/src/index.ts" ]
