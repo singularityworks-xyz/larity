@@ -1,30 +1,74 @@
 export function CtaBand() {
   return (
-    <section className="relative w-full overflow-hidden bg-accent py-24 text-white sm:py-32">
-      {/* Decorative background elements */}
-      <div className="absolute top-0 right-0 -mt-20 -mr-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
-      <div className="absolute bottom-0 left-0 -mb-20 -ml-20 h-80 w-80 rounded-full bg-black/10 blur-3xl" />
+    <section
+      className="w-full bg-accent/40 pb-24 text-zinc-900"
+      id="early-access"
+    >
+      <div className="mx-auto max-w-6xl px-6 md:px-8">
+        <div className="border-zinc-900/30 border-t border-b py-20 md:py-32">
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-8">
+            {/* Left side: Huge Typography */}
+            <div className="flex flex-col justify-between">
+              <span className="mb-8 font-mono text-[10px] text-accent uppercase tracking-[0.25em]">
+                05 / Early Access
+              </span>
+              <h2 className="font-display leading-[0.85] tracking-tight">
+                <span className="block text-[14vw] sm:text-[12vw] lg:text-[7rem]">
+                  Stop
+                </span>
+                <span className="block text-[14vw] text-white italic sm:text-[12vw] lg:text-[7rem]">
+                  re-reading
+                </span>
+                <span className="block text-[14vw] sm:text-[12vw] lg:text-[7rem]">
+                  meetings.
+                </span>
+              </h2>
+            </div>
 
-      <div className="relative mx-auto flex max-w-4xl flex-col items-center px-6 text-center">
-        <h2 className="font-display text-4xl leading-[1.1] tracking-tight sm:text-6xl lg:text-7xl">
-          Stop re-reading meetings to find what was decided.
-        </h2>
-        <p className="mt-6 max-w-2xl font-light text-lg text-white/80 sm:text-xl">
-          Larity is in early access for client-facing teams of 3–15 people.
-        </p>
+            {/* Right side: Form & Details */}
+            <div className="flex flex-col justify-end lg:border-zinc-900/30 lg:border-l lg:pl-12">
+              <p className="max-w-md font-light text-xl text-zinc-600 leading-relaxed">
+                Larity is currently in private beta for client-facing teams of
+                3–15 people. Join the waitlist to get early access.
+              </p>
 
-        <div className="mt-10 flex flex-col items-center">
-          <button
-            className="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-white px-8 py-4 font-medium text-zinc-900 transition-transform hover:scale-105 active:scale-95"
-            type="button"
-          >
-            <span className="relative z-10">Get Early Access</span>
-            <div className="absolute inset-0 z-0 bg-zinc-100 opacity-0 transition-opacity group-hover:opacity-100" />
-          </button>
+              <div className="mt-10 max-w-md">
+                <div className="group relative flex items-center rounded-full border border-zinc-900/30 bg-zinc-50/50 p-1.5 transition-colors focus-within:border-zinc-900 focus-within:bg-white">
+                  <input
+                    className="w-full bg-transparent py-3 pr-4 pl-6 font-mono text-sm text-zinc-900 placeholder-zinc-400 outline-none"
+                    placeholder="Enter your work email"
+                    required
+                    type="email"
+                  />
+                  <button
+                    className="flex shrink-0 items-center justify-center rounded-full bg-zinc-900 px-6 py-3 font-medium text-sm text-white transition-colors hover:bg-accent"
+                    type="button"
+                  >
+                    Request Access
+                  </button>
+                </div>
+              </div>
 
-          <p className="mt-4 font-mono text-white/60 text-xs uppercase tracking-widest">
-            macOS · Invite-only · Free for founding teams
-          </p>
+              <div className="mt-12 grid grid-cols-2 gap-4 border-zinc-900/30 border-t pt-6">
+                <div>
+                  <span className="block font-mono text-[10px] text-zinc-400 uppercase tracking-widest">
+                    Platform
+                  </span>
+                  <span className="mt-1 block font-medium text-sm text-zinc-900">
+                    Windows & Linux
+                  </span>
+                </div>
+                <div>
+                  <span className="block font-mono text-[10px] text-zinc-400 uppercase tracking-widest">
+                    Pricing
+                  </span>
+                  <span className="mt-1 block font-medium text-sm text-zinc-900">
+                    Free for founding teams
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
