@@ -142,9 +142,7 @@ export function MeetingHeader({
           className={cx(
             "inline-flex h-7 items-center gap-1.5 rounded-[5px] px-3",
             "font-semibold text-[11px] transition-all duration-150",
-            isHost
-              ? "border border-transparent bg-danger text-danger-fg shadow-sm hover:brightness-110 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
-              : "border border-border bg-bg-subtle text-fg-muted hover:bg-bg-emphasis hover:text-fg active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+            "border border-transparent bg-danger text-danger-fg shadow-sm hover:brightness-110 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
           )}
           disabled={isEndingBusy}
           onClick={onEndMeeting}

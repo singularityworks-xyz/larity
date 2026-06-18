@@ -5,6 +5,7 @@ import { CtaBand } from "./sections/cta-band.tsx";
 import { Faq } from "./sections/faq.tsx";
 import { Hero } from "./sections/hero.tsx";
 import { HowItWorks } from "./sections/how-it-works.tsx";
+import { MeetingMode } from "./sections/meeting-mode.tsx";
 import { MemoryDeepDive } from "./sections/memory-deep-dive.tsx";
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
         {/* Spacer to show the overflowed bottom 12% of the video on scroll */}
         <div className="h-96 bg-bg" />
         <ContextStrip />
+        <MeetingMode />
         <HowItWorks />
         <MemoryDeepDive />
         <CtaBand />

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AlertCard } from "../../features/alerts/alert-card";
 import { mapBackendAlertToMeetingAlert } from "../../features/alerts/mapper";
+import type { MeetingAlert } from "../../features/alerts/types";
 import { useAlertQueue } from "../../features/alerts/use-alert-queue";
 import { useAuthSession } from "../../features/auth/use-session";
 import { AmbientStatusBar } from "../../features/meeting-live/ambient-status-bar";
@@ -127,6 +128,271 @@ function getSystemEventSourceLabel(
   return "AI Reasoner";
 }
 
+// ── Mock Data for Demo ────────────────────────────────────────────────────────
+
+const USE_MOCK = true; // Easily toggleable flag for product demo/screenshots
+
+const MOCK_PARTICIPANTS: LiveParticipant[] = [
+  {
+    id: "p1",
+    name: "Sarah Jenkins",
+    type: "TEAM",
+    isHost: true,
+    isSelf: false,
+    isConnected: true,
+    confidence: 1.0,
+  },
+  {
+    id: "p2",
+    name: "Alex Rivera",
+    type: "TEAM",
+    isHost: false,
+    isSelf: true,
+    isConnected: true,
+    confidence: 1.0,
+  },
+  {
+    id: "p3",
+    name: "Elena Rostova",
+    type: "EXTERNAL",
+    isHost: false,
+    isSelf: false,
+    isConnected: true,
+    confidence: 0.95,
+  },
+  {
+    id: "p4",
+    name: "Marcus Chen",
+    type: "EXTERNAL",
+    isHost: false,
+    isSelf: false,
+    isConnected: true,
+    confidence: 0.9,
+  },
+];
+
+function getMockTopics(startedAtMs: number): LiveTopic[] {
+  return [
+    {
+      id: "topic-1",
+      label: "Introductions & Security Objectives",
+      startedAt: startedAtMs,
+    },
+    {
+      id: "topic-2",
+      label: "Self-Hosted Runner Architecture & SOC2 Audits",
+      startedAt: startedAtMs + 15 * 60 * 1000,
+    },
+    {
+      id: "topic-3",
+      label: "NDA Clauses & Trial Sandbox Preparation",
+      startedAt: startedAtMs + 30 * 60 * 1000,
+    },
+  ];
+}
+
+function getMockUtterances(startedAtMs: number): LiveUtterance[] {
+  return [
+    {
+      id: "ut-1",
+      speakerId: "p1",
+      speakerName: "Sarah Jenkins",
+      speakerType: "team",
+      text: "Hello everyone, welcome to the Acme Corp & Larity expansion alignment meeting. Let's start by reviewing our security objectives.",
+      timestamp: startedAtMs + 72 * 1000,
+      isCommitment: false,
+    },
+    {
+      id: "ut-2",
+      speakerId: "p3",
+      speakerName: "Elena Rostova",
+      speakerType: "external",
+      text: "Thanks Sarah. Yes, security is our main bottleneck right now. We have some strict compliance guidelines regarding client data retention.",
+      timestamp: startedAtMs + 165 * 1000,
+      isCommitment: false,
+    },
+    {
+      id: "ut-3",
+      speakerId: "p1",
+      speakerName: "Sarah Jenkins",
+      speakerType: "team",
+      text: "Absolutely. We fully support customer-controlled data boundaries. Larity can run in a hybrid layout where none of your conversation audio or transcripts leave your network.",
+      timestamp: startedAtMs + 260 * 1000,
+      isCommitment: false,
+    },
+    {
+      id: "ut-4",
+      speakerId: "p4",
+      speakerName: "Marcus Chen",
+      speakerType: "external",
+      text: "How does that interface with the SaaS control plane? Do we need to allow inbound ports from Larity's servers?",
+      timestamp: startedAtMs + 375 * 1000,
+      isCommitment: false,
+    },
+    {
+      id: "ut-5",
+      speakerId: "p2",
+      speakerName: "Alex Rivera",
+      speakerType: "team_self",
+      text: "Good question Marcus. No, the runner uses an outbound-only connection via standard secure WebSockets. No inbound firewall rules are needed.",
+      timestamp: startedAtMs + 485 * 1000,
+      isCommitment: false,
+    },
+    {
+      id: "ut-6",
+      speakerId: "p4",
+      speakerName: "Marcus Chen",
+      speakerType: "external",
+      text: "That's a relief. It makes approval with our NetSec team much simpler.",
+      timestamp: startedAtMs + 590 * 1000,
+      isCommitment: false,
+    },
+    {
+      id: "ut-7",
+      speakerId: "p3",
+      speakerName: "Elena Rostova",
+      speakerType: "external",
+      text: "We still need the updated SOC2 Packet and a clear description of the self-hosted runner network boundaries.",
+      timestamp: startedAtMs + 735 * 1000,
+      isCommitment: false,
+    },
+    {
+      id: "ut-8",
+      speakerId: "p1",
+      speakerName: "Sarah Jenkins",
+      speakerType: "team",
+      text: "I will send you the SOC2 packet and the runner isolation diagram by tomorrow morning.",
+      timestamp: startedAtMs + 842 * 1000,
+      isCommitment: true,
+    },
+    {
+      id: "ut-9",
+      speakerId: "p3",
+      speakerName: "Elena Rostova",
+      speakerType: "external",
+      text: "Excellent. If those look good, our compliance review should take about a week.",
+      timestamp: startedAtMs + 1110 * 1000,
+      isCommitment: false,
+    },
+    {
+      id: "ut-10",
+      speakerId: "p4",
+      speakerName: "Marcus Chen",
+      speakerType: "external",
+      text: "Moving to the integration specs: we want to test the Slack webhook notification system. We need sandbox rate limits increased so we can stress test the runner logs.",
+      timestamp: startedAtMs + 1330 * 1000,
+      isCommitment: false,
+    },
+    {
+      id: "ut-11",
+      speakerId: "p2",
+      speakerName: "Alex Rivera",
+      speakerType: "team_self",
+      text: "I'll raise your sandbox rate limits to 10,000 requests per hour in Redis by this afternoon. And I will prepare the NDA extension draft.",
+      timestamp: startedAtMs + 1485 * 1000,
+      isCommitment: true,
+    },
+    {
+      id: "ut-12",
+      speakerId: "p4",
+      speakerName: "Marcus Chen",
+      speakerType: "external",
+      text: "10k per hour is perfect. That allows us to simulate high call volumes during active developer hours.",
+      timestamp: startedAtMs + 1650 * 1000,
+      isCommitment: false,
+    },
+    {
+      id: "ut-13",
+      speakerId: "p3",
+      speakerName: "Elena Rostova",
+      speakerType: "external",
+      text: "Regarding the NDA extension, does it cover the IP clause for the self-hosted scripts we might customize?",
+      timestamp: startedAtMs + 1875 * 1000,
+      isCommitment: false,
+    },
+    {
+      id: "ut-14",
+      speakerId: "p1",
+      speakerName: "Sarah Jenkins",
+      speakerType: "team",
+      text: "Yes, the draft ensures any custom scripting or config files you write remain completely your proprietary IP.",
+      timestamp: startedAtMs + 2040 * 1000,
+      isCommitment: false,
+    },
+    {
+      id: "ut-15",
+      speakerId: "p3",
+      speakerName: "Elena Rostova",
+      speakerType: "external",
+      text: "Perfect. Let's aim to have the NDA signed by Friday so we can kick off the sandbox trial on Monday.",
+      timestamp: startedAtMs + 2240 * 1000,
+      isCommitment: false,
+    },
+    {
+      id: "ut-16",
+      speakerId: "p2",
+      speakerName: "Alex Rivera",
+      speakerType: "team_self",
+      text: "I'll make sure the setup script is uploaded to your custom registry so your DevOps team can pull it immediately on Monday.",
+      timestamp: startedAtMs + 2405 * 1000,
+      isCommitment: true,
+    },
+    {
+      id: "ut-17",
+      speakerId: "p4",
+      speakerName: "Marcus Chen",
+      speakerType: "external",
+      text: "Awesome. Looking forward to getting our hands on the self-hosted environment.",
+      timestamp: startedAtMs + 2505 * 1000,
+      isCommitment: false,
+    },
+  ];
+}
+
+function getMockCommitments(startedAtMs: number): LiveCommitment[] {
+  return [
+    {
+      id: "c-1",
+      speakerId: "p1",
+      speakerName: "Sarah Jenkins",
+      sourceUtteranceId: "ut-8",
+      text: "Send SOC2 packet and runner isolation diagram to Elena by tomorrow morning",
+      status: "CONFIRMED",
+      timestamp: startedAtMs + 842 * 1000,
+    },
+    {
+      id: "c-2",
+      speakerId: "p2",
+      speakerName: "Alex Rivera",
+      sourceUtteranceId: "ut-11",
+      text: "Increase sandbox rate limits to 10k/hr in Redis and draft NDA extension",
+      status: "TENTATIVE",
+      timestamp: startedAtMs + 1485 * 1000,
+    },
+    {
+      id: "c-3",
+      speakerId: "p2",
+      speakerName: "Alex Rivera",
+      sourceUtteranceId: "ut-16",
+      text: "Upload setup script to customer registry by Monday morning",
+      status: "TENTATIVE",
+      timestamp: startedAtMs + 2405 * 1000,
+    },
+  ];
+}
+
+const MOCK_AGENDA = [
+  {
+    id: "ag-1",
+    text: "Address security compliance & self-hosted architecture",
+  },
+  { id: "ag-2", text: "Review Q4 roadmap requests and API rate-limiting" },
+  {
+    id: "ag-3",
+    text: "Align on sandboxed trial deployment timeline and legal NDA extension",
+  },
+];
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: pre-existing, refactor deferred
 export function MeetingPage() {
   const navigate = useNavigate();
@@ -148,8 +414,11 @@ export function MeetingPage() {
 
   const clientDisplayName = state.clientName ?? "Client";
   const meetingDisplayTitle = state.meetingTitle ?? "Live meeting";
-  const meetingStartedAtMs =
+  let meetingStartedAtMs =
     typeof state.startedAt === "number" ? state.startedAt : Date.now();
+  if (USE_MOCK) {
+    meetingStartedAtMs = Date.now() - 42 * 60 * 1000;
+  }
 
   const [configuredName, setConfiguredName] = useState<string | null>(
     initialAllowNameCustomization ? null : accountName
@@ -171,8 +440,12 @@ export function MeetingPage() {
   const vadManager = useMemo(() => new VadManager(), []);
   const isHost = role === "host";
 
-  const [topics, setTopics] = useState<LiveTopic[]>([]);
-  const [utterances, setUtterances] = useState<LiveUtterance[]>([]);
+  const [topics, setTopics] = useState<LiveTopic[]>(() =>
+    USE_MOCK ? getMockTopics(meetingStartedAtMs) : []
+  );
+  const [utterances, setUtterances] = useState<LiveUtterance[]>(() =>
+    USE_MOCK ? getMockUtterances(meetingStartedAtMs) : []
+  );
   const [pendingFinals, setPendingFinals] = useState<LivePendingUtterance[]>(
     []
   );
@@ -181,14 +454,22 @@ export function MeetingPage() {
     ts: number;
     channel: number;
   } | null>(null);
-  const [participants, setParticipants] = useState<LiveParticipant[]>([]);
-  const [commitments, setCommitments] = useState<LiveCommitment[]>([]);
-  const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<LiveParticipant[]>(
+    USE_MOCK ? MOCK_PARTICIPANTS : []
+  );
+  const [commitments, setCommitments] = useState<LiveCommitment[]>(() =>
+    USE_MOCK ? getMockCommitments(meetingStartedAtMs) : []
+  );
+  const [activeTopicId, setActiveTopicId] = useState<string | null>(
+    USE_MOCK ? "topic-3" : null
+  );
   const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
   const [alertsMuted, setAlertsMuted] = useState(false);
   // const [rememberBanner, setRememberBanner] = useState<string | null>(null);
-  const [constraintCount, setConstraintCount] = useState(0);
-  const [ambientTopic, setAmbientTopic] = useState<string | null>(null);
+  const [constraintCount, setConstraintCount] = useState(USE_MOCK ? 1 : 0);
+  const [ambientTopic, setAmbientTopic] = useState<string | null>(
+    USE_MOCK ? "NDA Clauses & Trial Sandbox Preparation" : null
+  );
   const [isStreamActive, setIsStreamActive] = useState(true);
 
   const [status, setStatus] = useState<AudioStatusSnapshot | null>(null);
@@ -217,10 +498,70 @@ export function MeetingPage() {
     string | null
   >(null);
 
-  const alertQueue = useAlertQueue();
+  const defaultAlertQueue = useAlertQueue();
+  const alertQueue = USE_MOCK
+    ? {
+        visibleAlerts: [
+          {
+            id: "alert-1",
+            category: "risky_commitment" as const,
+            severity: "medium" as const,
+            title: "Risky Commitment",
+            message:
+              "Sarah Jenkins committed to sending the SOC2 packet and runner isolation diagram by tomorrow morning.",
+            timestamp: Date.now(),
+            confidence: 0.92,
+            routing: "shared" as const,
+            isShared: true,
+            triggerTier: 1 as const,
+            evidence: {
+              utterance:
+                "I will send you the SOC2 packet and the runner isolation diagram by tomorrow morning.",
+              reasoning:
+                "The client recently delayed their deployment cycles. Sending these packets late risks pushing their internal audit review into Q4.",
+            },
+          },
+        ] as MeetingAlert[],
+        alertHistory: [
+          {
+            id: "alert-1",
+            category: "risky_commitment" as const,
+            severity: "medium" as const,
+            title: "Risky Commitment",
+            message:
+              "Sarah Jenkins committed to sending the SOC2 packet and runner isolation diagram by tomorrow morning.",
+            timestamp: Date.now(),
+            confidence: 0.92,
+            routing: "shared" as const,
+            isShared: true,
+            triggerTier: 1 as const,
+            evidence: {
+              utterance:
+                "I will send you the SOC2 packet and the runner isolation diagram by tomorrow morning.",
+              reasoning:
+                "The client recently delayed their deployment cycles. Sending these packets late risks pushing their internal audit review into Q4.",
+            },
+          },
+        ] as MeetingAlert[],
+        dismissAlert: (_id: string) => {
+          /* no-op for mock */
+        },
+        addAlert: (_alert: unknown) => {
+          /* no-op for mock */
+        },
+        clearAll: () => {
+          /* no-op for mock */
+        },
+        pendingCount: 0,
+        exitingIds: new Set<string>(),
+      }
+    : defaultAlertQueue;
+
   const addAlertRef = useRef(alertQueue.addAlert);
   addAlertRef.current = alertQueue.addAlert;
-  const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
+  const [expandedAlertId, setExpandedAlertId] = useState<string | null>(
+    USE_MOCK ? "alert-1" : null
+  );
 
   const unidentifiedAlertedRef = useRef<Set<string>>(new Set());
 
@@ -956,7 +1297,7 @@ export function MeetingPage() {
       ) : null}
       */}
 
-      {warning ? (
+      {!USE_MOCK && warning ? (
         <div
           aria-live="polite"
           className={cx(warningBannerClass, "rounded-none border-x-0")}
@@ -965,7 +1306,7 @@ export function MeetingPage() {
         </div>
       ) : null}
 
-      {systemEvents.length > 0 ? (
+      {!USE_MOCK && systemEvents.length > 0 ? (
         <div aria-live="assertive">
           {systemEvents.map((event) => (
             <div
@@ -1128,7 +1469,7 @@ export function MeetingPage() {
           onChangeRole={handleRoleChange}
           onEvidenceClick={handleEvidenceClick}
           participants={participants}
-          pendingAgenda={state.pendingAgenda}
+          pendingAgenda={USE_MOCK ? MOCK_AGENDA : state.pendingAgenda}
           sessionId={sessionId || "unknown"}
         />
       </div>
