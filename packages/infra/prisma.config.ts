@@ -1,4 +1,4 @@
-const defineConfig = (config: unknown) => config;
+import { defineConfig } from "@prisma/config";
 
 export default defineConfig({
   earlyAccess: true,
