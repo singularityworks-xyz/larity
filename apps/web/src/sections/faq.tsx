@@ -24,10 +24,6 @@ export function Faq() {
       q: "How much does it cost to run?",
       a: "The all-in intelligence cost per meeting hour is approximately $1.22 — including dual-channel speech-to-text and the four-stage AI reasoning pipeline. We pass this through at cost for founding teams.",
     },
-    {
-      q: "Is my meeting data used to train models?",
-      a: "No. Your meeting data is yours. It is not shared with or used to train third-party AI providers.",
-    },
   ];
 
   return (
@@ -46,7 +42,7 @@ export function Faq() {
           {faqs.map((faq, index) => {
             const isOpen = openIndex === index;
             return (
-              <div className="group py-6" key={`faq-${index}`}>
+              <div className="group py-6" key={faq.q}>
                 <button
                   aria-expanded={isOpen}
                   className="flex w-full items-center justify-between text-left focus:outline-none"
@@ -55,7 +51,7 @@ export function Faq() {
                 >
                   <h3
                     className={`font-display text-xl transition-colors duration-300 sm:text-2xl ${
-                      isOpen ? "text-[#B0472A]" : "text-zinc-900"
+                      isOpen ? "text-accent" : "text-zinc-900"
                     }`}
                   >
                     {faq.q}
@@ -63,7 +59,7 @@ export function Faq() {
                   <div
                     className={`ml-6 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-all duration-500 ${
                       isOpen
-                        ? "border-[#B0472A]/30 bg-[#B0472A]/5 text-[#B0472A]"
+                        ? "border-accent/30 bg-accent/5 text-accent"
                         : "border-zinc-200 bg-white text-zinc-400 group-hover:border-zinc-300"
                     }`}
                   >
