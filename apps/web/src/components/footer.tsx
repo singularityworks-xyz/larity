@@ -47,12 +47,19 @@ export function Footer() {
             <a className="transition-colors hover:text-zinc-900" href="#terms">
               Terms
             </a>
-            <a className="transition-colors hover:text-zinc-900" href="#x">
+            <a
+              className="transition-colors hover:text-zinc-900"
+              href="https://x.com/amancooks"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
               Twitter / X
             </a>
             <a
               className="transition-colors hover:text-zinc-900"
-              href="#linkedin"
+              href="https://www.linkedin.com/in/aman-aziz"
+              rel="noopener noreferrer"
+              target="_blank"
             >
               LinkedIn
             </a>
