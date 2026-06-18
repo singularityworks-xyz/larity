@@ -7,7 +7,6 @@ import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { Elysia } from "elysia";
 import { getMetricsText, startDefaultMetrics } from "meeting-mode";
-import { Resend } from "resend";
 import { env } from "./env";
 import { prisma } from "./lib/prisma";
 import { createControlLogger } from "./logger";
@@ -52,14 +51,14 @@ export const app = new Elysia()
   // CORS
   .use(
     cors({
-      origin: (context) => {
-        const origin = context.request.headers.get("origin");
+      origin: (request) => {
+        const origin = request.headers.get("origin");
         if (!origin) {
           return false;
         }
 
         // Public waitlist route can be accessed from any origin
-        const url = new URL(context.request.url);
+        const url = new URL(request.url);
         if (url.pathname === "/api/waitlist") {
           return true;
         }
@@ -150,45 +149,7 @@ export const app = new Elysia()
   .use(authRoutes)
   // Internal server-to-server routes (no user auth required)
   .use(internalSessionRoutes)
-  .post("/api/waitlist", async ({ body, set }) => {
-    const { email } = body as { email?: string };
-    if (!email?.includes("@")) {
-      set.status = 400;
-      return { success: false, error: "Invalid email address" };
-    }
 
-    try {
-      const timestamp = new Date().toISOString();
-
-      if (!env.RESEND_API_KEY) {
-        log.error(
-          "RESEND_API_KEY is not configured. Cannot process waitlist signup."
-        );
-        set.status = 500;
-        return { success: false, error: "Email service not configured" };
-      }
-
-      const resend = new Resend(env.RESEND_API_KEY);
-      const personalEmail = env.PERSONAL_EMAIL || "delivered@resend.dev";
-
-      await resend.emails.send({
-        from: "onboarding@resend.dev",
-        to: personalEmail,
-        subject: "New Larity Waitlist Signup",
-        html: `<p>A new user has joined the Larity waitlist!</p><p>Email: <strong>${email}</strong></p><p>Signed up at: ${timestamp}</p>`,
-      });
-
-      log.info(
-        { email, to: personalEmail },
-        "Notification email sent via Resend"
-      );
-      return { success: true };
-    } catch (error) {
-      log.error({ err: error }, "Failed to process waitlist signup via Resend");
-      set.status = 500;
-      return { success: false, error: "Failed to send email notification" };
-    }
-  })
   // Protected API routes
   .group("/api", (app) =>
     app
