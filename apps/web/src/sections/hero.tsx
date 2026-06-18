@@ -51,12 +51,12 @@ export function Hero() {
         </div>
       </div>
 
-      {/* Video Container: Shifted upwards, less overflow below the fold */}
-      <div className="relative z-20 mt-auto w-3/4 translate-y-[12%] px-4">
-        <div className="rounded-2xl border border-accent/20 bg-white/10 p-2 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)] backdrop-blur-sm">
+      {/* Video Container: Shifted upwards, responsive width and height on mobile/tablet */}
+      <div className="relative z-20 mt-auto w-full translate-y-[8%] px-4 sm:w-11/12 sm:translate-y-[10%] md:w-5/6 md:translate-y-[12%] lg:w-3/4">
+        <div className="rounded-2xl border border-accent/20 bg-white/10 p-1.5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)] backdrop-blur-sm sm:p-2">
           <video
             autoPlay
-            className="w-full rounded-xl object-cover shadow-inner"
+            className="aspect-video min-h-[220px] w-full rounded-xl object-cover shadow-inner sm:min-h-[320px] md:aspect-auto md:min-h-0"
             loop
             muted
             playsInline
