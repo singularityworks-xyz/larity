@@ -80,6 +80,20 @@ services:
     networks:
       - larity-network
 
+  meeting-mode:
+    build:
+      context: .
+      dockerfile: apps/workers/Dockerfile
+    container_name: larity-meeting-mode
+    entrypoint: ["bun", "run", "packages/meeting-mode/src/index.ts"]
+    restart: unless-stopped
+    env_file: .env.production
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - larity-network
+
 volumes:
   redis_data:
   postgres_data:

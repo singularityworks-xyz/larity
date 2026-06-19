@@ -36,6 +36,8 @@ export class AudioStreamer {
   private readonly ch1Stream: PassThrough;
   private readonly ch0Upload: Upload;
   private readonly ch1Upload: Upload;
+  private readonly ch0UploadPromise: Promise<unknown>;
+  private readonly ch1UploadPromise: Promise<unknown>;
   private readonly config: AudioStreamerConfig;
   private readonly orgId: string;
   private readonly sessionId: string;
@@ -96,10 +98,13 @@ export class AudioStreamer {
 
     // Attach silent catch handlers immediately to prevent unhandled promise rejections
     // if the upload fails early (e.g. invalid credentials) before end() is called
-    this.ch0Upload.done().catch((error) => {
+    this.ch0UploadPromise = this.ch0Upload.done();
+    this.ch0UploadPromise.catch((error) => {
       log.error({ err: error, sessionId }, "S3 upload failed early for ch0");
     });
-    this.ch1Upload.done().catch((error) => {
+
+    this.ch1UploadPromise = this.ch1Upload.done();
+    this.ch1UploadPromise.catch((error) => {
       log.error({ err: error, sessionId }, "S3 upload failed early for ch1");
     });
 
@@ -198,7 +203,7 @@ export class AudioStreamer {
     );
 
     try {
-      await Promise.all([this.ch0Upload.done(), this.ch1Upload.done()]);
+      await Promise.all([this.ch0UploadPromise, this.ch1UploadPromise]);
       log.info(
         { sessionId: this.sessionId },
         "S3 dual channel uploads complete"
