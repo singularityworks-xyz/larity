@@ -178,8 +178,8 @@ export function RegisterPage() {
         );
       }
 
-      const token = signUpResult.data?.session?.token;
-      await createOrgOrJoin(orgMode, orgName, inviteCode, token);
+      const token = signUpResult.data?.token;
+      await createOrgOrJoin(orgMode, orgName, inviteCode, token ?? undefined);
       navigate("/onboarding");
     } catch (requestError) {
       setError(
