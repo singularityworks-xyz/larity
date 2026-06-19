@@ -126,9 +126,9 @@ export function OverlayShell() {
             </span>
           </div>
           <button
-            type="button"
             className="shrink-0 cursor-pointer font-mono text-[10px] text-fg-subtle tabular-nums transition-colors hover:text-fg"
             onClick={data.resetApp}
+            type="button"
           >
             {formatElapsed(elapsedMs)}
           </button>
