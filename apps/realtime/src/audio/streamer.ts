@@ -96,6 +96,11 @@ export class AudioStreamer {
       leavePartsOnError: false,
     });
 
+    // Attach silent catch handlers immediately to prevent unhandled promise rejections
+    // if the upload fails early (e.g. invalid credentials) before end() is called
+    this.ch0Upload.done().catch(() => { /* ignore early failures, handled in end() */ });
+    this.ch1Upload.done().catch(() => { /* ignore early failures, handled in end() */ });
+
     this.ch0Upload.on("httpUploadProgress", (progress) => {
       if (progress.loaded) {
         log.debug(

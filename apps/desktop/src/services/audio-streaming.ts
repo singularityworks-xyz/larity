@@ -180,6 +180,14 @@ export class AudioStreamingClient {
     Set<IncomingMessageHandler>
   >();
 
+  private reconnectTimer: number | null = null;
+  private reconnectAttempts = 0;
+  private currentSessionId: string | null = null;
+  private isExplicitlyDisconnected = false;
+  private readonly maxReconnectAttempts = 10;
+  private readonly baseReconnectDelayMs = 1000;
+  private readonly maxReconnectDelayMs = 30_000;
+
   private readonly metrics: AudioStreamingMetrics = {
     framesSent: 0,
     framesDropped: 0,
@@ -200,6 +208,10 @@ export class AudioStreamingClient {
   }
 
   connect(sessionId: string): void {
+    this.currentSessionId = sessionId;
+    this.isExplicitlyDisconnected = false;
+    this.clearReconnectTimer();
+
     if (
       this.socket?.readyState === WebSocket.OPEN ||
       this.socket?.readyState === WebSocket.CONNECTING
@@ -232,6 +244,7 @@ export class AudioStreamingClient {
       if (this.socket === ws) {
         this.warning = "";
         this.streamStarted = false; // Reset stream state on new connection
+        this.reconnectAttempts = 0; // Reset reconnection attempts on successful connect
       }
     };
 
@@ -242,11 +255,14 @@ export class AudioStreamingClient {
         return;
       }
 
-      if (event.code !== 1000) {
+      if (event.code !== 1000 && !this.isExplicitlyDisconnected) {
         this.warning =
-          "Realtime socket closed unexpectedly. Check sessionId/userId authorization and realtime server logs.";
+          "Realtime socket closed unexpectedly. Attempting to reconnect...";
+        this.socket = null;
+        this.scheduleReconnect();
+      } else {
+        this.socket = null;
       }
-      this.socket = null;
     };
 
     ws.onerror = () => {
@@ -291,6 +307,43 @@ export class AudioStreamingClient {
     this.socket = ws;
   }
 
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer !== null) {
+      window.clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.isExplicitlyDisconnected || !this.currentSessionId) {
+      return;
+    }
+
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      this.log.error("Max reconnection attempts reached. Giving up.");
+      this.warning = "Connection lost. Please refresh the page or try again.";
+      return;
+    }
+
+    const delay = Math.min(
+      this.baseReconnectDelayMs * 2 ** this.reconnectAttempts +
+        Math.random() * 1000,
+      this.maxReconnectDelayMs
+    );
+
+    this.log.info(
+      `Scheduling reconnect in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`
+    );
+
+    this.clearReconnectTimer();
+    this.reconnectTimer = window.setTimeout(() => {
+      this.reconnectAttempts++;
+      if (this.currentSessionId && !this.isExplicitlyDisconnected) {
+        this.connect(this.currentSessionId);
+      }
+    }, delay);
+  }
+
   setIdentity(
     userId: string,
     role: "host" | "participant" = "host",
@@ -304,13 +357,16 @@ export class AudioStreamingClient {
   }
 
   disconnect(): void {
-    this.pendingFrames.length = 0;
-    this.streamStarted = false;
+    this.isExplicitlyDisconnected = true;
+    this.currentSessionId = null;
+    this.clearReconnectTimer();
+
     if (this.socket) {
-      this.log.info("Disconnecting socket manually");
-      this.socket.close();
+      this.log.info("Disconnecting WebSocket");
+      this.socket.close(1000, "Client disconnected");
       this.socket = null;
     }
+    this.streamStarted = false;
   }
 
   getMetrics(): AudioStreamingMetrics {
