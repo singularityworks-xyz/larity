@@ -44,6 +44,12 @@ export const auth = betterAuth({
   },
   plugins: [organization()],
   trustedOrigins: env.FRONTEND_ORIGINS,
+  advanced: {
+    defaultCookieAttributes: {
+      sameSite: "none",
+      secure: true,
+    },
+  },
 });
 
 export type Session = typeof auth.$Infer.Session;
