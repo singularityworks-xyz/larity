@@ -78,7 +78,6 @@ export class AudioStreamer {
         Bucket: this.config.bucket,
         Key: ch0Key,
         Body: this.ch0Stream,
-        ServerSideEncryption: "AES256",
       },
       queueSize: 4,
       leavePartsOnError: false,
@@ -90,10 +89,18 @@ export class AudioStreamer {
         Bucket: this.config.bucket,
         Key: ch1Key,
         Body: this.ch1Stream,
-        ServerSideEncryption: "AES256",
       },
       queueSize: 4,
       leavePartsOnError: false,
+    });
+
+    // Attach silent catch handlers immediately to prevent unhandled promise rejections
+    // if the upload fails early (e.g. invalid credentials) before end() is called
+    this.ch0Upload.done().catch((error) => {
+      log.error({ err: error, sessionId }, "S3 upload failed early for ch0");
+    });
+    this.ch1Upload.done().catch((error) => {
+      log.error({ err: error, sessionId }, "S3 upload failed early for ch1");
     });
 
     this.ch0Upload.on("httpUploadProgress", (progress) => {
