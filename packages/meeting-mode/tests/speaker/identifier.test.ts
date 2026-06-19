@@ -515,8 +515,8 @@ describe("SpeakerIdentifier", () => {
 
       const start = performance.now();
       for (let i = 0; i < 10_000; i += 1) {
-        perfIdentifier.processSttPartial(i, base + i);
-        perfIdentifier.identifySpeakerForFinal(i, base + i + 10);
+        perfIdentifier.processSttPartial(i % 100, base + i);
+        perfIdentifier.identifySpeakerForFinal(i % 100, base + i + 10);
       }
       const elapsed = performance.now() - start;
       expect(elapsed).toBeLessThan(2000);

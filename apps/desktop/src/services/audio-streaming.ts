@@ -41,6 +41,7 @@ export type IncomingMessageType =
   | "stt_final"
   | "meeting_processed"
   | "speaker_identity_guessed"
+  | "system_event"
   | "unknown";
 
 export type IncomingMessageHandler = (data: Record<string, unknown>) => void;
@@ -511,6 +512,9 @@ function detectIncomingMessageType(
   }
   if (dataType === "stt_final") {
     return "stt_final";
+  }
+  if (dataType === "system_event") {
+    return "system_event";
   }
   if (dataType === "meeting_processed") {
     return "meeting_processed";

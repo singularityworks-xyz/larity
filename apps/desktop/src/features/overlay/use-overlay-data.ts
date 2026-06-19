@@ -58,13 +58,15 @@ export function useOverlayData() {
   const [constraintCount, setConstraintCount] = useState(0);
   const [commitmentCount, setCommitmentCount] = useState(0);
   const [isMicActive, setIsMicActive] = useState(false);
+  const [micAmplitude, setMicAmplitude] = useState(0);
   const [alertsMuted, setAlertsMuted] = useState(false);
-  const [rememberFlash, setRememberFlash] = useState(false);
+  // const [rememberFlash, setRememberFlash] = useState(false);
   const [identityGuesses, setIdentityGuesses] = useState<
     Array<{ id: string; index: string; memberId: string }>
   >([]);
+  const [autoExpiryEnabled, setAutoExpiryEnabled] = useState(false);
 
-  const alertQueue = useAlertQueue();
+  const alertQueue = useAlertQueue(999, true, !autoExpiryEnabled);
 
   const visibleAlerts = useMemo(() => {
     if (alertsMuted) {
@@ -87,10 +89,10 @@ export function useOverlayData() {
     [alertQueue]
   );
 
-  const handleRememberThis = useCallback(() => {
-    setRememberFlash(true);
-    window.setTimeout(() => setRememberFlash(false), 2000);
-  }, []);
+  // const handleRememberThis = useCallback(() => {
+  //   setRememberFlash(true);
+  //   window.setTimeout(() => setRememberFlash(false), 2000);
+  // }, []);
 
   const addAlertRef = useRef(alertQueue.addAlert);
   addAlertRef.current = alertQueue.addAlert;
@@ -238,18 +240,25 @@ export function useOverlayData() {
   useEffect(() => {
     let unlistenStart: (() => void) | null = null;
     let unlistenEnd: (() => void) | null = null;
+    let unlistenAmp: (() => void) | null = null;
 
     async function attach() {
       unlistenStart = await listen("vad-speech-start", () =>
         setIsMicActive(true)
       );
-      unlistenEnd = await listen("vad-speech-end", () => setIsMicActive(false));
+      unlistenEnd = await listen("vad-speech-end", () => {
+        setIsMicActive(false);
+      });
+      unlistenAmp = await listen<number>("raw-mic-amplitude", (e) => {
+        setMicAmplitude(e.payload);
+      });
     }
     attach();
 
     return () => {
       unlistenStart?.();
       unlistenEnd?.();
+      unlistenAmp?.();
     };
   }, []);
 
@@ -273,19 +282,22 @@ export function useOverlayData() {
     dismissAlert,
     expandedAlertId,
     isMicActive,
+    micAmplitude,
     meetingTitle: params.meetingTitle,
-    rememberFlash,
+    // rememberFlash,
     role: params.role,
     sessionId: params.sessionId,
     setAlertsMuted,
     setExpandedAlertId,
     startedAtMs: params.startedAtMs,
-    handleRememberThis,
+    // handleRememberThis,
     alertsMuted,
     visibleAlerts,
     pendingCount: alertQueue.pendingCount,
     exitingIds: alertQueue.exitingIds,
     identityGuesses,
     setIdentityGuesses,
+    autoExpiryEnabled,
+    setAutoExpiryEnabled,
   };
 }

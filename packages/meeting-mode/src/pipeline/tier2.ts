@@ -1,3 +1,4 @@
+import { publishSystemEvent } from "@larity/infra/redis";
 import OpenAI from "openai";
 import {
   SAMBANOVA_API_KEY,
@@ -48,7 +49,7 @@ export class Tier2Classifier {
     }
   }
 
-  async classify(input: Tier2Input): Promise<Tier2Outcome> {
+  async classify(input: Tier2Input, sessionId?: string): Promise<Tier2Outcome> {
     try {
       const { text, promptTokens, completionTokens } = await this.invoke(
         input,
@@ -61,6 +62,15 @@ export class Tier2Classifier {
           { issues: validation.error.issues.map((issue) => issue.message) },
           "Tier2 returned invalid schema"
         );
+        if (sessionId) {
+          publishSystemEvent(sessionId, {
+            source: "sambanova",
+            severity: "warning",
+            code: "SAMBANOVA_SCHEMA_ERROR",
+            message:
+              "Fast classification returned an invalid response schema. Fallback rules applied.",
+          }).catch(() => undefined);
+        }
         return {
           classification: fallbackClassification(),
           shouldStopForDeepReasoning: false,
@@ -78,6 +88,15 @@ export class Tier2Classifier {
       };
     } catch (error) {
       log.warn({ err: error }, "Tier2 classification failed silently");
+      if (sessionId) {
+        publishSystemEvent(sessionId, {
+          source: "sambanova",
+          severity: "warning",
+          code: "SAMBANOVA_ERROR",
+          message:
+            "Fast classification engine is offline or timed out. Fallback rules applied.",
+        }).catch(() => undefined);
+      }
       return {
         classification: fallbackClassification(),
         shouldStopForDeepReasoning: false,
@@ -261,10 +280,21 @@ function shouldStopAtTier2(classification: Tier2Classification): boolean {
 }
 
 function parseTier2Response(raw: string): unknown {
-  const trimmed = raw.trim();
+  let trimmed = raw.trim();
   if (!trimmed) {
     throw new Error("Tier2 returned empty response");
   }
+
+  // Strip markdown formatting if SambaNova wraps the JSON
+  if (trimmed.startsWith("```json")) {
+    trimmed = trimmed.substring(7);
+  } else if (trimmed.startsWith("```")) {
+    trimmed = trimmed.substring(3);
+  }
+  if (trimmed.endsWith("```")) {
+    trimmed = trimmed.substring(0, trimmed.length - 3);
+  }
+  trimmed = trimmed.trim();
 
   return JSON.parse(trimmed);
 }

@@ -9,6 +9,11 @@ export interface Meeting {
   status: "SCHEDULED" | "LIVE" | "ENDED" | "CANCELLED";
   scheduledAt: string | null;
   createdAt: string;
+  client?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
   participants?: Array<{
     id: string;
     role: string;

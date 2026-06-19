@@ -24,6 +24,7 @@
     "ioredis": "^5.9.2",
     "meeting-mode": "workspace:*",
     "prom-client": "^15.1.3",
+    "resend": "^6.14.0",
     "zod": "^4.3.5"
   },
   "peerDependencies": {

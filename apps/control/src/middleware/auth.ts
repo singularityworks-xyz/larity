@@ -4,8 +4,16 @@ import { auth, type Session } from "../lib/auth";
 export const authMiddleware = new Elysia({ name: "auth-middleware" }).derive(
   { as: "global" },
   async ({ request }) => {
+    const headers = new Headers(request.headers);
+    const url = new URL(request.url);
+    const token = url.searchParams.get("token");
+
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+
     const session = await auth.api.getSession({
-      headers: request.headers,
+      headers,
     });
 
     return {

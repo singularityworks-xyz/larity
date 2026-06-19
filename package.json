@@ -36,12 +36,13 @@
     "ultracite": "7.1.4"
   },
   "peerDependencies": {
-    "typescript": "^6"
+    "typescript": "^5.0.0"
   },
   "dependencies": {
     "@deepgram/sdk": "^5.1.0",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
+    "@prisma/config": "^7.8.0",
     "amqplib": "^0.10.9",
     "ioredis": "^5.8.2",
     "pg": "^8.16.3"

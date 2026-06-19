@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
+import { ArrowLeft } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuthSession } from "../features/auth/use-session";
 import { api } from "../lib/api";
 import { VadManager } from "../services/vad";
@@ -15,13 +17,22 @@ interface VadDebugEvent {
 
 const TEAM_MEMBER_STATE: CorrelationState = "TEAM MEMBER";
 const EXTERNAL_STATE: CorrelationState = "EXTERNAL";
-const SPEECH_ACTIVE_MS = 2500;
 
 function formatTimestamp(ts: number | null): string {
   if (!ts) {
     return "Never";
   }
   return new Date(ts).toLocaleTimeString();
+}
+
+function getAmplitudeColor(rms: number): string {
+  if (rms > 0.8) {
+    return "var(--color-danger-fg)";
+  }
+  if (rms > 0.5) {
+    return "var(--color-warning-fg)";
+  }
+  return "var(--color-success-fg)";
 }
 
 type TabId = "guardrails" | "audio";
@@ -127,6 +138,7 @@ function GuardrailCard({
 }
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const vadManager = useMemo(() => new VadManager(), []);
 
   // Auth State
@@ -143,6 +155,7 @@ export function SettingsPage() {
     null
   );
   const [lastSpeechEndTs, setLastSpeechEndTs] = useState<number | null>(null);
+  const [amplitude, setAmplitude] = useState(0);
 
   const [events, setEvents] = useState<VadDebugEvent[]>([]);
   const [warning, setWarning] = useState("");
@@ -199,23 +212,6 @@ export function SettingsPage() {
       .catch(() => setPermissionDecision("unknown"));
   }, []);
 
-  // VAD Loop
-  useEffect(() => {
-    if (!isRunning) {
-      return;
-    }
-    const interval = window.setInterval(() => {
-      const now = Date.now();
-      if (!lastSpeechStartTs) {
-        setSpeechDetected(false);
-        return;
-      }
-      const active = now - lastSpeechStartTs <= SPEECH_ACTIVE_MS;
-      setSpeechDetected(active);
-    }, 200);
-    return () => window.clearInterval(interval);
-  }, [isRunning, lastSpeechStartTs]);
-
   const correlationState: CorrelationState = speechDetected
     ? TEAM_MEMBER_STATE
     : EXTERNAL_STATE;
@@ -265,13 +261,18 @@ export function SettingsPage() {
         onSpeechEnd: () => {
           const now = Date.now();
           setLastSpeechEndTs(now);
+          setLastSpeechStartTs(null);
           setSpeechDetected(false);
+          setAmplitude(0);
           setEvents((prev) =>
             [
               { id: `speech_end_${now}`, type: "speech_end" as const, ts: now },
               ...prev,
             ].slice(0, 30)
           );
+        },
+        onAmplitude: (rms: number) => {
+          setAmplitude(rms);
         },
       });
       setIsRunning(true);
@@ -290,6 +291,7 @@ export function SettingsPage() {
     });
     setIsRunning(false);
     setSpeechDetected(false);
+    setAmplitude(0);
   }
 
   function clearDebugHistory() {
@@ -428,6 +430,28 @@ export function SettingsPage() {
               </span>
             </div>
           </div>
+
+          {isRunning && (
+            <div className="mt-4">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="font-semibold text-[10px] text-fg-subtle uppercase tracking-wider">
+                  Mic Level
+                </span>
+                <span className="font-mono text-[10px] text-fg-muted">
+                  {(amplitude * 100).toFixed(0)}%
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-border-subtle">
+                <div
+                  className="h-full rounded-full transition-all duration-75"
+                  style={{
+                    width: `${Math.min(amplitude * 100, 100)}%`,
+                    backgroundColor: getAmplitudeColor(amplitude),
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="mt-5 flex items-center justify-between border-border-subtle border-t pt-5">
             <div className="flex flex-col gap-1">
@@ -692,8 +716,16 @@ export function SettingsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-2 pt-4 pb-12">
-      <div className="flex items-center justify-between border-border border-b pb-4">
-        <div>
+      <div className="flex items-center gap-4 border-border border-b pb-4">
+        <button
+          aria-label="Go back"
+          className="group flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-elevated text-fg-subtle transition-all [-webkit-app-region:no-drag] [app-region:no-drag] hover:bg-bg-subtle hover:text-fg active:scale-95"
+          onClick={() => navigate(-1)}
+          type="button"
+        >
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+        </button>
+        <div className="flex-grow">
           <h1 className="font-semibold text-fg text-lg tracking-tight">
             Configuration
           </h1>

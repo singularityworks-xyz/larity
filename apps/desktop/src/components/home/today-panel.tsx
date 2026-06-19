@@ -57,7 +57,7 @@ function renderContent(meetings: TodayMeeting[], loading: boolean) {
               {meeting.title}
             </span>
             <span className="ml-auto flex shrink-0 items-center gap-2">
-              <span className="rounded-[5px] border border-border-subtle bg-bg-subtle px-1.5 py-px font-medium text-[10px] text-fg-muted leading-snug">
+              <span className="rounded-full border border-border bg-bg-overlay px-2 py-0.5 font-medium text-[10px] text-fg-muted leading-snug">
                 {meeting.client.name}
               </span>
               <span
@@ -79,7 +79,7 @@ export function TodayPanel({ meetings, loading }: TodayPanelProps) {
   return (
     <div className={panelClass}>
       <div className="mb-2.5 flex items-center justify-between">
-        <p className="font-medium text-[11px] text-fg-muted uppercase leading-none tracking-[0.06em]">
+        <p className="font-medium text-[11px] text-text-tertiary uppercase leading-none tracking-[0.06em]">
           Today
         </p>
         {loading ? null : (

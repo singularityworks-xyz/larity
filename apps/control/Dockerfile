@@ -1,37 +1,63 @@
-FROM oven/bun:1.1.34-slim AS base
+FROM oven/bun:1-slim AS base
+ENV CI=true
+ENV HUSKY=0
 WORKDIR /app
 
-# Install all dependencies (development + production)
-FROM base AS install
-COPY package.json bun.lock ./
-COPY apps/control/package.json ./apps/control/
-RUN bun install --frozen-lockfile
-
-# Install only production dependencies
-FROM base AS prod-install
-COPY package.json bun.lock ./
-COPY apps/control/package.json ./apps/control/
-RUN bun install --frozen-lockfile --production
-
-# Build the application
-FROM base AS builder
-COPY --from=install /app/node_modules ./node_modules
-COPY --from=install /app/apps/control/node_modules ./apps/control/node_modules
+# ────────────────────────────────────────────────────────────────────────────
+# Stage 1: PRUNE
+# ────────────────────────────────────────────────────────────────────────────
+FROM base AS pruner
+RUN bun install -g turbo
 COPY . .
+RUN turbo prune control --docker
+
+# ────────────────────────────────────────────────────────────────────────────
+# Stage 2: BUILDER (dev + prod deps)
+# We run `bun install` and then `COPY out/full` IN THE SAME STAGE.
+# This prevents Docker from dropping the nested node_modules folders
+# (e.g. /app/packages/infra/node_modules) created by `bun install`.
+# ────────────────────────────────────────────────────────────────────────────
+FROM base AS builder
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/bun.lock* ./
+RUN bun install --frozen-lockfile --ignore-scripts
+
+COPY --from=pruner /app/out/full/ .
+
+# Generate Prisma client (now successfully finds @prisma/config)
+WORKDIR /app/packages/infra
+RUN bunx prisma generate
+
+# Build control app
 WORKDIR /app/apps/control
 RUN bun run build
 
-# Final minimal runtime image containing no source or dev dependencies
+# ────────────────────────────────────────────────────────────────────────────
+# Stage 3: PROD-INSTALL (production deps only)
+# ────────────────────────────────────────────────────────────────────────────
+FROM base AS prod-install
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/bun.lock* ./
+RUN bun install --frozen-lockfile --production --ignore-scripts
+
+# ────────────────────────────────────────────────────────────────────────────
+# Stage 4: RELEASE
+# ────────────────────────────────────────────────────────────────────────────
 FROM base AS release
 ENV NODE_ENV=production
 
-# Copy production node_modules
-COPY --from=prod-install /app/node_modules ./node_modules
-COPY --from=prod-install /app/apps/control/node_modules ./apps/control/node_modules
+# Copy ALL node_modules (root and nested workspaces) from prod-install
+COPY --from=prod-install /app /app
 
-# Copy built distribution files only
-COPY --from=builder /app/apps/control/dist ./apps/control/dist
-COPY --from=builder /app/apps/control/package.json ./apps/control/package.json
+# Copy the built workspace packages (including prisma client)
+COPY --from=builder /app/packages /app/packages
+
+# Copy the built control app
+COPY --from=builder /app/apps/control/dist /app/apps/control/dist
+COPY --from=builder /app/apps/control/package.json /app/apps/control/package.json
+
+# Copy prisma config for database migrations directly from build context
+COPY prisma.config.ts /app/prisma.config.ts
 
 WORKDIR /app/apps/control
 EXPOSE 3000

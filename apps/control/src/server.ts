@@ -51,7 +51,21 @@ export const app = new Elysia()
   // CORS
   .use(
     cors({
-      origin: env.FRONTEND_ORIGINS,
+      origin: (request) => {
+        const origin = request.headers.get("origin");
+        if (!origin) {
+          return false;
+        }
+
+        // Public waitlist route can be accessed from any origin
+        const url = new URL(request.url);
+        if (url.pathname === "/api/waitlist") {
+          return true;
+        }
+
+        // Restrict all other routes to trusted frontend origins
+        return env.FRONTEND_ORIGINS.includes(origin);
+      },
       credentials: true,
     })
   )
@@ -135,6 +149,7 @@ export const app = new Elysia()
   .use(authRoutes)
   // Internal server-to-server routes (no user auth required)
   .use(internalSessionRoutes)
+
   // Protected API routes
   .group("/api", (app) =>
     app

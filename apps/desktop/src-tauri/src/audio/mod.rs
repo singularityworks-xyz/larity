@@ -3,11 +3,11 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 pub mod engine;
-pub mod processor;
-pub mod mixer;
-pub mod vad;
 #[cfg(target_os = "linux")]
 pub mod linux_capture;
+pub mod mixer;
+pub mod processor;
+pub mod vad;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AudioDevice {

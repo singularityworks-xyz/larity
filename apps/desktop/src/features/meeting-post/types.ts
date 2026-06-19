@@ -97,6 +97,7 @@ export interface ProcessingSteps {
 export interface ProcessingStatus {
   sessionId: string | null;
   steps: ProcessingSteps;
+  errorReason?: string | null;
 }
 
 export interface TranscriptUtterance {

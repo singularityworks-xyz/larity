@@ -99,7 +99,7 @@ export type ValidateSessionInput = z.infer<typeof validateSessionSchema>;
 export const joinSessionResponseSchema = z.object({
   sessionId: z.string(),
   meetingId: z.string(),
-  role: z.literal("participant"),
+  role: z.enum(["host", "participant"]),
   websocketUrl: z.string(),
   joinedAt: z.number(),
   allowNameCustomization: z.boolean(),

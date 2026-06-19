@@ -28,6 +28,8 @@ export async function createOverlayWindow(
     userId: params.userId,
   });
 
+  // The full URL is sent to Rust which strips it to path+query for
+  // WebviewUrl::App. Using the origin prefix lets Rust validate same-origin.
   const base = window.location.origin;
   const url = `${base}/overlay?${searchParams.toString()}`;
 

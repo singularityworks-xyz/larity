@@ -21,6 +21,7 @@ import { LoginPage } from "./routes/login";
 import { MeetingPage } from "./routes/meeting/$session-id";
 import { WaitingRoomPage } from "./routes/meeting/waiting-room";
 import { MeetingPostPage } from "./routes/meeting-post/$meeting-id";
+import { MeetingBriefPage } from "./routes/meetings/brief";
 import { JoinMeetingPage } from "./routes/meetings/join";
 import { StartMeetingPage } from "./routes/meetings/start";
 import { OnboardingPage } from "./routes/onboarding";
@@ -62,6 +63,7 @@ const router = createBrowserRouter([
       {
         index: true,
         loader: rootIndexLoader,
+        element: <React.Fragment />,
       },
       {
         path: "home",
@@ -99,6 +101,11 @@ const router = createBrowserRouter([
         element: <WaitingRoomPage />,
       },
       {
+        path: "meetings/:meetingId/brief",
+        loader: authGateLoader,
+        element: <MeetingBriefPage />,
+      },
+      {
         path: "meeting/:sessionId",
         loader: authGateLoader,
         element: <MeetingPage />,
@@ -117,11 +124,15 @@ const router = createBrowserRouter([
   },
 ]);
 
+import { ThemeProvider } from "./components/theme-provider";
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <ThemeProvider>
+          <RouterProvider router={router} />
+        </ThemeProvider>
       </QueryClientProvider>
     </AppErrorBoundary>
   </React.StrictMode>

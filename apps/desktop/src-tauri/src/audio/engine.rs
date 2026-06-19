@@ -1,13 +1,13 @@
+use crate::audio::mixer::{AudioMixer, MixerMessage, SourceType};
 use crate::audio::processor::AudioProcessor;
 use crate::audio::AudioDevice;
-use crate::audio::mixer::{AudioMixer, MixerMessage, SourceType};
 use crate::audio::VadState;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Sample, Stream};
-use tauri::{AppHandle, Manager};
-use std::sync::Arc;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter, Manager};
 
 fn short_hash(s: &str) -> String {
     let mut hasher = DefaultHasher::new();
@@ -65,33 +65,50 @@ pub fn start_capture(
 ) -> Result<CaptureHandles, String> {
     let host = cpal::default_host();
 
-    let mixer = Arc::new(AudioMixer::new(app.clone(), session_id.clone(), role.clone()));
+    let mixer = Arc::new(AudioMixer::new(
+        app.clone(),
+        session_id.clone(),
+        role.clone(),
+    ));
 
     // 1. Setup Microphone
     let mic_device = if let Some(id) = mic_device_id.clone() {
         let devices = host.input_devices().map_err(|e| e.to_string())?;
         let mut found = None;
         for d in devices {
-            if d.id().map(|did| did.to_string()).map_err(|e| e.to_string())? == id {
+            if d.id()
+                .map(|did| did.to_string())
+                .map_err(|e| e.to_string())?
+                == id
+            {
                 found = Some(d);
                 break;
             }
         }
-        found.or_else(|| host.default_input_device())
+        found
+            .or_else(|| host.default_input_device())
             .ok_or("No microphone device available")?
     } else {
         host.default_input_device()
             .ok_or("No default input device available")?
     };
 
-    let mic_id = mic_device.id().map(|id| id.to_string()).map_err(|e| e.to_string())?;
+    let mic_id = mic_device
+        .id()
+        .map(|id| id.to_string())
+        .map_err(|e| e.to_string())?;
     println!("Using Mic device (hash): {}", short_hash(&mic_id));
-    let mic_config = mic_device.default_input_config().map_err(|e| e.to_string())?;
-    
+    let mic_config = mic_device
+        .default_input_config()
+        .map_err(|e| e.to_string())?;
+
     let mic_format = mic_config.sample_format();
     let mic_config: cpal::StreamConfig = mic_config.into();
-    
-    let mut mic_processor = AudioProcessor::new(mic_config.sample_rate as usize, mic_config.channels as usize);
+
+    let mut mic_processor = AudioProcessor::new(
+        mic_config.sample_rate as usize,
+        mic_config.channels as usize,
+    );
     let mixer_clone = mixer.clone();
 
     let err_fn = move |err| {
@@ -117,6 +134,17 @@ pub fn start_capture(
                                 }
                             }
                         }
+
+                        // Emit raw amplitude bypassing VAD
+                        let sum_sq: f32 = chunk
+                            .iter()
+                            .map(|&x| {
+                                let f = (x as f32 / i16::MAX as f32 * 5.0).clamp(-1.0, 1.0);
+                                f * f
+                            })
+                            .sum();
+                        let rms = (sum_sq / chunk.len() as f32).sqrt();
+                        let _ = app_vad.emit("raw-mic-amplitude", rms);
                         mixer_clone.send(MixerMessage {
                             source: SourceType::Mic,
                             timestamp_ms: ts,
@@ -147,6 +175,17 @@ pub fn start_capture(
                                 }
                             }
                         }
+
+                        // Emit raw amplitude bypassing VAD
+                        let sum_sq: f32 = chunk
+                            .iter()
+                            .map(|&x| {
+                                let f = (x as f32 / i16::MAX as f32 * 5.0).clamp(-1.0, 1.0);
+                                f * f
+                            })
+                            .sum();
+                        let rms = (sum_sq / chunk.len() as f32).sqrt();
+                        let _ = app_vad.emit("raw-mic-amplitude", rms);
                         mixer_clone.send(MixerMessage {
                             source: SourceType::Mic,
                             timestamp_ms: ts,
@@ -159,7 +198,8 @@ pub fn start_capture(
             )
         }
         _ => return Err("Unsupported sample format".into()),
-    }.map_err(|e| e.to_string())?;
+    }
+    .map_err(|e| e.to_string())?;
 
     mic_stream.play().map_err(|e| e.to_string())?;
 
@@ -172,23 +212,32 @@ pub fn start_capture(
             #[cfg(target_os = "linux")]
             {
                 let mixer_clone = mixer.clone();
-                let task = crate::audio::linux_capture::start_linux_sys_capture(mixer_clone.tx.clone());
+                let task =
+                    crate::audio::linux_capture::start_linux_sys_capture(mixer_clone.tx.clone());
                 sys_task = Some(task);
             }
         } else {
             // macOS / Windows fallback to loopback with cpal
-            let sys_device = host.default_output_device()
+            let sys_device = host
+                .default_output_device()
                 .ok_or("No default output device available for loopback")?;
-            let sys_id = sys_device.id().map(|id| id.to_string()).map_err(|e| e.to_string())?;
+            let sys_id = sys_device
+                .id()
+                .map(|id| id.to_string())
+                .map_err(|e| e.to_string())?;
             println!("Using Sys device (hash): {}", short_hash(&sys_id));
-            
-            let sys_config = sys_device.default_input_config()
+
+            let sys_config = sys_device
+                .default_input_config()
                 .or_else(|_| sys_device.default_output_config())
                 .map_err(|e| e.to_string())?;
-            
+
             let sys_format = sys_config.sample_format();
             let sys_config: cpal::StreamConfig = sys_config.into();
-            let mut sys_processor = AudioProcessor::new(sys_config.sample_rate as usize, sys_config.channels as usize);
+            let mut sys_processor = AudioProcessor::new(
+                sys_config.sample_rate as usize,
+                sys_config.channels as usize,
+            );
             let mixer_clone = mixer.clone();
 
             let stream = match sys_format {
@@ -214,7 +263,8 @@ pub fn start_capture(
                 cpal::SampleFormat::I16 => sys_device.build_input_stream(
                     &sys_config,
                     move |data: &[i16], _: &cpal::InputCallbackInfo| {
-                        let f32_data: Vec<f32> = data.iter().map(|&s| s.to_sample::<f32>()).collect();
+                        let f32_data: Vec<f32> =
+                            data.iter().map(|&s| s.to_sample::<f32>()).collect();
                         let chunks = sys_processor.process(&f32_data);
                         for chunk in chunks {
                             let ts = std::time::SystemTime::now()
@@ -232,8 +282,9 @@ pub fn start_capture(
                     None,
                 ),
                 _ => return Err("Unsupported sample format".into()),
-            }.map_err(|e| e.to_string())?;
-            
+            }
+            .map_err(|e| e.to_string())?;
+
             stream.play().map_err(|e| e.to_string())?;
             sys_stream = Some(stream);
         }

@@ -396,9 +396,8 @@ export function TranscriptStream({
                     className="flex w-5 shrink-0 flex-col items-center pt-1"
                   >
                     <span
-                      className="h-[5px] w-[5px] rounded-[1px]"
+                      className="h-[5px] w-[5px] rounded-[1px] bg-accent"
                       style={{
-                        background: "hsl(var(--grad-hue, 252) 70% 60%)",
                         animation: "speak-pulse 1s ease-in-out infinite",
                       }}
                     />
@@ -410,12 +409,7 @@ export function TranscriptStream({
                         "inline-flex h-[18px] items-center gap-[5px] rounded-[3px] border border-white/[0.12] border-dashed bg-transparent px-[6px] font-medium font-sans text-[11px] text-fg-muted leading-none"
                       )}
                     >
-                      <span
-                        className="inline-block h-[5px] w-[5px] shrink-0 animate-pulse rounded-[1px]"
-                        style={{
-                          background: "hsl(var(--grad-hue,252) 70% 60%)",
-                        }}
-                      />
+                      <span className="inline-block h-[5px] w-[5px] shrink-0 animate-pulse rounded-[1px] bg-accent" />
                       Speaking · {captureChannelLabel(livePartial.channel)}
                     </span>
                     <time className="font-mono text-[10px] text-fg-subtle tabular-nums">
@@ -423,7 +417,7 @@ export function TranscriptStream({
                     </time>
                   </div>
 
-                  <p className="col-start-2 m-0 font-mono text-[13px] text-fg-muted leading-relaxed after:ml-0.5 after:animate-pulse after:font-medium after:text-[hsl(var(--grad-hue,252)_70%_60%)] after:content-['▍']">
+                  <p className="col-start-2 m-0 font-mono text-[13px] text-fg-muted leading-relaxed after:ml-0.5 after:animate-pulse after:font-medium after:text-accent after:content-['▍']">
                     {livePartial.text}
                   </p>
                 </div>

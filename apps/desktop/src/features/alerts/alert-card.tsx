@@ -45,6 +45,13 @@ const ICON_MAP: Record<string, LucideIcon> = {
   "list-checks": ListChecks,
 };
 
+const SEVERITY_COLOR_CLASS: Record<string, string> = {
+  critical: "text-danger",
+  high: "text-danger",
+  medium: "text-warning",
+  low: "text-info",
+};
+
 export function AlertCard({
   alert,
   onDismiss,
@@ -74,11 +81,26 @@ export function AlertCard({
       <div className="flex flex-col gap-2 p-3 px-4">
         {/* Header */}
         <div className="flex flex-row items-start justify-between gap-2">
-          <div className="flex flex-row items-center gap-2 font-medium text-fg-muted">
-            <IconComponent size={14} />
-            <span className="capitalize">{alert.severity}</span>
-            <span>&middot;</span>
-            <span>{meta.title}</span>
+          <div className="flex flex-row items-center gap-2 font-medium">
+            <IconComponent
+              className={
+                SEVERITY_COLOR_CLASS[alert.severity] || "text-fg-muted"
+              }
+              size={14}
+            />
+            <span
+              className={`capitalize ${SEVERITY_COLOR_CLASS[alert.severity] || "text-fg-muted"}`}
+            >
+              {alert.severity}
+            </span>
+            <span className="text-fg-muted">&middot;</span>
+            <span
+              className={
+                SEVERITY_COLOR_CLASS[alert.severity] || "text-fg-muted"
+              }
+            >
+              {meta.title}
+            </span>
           </div>
           <div className="whitespace-nowrap font-mono text-fg-muted text-xs">
             {new Date(alert.timestamp).toLocaleTimeString([], {

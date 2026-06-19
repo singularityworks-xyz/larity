@@ -1,0 +1,1 @@
+- Git Best Practice: Whenever committing code, ALWAYS run `git pull` first to ensure you have the latest changes from the remote repository before creating your commit.

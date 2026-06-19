@@ -17,7 +17,8 @@
     "@aws-sdk/client-s3": "^3.1053.0",
     "@larity/logger": "workspace:*",
     "@prisma/adapter-pg": "^7.2.0",
-    "@prisma/client": "^7.2.0"
+    "@prisma/client": "^7.2.0",
+    "@prisma/config": "^7.8.0"
   },
   "devDependencies": {
     "@testcontainers/redis": "^12.0.1",
