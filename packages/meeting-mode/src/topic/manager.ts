@@ -136,7 +136,9 @@ export class TopicManager {
       );
     } else if (newVector.length === 0 && sessionTopics.length > 0) {
       // Fallback: assign to the most recently active topic when embeddings fail
-      const fallbackTopic = sessionTopics[sessionTopics.length - 1] as TopicState;
+      const fallbackTopic = sessionTopics[
+        sessionTopics.length - 1
+      ] as TopicState;
       assignedTopicId = fallbackTopic.topicId;
       fallbackTopic.utteranceCount += 1;
       log.warn(
