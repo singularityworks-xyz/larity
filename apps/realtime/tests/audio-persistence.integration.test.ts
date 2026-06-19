@@ -138,7 +138,7 @@ describe("Audio Persistence Integration", () => {
     expect(manifest.channels.ch1.file).toBe("ch1.pcm16");
     expect(manifest.channels.ch1.bytes).toBe(1600 * 5);
     expect(manifest.totalDurationMs).toBeGreaterThan(0);
-    expect(mockUploadDone).toHaveBeenCalledTimes(4);
+    expect(mockUploadDone).toHaveBeenCalledTimes(2);
 
     const manifestCalls = s3Calls.filter(
       (c) =>

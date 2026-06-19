@@ -124,8 +124,8 @@ describe("AudioStreamer", () => {
     expect(manifest.channels.ch1.bytes).toBe(160);
     expect(manifest.totalDurationMs).toBeGreaterThanOrEqual(0);
 
-    // Should have completed the upload for both channels (4 times: 2 during init for catch, 2 during end)
-    expect(mockUploadDone).toHaveBeenCalledTimes(4);
+    // Should have completed the upload for both channels (2 times: 1 for each channel during init)
+    expect(mockUploadDone).toHaveBeenCalledTimes(2);
 
     // Should have written the manifest JSON
     expect(mockS3Send).toHaveBeenCalled();

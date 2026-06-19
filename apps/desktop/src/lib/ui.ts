@@ -96,30 +96,33 @@ export const ssoButtonClass = cx(
 );
 
 export const authSplitRootClass =
-  "flex h-screen min-h-0 w-screen flex-row overflow-hidden bg-black";
+  "flex h-screen min-h-0 w-screen flex-row overflow-hidden bg-bg";
 
 export const authBrandPanelClass =
-  "relative hidden h-full min-h-0 basis-[42%] flex-col overflow-hidden border-white/5 border-r bg-black md:flex";
+  "relative hidden h-full min-h-0 basis-[42%] flex-col overflow-hidden border-border border-r bg-bg-elevated md:flex";
 
 export const authFormPanelClass =
-  "flex h-full min-h-0 flex-1 flex-col overflow-y-auto bg-[#060606] pt-9";
+  "flex h-full min-h-0 flex-1 flex-col overflow-y-auto bg-bg pt-9";
 
 export const authBrandInnerClass =
   "relative z-[1] flex h-full min-h-0 flex-col justify-end px-6 pt-[100px] pb-10 md:px-9";
 
 export const authBrandBgClass =
-  "absolute inset-0 z-0 animate-[brandPulse_8s_ease-in-out_infinite_alternate] bg-[radial-gradient(ellipse_at_30%_20%,rgba(255,255,255,0.28)_0%,transparent_55%),radial-gradient(ellipse_at_70%_75%,rgba(200,200,200,0.18)_0%,transparent_50%)]";
+  "absolute inset-0 z-0 animate-[brandPulse_8s_ease-in-out_infinite_alternate] bg-[radial-gradient(ellipse_at_30%_20%,rgba(0,0,0,0.05)_0%,transparent_55%),radial-gradient(ellipse_at_70%_75%,rgba(0,0,0,0.03)_0%,transparent_50%)] dark:bg-[radial-gradient(ellipse_at_30%_20%,rgba(255,255,255,0.28)_0%,transparent_55%),radial-gradient(ellipse_at_70%_75%,rgba(200,200,200,0.18)_0%,transparent_50%)]";
 
 export const authBrandLogoClass = "mb-4 flex items-center gap-3";
 
+export const authBrandLogoImageClass =
+  "drop-shadow-[0_0_16px_rgba(0,0,0,0.1)] invert dark:drop-shadow-[0_0_16px_rgba(255,255,255,0.5)] dark:invert-0";
+
 export const authBrandWordmarkClass =
-  "font-['Share_Tech_Mono','Courier_New',monospace] text-lg font-normal tracking-[0.2em] text-[#ededed] [text-shadow:0_0_24px_rgba(255,255,255,0.4),0_0_6px_rgba(255,255,255,0.15)]";
+  "font-['Share_Tech_Mono','Courier_New',monospace] text-lg font-normal tracking-[0.2em] text-fg [text-shadow:0_0_24px_rgba(0,0,0,0.1),0_0_6px_rgba(0,0,0,0.05)] dark:[text-shadow:0_0_24px_rgba(255,255,255,0.4),0_0_6px_rgba(255,255,255,0.15)]";
 
 export const authBrandTaglineClass =
-  "mt-0 mb-8 text-xs font-medium leading-normal tracking-[0.04em] text-[rgba(161,161,161,0.65)]";
+  "mt-0 mb-8 text-xs font-medium leading-normal tracking-[0.04em] text-fg-muted";
 
 export const authBrandFeaturesClass =
-  "m-0 flex list-none flex-col gap-2.5 p-0 [&_li]:relative [&_li]:pl-4 [&_li]:text-xs [&_li]:font-medium [&_li]:leading-normal [&_li]:text-[rgba(161,161,161,0.55)] [&_li]:before:absolute [&_li]:before:left-0 [&_li]:before:top-[7px] [&_li]:before:h-px [&_li]:before:w-[5px] [&_li]:before:bg-white/55 [&_li]:before:content-['']";
+  "m-0 flex list-none flex-col gap-2.5 p-0 [&_li]:relative [&_li]:pl-4 [&_li]:text-xs [&_li]:font-medium [&_li]:leading-normal [&_li]:text-fg-muted [&_li]:before:absolute [&_li]:before:left-0 [&_li]:before:top-[7px] [&_li]:before:h-px [&_li]:before:w-[5px] [&_li]:before:bg-border-strong [&_li]:before:content-['']";
 
 export const authFormInnerClass =
   "mx-auto w-full max-w-[340px] px-4 pt-10 pb-8 sm:px-6 sm:pt-12 sm:pb-10 lg:my-auto lg:pt-8 lg:pb-12";

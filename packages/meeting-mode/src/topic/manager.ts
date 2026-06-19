@@ -74,6 +74,23 @@ export class TopicManager {
     this.enableAsyncSummarization = options.enableAsyncSummarization ?? true;
   }
 
+  private async getUtteranceEmbedding(utterance: Utterance): Promise<number[]> {
+    if (utterance.embedding && utterance.embedding.length > 0) {
+      return utterance.embedding;
+    }
+    if (utterance.embeddingPromise) {
+      try {
+        const resolved = await utterance.embeddingPromise;
+        if (resolved && resolved.length > 0) {
+          return resolved;
+        }
+      } catch {
+        // Fall through
+      }
+    }
+    return this.embedder.embed(utterance.text).catch(() => []);
+  }
+
   /**
    * Fast Path: Embed the incoming utterance, find a matching topic (or spawn new),
    * update the centroid in memory, and return the assigned topicId.
@@ -82,22 +99,7 @@ export class TopicManager {
     const { sessionId, text } = utterance;
 
     // 1. Embed utterance (pre-computed, in-flight promise, or embed here)
-    let newVector: number[];
-    if (utterance.embedding && utterance.embedding.length > 0) {
-      newVector = utterance.embedding;
-    } else if (utterance.embeddingPromise) {
-      try {
-        const resolved = await utterance.embeddingPromise;
-        newVector =
-          resolved && resolved.length > 0
-            ? resolved
-            : await this.embedder.embed(text);
-      } catch {
-        newVector = await this.embedder.embed(text);
-      }
-    } else {
-      newVector = await this.embedder.embed(text);
-    }
+    const newVector = await this.getUtteranceEmbedding(utterance);
     utterance.embedding = newVector;
 
     // 2. Find best match
@@ -105,14 +107,16 @@ export class TopicManager {
     let bestTopic: TopicState | null = null;
     let maxSimilarity = -1;
 
-    for (const topic of sessionTopics) {
-      if (!topic.centroid || topic.centroid.length === 0) {
-        continue;
-      }
-      const sim = cosineSimilarity(topic.centroid, newVector);
-      if (sim > maxSimilarity) {
-        maxSimilarity = sim;
-        bestTopic = topic;
+    if (newVector.length > 0) {
+      for (const topic of sessionTopics) {
+        if (!topic.centroid || topic.centroid.length === 0) {
+          continue;
+        }
+        const sim = cosineSimilarity(topic.centroid, newVector);
+        if (sim > maxSimilarity) {
+          maxSimilarity = sim;
+          bestTopic = topic;
+        }
       }
     }
 
@@ -131,6 +135,17 @@ export class TopicManager {
       log.info(
         { sessionId, topicId: assignedTopicId, similarity: maxSimilarity },
         "Assigned utterance to existing topic"
+      );
+    } else if (newVector.length === 0 && sessionTopics.length > 0) {
+      // Fallback: assign to the most recently active topic when embeddings fail
+      const fallbackTopic = sessionTopics.reduce((a, b) =>
+        a.lastUpdated > b.lastUpdated ? a : b
+      );
+      assignedTopicId = fallbackTopic.topicId;
+      fallbackTopic.utteranceCount += 1;
+      log.warn(
+        { sessionId, topicId: assignedTopicId },
+        "Embedding failed, assigned utterance to fallback topic"
       );
     } else {
       assignedTopicId = this.generateTopicId(sessionId);
