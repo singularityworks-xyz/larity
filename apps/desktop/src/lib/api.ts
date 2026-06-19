@@ -20,6 +20,9 @@ export class ApiError extends Error {
   }
 }
 
+import { isTauri } from "@tauri-apps/api/core";
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+
 export async function apiRequest<T>(
   path: string,
   init: RequestInit = {}
@@ -29,7 +32,8 @@ export async function apiRequest<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${controlUrl}${API_PREFIX}${path}`, {
+  const fetchFn = isTauri() ? tauriFetch : fetch;
+  const response = await fetchFn(`${controlUrl}${API_PREFIX}${path}`, {
     ...init,
     headers,
     credentials: "include",
@@ -57,10 +61,11 @@ export const api = {
   get<T>(path: string): Promise<T> {
     return apiRequest<T>(path, { method: "GET" });
   },
-  post<T>(path: string, body?: unknown): Promise<T> {
+  post<T>(path: string, body?: unknown, init?: RequestInit): Promise<T> {
     return apiRequest<T>(path, {
       method: "POST",
       body: body ? JSON.stringify(body) : undefined,
+      ...init,
     });
   },
   patch<T>(path: string, body?: unknown): Promise<T> {

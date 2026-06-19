@@ -1,6 +1,6 @@
-use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
-use audio::{AudioDevice, AudioCaptureStatus, VadState};
+use audio::{AudioCaptureStatus, AudioDevice, VadState};
 use meeting_detection::MeetingDetectionHint;
+use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 pub mod audio;
 pub mod meeting_detection;
@@ -137,7 +137,8 @@ mod linux_media_permission {
                 let app_handle = app_handle.clone();
 
                 wv.connect_permission_request(move |_view, request: &PermissionRequest| {
-                    let Some(media_request) = request.downcast_ref::<UserMediaPermissionRequest>() else {
+                    let Some(media_request) = request.downcast_ref::<UserMediaPermissionRequest>()
+                    else {
                         // Let non-media requests follow WebKit defaults.
                         return false;
                     };
@@ -242,11 +243,17 @@ fn audio_capture_start(
     }
 
     // Start engine
-    let handles = audio::engine::start_capture(app.clone(), session_id.clone(), mic_device_id, sys_device_id, role)?;
+    let handles = audio::engine::start_capture(
+        app.clone(),
+        session_id.clone(),
+        mic_device_id,
+        sys_device_id,
+        role,
+    )?;
 
     // Keep the stream alive by moving it to a background thread
     let (tx, mut rx) = tokio::sync::mpsc::channel(1);
-    
+
     *state.stop_tx.blocking_lock() = Some(tx);
     *state.current_session.blocking_lock() = Some(session_id);
     *is_capturing = true;
@@ -282,7 +289,7 @@ fn audio_capture_stop(state: State<'_, audio::AudioState>) -> Result<(), String>
 #[tauri::command]
 fn audio_capture_status(state: State<'_, audio::AudioState>) -> Result<AudioCaptureStatus, String> {
     let is_capturing = *state.is_capturing.blocking_lock();
-    
+
     Ok(AudioCaptureStatus {
         active: is_capturing,
         backend: if cfg!(target_os = "windows") {
@@ -413,6 +420,7 @@ fn linux_media_permission_ensure_prompt() -> Result<String, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
         .setup(|app| {
             app.manage(audio::AudioState::default());
             app.manage(audio::VadState::default());

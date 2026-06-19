@@ -92,13 +92,15 @@ function validateOrgInput(
 async function createOrgOrJoin(
   orgMode: "create" | "join",
   orgName: string,
-  inviteCode: string
+  inviteCode: string,
+  token?: string
 ) {
+  const init = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
   if (orgMode === "create") {
     const slug = toSlug(orgName);
-    await api.post("/orgs", { name: orgName, slug });
+    await api.post("/orgs", { name: orgName, slug }, init);
   } else {
-    await api.post("/orgs/join", { code: inviteCode.trim() });
+    await api.post("/orgs/join", { code: inviteCode.trim() }, init);
   }
 }
 
@@ -176,7 +178,8 @@ export function RegisterPage() {
         );
       }
 
-      await createOrgOrJoin(orgMode, orgName, inviteCode);
+      const token = signUpResult.data?.session?.token;
+      await createOrgOrJoin(orgMode, orgName, inviteCode, token);
       navigate("/onboarding");
     } catch (requestError) {
       setError(

@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { organization } from "better-auth/plugins";
+import { bearer, organization } from "better-auth/plugins";
 import { env } from "../env";
 import { prisma } from "./prisma";
 
@@ -42,7 +42,7 @@ export const auth = betterAuth({
       clientSecret: env.GITHUB_CLIENT_SECRET as string,
     },
   },
-  plugins: [organization()],
+  plugins: [organization(), bearer()],
   trustedOrigins: env.FRONTEND_ORIGINS,
   advanced: {
     defaultCookieAttributes: {
