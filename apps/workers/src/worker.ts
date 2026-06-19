@@ -117,12 +117,12 @@ export abstract class BaseWorker<TJobData = unknown, TJobResult = unknown> {
     this.log.info("Worker closed");
   }
 
-  async getHealth(): Promise<WorkerHealth> {
-    return {
+  getHealth(): Promise<WorkerHealth> {
+    return Promise.resolve({
       name: this.worker.name,
       active: !this.worker.isPaused(),
       lastError: this.lastError,
       uptimeMs: Date.now() - this.startedAt,
-    };
+    });
   }
 }
