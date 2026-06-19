@@ -1,6 +1,29 @@
 import { DeepgramClient } from "@deepgram/sdk";
+import WS from "ws";
 import { DEEPGRAM_API_KEY } from "../env";
 import { createSttLogger } from "../logger";
+
+// WORKAROUND: @deepgram/sdk (v5.1.0) internally uses the `ws` module and attempts to
+// set `binaryType = 'blob'` on the WebSocket connection. The `ws` module explicitly throws
+// an "Invalid binaryType: blob" error because it only supports nodebuffer, arraybuffer, and fragments.
+// This patch intercepts the setter to silently convert "blob" to "arraybuffer" to prevent fatal crashes.
+const originalDescriptor = Object.getOwnPropertyDescriptor(WS.prototype, "binaryType");
+if (originalDescriptor) {
+  Object.defineProperty(WS.prototype, "binaryType", {
+    get() {
+      return originalDescriptor.get?.call(this);
+    },
+    set(value) {
+      if (value === "blob") {
+        originalDescriptor.set?.call(this, "arraybuffer");
+        return;
+      }
+      originalDescriptor.set?.call(this, value);
+    },
+    enumerable: originalDescriptor.enumerable,
+    configurable: originalDescriptor.configurable,
+  });
+}
 
 const log = createSttLogger("dg-client");
 
