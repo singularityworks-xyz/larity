@@ -22,7 +22,6 @@ mock.module("@larity/stt", () => ({
   },
 }));
 
-
 const publishParticipantJoinMock = mock(async () => undefined);
 const publishVadSignalMock = mock(async () => undefined);
 
