@@ -35,6 +35,23 @@ services:
     networks:
       - larity-network
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    container_name: larity-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    environment:
+      GRAFANA_CLOUD_OTLP_ENDPOINT: ${GRAFANA_CLOUD_OTLP_ENDPOINT}
+      GRAFANA_CLOUD_USER: ${GRAFANA_CLOUD_USER}
+      GRAFANA_CLOUD_PASSWORD: ${GRAFANA_CLOUD_PASSWORD}
+    volumes:
+      - ./packages/infra/monitoring/otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "127.0.0.1:4317:4317"   # OTLP gRPC — only accessible within the VM
+      - "127.0.0.1:4318:4318"   # OTLP HTTP
+    restart: unless-stopped
+    networks:
+      - larity-network
+
   control:
     build:
       context: .
@@ -42,13 +59,15 @@ services:
     container_name: larity-control
     restart: unless-stopped
     ports:
-      - "${CONTROL_PORT:-3000}:3000"
+      - "127.0.0.1:3000:3000"
     env_file: .env.production
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - larity-network
 
@@ -59,11 +78,13 @@ services:
     container_name: larity-realtime
     restart: unless-stopped
     ports:
-      - "${REALTIME_PORT:-9001}:9001"
+      - "127.0.0.1:9001:9001"
     env_file: .env.production
     depends_on:
       redis:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - larity-network
 
@@ -77,6 +98,10 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - larity-network
 
@@ -91,6 +116,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - larity-network
 
