@@ -1,9 +1,9 @@
+use crate::audio::mixer::{MixerMessage, SourceType};
 use std::process::Stdio;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 use tokio::sync::mpsc;
-use crate::audio::mixer::{MixerMessage, SourceType};
 
 pub fn start_linux_sys_capture(
     tx: mpsc::UnboundedSender<MixerMessage>,

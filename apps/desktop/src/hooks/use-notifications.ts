@@ -1,18 +1,20 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-export function useNotifications(userId?: string) {
+export function useNotifications(userId?: string, token?: string) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!userId) {
+    if (!(userId && token)) {
       return;
     }
     const controlUrl =
       import.meta.env.VITE_CONTROL_URL ?? "http://localhost:3000";
     const wsControlUrl = controlUrl.replace("http", "ws");
 
-    const ws = new WebSocket(`${wsControlUrl}/api/notifications`);
+    const ws = new WebSocket(
+      `${wsControlUrl}/api/notifications?token=${token}`
+    );
 
     ws.onopen = () => {
       console.log("Connected to user notifications");
@@ -43,5 +45,5 @@ export function useNotifications(userId?: string) {
     return () => {
       ws.close();
     };
-  }, [queryClient, userId]);
+  }, [queryClient, userId, token]);
 }

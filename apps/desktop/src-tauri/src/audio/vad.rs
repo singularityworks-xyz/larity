@@ -38,11 +38,7 @@ pub fn spawn_vad_task(app: AppHandle) -> Result<VadTx, voice_activity_detector::
     Ok(VadTx { tx })
 }
 
-fn run_vad_loop(
-    mut detector: VoiceActivityDetector,
-    app: AppHandle,
-    rx: mpsc::Receiver<Vec<i16>>,
-) {
+fn run_vad_loop(mut detector: VoiceActivityDetector, app: AppHandle, rx: mpsc::Receiver<Vec<i16>>) {
     let mut is_speaking = false;
     let mut buffer: Vec<i16> = Vec::new();
     let mut speech_counter: usize = 0;

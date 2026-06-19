@@ -1,0 +1,1 @@
+-- AlterTable\nALTER TABLE "meetings" ADD COLUMN "preMeetingBrief" JSONB;

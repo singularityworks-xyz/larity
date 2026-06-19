@@ -10,7 +10,7 @@ function App() {
   const navigate = useNavigate();
   const session = useAuthSession();
 
-  useNotifications(session.user?.id);
+  useNotifications(session.user?.id, session.data?.session?.token);
 
   const navLinkClass = (path: string) =>
     cx(

@@ -14,118 +14,9 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTheme } from "../../components/theme-provider";
 import type { AgendaItem } from "../../features/meetings/types";
 import { useMeeting } from "../../features/meetings/use-meeting";
-import {
-  type MeetingBrief,
-  useMeetingBrief,
-} from "../../features/meetings/use-meeting-brief";
+import { useMeetingBrief } from "../../features/meetings/use-meeting-brief";
 import { useMeetingSessionStatus } from "../../features/meetings/use-meeting-session-status";
-import type { Meeting } from "../../features/meetings/use-meetings";
 import { cx } from "../../lib/ui";
-
-const MOCK_MEETING: Meeting = {
-  id: "mock-meeting-id",
-  clientId: "mock-client-id",
-  title: "Acme Corp × Larity: Enterprise Expansion Alignment",
-  description:
-    "Alignment on Acme's enterprise-wide rollout of Larity, Q4 roadmap requests, and security compliance sign-off.",
-  status: "LIVE",
-  scheduledAt: new Date().toISOString(),
-  createdAt: new Date().toISOString(),
-  client: {
-    id: "mock-client-id",
-    name: "Acme Corp",
-    slug: "acme-corp",
-  },
-  participants: [
-    {
-      id: "p1",
-      role: "HOST",
-      externalName: null,
-      externalEmail: null,
-      user: { id: "u1", name: "Sarah Jenkins", email: "sarah@larity.xyz" },
-    },
-    {
-      id: "p2",
-      role: "PARTICIPANT",
-      externalName: "Marcus Chen",
-      externalEmail: "marcus@acme.com",
-      user: null,
-    },
-    {
-      id: "p3",
-      role: "PARTICIPANT",
-      externalName: "Elena Rostova",
-      externalEmail: "elena@acme.com",
-      user: null,
-    },
-    {
-      id: "p4",
-      role: "PARTICIPANT",
-      externalName: null,
-      externalEmail: null,
-      user: { id: "u4", name: "Alex Rivera", email: "alex@larity.xyz" },
-    },
-  ],
-};
-
-const MOCK_BRIEF: MeetingBrief = {
-  meetingId: "mock-meeting-id",
-  tldr: "Acme Corp is highly positive on Larity's adoption, but has critical security concerns regarding the upcoming self-hosted deployment options. Marcus Chen is pushing for custom webhook integration, while Elena Rostova is the primary gatekeeper for the SOC2 Type II compliance verification. Goal is to secure agreement on the trial phase timeline and get them to sign the NDA extension.",
-  sentiment: "CAUTIOUS_OPTIMISM",
-  landmines: [
-    {
-      id: "lm-1",
-      text: "Elena recently delayed their Slack integration roll-out by 3 months due to data retention compliance policies. Avoid presenting the cloud-hosted storage as 'completely zero-risk'; instead, emphasize local retention controls.",
-      category: "compliance",
-    },
-    {
-      id: "lm-2",
-      text: "Marcus feels the engineering team wasn't consulted early enough on the initial pilot. Start the call by acknowledging his team's feedback on API rate-limiting.",
-      category: "politics",
-    },
-    {
-      id: "lm-3",
-      text: "Do not mention the pricing discount tiers unless Elena explicitly asks; we need to anchor on the standard enterprise pricing first.",
-      category: "pricing",
-    },
-  ],
-  commitments: {
-    mine: [
-      {
-        id: "c-mine-1",
-        text: "Send updated SOC2 compliance packet and self-hosted architectural diagram",
-        status: "PENDING",
-      },
-      {
-        id: "c-mine-2",
-        text: "Share the draft NDA extension document for their legal review",
-        status: "PENDING",
-      },
-      {
-        id: "c-mine-3",
-        text: "Provide references of existing Web3/Fintech clients using our self-hosted runner",
-        status: "PENDING",
-      },
-    ],
-    theirs: [
-      {
-        id: "c-theirs-1",
-        text: "Provide their VPC security checklist and network requirements",
-        status: "PENDING",
-      },
-      {
-        id: "c-theirs-2",
-        text: "Share the volume estimates for API calls in the sandbox environment",
-        status: "PENDING",
-      },
-    ],
-  },
-  suggestedAgenda: [
-    "Address security compliance & self-hosted deployment architecture (Led by Elena)",
-    "Review Q4 roadmap requests and API rate-limiting feedback (Led by Marcus)",
-    "Align on sandboxed trial deployment timeline and legal NDA extension",
-  ],
-};
 
 export function WaitingRoomPage() {
   const { sessionId = "" } = useParams();
@@ -136,34 +27,13 @@ export function WaitingRoomPage() {
   const meetingId = location.state?.meetingId || sessionStatus?.meetingId;
 
   const {
-    data: fetchedBrief,
-    isLoading: fetchedIsBriefLoading,
-    isError: fetchedIsError,
+    data: brief,
+    isLoading: isBriefLoading,
+    isError,
     refetch,
   } = useMeetingBrief(meetingId);
-  const { data: fetchedMeeting } = useMeeting(meetingId);
-
-  const USE_MOCK = true; // Easily toggleable flag for product demo/screenshots
-
-  const meeting = USE_MOCK ? MOCK_MEETING : fetchedMeeting;
-  const brief = USE_MOCK ? MOCK_BRIEF : fetchedBrief;
-  const isBriefLoading = USE_MOCK ? false : fetchedIsBriefLoading;
-  const isError = USE_MOCK ? false : fetchedIsError;
-
-  const [selectedAgenda, setSelectedAgenda] = useState<AgendaItem[]>(
-    USE_MOCK
-      ? [
-          {
-            id: "agenda-0",
-            text: "Address security compliance & self-hosted deployment architecture (Led by Elena)",
-          },
-          {
-            id: "c-mine-1",
-            text: "Update on: Send updated SOC2 compliance packet and self-hosted architectural diagram",
-          },
-        ]
-      : []
-  );
+  const { data: meeting } = useMeeting(meetingId);
+  const [selectedAgenda, setSelectedAgenda] = useState<AgendaItem[]>([]);
   const [customAgendaText, setCustomAgendaText] = useState("");
 
   const handleJoin = () => {
