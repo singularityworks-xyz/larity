@@ -1,0 +1,26 @@
+diff --git a/dist/cjs/core/websocket/ws.js b/dist/cjs/core/websocket/ws.js
+index 9ec46f8403afcf1ab3bcfba525337e6b67d735ba..c3f2b6f11a8bf7fe39f31f82ac078fd042a996db 100644
+--- a/dist/cjs/core/websocket/ws.js
++++ b/dist/cjs/core/websocket/ws.js
+@@ -74,7 +74,7 @@ class ReconnectingWebSocket {
+         this._retryCount = -1;
+         this._shouldReconnect = true;
+         this._connectLock = false;
+-        this._binaryType = "blob";
++        this._binaryType = "arraybuffer";
+         this._closeCalled = false;
+         this._messageQueue = [];
+         this.CONNECTING = ReconnectingWebSocket.CONNECTING;
+diff --git a/dist/esm/core/websocket/ws.mjs b/dist/esm/core/websocket/ws.mjs
+index babd38026aa4cb1ead694a2db66f40e32554e606..4daabf91ffde8b16bb199a52ead1ae782e236e4a 100644
+--- a/dist/esm/core/websocket/ws.mjs
++++ b/dist/esm/core/websocket/ws.mjs
+@@ -38,7 +38,7 @@ export class ReconnectingWebSocket {
+         this._retryCount = -1;
+         this._shouldReconnect = true;
+         this._connectLock = false;
+-        this._binaryType = "blob";
++        this._binaryType = "arraybuffer";
+         this._closeCalled = false;
+         this._messageQueue = [];
+         this.CONNECTING = ReconnectingWebSocket.CONNECTING;
