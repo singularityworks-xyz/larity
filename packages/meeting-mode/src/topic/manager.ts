@@ -82,7 +82,7 @@ export class TopicManager {
     const { sessionId, text } = utterance;
 
     // 1. Embed utterance (pre-computed, in-flight promise, or embed here)
-    let newVector: number[];
+    let newVector: number[] = [];
     if (utterance.embedding && utterance.embedding.length > 0) {
       newVector = utterance.embedding;
     } else if (utterance.embeddingPromise) {
@@ -91,12 +91,12 @@ export class TopicManager {
         newVector =
           resolved && resolved.length > 0
             ? resolved
-            : await this.embedder.embed(text);
+            : await this.embedder.embed(text).catch(() => []);
       } catch {
-        newVector = await this.embedder.embed(text);
+        newVector = await this.embedder.embed(text).catch(() => []);
       }
     } else {
-      newVector = await this.embedder.embed(text);
+      newVector = await this.embedder.embed(text).catch(() => []);
     }
     utterance.embedding = newVector;
 
@@ -105,14 +105,16 @@ export class TopicManager {
     let bestTopic: TopicState | null = null;
     let maxSimilarity = -1;
 
-    for (const topic of sessionTopics) {
-      if (!topic.centroid || topic.centroid.length === 0) {
-        continue;
-      }
-      const sim = cosineSimilarity(topic.centroid, newVector);
-      if (sim > maxSimilarity) {
-        maxSimilarity = sim;
-        bestTopic = topic;
+    if (newVector.length > 0) {
+      for (const topic of sessionTopics) {
+        if (!topic.centroid || topic.centroid.length === 0) {
+          continue;
+        }
+        const sim = cosineSimilarity(topic.centroid, newVector);
+        if (sim > maxSimilarity) {
+          maxSimilarity = sim;
+          bestTopic = topic;
+        }
       }
     }
 
@@ -131,6 +133,15 @@ export class TopicManager {
       log.info(
         { sessionId, topicId: assignedTopicId, similarity: maxSimilarity },
         "Assigned utterance to existing topic"
+      );
+    } else if (newVector.length === 0 && sessionTopics.length > 0) {
+      // Fallback: assign to the most recently active topic when embeddings fail
+      const fallbackTopic = sessionTopics[sessionTopics.length - 1] as TopicState;
+      assignedTopicId = fallbackTopic.topicId;
+      fallbackTopic.utteranceCount += 1;
+      log.warn(
+        { sessionId, topicId: assignedTopicId },
+        "Embedding failed, assigned utterance to fallback topic"
       );
     } else {
       assignedTopicId = this.generateTopicId(sessionId);
