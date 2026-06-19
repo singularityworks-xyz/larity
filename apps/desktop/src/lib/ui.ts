@@ -112,6 +112,9 @@ export const authBrandBgClass =
 
 export const authBrandLogoClass = "mb-4 flex items-center gap-3";
 
+export const authBrandLogoImageClass =
+  "drop-shadow-[0_0_16px_rgba(0,0,0,0.1)] invert dark:drop-shadow-[0_0_16px_rgba(255,255,255,0.5)] dark:invert-0";
+
 export const authBrandWordmarkClass =
   "font-['Share_Tech_Mono','Courier_New',monospace] text-lg font-normal tracking-[0.2em] text-fg [text-shadow:0_0_24px_rgba(0,0,0,0.1),0_0_6px_rgba(0,0,0,0.05)] dark:[text-shadow:0_0_24px_rgba(255,255,255,0.4),0_0_6px_rgba(255,255,255,0.15)]";
 

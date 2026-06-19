@@ -14,6 +14,7 @@ import {
   authBrandFeaturesClass,
   authBrandInnerClass,
   authBrandLogoClass,
+  authBrandLogoImageClass,
   authBrandPanelClass,
   authBrandTaglineClass,
   authBrandWordmarkClass,
@@ -242,7 +243,7 @@ export function RegisterPage() {
           <div className={authBrandLogoClass}>
             <img
               alt=""
-              className="drop-shadow-[0_0_16px_rgba(0,0,0,0.1)] invert dark:drop-shadow-[0_0_16px_rgba(255,255,255,0.5)] dark:invert-0"
+              className={authBrandLogoImageClass}
               height={36}
               src={larityLogo}
               width={36}
