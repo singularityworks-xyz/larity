@@ -22,9 +22,6 @@ mock.module("@larity/stt", () => ({
   },
 }));
 
-mock.module("../src/handlers/validate-session", () => ({
-  validateSession: async () => ({ isValid: true, orgId: "default" }),
-}));
 
 const publishParticipantJoinMock = mock(async () => undefined);
 const publishVadSignalMock = mock(async () => undefined);
