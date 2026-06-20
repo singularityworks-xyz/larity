@@ -15,3 +15,5 @@ The "Remember This" feature in the meeting mode UI and overlay is currently a fr
 1. Connect `handleRememberThis` to a backend API endpoint (e.g., `/meeting-session/:sessionId/remember`) or broadcast a WebSocket event to the server.
 2. Implement backend logic to bookmark the current timestamp or isolate the preceding ~30 seconds of speech-to-text context.
 3. Integrate this bookmarked context into the meeting capture and structured summarization pipeline.
+
+Link meeting scheduling with Google Calendar and Mail.
