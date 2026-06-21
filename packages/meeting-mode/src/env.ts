@@ -1,8 +1,3 @@
-import { resolve } from "node:path";
-import dotenv from "dotenv";
-
-dotenv.config({ path: resolve(import.meta.dirname, "../../../.env") });
-
 export const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {

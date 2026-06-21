@@ -7,9 +7,9 @@
  */
 
 import { publishSystemEvent, redis } from "@larity/db/redis";
-import { partialChannel, transcriptChannel } from "../channels";
 import { createSttLogger } from "../logger";
 import type { SttResult } from "../types";
+import { partialChannel, transcriptChannel } from "./channels";
 import { getDeepgramClient } from "./client";
 import {
   DEFAULT_DG_CONFIG,

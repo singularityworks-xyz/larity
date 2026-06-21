@@ -17,10 +17,6 @@
   "dependencies": {
     "@deepgram/sdk": "^5.1.0",
     "@larity/db": "workspace:*",
-    "@larity/infra": "workspace:*",
-    "@larity/logger": "workspace:*",
-    "cross-fetch": "^4.1.0",
-    "dotenv": "^17.4.2",
-    "ioredis": "^5.9.2"
+    "@larity/logger": "workspace:*"
   }
 }

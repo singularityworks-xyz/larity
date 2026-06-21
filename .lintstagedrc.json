@@ -1,3 +1,5 @@
 {
-  "*.{js,jsx,ts,tsx,json,jsonc,css,scss,md,mdx}": ["bunx ultracite check"]
+  "*.{js,jsx,ts,tsx,json,jsonc,css,scss,md,mdx}": [
+    "bunx ultracite fix --unsafe"
+  ]
 }

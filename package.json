@@ -24,6 +24,7 @@
     "db:gen": "turbo run generate --filter=@larity/db",
     "db:push": "turbo run push --filter=@larity/db",
     "db:migrate": "turbo run migrate --filter=@larity/db",
+    "db:studio": "turbo run studio --filter=@larity/db",
     "setup": "cp -n .env.example .env 2>/dev/null || true && bun install && bun docker:up && bun db:generate && bun db:push"
   },
   "type": "module",

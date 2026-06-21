@@ -16,8 +16,6 @@
     "typescript": "^7.0.1-rc"
   },
   "dependencies": {
-    "@larity/infra": "workspace:*",
-    "@larity/logger": "workspace:*",
     "bullmq": "^5.48.1",
     "ioredis": "^5.9.2",
     "zod": "^4.4.3"

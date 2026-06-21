@@ -5,7 +5,7 @@
  * Enforces connection limits and provides session lifecycle methods.
  */
 
-import { createDualChannelSession } from "./dual-channel-session";
+import { createDualChannelSession } from "./deepgram/dual-channel-session";
 import { MAX_CONNECTIONS } from "./env";
 import { createSttLogger } from "./logger";
 

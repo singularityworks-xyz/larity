@@ -6,7 +6,7 @@
  * Each stream gets its own Deepgram connection (mono, no multichannel merge).
  */
 
-import { DeepgramConnection } from "./deepgram/connection";
+import { DeepgramConnection } from "./connection";
 
 /** First byte of each audio frame from the host client */
 export const WS_AUDIO_TAG_MIC = 0;

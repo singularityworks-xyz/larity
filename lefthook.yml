@@ -1,6 +1,6 @@
 pre-commit:
   jobs:
-    - run: bunx ultracite check
+    - run: bunx ultracite fix --unsafe
       glob:
         - "**/*.js"
         - "**/*.jsx"

@@ -7,7 +7,8 @@
     "check-types": "tsc --noEmit",
     "generate": "bun prisma generate",
     "push": "bun prisma db push",
-    "migrate": "bun prisma migrate dev"
+    "migrate": "bun prisma migrate dev",
+    "studio": "bun prisma studio"
   },
   "exports": {
     ".": "./src/client.ts",
