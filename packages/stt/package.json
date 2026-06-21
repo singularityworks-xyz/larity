@@ -6,14 +6,8 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "scripts": {
-    "test": "bun test"
-  },
   "devDependencies": {
     "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^6"
   },
   "dependencies": {
     "@deepgram/sdk": "^5.1.0",

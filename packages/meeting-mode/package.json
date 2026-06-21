@@ -6,14 +6,10 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "dev": "bun --env-file=../../.env src/index.ts",
-    "test": "bun test"
+    "dev": "bun --env-file=../../.env src/index.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^6"
   },
   "dependencies": {
     "@google/genai": "^1.50.1",

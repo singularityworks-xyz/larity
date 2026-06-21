@@ -8,11 +8,7 @@
     "build": "tsc && vite build",
     "check-types": "tsc --noEmit",
     "preview": "vite preview",
-    "tauri": "tauri",
-    "lint": "biome check --log-level=info --diagnostic-level=warn .",
-    "lint:fix": "biome check --write --unsafe .",
-    "format": "biome format --write .",
-    "format:check": "biome format ."
+    "tauri": "tauri"
   },
   "dependencies": {
     "@fontsource/geist-mono": "^5.2.7",

@@ -4,21 +4,10 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun --env-file=../../.env --watch src/index.ts",
-    "test": "LOG_LEVEL=fatal bun test --preload ./tests/setup.ts",
-    "test:client": "bun run scripts/test-client.ts",
-    "test:subscriber": "bun run scripts/redis-subscriber.ts",
-    "test:stress": "bun run scripts/stress-test.ts",
-    "lint": "biome check --log-level=info --diagnostic-level=warn .",
-    "lint:fix": "biome check --write --unsafe .",
-    "format": "biome format --write .",
-    "format:check": "biome format ."
+    "dev": "bun --env-file=../../.env --watch src/index.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^6"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1053.0",

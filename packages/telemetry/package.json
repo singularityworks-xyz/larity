@@ -3,12 +3,6 @@
   "version": "0.1.0",
   "type": "module",
   "main": "index.ts",
-  "scripts": {
-    "lint": "biome check --log-level=info --diagnostic-level=warn .",
-    "lint:fix": "biome check --write --unsafe .",
-    "format": "biome format --write .",
-    "format:check": "biome format ."
-  },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/auto-instrumentations-node": "^0.70.0",
@@ -24,9 +18,6 @@
     "@opentelemetry/sdk-node": "^0.55.0",
     "@opentelemetry/semantic-conventions": "^1.28.0",
     "@prisma/instrumentation": "^5.22.0"
-  },
-  "peerDependencies": {
-    "typescript": "^6"
   },
   "devDependencies": {
     "@types/bun": "latest",
