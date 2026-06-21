@@ -6,7 +6,7 @@
  * Handles transcript events and publishes to Redis.
  */
 
-import { publishSystemEvent, redis } from "@larity/infra/redis";
+import { publishSystemEvent, redis } from "@larity/db/redis";
 import { partialChannel, transcriptChannel } from "../channels";
 import { createSttLogger } from "../logger";
 import type { SttResult } from "../types";

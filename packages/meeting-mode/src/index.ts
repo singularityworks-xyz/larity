@@ -3,8 +3,8 @@ import {
   connectRedis,
   disconnectRedis,
   getRedisClient,
-} from "@larity/infra/redis";
-import { redisKeys } from "@larity/infra/redis/keys";
+} from "@larity/db/redis";
+import { redisKeys } from "@larity/db/redis/keys";
 import type { Redis } from "ioredis";
 import { AlertPublisher } from "./alerts/publisher";
 import type { Alert } from "./alerts/types";

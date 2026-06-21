@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { redis } from "@larity/infra/redis";
-import { redisKeys } from "@larity/infra/redis/keys";
-import { TTL } from "@larity/infra/redis/ttl";
+import { redis } from "@larity/db/redis";
+import { redisKeys } from "@larity/db/redis/keys";
+import { TTL } from "@larity/db/redis/ttl";
 import {
   createS3Client,
   getS3Config,

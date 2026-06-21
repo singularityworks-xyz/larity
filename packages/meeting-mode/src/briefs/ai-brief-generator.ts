@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { GoogleGenAI, Type } from "@google/genai";
 import { prisma } from "@larity/db/client";
 import { ImportantPointCategory } from "@larity/db/prisma";
-import { getRedisClient } from "@larity/infra/redis";
+import { getRedisClient } from "@larity/db/redis";
 import { z } from "zod";
 
 export const BriefSchema = z.object({

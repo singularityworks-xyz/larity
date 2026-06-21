@@ -31,7 +31,7 @@ export class PreMeetingBriefWorker extends BaseWorker {
         const hostId = meeting?.participants[0]?.userId;
         if (hostId) {
           try {
-            const { publish } = await import("@larity/infra/redis");
+            const { publish } = await import("@larity/db/redis");
             await publish(`user_notifications:${hostId}`, {
               type: "PRE_MEETING_BRIEF_READY",
               meetingId: meeting.id,

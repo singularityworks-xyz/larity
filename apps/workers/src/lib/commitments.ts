@@ -1,5 +1,5 @@
-import { getRedisClient } from "@larity/infra/redis";
-import { redisKeys } from "@larity/infra/redis/keys";
+import { getRedisClient } from "@larity/db/redis";
+import { redisKeys } from "@larity/db/redis/keys";
 import {
   createS3Client,
   GetObjectCommand,

@@ -1,5 +1,9 @@
-import { redis } from "./client";
+import { redis } from "./connection";
 import { redisKeys } from "./keys";
+
+export async function publish(channel: string, payload: unknown) {
+  await redis.publish(channel, JSON.stringify(payload));
+}
 
 export interface SystemEventPayload {
   code: string;
@@ -26,7 +30,6 @@ export async function publishSystemEvent(
     const channel = redisKeys.meetingSystemEvent(sessionId);
     await redis.publish(channel, JSON.stringify(payload));
   } catch (err) {
-    // Fail-silent logging
     console.error(
       `Failed to publish system event for session ${sessionId}:`,
       err

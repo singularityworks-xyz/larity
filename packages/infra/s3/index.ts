@@ -1,4 +1,5 @@
 import { S3Client } from "@aws-sdk/client-s3";
+import { createComponentLogger, createRootLogger } from "@larity/logger";
 
 export type { S3Client } from "@aws-sdk/client-s3";
 
@@ -8,6 +9,11 @@ export {
   GetObjectCommand,
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
+
+const log = createComponentLogger(
+  createRootLogger({ service: "infra", level: process.env.LOG_LEVEL }),
+  "s3"
+);
 
 export interface S3Config {
   accessKeyId: string;
@@ -48,9 +54,7 @@ export function getS3Config(): S3Config {
   const isDev = process.env.NODE_ENV !== "production";
   if (missing.length > 0) {
     if (isDev) {
-      console.warn(
-        `[s3] Missing config: ${missing.join(", ")} — S3 features disabled`
-      );
+      log.warn({ missing }, "S3 config incomplete — S3 features disabled");
     } else {
       throw new Error(`Missing S3 config: ${missing.join(" and ")}`);
     }
@@ -67,6 +71,10 @@ export function getS3Config(): S3Config {
 
 export function createS3Client(config?: S3Config): S3Client {
   const cfg = config ?? getS3Config();
+  log.info(
+    { endpoint: cfg.endpoint, region: cfg.region, bucket: cfg.bucket },
+    "Creating S3 client"
+  );
   return new S3Client({
     endpoint: cfg.endpoint,
     region: cfg.region,

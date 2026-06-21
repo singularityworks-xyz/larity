@@ -1,4 +1,4 @@
-import { redis } from "./client";
+import { redis } from "./connection";
 import { redisKeys } from "./keys";
 
 export interface RedisHealthStatus {

@@ -1,4 +1,4 @@
-import { redisKeys } from "@larity/infra/redis/keys";
+import { redisKeys } from "@larity/db/redis/keys";
 import Redis from "ioredis";
 import { REDIS_URL } from "../env";
 import { createMeetingModeLogger } from "../logger";

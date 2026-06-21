@@ -1,5 +1,5 @@
-import { redis } from "@larity/infra/redis";
-import { redisKeys } from "@larity/infra/redis/keys";
+import { redis } from "@larity/db/redis";
+import { redisKeys } from "@larity/db/redis/keys";
 import { applyPagination } from "../lib/pagination";
 import { prisma } from "../lib/prisma";
 import type {

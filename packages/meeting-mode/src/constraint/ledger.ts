@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { redisKeys } from "@larity/infra/redis/keys";
-import { TTL } from "@larity/infra/redis/ttl";
+import { redisKeys } from "@larity/db/redis/keys";
+import { TTL } from "@larity/db/redis/ttl";
 import type { Redis } from "ioredis";
 import { constraintChannel } from "../channels";
 import { LEDGER_SNAPSHOT_DEBOUNCE_MS } from "../env";

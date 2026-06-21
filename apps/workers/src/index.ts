@@ -1,4 +1,4 @@
-import { checkRedisHealth, connectRedis } from "@larity/infra/redis";
+import { checkRedisHealth, connectRedis } from "@larity/db/redis";
 import { Elysia } from "elysia";
 import { rootLogger } from "./logger";
 import type { BaseWorker } from "./worker";

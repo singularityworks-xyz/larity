@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { publishSystemEvent } from "@larity/infra/redis";
+import { publishSystemEvent } from "@larity/db/redis";
 import {
   GEMINI_API_KEY,
   GEMINI_TIER4_MODEL,

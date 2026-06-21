@@ -1,4 +1,4 @@
-import { redis } from "@larity/infra/redis";
+import { redis } from "@larity/db/redis";
 import { createMeetingModeLogger } from "../logger";
 import type { SpeakerIdentity } from "../utterance/types";
 import { createUnidentifiedSpeaker } from "../utterance/types";

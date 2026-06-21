@@ -1,4 +1,4 @@
-import { connectRedis } from "@larity/infra/redis";
+import { connectRedis } from "@larity/db/redis";
 import {
   sessionManager,
   env as sttEnv,

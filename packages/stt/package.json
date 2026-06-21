@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@deepgram/sdk": "^5.1.0",
+    "@larity/db": "workspace:*",
     "@larity/infra": "workspace:*",
     "@larity/logger": "workspace:*",
     "cross-fetch": "^4.1.0",

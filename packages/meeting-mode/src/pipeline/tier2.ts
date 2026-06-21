@@ -1,4 +1,4 @@
-import { publishSystemEvent } from "@larity/infra/redis";
+import { publishSystemEvent } from "@larity/db/redis";
 import OpenAI from "openai";
 import {
   SAMBANOVA_API_KEY,

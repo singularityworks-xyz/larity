@@ -1,7 +1,10 @@
+import { createComponentLogger, createRootLogger } from "@larity/logger";
 import Redis, { type Redis as RedisInstance } from "ioredis";
-import { createInfraLogger } from "../logger";
 
-const log = createInfraLogger("redis-client");
+const log = createComponentLogger(
+  createRootLogger({ service: "db", level: process.env.LOG_LEVEL }),
+  "redis-client"
+);
 
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 

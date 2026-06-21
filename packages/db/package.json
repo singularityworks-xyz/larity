@@ -15,11 +15,16 @@
     "./generated/prisma": "./prisma/generated/prisma/client.ts",
     "./client": "./src/client.ts",
     "./prisma.config": "./prisma.config.ts",
-    "./meeting-analysis.types": "./src/meeting-analysis.types.ts"
+    "./meeting-analysis.types": "./src/meeting-analysis.types.ts",
+    "./redis": "./redis/index.ts",
+    "./redis/keys": "./redis/keys.ts",
+    "./redis/ttl": "./redis/ttl.ts"
   },
   "dependencies": {
+    "@larity/logger": "workspace:*",
     "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "^7.8.0"
+    "@prisma/client": "^7.8.0",
+    "ioredis": "^5.11.1"
   },
   "devDependencies": {
     "@prisma/config": "^7.8.0",

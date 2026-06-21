@@ -6,13 +6,6 @@ services:
     networks:
       - larity-network
 
-  rabbitmq:
-    extends:
-      file: ./docker/rabbitmq.yml
-      service: rabbitmq
-    networks:
-      - larity-network
-
   postgres:
     extends:
       file: ./docker/postgres.yml
@@ -24,7 +17,6 @@ services:
 
 volumes:
   postgres_data:
-  rabbitmq_data:
   redis_data:
 
 networks:
