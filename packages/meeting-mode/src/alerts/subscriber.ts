@@ -7,8 +7,8 @@ import type { Alert } from "./types";
 const log = createMeetingModeLogger("alert-subscriber");
 
 export interface AlertHandlers {
-  onSharedAlert: (alert: Alert) => void;
   onPersonalAlert: (alert: Alert) => void;
+  onSharedAlert: (alert: Alert) => void;
 }
 
 export class AlertSubscriber {

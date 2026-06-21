@@ -39,7 +39,7 @@ export const internalSessionRoutes = new Elysia({
         const validatedBody = validateSessionSchema.parse(body);
         userId = validatedBody.userId;
         role = validatedBody.role as "host" | "participant" | undefined;
-      } catch (_e) {
+      } catch {
         // Body is optional — ignore parse failures
       }
 
@@ -61,7 +61,7 @@ export const internalSessionRoutes = new Elysia({
               orgId = context.orgId;
             }
           }
-        } catch (_e) {
+        } catch {
           // Ignore
         }
       }

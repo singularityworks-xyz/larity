@@ -173,6 +173,9 @@ async function main(): Promise<void> {
           const list = await redisClient.lrange(key, 0, -1);
           for (let i = list.length - 1; i >= 0; i--) {
             const item = list[i];
+            if (!item) {
+              continue;
+            }
             try {
               const parsed = JSON.parse(item) as { utteranceId?: string };
               if (parsed.utteranceId === utteranceId) {

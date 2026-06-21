@@ -18,24 +18,24 @@ export type AlertSeverity = "low" | "medium" | "high" | "critical";
 export type AlertRouting = "shared" | "personal" | "both";
 
 export interface MeetingAlert {
-  id: string;
   category: AlertCategory;
-  severity: AlertSeverity;
-  title: string;
-  message: string;
-  surfaceReason?: string;
-  suggestion?: string;
-  speakerName?: string;
-  speakerType?: "TEAM" | "EXTERNAL";
-  routing: AlertRouting;
-  isShared: boolean;
-  timestamp: number;
   confidence: number;
-  triggerTier: 1 | 2 | 3 | 4;
   evidence?: {
     utterance: string;
     reasoning: string;
   };
+  id: string;
+  isShared: boolean;
+  message: string;
+  routing: AlertRouting;
+  severity: AlertSeverity;
+  speakerName?: string;
+  speakerType?: "TEAM" | "EXTERNAL";
+  suggestion?: string;
+  surfaceReason?: string;
+  timestamp: number;
+  title: string;
+  triggerTier: 1 | 2 | 3 | 4;
 }
 
 export const ALERT_PRIORITY: Record<AlertCategory, number> = {
@@ -64,10 +64,10 @@ export const ALERT_EXPIRY_MS: Record<AlertSeverity, number> = {
 export const MAX_VISIBLE_ALERTS = 2;
 
 export interface AlertCategoryMeta {
-  title: string;
+  bgWash?: string;
   borderClass: string;
   iconKey: string;
-  bgWash?: string;
+  title: string;
 }
 
 export const ALERT_CATEGORY_META: Record<AlertCategory, AlertCategoryMeta> = {

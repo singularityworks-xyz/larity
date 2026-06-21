@@ -60,14 +60,15 @@ export function AddClientPage() {
   const [newMemberName, setNewMemberName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
-  const normalizedInput = useMemo(() => {
-    return {
+  const normalizedInput = useMemo(
+    () => ({
       name: name.trim(),
       slug: slugify(slug),
       description: description.trim() || undefined,
       industry: industry.trim() || undefined,
-    };
-  }, [description, industry, name, slug]);
+    }),
+    [description, industry, name, slug]
+  );
 
   const validationError = useMemo(() => {
     const parsed = createClientSchema.safeParse(normalizedInput);

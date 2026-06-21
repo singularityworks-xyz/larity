@@ -4,14 +4,13 @@ import type { SpeakerType, Utterance } from "./types";
  * Configuration for the ring buffer
  */
 export interface RingBufferConfig {
-  /** Maximum number of utterances to store */
-  maxSize: number;
-
   /** Maximum age of utterances in milliseconds (default: 120 seconds) */
   maxAgeMs: number;
 
   /** Maximum total character count for context window */
   maxCharacters: number;
+  /** Maximum number of utterances to store */
+  maxSize: number;
 }
 
 /**

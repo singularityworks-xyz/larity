@@ -122,22 +122,22 @@
   }
 
   html {
-    background: var(--bg);
-    color: var(--text-primary);
     font-family: var(--font-sans);
     font-feature-settings:
       "tnum" 1,
       "ss01" 1,
       "ss03" 1;
     -webkit-font-smoothing: antialiased;
+    color: var(--text-primary);
+    background: var(--bg);
   }
 
   body {
-    margin: 0;
     min-height: 100vh;
-    background: var(--bg);
-    color: var(--text-primary);
+    margin: 0;
     font-family: inherit;
+    color: var(--text-primary);
+    background: var(--bg);
   }
 
   #root {

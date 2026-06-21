@@ -12,7 +12,7 @@ export const redis = new Redis(REDIS_URL, {
   showFriendlyErrorStack: true,
 });
 
-redis.on("error", (error) => {
+redis.on("error", (error: Error) => {
   if (process.env.NODE_ENV === "test") {
     // Swallow error during unit tests so it doesn't crash the test runner
     return;

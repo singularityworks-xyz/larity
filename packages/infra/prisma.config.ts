@@ -5,4 +5,5 @@ export default defineConfig({
   datasource: {
     url: process.env.DATABASE_URL,
   },
-});
+  // biome-ignore lint/suspicious/noExplicitAny: prisma config type mismatch
+} as any);

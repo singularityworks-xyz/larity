@@ -47,9 +47,9 @@ export function levenshteinDistance(left: string, right: string): number {
     for (let j = 1; j <= right.length; j++) {
       const substitutionCost = left[i - 1] === right[j - 1] ? 0 : 1;
       currentRow[j] = Math.min(
-        previousRow[j] + 1,
-        currentRow[j - 1] + 1,
-        previousRow[j - 1] + substitutionCost
+        (previousRow[j] as number) + 1,
+        (currentRow[j - 1] as number) + 1,
+        (previousRow[j - 1] as number) + substitutionCost
       );
     }
 

@@ -19,11 +19,11 @@ const DOT_STEP = 5.5; // gap between dot centres
 const DOT_START = 2.5; // first dot centre offset
 
 interface Dot {
-  id: string;
   cx: number;
   cy: number;
   delayRandom: number;
   delayRipple: number;
+  id: string;
 }
 
 // Pre-built so React never sees array-index keys.
@@ -36,16 +36,16 @@ const DOTS: Dot[] = Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
     id: `r${row}c${col}`,
     cx: DOT_START + col * DOT_STEP,
     cy: DOT_START + row * DOT_STEP,
-    delayRandom: DOT_DELAYS[i],
+    delayRandom: DOT_DELAYS[i] ?? 0,
     delayRipple: Math.round(distFromCenter * 150),
   };
 });
 
 interface VoiceDotMatrixProps {
-  /** Whether the user is currently speaking — drives the animation. */
-  isSpeaking: boolean;
   /** Current voice intensity (0 to 1). */
   amplitude?: number;
+  /** Whether the user is currently speaking — drives the animation. */
+  isSpeaking: boolean;
   /** Accessible label for the indicator. */
   label?: string;
 }

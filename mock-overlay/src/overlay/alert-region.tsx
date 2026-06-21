@@ -5,12 +5,12 @@ import type { MeetingAlert } from "../alerts/types";
 const EMPTY_EXITING_SET = new Set<string>();
 
 interface AlertRegionProps {
-  visibleAlerts: MeetingAlert[];
-  exitingIds?: Set<string>;
   alertsMuted: boolean;
+  exitingIds?: Set<string>;
   expandedAlertId: string | null;
   onDismiss: (id: string) => void;
   onToggleExpand: (id: string | null) => void;
+  visibleAlerts: MeetingAlert[];
 }
 
 export function AlertRegion({

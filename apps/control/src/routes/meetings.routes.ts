@@ -9,10 +9,7 @@ import {
   TranscriptService,
 } from "../services";
 import { ForbiddenError, NotFoundError } from "../services/meeting.service";
-import type {
-  MeetingInsightsQueryInput,
-  MeetingQueryInput,
-} from "../validators";
+import type { MeetingQueryInput } from "../validators";
 import {
   confirmSpeakerMappingSchema,
   createMeetingParticipantBaseSchema,
@@ -434,11 +431,8 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Get aggregated insights for meeting
   .get(
     "/:id/insights",
-    async ({ params, query }) => {
-      const insights = await MeetingInsightsService.getInsights(
-        params.id,
-        query as unknown as MeetingInsightsQueryInput
-      );
+    async ({ params }) => {
+      const insights = await MeetingInsightsService.getInsights(params.id);
       return { success: true, data: insights };
     },
     {

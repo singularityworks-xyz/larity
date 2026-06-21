@@ -73,6 +73,10 @@ export class SpeculativeCache {
 
     for (let i = entry.results.length - 1; i >= 0; i--) {
       const candidate = entry.results[i];
+      if (!candidate) {
+        entry.results.splice(i, 1);
+        continue;
+      }
 
       if (now - candidate.createdAt > SPECULATIVE_TTL_MS) {
         entry.results.splice(i, 1);

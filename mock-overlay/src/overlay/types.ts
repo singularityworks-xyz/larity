@@ -1,14 +1,14 @@
 export type AlertSeverity = "critical" | "warning" | "info";
 
 export interface OverlayAlert {
-  id: string;
-  severity: AlertSeverity;
-  summary: string;
-  isShared: boolean;
   evidence?: {
     utterance: string;
     reasoning: string;
   };
+  id: string;
+  isShared: boolean;
+  severity: AlertSeverity;
+  summary: string;
 }
 
 export interface OverlaySpeaker {
@@ -18,16 +18,16 @@ export interface OverlaySpeaker {
 
 export interface OverlayTeammate {
   id: string;
-  name: string;
   initials: string;
+  name: string;
 }
 
 export interface OverlaySearchParams {
-  sessionId: string;
-  role: string;
   clientName: string;
   meetingTitle: string;
+  role: string;
+  sessionId: string;
   startedAt: string;
-  wsBaseUrl: string;
   userId: string;
+  wsBaseUrl: string;
 }

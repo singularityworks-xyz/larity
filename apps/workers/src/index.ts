@@ -27,10 +27,14 @@ export async function startWorkersApp(): Promise<void> {
   const { AudioCleanupWorker } = await import("./audio-cleanup.worker");
   const { ClientPersonaWorker } = await import("./client-persona.worker");
 
-  registerWorker(new TranscribeWorker());
-  registerWorker(new SummaryWorker());
-  registerWorker(new AudioCleanupWorker());
-  registerWorker(new ClientPersonaWorker());
+  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
+  registerWorker(new TranscribeWorker() as any);
+  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
+  registerWorker(new SummaryWorker() as any);
+  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
+  registerWorker(new AudioCleanupWorker() as any);
+  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
+  registerWorker(new ClientPersonaWorker() as any);
 
   const app = new Elysia()
     .get("/health", async () => {

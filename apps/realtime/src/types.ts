@@ -6,13 +6,13 @@
 
 // We define our custom data that will be attached to Elysia's Context
 export interface SocketData {
-  sessionId: string;
-  userId: string;
-  name: string;
-  role: "host" | "participant";
   connectedAt: number;
   lastFrameTs: number;
+  name: string;
   orgId: string;
+  role: "host" | "participant";
+  sessionId: string;
+  userId: string;
 }
 
 /**
@@ -21,21 +21,21 @@ export interface SocketData {
  * so our handlers don't need to import Elysia internals everywhere.
  */
 export interface RealtimeSocket {
+  close: () => void;
   data: SocketData;
   send: (
     data: string | Buffer | ArrayBuffer | Uint8Array | Record<string, unknown>
   ) => void;
-  close: () => void;
 }
 
 /**
  * Connection entry within a session
  */
 export interface SessionConnection {
+  connectedAt: number;
+  role: "host" | "participant";
   socket: RealtimeSocket;
   userId: string;
-  role: "host" | "participant";
-  connectedAt: number;
 }
 
 /**
@@ -44,20 +44,20 @@ export interface SessionConnection {
  */
 export interface SessionEntry {
   connections: Map<string, SessionConnection>; // key: userId
-  startedAt: number;
   lastFrameTs: number;
+  startedAt: number;
 }
 
 /**
  * Payload structure for VAD signals from clients
  */
 export interface VadSignal {
+  clientSendTs: number;
+  role?: "host" | "participant";
+  serverReceiveTs: number;
+  sessionId: string;
   type: "vad_speaking" | "vad_silence";
   userId: string;
-  sessionId: string;
-  clientSendTs: number;
-  serverReceiveTs: number;
-  role?: "host" | "participant";
 }
 
 /**
@@ -69,21 +69,21 @@ export interface SessionStartEvent {
 }
 
 export interface SessionEndEvent {
+  duration: number;
   sessionId: string;
   ts: number;
-  duration: number;
 }
 
 export interface ParticipantJoinEvent {
-  sessionId: string;
-  userId: string;
   name: string;
   role: "host" | "participant";
+  sessionId: string;
   ts: number;
+  userId: string;
 }
 
 export interface ParticipantLeaveEvent {
   sessionId: string;
-  userId: string;
   ts: number;
+  userId: string;
 }

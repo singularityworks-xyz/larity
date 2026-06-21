@@ -12,7 +12,8 @@ export const ClientMemberService = {
       data: {
         ...rest,
         client: { connect: { id: clientId } },
-      },
+        // biome-ignore lint/suspicious/noExplicitAny: prisma nested create type mismatch
+      } as any,
       include: {
         client: { select: { id: true, name: true, slug: true } },
       },
@@ -28,7 +29,8 @@ export const ClientMemberService = {
   update(id: string, data: UpdateClientMemberInput) {
     return prisma.clientMember.update({
       where: { id },
-      data,
+      // biome-ignore lint/suspicious/noExplicitAny: prisma input type mismatch
+      data: data as any,
       include: {
         client: { select: { id: true, name: true, slug: true } },
       },

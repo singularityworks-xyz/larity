@@ -69,9 +69,9 @@ function handleParsedVadPayload(
       // (Server receive time - Client send time)
       const networkLatency = Math.max(
         0,
-        Math.min(500, (ts - clientSendTs) / 2)
+        Math.min(500, (ts - (clientSendTs ?? ts)) / 2)
       );
-      const serverAudioStartTs = clientTs + networkLatency;
+      const serverAudioStartTs = (clientTs ?? ts) + networkLatency;
 
       log.info(
         {
@@ -138,7 +138,7 @@ function handleBinaryFrame(
   if (streamer && !streamer.done) {
     try {
       if (frame.length > 0) {
-        const tag = frame[0];
+        const tag = frame[0] ?? 0;
         const pcm = frame.subarray(1);
         streamer.writeDemux(tag, pcm);
       }

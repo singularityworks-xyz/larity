@@ -27,6 +27,7 @@ export function Navbar() {
           className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           href="/"
         >
+          {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
           <img
             alt="Larity Logo"
             className="h-7 w-auto"

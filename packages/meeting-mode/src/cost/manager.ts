@@ -55,10 +55,10 @@ export class CostManager {
   private hotCacheValid(sessionId: string): number | undefined {
     const row = this.hotCostReads.get(sessionId);
     if (!row) {
-      return undefined;
+      return;
     }
     if (Date.now() - row.readAt > this.hotCacheTtlMs) {
-      return undefined;
+      return;
     }
     return row.value;
   }

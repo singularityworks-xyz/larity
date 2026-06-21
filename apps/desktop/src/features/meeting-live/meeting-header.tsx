@@ -27,18 +27,18 @@ function LiveIndicator({ isActive }: { isActive: boolean }) {
 }
 
 interface MeetingHeaderProps {
+  alertsMuted: boolean;
+  allowNameCustomization: boolean;
   clientName: string;
-  meetingTitle: string;
-  startedAtMs: number;
+  isEndingBusy: boolean;
   isHost: boolean;
   isStreamActive: boolean;
-  alertsMuted: boolean;
-  isEndingBusy: boolean;
-  allowNameCustomization: boolean;
-  onMuteAlertsToggle: () => void;
+  meetingTitle: string;
   // onRememberThis: () => void;
   onEndMeeting: () => void;
+  onMuteAlertsToggle: () => void;
   onToggleNameCustomization: () => void;
+  startedAtMs: number;
 }
 
 export function MeetingHeader({

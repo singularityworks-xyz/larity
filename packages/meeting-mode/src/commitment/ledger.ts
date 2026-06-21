@@ -42,16 +42,16 @@ interface SnapshotCommitment extends Omit<Commitment, "embedding"> {
 }
 
 interface LedgerSnapshot {
-  version: number;
-  sessionId: string;
-  savedAt: number;
   commitments: SnapshotCommitment[];
+  savedAt: number;
+  sessionId: string;
+  version: number;
 }
 
 export interface CommitmentLedgerOptions {
+  idFactory?: () => string;
   index?: CommitmentVectorIndex;
   now?: () => number;
-  idFactory?: () => string;
   /** 0 = write Redis snapshot synchronously on each change */
   snapshotDebounceMs?: number;
 }
@@ -121,7 +121,7 @@ export class CommitmentLedger {
   ): Promise<Commitment | undefined> {
     const commitment = this.commitments.get(commitmentId);
     if (!commitment) {
-      return undefined;
+      return;
     }
 
     assertStatusTransition(commitment.status, update.status);
@@ -385,7 +385,7 @@ export class CommitmentLedger {
   ): Commitment | undefined {
     const commitmentId = this.vectorToCommitmentId.get(vectorId);
     if (!commitmentId) {
-      return undefined;
+      return;
     }
 
     return this.commitments.get(commitmentId);

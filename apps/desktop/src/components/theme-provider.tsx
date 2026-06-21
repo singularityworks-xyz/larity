@@ -8,8 +8,8 @@ interface ThemeProviderProps {
 }
 
 interface ThemeProviderState {
-  theme: Theme;
   setTheme: (theme: Theme) => void;
+  theme: Theme;
   toggleTheme: () => void;
 }
 

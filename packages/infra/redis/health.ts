@@ -2,9 +2,9 @@ import { redis } from "./client";
 import { redisKeys } from "./keys";
 
 export interface RedisHealthStatus {
+  error?: string;
   healthy: boolean;
   latency?: number;
-  error?: string;
   timestamp: number;
 }
 

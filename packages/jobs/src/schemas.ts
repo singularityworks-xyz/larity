@@ -31,3 +31,9 @@ export const ClientPersonaJobSchema = z.object({
 });
 
 export type ClientPersonaJobData = z.infer<typeof ClientPersonaJobSchema>;
+
+export const PreMeetingBriefJobSchema = z.object({
+  meetingId: z.string().min(1),
+});
+
+export type PreMeetingBriefJobData = z.infer<typeof PreMeetingBriefJobSchema>;

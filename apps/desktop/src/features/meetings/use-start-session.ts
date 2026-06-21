@@ -8,10 +8,9 @@ interface StartSessionInput {
 
 export function useStartSession() {
   return useMutation({
-    mutationFn: (input: StartSessionInput) => {
-      return api.post<StartSessionResponse>("/meeting-session/start", {
+    mutationFn: (input: StartSessionInput) =>
+      api.post<StartSessionResponse>("/meeting-session/start", {
         meetingId: input.meetingId,
-      });
-    },
+      }),
   });
 }

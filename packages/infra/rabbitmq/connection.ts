@@ -80,7 +80,7 @@ function resetConnection() {
         // ignore
       });
     }
-  } catch (_e) {
+  } catch {
     // Ignore errors
   }
   connection = null;

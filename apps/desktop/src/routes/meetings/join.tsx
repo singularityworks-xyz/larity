@@ -62,9 +62,10 @@ export function JoinMeetingPage() {
   const [manualSessionId, setManualSessionId] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const hasSessions = useMemo(() => {
-    return (activeSessions.data?.length ?? 0) > 0;
-  }, [activeSessions.data]);
+  const hasSessions = useMemo(
+    () => (activeSessions.data?.length ?? 0) > 0,
+    [activeSessions.data]
+  );
 
   const showEmptyState = useMemo(() => {
     if (activeSessions.isPending) {
@@ -204,9 +205,9 @@ export function JoinMeetingPage() {
 
               {(activeSessions.data ?? []).map((session) => {
                 const elapsed =
-                  session.startedAt !== null
-                    ? Math.max(0, Date.now() - session.startedAt)
-                    : 0;
+                  session.startedAt === null
+                    ? 0
+                    : Math.max(0, Date.now() - session.startedAt);
                 return (
                   <motion.article
                     animate={{ opacity: 1, y: 0 }}

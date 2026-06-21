@@ -29,12 +29,12 @@ import { computeTalkTime } from "./lib/talk-time";
 import { BaseWorker } from "./worker";
 
 interface Utterance {
+  channel: number;
+  duration: number; // in seconds
   id: string;
   speaker: string;
   text: string;
   timestamp: number; // in seconds
-  duration: number; // in seconds
-  channel: number;
   type?: "TEAM" | "EXTERNAL";
 }
 
@@ -565,7 +565,7 @@ export class SummaryWorker extends BaseWorker<
     const updatedRefs = new Set<string>();
 
     for (const { d, embedding } of decisionsWithEmbeddings) {
-      let decisionRef = randomUUID();
+      let decisionRef: string = randomUUID();
       const version = 1;
 
       for (const old of existingDecisions) {
@@ -587,7 +587,8 @@ export class SummaryWorker extends BaseWorker<
 
       const created = await tx.decision.create({
         data: {
-          decisionRef,
+          decisionRef:
+            decisionRef as `${string}-${string}-${string}-${string}-${string}`,
           version,
           clientId,
           meetingId,

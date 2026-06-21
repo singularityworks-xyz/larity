@@ -2,17 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ALERT_EXPIRY_MS, ALERT_PRIORITY, type MeetingAlert } from "./types";
 
 interface UseAlertQueueResult {
-  visibleAlerts: MeetingAlert[];
-  alertHistory: MeetingAlert[];
-  dismissAlert: (id: string) => void;
   addAlert: (alert: MeetingAlert) => void;
+  alertHistory: MeetingAlert[];
   clearAll: () => void;
-  pendingCount: number;
+  dismissAlert: (id: string) => void;
   exitingIds: Set<string>;
+  pendingCount: number;
+  visibleAlerts: MeetingAlert[];
 }
 
-const sortAlerts = (alerts: MeetingAlert[], chronological = false) => {
-  return [...alerts].sort((a, b) => {
+const sortAlerts = (alerts: MeetingAlert[], chronological = false) =>
+  [...alerts].sort((a, b) => {
     if (chronological) {
       return a.timestamp - b.timestamp;
     }
@@ -23,7 +23,6 @@ const sortAlerts = (alerts: MeetingAlert[], chronological = false) => {
     }
     return b.timestamp - a.timestamp;
   });
-};
 
 export function useAlertQueue(
   maxVisible = 2,
@@ -37,16 +36,17 @@ export function useAlertQueue(
   const autoDismissTimeoutsRef = useRef<Map<string, number>>(new Map());
   const animTimeoutsRef = useRef<Map<string, number>>(new Map());
 
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       for (const timerId of autoDismissTimeoutsRef.current.values()) {
         window.clearTimeout(timerId);
       }
       for (const timerId of animTimeoutsRef.current.values()) {
         window.clearTimeout(timerId);
       }
-    };
-  }, []);
+    },
+    []
+  );
 
   const dismissAlert = useCallback((id: string) => {
     setExitingIds((prev) => new Set([...prev, id]));

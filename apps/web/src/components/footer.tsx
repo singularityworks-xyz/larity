@@ -18,6 +18,7 @@ export function Footer() {
         <div className="flex flex-col justify-between gap-12 sm:flex-row sm:items-end">
           {/* Brand & Tagline */}
           <div className="flex flex-col items-start">
+            {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
             <img
               alt="Larity Logo"
               className="mb-8 h-8 w-auto"

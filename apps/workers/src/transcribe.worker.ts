@@ -32,20 +32,20 @@ import { BaseWorker } from "./worker";
 type WorkerLogger = ReturnType<typeof createWorkerLogger>;
 
 interface NormalizedUtterance {
+  channel: number;
+  duration: number; // in seconds
   id: string;
   speaker: string;
   text: string;
   timestamp: number; // in seconds
-  duration: number; // in seconds
-  channel: number;
   type?: "TEAM" | "EXTERNAL";
 }
 
 interface S3Error {
-  name: string;
   $metadata?: {
     httpStatusCode?: number;
   };
+  name: string;
 }
 
 const WHITESPACE_REGEX = /\s+/;
@@ -149,7 +149,7 @@ async function fetchAndTranscribeAudio(
       );
     }
 
-    return { ch0Result, ch1Result };
+    return { ch0Result: ch0Result ?? null, ch1Result: ch1Result ?? null };
   } finally {
     s3.destroy();
   }

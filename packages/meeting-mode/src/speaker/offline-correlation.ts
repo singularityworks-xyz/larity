@@ -50,20 +50,20 @@ const ECHO_OVERLAP_GRACE_SEC = 1.0;
 const ECHO_SIMILARITY_THRESHOLD = 0.4;
 
 export interface VadInterval {
-  userId: string;
-  startTs: number;
   endTs: number;
   role?: "host" | "participant";
+  startTs: number;
+  userId: string;
 }
 
 export interface BatchUtteranceSegment {
-  id: string;
-  text: string;
-  timestamp: number; // relative seconds
-  duration: number; // seconds
   channel: number; // 0 or 1
+  duration: number; // seconds
+  id: string;
   speaker: string; // initial speaker name
   speakerType?: "TEAM" | "EXTERNAL"; // Added type
+  text: string;
+  timestamp: number; // relative seconds
 }
 
 /**
@@ -183,14 +183,13 @@ export function calculateTextMetrics(
   str1: string,
   str2: string
 ): { jaccard: number; containment: number } {
-  const tokenize = (s: string): string[] => {
-    return s
+  const tokenize = (s: string): string[] =>
+    s
       .toLowerCase()
       .replace(NON_WORD_REGEX, "")
       .trim()
       .split(WHITESPACE_SPLIT_REGEX)
       .filter(Boolean);
-  };
 
   const getBigrams = (words: string[]): string[] => {
     const bigrams: string[] = [];
@@ -447,7 +446,7 @@ function correlateSingleSegment(
   const match = segment.speaker.match(DIGIT_REGEX);
   const idxNum = match ? Number.parseInt(match[0], 10) : -1;
   const expectedLiveIndex =
-    idxNum !== -1 ? idxNum + segment.channel * 1000 : -1;
+    idxNum === -1 ? -1 : idxNum + segment.channel * 1000;
 
   if (expectedLiveIndex !== -1) {
     const manualMapping = speakerMappings[expectedLiveIndex.toString()];

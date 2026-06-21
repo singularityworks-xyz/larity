@@ -18,15 +18,15 @@ const log = createMeetingModeLogger("constraint-ledger");
 const SNAPSHOT_VERSION = 1;
 
 interface ConstraintLedgerSnapshot {
-  version: number;
-  sessionId: string;
-  savedAt: number;
   constraints: Constraint[];
+  savedAt: number;
+  sessionId: string;
+  version: number;
 }
 
 export interface ConstraintLedgerOptions {
-  now?: () => number;
   idFactory?: () => string;
+  now?: () => number;
   snapshotDebounceMs?: number;
 }
 
@@ -104,9 +104,9 @@ export class ConstraintLedger {
   }
 
   getAll(): Constraint[] {
-    return [...this.constraints.values()].sort((left, right) => {
-      return left.value.localeCompare(right.value);
-    });
+    return [...this.constraints.values()].sort((left, right) =>
+      left.value.localeCompare(right.value)
+    );
   }
 
   size(): number {
@@ -116,7 +116,7 @@ export class ConstraintLedger {
   findByValue(value: string, type: ConstraintType): Constraint | undefined {
     const id = this.indexByNormalizedValue.get(constraintIndexKey(type, value));
     if (!id) {
-      return undefined;
+      return;
     }
     return this.constraints.get(id);
   }

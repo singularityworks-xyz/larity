@@ -12,9 +12,9 @@ import { createSttLogger } from "./logger";
 const log = createSttLogger("session-manager");
 
 interface SessionConnection {
+  close(): void;
   sendAudio(audioBuffer: Buffer): Promise<void>;
   setAudioStreamStart(serverAudioStartTs: number): void;
-  close(): void;
 }
 
 type ConnectionFactory = (sessionId: string) => SessionConnection;

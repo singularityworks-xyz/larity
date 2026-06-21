@@ -17,9 +17,9 @@ interface SessionStartEvent {
 }
 
 interface SessionEndEvent {
+  duration: number;
   sessionId: string;
   ts: number;
-  duration: number;
 }
 
 /**

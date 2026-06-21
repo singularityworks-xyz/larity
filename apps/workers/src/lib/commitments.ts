@@ -8,8 +8,9 @@ import {
 import { unpackEmbeddingFromBase64 } from "meeting-mode";
 
 export interface RedisCommitment {
+  embedding?: number[];
+  embeddingBase64?: string;
   id: string;
-  statement: string;
   normalizedStatement?: string;
   speaker: {
     userId?: string;
@@ -17,13 +18,12 @@ export interface RedisCommitment {
     name?: string;
     type: "TEAM" | "EXTERNAL";
   };
-  topicId: string;
-  type: string;
+  statement: string;
   status: string;
   timestamp: number;
+  topicId: string;
+  type: string;
   utteranceId: string;
-  embedding?: number[];
-  embeddingBase64?: string;
 }
 
 /**

@@ -77,7 +77,12 @@ function TypewriterInput() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    if (subIndex === QUESTIONS[index].length + 1 && !isDeleting) {
+    const question = QUESTIONS[index];
+    if (!question) {
+      return;
+    }
+
+    if (subIndex === question.length + 1 && !isDeleting) {
       const timeout = setTimeout(() => setIsDeleting(true), 2000);
       return () => clearTimeout(timeout);
     }
@@ -90,9 +95,7 @@ function TypewriterInput() {
 
     const timeout = setTimeout(
       () => {
-        setDisplayText(
-          QUESTIONS[index].substring(0, subIndex + (isDeleting ? -1 : 1))
-        );
+        setDisplayText(question.slice(0, subIndex + (isDeleting ? -1 : 1)));
         setSubIndex((prev) => prev + (isDeleting ? -1 : 1));
       },
       isDeleting ? 20 : 40
@@ -185,6 +188,7 @@ export function MemoryDeepDive() {
           {/* Block 1: Calendar Sync */}
           <div className="border-zinc-900/30 border-t pt-10">
             <div className="relative aspect-[2.39/1] w-full overflow-hidden rounded-xl border border-zinc-900/30 bg-zinc-50/50">
+              {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
               <img
                 alt="Calendar Sync Integration"
                 className="h-full w-full object-cover object-[center_45%]"
@@ -216,6 +220,7 @@ export function MemoryDeepDive() {
           <div className="border-zinc-900/30 border-t pt-10">
             <div className="relative flex aspect-[2.39/1] w-full items-center justify-center overflow-hidden rounded-xl border border-zinc-900/30 p-6">
               {/* Background image */}
+              {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
               <img
                 alt="Search Backdrop"
                 className="absolute inset-0 h-full w-full object-cover"
@@ -250,6 +255,7 @@ export function MemoryDeepDive() {
           {/* Block 3: Versioned Decisions */}
           <div className="border-zinc-900/30 border-t pt-10">
             <div className="relative aspect-[2.39/1] w-full overflow-hidden rounded-xl border border-zinc-900/30 bg-zinc-50/50">
+              {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
               <img
                 alt="Versioned Decisions Record"
                 className="h-full w-full object-cover object-[center_0%]"

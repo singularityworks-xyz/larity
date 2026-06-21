@@ -2,8 +2,8 @@ import type { NextMeeting } from "../../features/home/types";
 import { startMeetingModeClass } from "../../lib/ui";
 
 interface NextMeetingCardProps {
-  meeting: NextMeeting | null;
   loading: boolean;
+  meeting: NextMeeting | null;
 }
 
 export function NextMeetingCard({ meeting, loading }: NextMeetingCardProps) {
@@ -67,7 +67,7 @@ export function NextMeetingCard({ meeting, loading }: NextMeetingCardProps) {
           </h1>
           <p className="text-[11.5px] text-fg-muted leading-relaxed">
             {meeting.attendeeCount > 0
-              ? `${meeting.attendeeCount} attendee${meeting.attendeeCount !== 1 ? "s" : ""}`
+              ? `${meeting.attendeeCount} attendee${meeting.attendeeCount === 1 ? "" : "s"}`
               : "No attendees listed"}{" "}
             &middot;{" "}
             <span className="inline-flex items-center gap-1">

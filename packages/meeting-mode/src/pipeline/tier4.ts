@@ -13,8 +13,8 @@ import { tier4ResponseSchema } from "./types";
 const log = createMeetingModeLogger("tier4-deep-reason");
 
 export interface Tier4DeepReasonerOptions {
-  timeoutMs?: number;
   invoke?: (prompt: string, timeoutMs: number) => Promise<string>;
+  timeoutMs?: number;
 }
 
 const CATEGORY_PROMPT_BLOCK = `
@@ -233,7 +233,7 @@ export class Tier4DeepReasoner {
     tokenCount: number;
   }> {
     const prompt = buildTier4Prompt(context);
-    const sessionId = context.utterance.sessionId;
+    const sessionId = context.sessionId;
 
     try {
       const raw = await this.invoke(prompt, this.timeoutMs);
@@ -311,9 +311,10 @@ export class Tier4DeepReasoner {
           temperature: 0,
           responseMimeType: "application/json",
           responseSchema: geminiTier4StructuredSchema(),
-          signal: controller.signal,
         },
-      });
+        signal: controller.signal,
+        // biome-ignore lint/suspicious/noExplicitAny: Gemini SDK signal type mismatch
+      } as any);
 
       if (!response.text) {
         throw new Error("Gemini tier4 returned empty content");

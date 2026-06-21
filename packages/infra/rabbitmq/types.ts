@@ -1,8 +1,8 @@
 export interface MeetingTranscribeEvent {
   meetingId: string;
   sessionId: string;
-  transcript: string;
   timestamp: number;
+  transcript: string;
 }
 
 export interface MeetingSummaryEvent {

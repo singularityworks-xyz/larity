@@ -14,6 +14,20 @@ export type SpeakerType = "TEAM" | "EXTERNAL";
  * team voiceprints. Unidentified speakers default to EXTERNAL.
  */
 export interface SpeakerIdentity {
+  /** Confidence of the speaker identification (0-1) */
+  confidence: number;
+
+  /** Deepgram's diarization speaker integers (e.g. 0, 1, 2...) */
+  diarizationIndices: number[];
+
+  /** Is this the person viewing this Larity instance? */
+  isCurrentUser: boolean;
+
+  /** Is this speaker the host? */
+  isHost?: boolean;
+
+  /** Display name (team member name or "Speaker 1", "Client", etc.) */
+  name: string;
   /** Unique within this meeting session (e.g. "spk_0", "spk_1") */
   speakerId: string;
 
@@ -22,46 +36,31 @@ export interface SpeakerIdentity {
 
   /** If TEAM, linked to the User record */
   userId?: string;
-
-  /** Display name (team member name or "Speaker 1", "Client", etc.) */
-  name: string;
-
-  /** Deepgram's diarization speaker integers (e.g. 0, 1, 2...) */
-  diarizationIndices: number[];
-
-  /** Is this the person viewing this Larity instance? */
-  isCurrentUser: boolean;
-
-  /** Confidence of the speaker identification (0-1) */
-  confidence: number;
-
-  /** Is this speaker the host? */
-  isHost?: boolean;
 }
 
 export interface Utterance {
-  utteranceId: string;
-  sessionId: string;
-  speaker: SpeakerIdentity;
-  text: string;
-  timestamp: number;
   confidenceScore: number;
-  startOffset: number;
   duration: number;
-  wordCount: number;
-  mergedCount: number;
-  topicId?: string;
   embedding?: number[];
   /** In-flight embedding for topic assignment; never serialized over Redis */
   embeddingPromise?: Promise<number[] | undefined>;
+  mergedCount: number;
+  sessionId: string;
+  speaker: SpeakerIdentity;
+  startOffset: number;
+  text: string;
+  timestamp: number;
+  topicId?: string;
+  utteranceId: string;
+  wordCount: number;
 }
 
 export interface FinalizeResult {
-  text: string;
   confidence: number;
-  timestamp: number;
   duration: number;
   startOffset: number;
+  text: string;
+  timestamp: number;
 }
 
 /**

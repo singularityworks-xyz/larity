@@ -34,7 +34,7 @@ export class GoogleGenAIEmbedder {
       return response.embeddings[0].values as number[];
     } catch (error) {
       log.error(
-        { err: error, textPrefix: text.substring(0, 50) },
+        { err: error, textPrefix: text.slice(0, 50) },
         "Failed to embed text"
       );
       throw error;

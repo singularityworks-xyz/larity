@@ -35,10 +35,10 @@ export interface PreFilterDecision {
 }
 
 interface RecentUtteranceEntry {
-  normalizedText: string;
   isCurrentUser: boolean;
-  utteranceId: string;
+  normalizedText: string;
   timestamp: number;
+  utteranceId: string;
 }
 
 interface SessionPreFilterState {
@@ -175,6 +175,6 @@ export class PreFilter {
         return entry;
       }
     }
-    return undefined;
+    return;
   }
 }

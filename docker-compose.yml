@@ -1,21 +1,21 @@
 services:
   redis:
     extends:
-      file: ./packages/infra/redis/docker-compose.yml
+      file: ./docker/redis.yml
       service: redis
     networks:
       - larity-network
 
   rabbitmq:
     extends:
-      file: ./packages/infra/rabbitmq/docker-compose.yml
+      file: ./docker/rabbitmq.yml
       service: rabbitmq
     networks:
       - larity-network
 
   postgres:
     extends:
-      file: ./packages/infra/postgres/docker-compose.yml
+      file: ./docker/postgres.yml
       service: postgres
     networks:
       - larity-network

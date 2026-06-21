@@ -1,10 +1,10 @@
 import { useSession } from "../../lib/auth-client";
 
 export interface AuthUser {
-  id: string;
   email: string;
-  name: string;
+  id: string;
   image?: string | null;
+  name: string;
   orgId?: string | null;
   role?: string;
 }

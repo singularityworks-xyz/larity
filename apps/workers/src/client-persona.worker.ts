@@ -153,7 +153,8 @@ ${utterancesText}
       await prisma.clientMember.update({
         where: { id: clientMemberId },
         data: {
-          persona: mergedPersona,
+          // biome-ignore lint/suspicious/noExplicitAny: deepMerge returns unknown
+          persona: mergedPersona as any,
         },
       });
 

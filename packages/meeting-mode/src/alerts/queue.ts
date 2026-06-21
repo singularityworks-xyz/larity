@@ -12,9 +12,9 @@ interface QueuedAlert {
 }
 
 export interface TimeProvider {
+  clearTimeout(timer: unknown): void;
   now(): number;
   setTimeout(callback: () => void, ms: number): unknown;
-  clearTimeout(timer: unknown): void;
 }
 
 const defaultTimeProvider: TimeProvider = {
@@ -90,7 +90,7 @@ export class AlertQueueManager {
     if (idx !== -1) {
       const removed = this.activeAlerts.splice(idx, 1)[0];
       if (!removed) {
-        return undefined;
+        return;
       }
       this.clearExpiryTimer(alertId);
       removed.alert.status = "dismissed";
@@ -105,14 +105,14 @@ export class AlertQueueManager {
     if (pendingIdx !== -1) {
       const removed = this.pendingQueue.splice(pendingIdx, 1)[0];
       if (!removed) {
-        return undefined;
+        return;
       }
       removed.alert.status = "dismissed";
       this.markRecentlyShown(removed.alert);
       return removed.alert;
     }
 
-    return undefined;
+    return;
   }
 
   getActiveAlerts(): Alert[] {

@@ -1,10 +1,10 @@
 import { cx } from "../../lib/ui";
 
 interface CommitmentCounterProps {
-  teamCount: number;
-  externalCount: number;
-  contradictionCount: number;
   className?: string;
+  contradictionCount: number;
+  externalCount: number;
+  teamCount: number;
 }
 
 export function CommitmentCounter({

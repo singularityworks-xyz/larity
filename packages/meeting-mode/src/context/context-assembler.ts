@@ -5,46 +5,41 @@ import type { SpeakerType, Utterance } from "../utterance/types";
  * Context assembly options
  */
 export interface ContextAssemblyOptions {
-  /** Maximum characters in the assembled context */
-  maxCharacters: number;
-
-  /** Include only utterances from specific topic */
-  topicId?: string;
-
-  /** Filter by speaker type (TEAM or EXTERNAL) */
-  speakerType?: SpeakerType;
-
-  /** Filter by specific speaker ID */
-  speakerId?: string;
-
-  /** Filter by user ID (for identified team members) */
-  userId?: string;
-
-  /** Time window in milliseconds */
-  timeWindowMs?: number;
-
   /** Include timestamps in output */
   includeTimestamps?: boolean;
+  /** Maximum characters in the assembled context */
+  maxCharacters: number;
 
   /** Custom prefix for the context */
   prefix?: string;
 
+  /** Filter by specific speaker ID */
+  speakerId?: string;
+
+  /** Filter by speaker type (TEAM or EXTERNAL) */
+  speakerType?: SpeakerType;
+
   /** Custom suffix for the context */
   suffix?: string;
+
+  /** Time window in milliseconds */
+  timeWindowMs?: number;
+
+  /** Include only utterances from specific topic */
+  topicId?: string;
+
+  /** Filter by user ID (for identified team members) */
+  userId?: string;
 }
 
 /**
  * Assembled context result
  */
 export interface AssembledContext {
-  /** The formatted context string */
-  text: string;
-
-  /** Number of utterances included */
-  utteranceCount: number;
-
   /** Total character count */
   characterCount: number;
+  /** The formatted context string */
+  text: string;
 
   /** Time span covered (ms) */
   timeSpan: number;
@@ -54,6 +49,9 @@ export interface AssembledContext {
 
   /** Was the context truncated due to limits? */
   truncated: boolean;
+
+  /** Number of utterances included */
+  utteranceCount: number;
 }
 
 /**

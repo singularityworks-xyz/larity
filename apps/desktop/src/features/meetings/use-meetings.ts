@@ -2,18 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 
 export interface Meeting {
-  id: string;
-  clientId: string;
-  title: string;
-  description: string | null;
-  status: "SCHEDULED" | "LIVE" | "ENDED" | "CANCELLED";
-  scheduledAt: string | null;
-  createdAt: string;
   client?: {
     id: string;
     name: string;
     slug: string;
   };
+  clientId: string;
+  createdAt: string;
+  description: string | null;
+  id: string;
   participants?: Array<{
     id: string;
     role: string;
@@ -21,6 +18,9 @@ export interface Meeting {
     externalEmail?: string | null;
     user?: { id: string; name: string | null; email: string } | null;
   }>;
+  scheduledAt: string | null;
+  status: "SCHEDULED" | "LIVE" | "ENDED" | "CANCELLED";
+  title: string;
 }
 
 export function useMeetings(filters?: { clientId?: string }) {

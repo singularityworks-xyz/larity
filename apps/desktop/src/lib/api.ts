@@ -2,10 +2,10 @@ const API_PREFIX = "/api";
 const controlUrl = import.meta.env.VITE_CONTROL_URL ?? "http://localhost:3000";
 
 interface ApiEnvelope<T> {
-  success: boolean;
   data?: T;
   error?: string;
   message?: string;
+  success: boolean;
 }
 
 export class ApiError extends Error {

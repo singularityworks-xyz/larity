@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 
 interface VoiceGradientProps {
-  amplitude?: number;
-  isSpeaking: boolean;
-  hasActiveAlert: boolean;
   alertSeverity: "critical" | "high" | "medium" | "low" | null;
   alertsMuted?: boolean;
+  amplitude?: number;
+  hasActiveAlert: boolean;
+  isSpeaking: boolean;
 }
 
 export function VoiceGradient({

@@ -126,10 +126,10 @@ function TeammateAvatars({ teammates }: { teammates: OverlayTeammate[] }) {
 }
 
 interface AmbientStripProps {
-  currentTopic: string | null;
+  connectedTeammates: OverlayTeammate[];
   constraintCount: number;
   currentSpeaker: OverlaySpeaker | null;
-  connectedTeammates: OverlayTeammate[];
+  currentTopic: string | null;
   isMicActive: boolean;
   isVisuallySpeaking: boolean;
   micAmplitude?: number;

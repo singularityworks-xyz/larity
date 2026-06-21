@@ -15,14 +15,14 @@ const log = createMeetingModeLogger("tier2-classifier");
 const TIER2_MAX_COMPLETION_TOKENS = 1024;
 
 export interface Tier2InvokeResult {
-  text: string;
-  promptTokens: number;
   completionTokens: number;
+  promptTokens: number;
+  text: string;
 }
 
 export interface Tier2ClassifierOptions {
-  timeoutMs?: number;
   invoke?: (input: Tier2Input, timeoutMs: number) => Promise<Tier2InvokeResult>;
+  timeoutMs?: number;
 }
 
 export class Tier2Classifier {
@@ -287,12 +287,12 @@ function parseTier2Response(raw: string): unknown {
 
   // Strip markdown formatting if SambaNova wraps the JSON
   if (trimmed.startsWith("```json")) {
-    trimmed = trimmed.substring(7);
+    trimmed = trimmed.slice(7);
   } else if (trimmed.startsWith("```")) {
-    trimmed = trimmed.substring(3);
+    trimmed = trimmed.slice(3);
   }
   if (trimmed.endsWith("```")) {
-    trimmed = trimmed.substring(0, trimmed.length - 3);
+    trimmed = trimmed.slice(0, trimmed.length - 3);
   }
   trimmed = trimmed.trim();
 

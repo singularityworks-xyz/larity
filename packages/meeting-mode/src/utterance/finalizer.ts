@@ -40,8 +40,8 @@ const LIVE_ECHO_TIME_WINDOW_MS = 4000;
 const LIVE_ECHO_SIMILARITY_THRESHOLD = 0.4;
 
 export interface UtterancePublisher extends TopicPublisher {
-  publish(channel: string, message: string): Promise<number>;
   hset(key: string, field: string, value: string): Promise<number>;
+  publish(channel: string, message: string): Promise<number>;
 }
 
 export type RetroactiveUpdateHandler = (
@@ -294,15 +294,15 @@ export class UtteranceFinalizer {
       mergedCount: 1,
     };
 
-    const embedWallStart = PERF.now();
+    const _embedWallStart = PERF.now();
     utterance.embeddingPromise = this.embedder
       .embed(utterance.text)
-      .catch((error) => {
+      .catch((error): undefined => {
         log.warn(
           { err: error, utteranceId: utterance.utteranceId },
           "Failed to generate embedding for utterance"
         );
-        return undefined;
+        return;
       });
 
     // Assign topic (awaits in-flight embedding via TopicManager)
@@ -418,7 +418,7 @@ export class UtteranceFinalizer {
     topicId: string | undefined
   ): string | undefined {
     if (!topicId) {
-      return undefined;
+      return;
     }
 
     const topic = this.topicManager
@@ -577,7 +577,7 @@ export class UtteranceFinalizer {
 
   private async publishUtterance(
     utterance: Utterance,
-    finalizeStartMs?: number
+    _finalizeStartMs?: number
   ): Promise<void> {
     const channel = utteranceChannel(utterance.sessionId);
     const message = JSON.stringify(utterance, (key, value) =>
@@ -602,7 +602,7 @@ export class UtteranceFinalizer {
           sessionId: utterance.sessionId,
           utteranceId: utterance.utteranceId,
           topicId: utterance.topicId,
-          textPrefix: utterance.text.substring(0, 50),
+          textPrefix: utterance.text.slice(0, 50),
         },
         "Published utterance"
       );

@@ -2,9 +2,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
 export interface VadCallbacks {
-  onSpeechStart: () => void;
-  onSpeechEnd: () => void;
   onAmplitude?: (rms: number) => void;
+  onSpeechEnd: () => void;
+  onSpeechStart: () => void;
 }
 
 export class VadManager {

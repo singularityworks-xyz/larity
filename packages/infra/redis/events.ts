@@ -2,13 +2,13 @@ import { redis } from "./client";
 import { redisKeys } from "./keys";
 
 export interface SystemEventPayload {
-  type: "system_event";
-  eventId: string;
-  source: "deepgram" | "sambanova" | "gemini";
-  severity: "info" | "warning" | "error";
   code: string;
+  eventId: string;
   message: string;
+  severity: "info" | "warning" | "error";
+  source: "deepgram" | "sambanova" | "gemini";
   timestamp: number;
+  type: "system_event";
 }
 
 export async function publishSystemEvent(

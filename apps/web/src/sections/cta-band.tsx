@@ -37,7 +37,7 @@ export function CtaBand() {
           data.error || "Something went wrong. Please try again."
         );
       }
-    } catch (_err) {
+    } catch {
       setStatus("error");
       setErrorMessage(
         "Could not connect to the server. Please try again later."

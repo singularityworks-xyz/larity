@@ -8,39 +8,39 @@ export type KeyMomentCategory =
   | "OPPORTUNITY";
 
 export interface MeetingKeyMoment {
-  timestamp: number; // seconds from start
-  description: string; // "Client challenged team size"
   category: KeyMomentCategory;
+  description: string; // "Client challenged team size"
+  timestamp: number; // seconds from start
 }
 export interface MeetingSpeakerStats {
-  speakerLabel: string; // raw transcript label e.g. "Aman"
-  participantId?: string; // resolved userId if matched
-  name: string;
-  role: "TEAM_MEMBER" | "EXTERNAL" | "UNKNOWN";
-  talkTimePercent: number;
-  utteranceCount: number;
-  commitmentCount: number;
   /** Questions from this meeting that were assigned to this speaker. */
   assignedQuestionCount: number;
+  commitmentCount: number;
+  name: string;
+  participantId?: string; // resolved userId if matched
+  role: "TEAM_MEMBER" | "EXTERNAL" | "UNKNOWN";
+  speakerLabel: string; // raw transcript label e.g. "Aman"
+  talkTimePercent: number;
+  utteranceCount: number;
 }
 
 export interface MeetingAnalysis {
-  schemaVersion: 1;
-  purpose: string;
-  outcome: string;
-  prose: string;
-  tone: "POSITIVE" | "NEUTRAL" | "TENSE" | "MIXED";
   clientSentiment:
     | "ENTHUSIASTIC"
     | "INTERESTED"
     | "NEUTRAL"
     | "SKEPTICAL"
     | "HOSTILE";
-  keyMoments: MeetingKeyMoment[];
-  speakers: MeetingSpeakerStats[];
   durationSeconds: number;
-  participantCount: number;
   generatedAt: string; // ISO timestamp
+  keyMoments: MeetingKeyMoment[];
+  outcome: string;
+  participantCount: number;
+  prose: string;
+  purpose: string;
+  schemaVersion: 1;
+  speakers: MeetingSpeakerStats[];
+  tone: "POSITIVE" | "NEUTRAL" | "TENSE" | "MIXED";
 }
 
 export function isMeetingAnalysis(value: unknown): value is MeetingAnalysis {

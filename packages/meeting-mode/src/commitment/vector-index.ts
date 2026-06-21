@@ -1,14 +1,14 @@
 import { cosineSimilarity } from "../topic/similarity";
 
 export interface VectorSearchHit {
-  vectorId: number;
   similarity: number;
+  vectorId: number;
 }
 
 export interface CommitmentVectorIndex {
   add(vectorId: number, vector: number[]): void;
-  search(queryVector: number[], limit: number): VectorSearchHit[];
   clear(): void;
+  search(queryVector: number[], limit: number): VectorSearchHit[];
   size(): number;
 }
 

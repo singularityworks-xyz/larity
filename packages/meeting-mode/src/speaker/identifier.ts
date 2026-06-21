@@ -29,8 +29,8 @@ const CLOCK_OFFSET_TTL_SECONDS = 2 * 60 * 60;
 const MAX_VAD_INTERVAL_MS = 10_000;
 
 interface ClockOffsetRedisClient {
-  hset(key: string, field: string, value: string): Promise<unknown>;
   expire?(key: string, seconds: number): Promise<unknown>;
+  hset(key: string, field: string, value: string): Promise<unknown>;
 }
 
 interface ClockOffsetLogger {
@@ -327,7 +327,6 @@ export class SpeakerIdentifier {
         provisional.confidence
       );
       if (speaker.type !== "EXTERNAL") {
-        pipelineSpeakerFinalSourceTotal.inc({ source: "partial_provisional" });
         return speaker;
       }
     }
@@ -383,7 +382,7 @@ export class SpeakerIdentifier {
     });
 
     if (speakingMembers.length === 0) {
-      return undefined;
+      return;
     }
 
     // Hardened filtering: only consider members whose role matches the physical channel
@@ -430,7 +429,7 @@ export class SpeakerIdentifier {
       );
     }
 
-    return undefined;
+    return;
   }
 
   private resolveLateIdentity(
@@ -505,7 +504,7 @@ export class SpeakerIdentifier {
   getSpeakerMapping(diarizationIndex: number): SpeakerMapping | undefined {
     const speakerId = this.indexToSpeakerId.get(diarizationIndex);
     if (!speakerId) {
-      return undefined;
+      return;
     }
     return this.speakerMappings.get(speakerId);
   }

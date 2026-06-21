@@ -1,5 +1,7 @@
 import { S3Client } from "@aws-sdk/client-s3";
 
+export type { S3Client } from "@aws-sdk/client-s3";
+
 // biome-ignore lint/performance/noBarrelFile: shared s3 entrypoint
 export {
   DeleteObjectCommand,
@@ -8,11 +10,11 @@ export {
 } from "@aws-sdk/client-s3";
 
 export interface S3Config {
+  accessKeyId: string;
+  bucket: string;
   endpoint: string;
   region: string;
-  accessKeyId: string;
   secretAccessKey: string;
-  bucket: string;
 }
 
 export function getS3Config(): S3Config {

@@ -6,11 +6,11 @@ const log = createRealtimeLogger("validate-session");
 const CONTROL_API_URL = process.env.CONTROL_API_URL || "http://localhost:3000";
 
 interface ValidationResponse {
-  success: boolean;
   data?: {
     valid: boolean;
     orgId?: string;
   };
+  success: boolean;
 }
 
 /**

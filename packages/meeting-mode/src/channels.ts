@@ -101,7 +101,7 @@ export function extractUserIdFromAlertChannel(
   if (parts[0] === "meeting" && parts[1] === "alert" && parts[3] === "user") {
     return parts[4];
   }
-  return undefined;
+  return;
 }
 
 export const ALERT_SHARED_PATTERN = "meeting.alert.*.shared";

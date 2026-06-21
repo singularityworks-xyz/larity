@@ -19,7 +19,7 @@ export function chunkUtterances<T extends ChunkableUtterance>(
   }
 
   const chunks: T[][] = [];
-  const startTs = utterances[0].timestamp;
+  const startTs = utterances[0]?.timestamp ?? 0;
   const endTs = utterances.at(-1)?.timestamp ?? 0;
 
   let currentStart = startTs;

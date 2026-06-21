@@ -15,25 +15,25 @@ export const constraintSources = ["preloaded", "meeting"] as const;
 export type ConstraintSource = (typeof constraintSources)[number];
 
 export interface Constraint {
-  id: string;
-  type: ConstraintType;
-  value: string;
-  source: ConstraintSource;
-  utteranceId?: string;
-  speaker?: SpeakerIdentity;
   confidence: number;
+  id: string;
+  source: ConstraintSource;
+  speaker?: SpeakerIdentity;
   topicIds: string[];
+  type: ConstraintType;
+  utteranceId?: string;
+  value: string;
 }
 
 export interface ConstraintInsertInput {
-  id?: string;
-  type: ConstraintType;
-  value: string;
-  source: ConstraintSource;
-  utteranceId?: string;
-  speaker?: SpeakerIdentity;
   confidence: number;
+  id?: string;
+  source: ConstraintSource;
+  speaker?: SpeakerIdentity;
   topicIds?: string[];
+  type: ConstraintType;
+  utteranceId?: string;
+  value: string;
 }
 
 export interface ConstraintHydrationResult {
@@ -42,49 +42,49 @@ export interface ConstraintHydrationResult {
 }
 
 export interface ConstraintLedgerEvent {
-  type: "insert";
+  constraint: Constraint;
   sessionId: string;
   timestamp: number;
-  constraint: Constraint;
+  type: "insert";
 }
 
 export interface PreloadedDecision {
-  id: string;
-  title: string;
   content: string;
-  tags: string[];
   createdAt: number;
+  id: string;
+  tags: string[];
+  title: string;
 }
 
 export interface PreloadedPolicyGuardrail {
-  id: string;
-  name: string;
+  clientId: string | null;
   description: string;
+  id: string;
+  keywords: string[];
+  name: string;
+  pattern: string | null;
   ruleType: string;
   severity: string;
-  keywords: string[];
-  pattern: string | null;
-  clientId: string | null;
 }
 
 export interface PreloadedPoint {
-  id: string;
   content: string;
   createdAt: number;
+  id: string;
 }
 
 export interface PreloadedContextPayload {
-  version: 1;
-  sessionId: string;
-  meetingId: string;
-  clientId: string;
-  orgId: string;
-  loadedAt: number;
-  openDecisions: PreloadedDecision[];
-  knownConstraints: PreloadedPoint[];
   activePolicyGuardrails: PreloadedPolicyGuardrail[];
-  priorCommitments: PreloadedPoint[];
+  calendarAgendaItems: string[];
+  clientId: string;
   clientNameList: string[];
   keywordBlocklists: string[];
-  calendarAgendaItems: string[];
+  knownConstraints: PreloadedPoint[];
+  loadedAt: number;
+  meetingId: string;
+  openDecisions: PreloadedDecision[];
+  orgId: string;
+  priorCommitments: PreloadedPoint[];
+  sessionId: string;
+  version: 1;
 }

@@ -21,9 +21,12 @@
     "@larity/logger": "workspace:*",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
-    "@prisma/config": "^7.8.0"
+    "@prisma/config": "^7.8.0",
+    "amqplib": "^0.10.4",
+    "ioredis": "^5.11.1"
   },
   "devDependencies": {
+    "@types/amqplib": "^0.10.5",
     "@testcontainers/redis": "^12.0.1",
     "testcontainers": "^12.0.1"
   }

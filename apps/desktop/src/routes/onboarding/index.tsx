@@ -40,8 +40,8 @@ import {
 type PermissionKey = "microphone" | "systemAudio" | "notifications";
 
 interface PermissionState {
-  status: "idle" | "requested" | "granted" | "denied" | "unavailable";
   requested: boolean;
+  status: "idle" | "requested" | "granted" | "denied" | "unavailable";
 }
 
 type Permissions = Record<PermissionKey, PermissionState>;
@@ -316,8 +316,8 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
@@ -326,8 +326,9 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
           track.stop();
         }
       }
-    };
-  }, []);
+    },
+    []
+  );
 
   async function startRecording() {
     try {

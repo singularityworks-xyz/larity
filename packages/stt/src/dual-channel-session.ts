@@ -13,9 +13,9 @@ export const WS_AUDIO_TAG_MIC = 0;
 export const WS_AUDIO_TAG_SYS = 1;
 
 export interface DualChannelSession {
+  close: () => void;
   sendAudio: (audioBuffer: Buffer) => Promise<void>;
   setAudioStreamStart: (serverAudioStartTs: number) => void;
-  close: () => void;
 }
 
 export function createDualChannelSession(

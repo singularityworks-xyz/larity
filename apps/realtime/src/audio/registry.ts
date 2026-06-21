@@ -32,7 +32,7 @@ export async function closeStreamer(
 ): Promise<AudioManifest | undefined> {
   const streamer = streamers.get(sessionId);
   if (!streamer) {
-    return undefined;
+    return;
   }
 
   try {
@@ -42,7 +42,7 @@ export async function closeStreamer(
     return manifest;
   } catch (error) {
     log.error({ err: error, sessionId }, "Error closing AudioStreamer");
-    return undefined;
+    return;
   }
 }
 
