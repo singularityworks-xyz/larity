@@ -15,10 +15,48 @@ services:
     networks:
       - larity-network
 
+  rustfs:
+    extends:
+      file: ./docker/rustfs.yml
+      service: rustfs
+    networks:
+      - larity-network
+
+  rustfs-init:
+    extends:
+      file: ./docker/rustfs.yml
+      service: rustfs-init
+    networks:
+      - larity-network
+
+  db-init:
+    image: docker.io/oven/bun:1-alpine
+    container_name: larity-db-init
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-larity}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for database to be healthy...';
+      bun install;
+      echo 'Generating Prisma Client & Pushing Schema...';
+      cd packages/db && bun run generate && bun run push;
+      echo 'Database initialization complete!';
+      "
+    networks:
+      - larity-network
+
 volumes:
   postgres_data:
   redis_data:
+  rustfs_data:
 
 networks:
   larity-network:
     name: larity-network
+
