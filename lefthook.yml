@@ -1,12 +1,11 @@
 pre-commit:
   jobs:
-    - run: bunx ultracite fix --unsafe
+    - name: lint
+      run: bun run check
       glob:
-        - "**/*.js"
-        - "**/*.jsx"
-        - "**/*.ts"
-        - "**/*.tsx"
-        - "**/*.json"
-        - "**/*.jsonc"
-        - "**/*.css"
+        - "**/*.{js,jsx,ts,tsx,json,jsonc,css}"
       stage_fixed: true
+    - name: typecheck
+      run: bun run check-types
+      glob:
+        - "**/*.{ts,tsx}"

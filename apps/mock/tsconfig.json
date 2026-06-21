@@ -1,5 +1,5 @@
 {
-  "extends": "../packages/config/tsconfig/react.json",
+  "extends": "@larity/config/tsconfig/react.json",
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],

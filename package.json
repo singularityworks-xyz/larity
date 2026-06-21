@@ -16,6 +16,7 @@
   "name": "larity",
   "scripts": {
     "dev": "turbo run dev",
+    "mock": "cd apps/mock && bun run mock",
     "build": "turbo run build",
     "check-types": "turbo run check-types",
     "check": "ultracite fix --unsafe",

@@ -1,5 +1,5 @@
 {
-  "name": "realtime",
+  "name": "@larity/realtime",
   "module": "index.ts",
   "type": "module",
   "private": true,
@@ -21,7 +21,7 @@
     "@larity/logger": "workspace:*",
     "@larity/stt": "workspace:*",
     "elysia": "^1.4.25",
-    "ioredis": "^5.9.2",
+    "ioredis": "^5.11.1",
     "meeting-mode": "workspace:*"
   }
 }

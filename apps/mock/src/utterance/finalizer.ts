@@ -1,4 +1,4 @@
-import type { SttResult } from "../../../stt/src/types";
+import type { SttResult } from "@larity/stt";
 import { utteranceChannel } from "../channels";
 import { MERGE_GROUPING_MS, MERGE_PUBLISH_GAP_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";

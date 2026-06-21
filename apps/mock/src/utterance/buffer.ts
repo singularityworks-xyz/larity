@@ -1,4 +1,4 @@
-import type { SttResult } from "../../../stt/src/types";
+import type { SttResult } from "@larity/stt";
 import { MAX_BUFFER_SIZE } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import type { FinalizeResult } from "./types";

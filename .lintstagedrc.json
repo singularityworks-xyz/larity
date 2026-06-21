@@ -1,5 +1,6 @@
 {
   "*.{js,jsx,ts,tsx,json,jsonc,css,scss,md,mdx}": [
-    "bunx ultracite fix --unsafe"
+    "bun run check-types",
+    "bun run check"
   ]
 }
