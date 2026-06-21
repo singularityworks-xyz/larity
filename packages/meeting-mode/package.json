@@ -16,7 +16,7 @@
     "typescript": "^7.0.1-rc"
   },
   "dependencies": {
-    "@google/genai": "^2.7.0",
+    "@google/genai": "^2.9.0",
     "@larity/db": "workspace:*",
     "@larity/logger": "workspace:*",
     "ioredis": "^5.11.1",

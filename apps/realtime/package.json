@@ -13,14 +13,14 @@
     "typescript": "^7.0.1-rc"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1053.0",
-    "@aws-sdk/lib-storage": "^3.1053.0",
+    "@aws-sdk/client-s3": "^3.1073.0",
+    "@aws-sdk/lib-storage": "^3.1073.0",
     "@larity/db": "workspace:*",
     "@larity/infra": "workspace:*",
     "@larity/jobs": "workspace:*",
     "@larity/logger": "workspace:*",
     "@larity/stt": "workspace:*",
-    "elysia": "^1.4.25",
+    "elysia": "^1.4.29",
     "ioredis": "^5.11.1",
     "meeting-mode": "workspace:*"
   }
