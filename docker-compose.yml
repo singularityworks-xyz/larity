@@ -20,13 +20,6 @@ services:
     networks:
       - larity-network
 
-  otel-collector:
-    extends:
-      file: ./packages/infra/monitoring/otel-collector/docker-compose.yml
-      service: otel-collector
-    networks:
-      - larity-network
-
 volumes:
   postgres_data:
   rabbitmq_data:

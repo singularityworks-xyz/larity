@@ -1,12 +1,8 @@
 import { cors } from "@elysiajs/cors";
 import { cron } from "@elysiajs/cron";
-import { opentelemetry } from "@elysiajs/opentelemetry";
 import { Prisma } from "@larity/infra/prisma";
 import { preMeetingBriefQueue } from "@larity/jobs";
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
-import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
 import { Elysia } from "elysia";
-import { getMetricsText, startDefaultMetrics } from "meeting-mode";
 import { env } from "./env";
 import { prisma } from "./lib/prisma";
 import { createControlLogger } from "./logger";
@@ -33,20 +29,8 @@ import {
 
 const log = createControlLogger("server");
 
-const traceExporter = new OTLPTraceExporter({
-  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4317",
-});
-
-startDefaultMetrics();
-
 export const app = new Elysia()
-  // Request logging/tracing
-  .use(
-    opentelemetry({
-      serviceName: "control",
-      spanProcessors: [new BatchSpanProcessor(traceExporter)],
-    })
-  )
+  // Request logging
   .use(requestLogger)
   // CORS
   .use(
@@ -100,13 +84,6 @@ export const app = new Elysia()
   })
   // Health check
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
-  // Prometheus metrics
-  .get("/metrics", async () => {
-    const metrics = await getMetricsText();
-    return new Response(metrics, {
-      headers: { "Content-Type": "text/plain; version=0.0.4" },
-    });
-  })
   // Cron jobs
   .use(
     cron({

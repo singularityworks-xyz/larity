@@ -5,7 +5,6 @@ import type { Redis } from "ioredis";
 import { constraintChannel } from "../channels";
 import { LEDGER_SNAPSHOT_DEBOUNCE_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
-import { ledgerSnapshotFlushesTotal } from "../pipeline/metrics";
 import type {
   Constraint,
   ConstraintHydrationResult,
@@ -218,8 +217,6 @@ export class ConstraintLedger {
     if (this.constraints.size === 0) {
       return;
     }
-
-    ledgerSnapshotFlushesTotal.inc({ kind: "constraint" });
 
     const snapshot: ConstraintLedgerSnapshot = {
       version: SNAPSHOT_VERSION,

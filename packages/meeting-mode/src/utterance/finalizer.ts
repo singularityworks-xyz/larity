@@ -2,10 +2,6 @@ import type { SttResult } from "../../../stt/src/types";
 import { utteranceChannel } from "../channels";
 import { MERGE_GROUPING_MS, MERGE_PUBLISH_GAP_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
-import {
-  finalizerEmbedDurationMs,
-  finalizerPublishWaitMs,
-} from "../pipeline/metrics";
 import type { Tier2TopicDelta } from "../pipeline/types";
 import type { SpeakerIdentifier } from "../speaker/identifier";
 import { calculateTextSimilarity } from "../speaker/offline-correlation";
@@ -313,7 +309,6 @@ export class UtteranceFinalizer {
     const topicId = await this.topicManager.assignTopic(utterance);
     utterance.topicId = topicId;
 
-    finalizerEmbedDurationMs.observe(PERF.now() - embedWallStart);
     utterance.embeddingPromise = undefined;
 
     const merger = this.getOrCreateMerger(sessionId);
@@ -591,10 +586,6 @@ export class UtteranceFinalizer {
 
     try {
       await this.publisher.publish(channel, message);
-
-      if (finalizeStartMs !== undefined) {
-        finalizerPublishWaitMs.observe(PERF.now() - finalizeStartMs);
-      }
 
       for (const handler of this.publishedHandlers) {
         const inflight = Promise.resolve(handler(utterance)).catch((error) => {

@@ -18,7 +18,6 @@
     "@larity/jobs": "workspace:*",
     "@larity/logger": "workspace:*",
     "@larity/stt": "workspace:*",
-    "@larity/telemetry": "workspace:*",
     "bullmq": "^5.48.1",
     "elysia": "^1.4.25",
     "ioredis": "^5.9.2",

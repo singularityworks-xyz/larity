@@ -16,25 +16,6 @@ import {
 } from "../speculative/types";
 import type { TopicState } from "../topic/types";
 import type { Utterance } from "../utterance/types";
-import {
-  pipelineContextPayloadCacheHitsTotal,
-  pipelineContextPayloadCacheMissesTotal,
-  pipelineDroppedTotal,
-  pipelineGateDuration,
-  pipelinePrefilterDuration,
-  pipelineSessionCostDollars,
-  pipelineSpeculativeDiscardsTotal,
-  pipelineSpeculativeHitsTotal,
-  pipelineTier1Duration,
-  pipelineTier2CacheHitsTotal,
-  pipelineTier2CacheMissesTotal,
-  pipelineTier2Duration,
-  pipelineTier3Duration,
-  pipelineTier4Duration,
-  pipelineTier4InvokedTotal,
-  pipelineTier4SuppressedTotal,
-  pipelineTotalDuration,
-} from "./metrics";
 import { PreFilter, type PreFilterDecision } from "./pre-filter";
 import { Tier1StructuralDetector, textMatchesTier1PricingPath } from "./tier1";
 import { Tier2Classifier } from "./tier2";
@@ -305,8 +286,6 @@ export class MeetingPipelineEngine {
     const decision = this.preFilter.evaluate(utterance);
     const preFilterMs = PERF.now() - preFilterStart;
 
-    pipelinePrefilterDuration.observe(preFilterMs);
-
     if (decision.retractUtteranceId && this.onUtteranceRetracted) {
       this.onUtteranceRetracted(
         utterance.sessionId,
@@ -327,7 +306,6 @@ export class MeetingPipelineEngine {
     await this.ensureSessionHydrated(utterance.sessionId);
     await this.ensureUtteranceEmbedding(utterance);
 
-    pipelineContextPayloadCacheHitsTotal.inc();
     const payload =
       this.sessions.get(utterance.sessionId)?.contextPayload ?? null;
 
@@ -336,8 +314,6 @@ export class MeetingPipelineEngine {
     const preFilterResult = this.runPreFilter(utterance);
 
     if (preFilterResult.dropped) {
-      pipelineDroppedTotal.inc({ reason: preFilterResult.reason ?? "unknown" });
-      pipelineTotalDuration.observe(PERF.now() - start);
       return {
         dropped: true,
         dropReason: preFilterResult.reason,
@@ -361,7 +337,6 @@ export class MeetingPipelineEngine {
     const speculativeMismatchRatio = speculativeMatch.mismatchRatio;
 
     if (speculativeHit) {
-      pipelineSpeculativeHitsTotal.inc();
       log.info(
         {
           sessionId: utterance.sessionId,
@@ -370,8 +345,6 @@ export class MeetingPipelineEngine {
         },
         "Speculative cache hit — using pre-computed Tier 2 classification"
       );
-    } else if (speculativeMismatchRatio < 1) {
-      pipelineSpeculativeDiscardsTotal.inc();
     }
 
     // --- Predictive constraint preloading ---
@@ -441,16 +414,6 @@ export class MeetingPipelineEngine {
     const tier2Ms = PERF.now() - tier2Start;
     const tier1Ms = PERF.now() - tier1Start;
 
-    pipelineTier1Duration.observe(tier1Ms);
-    pipelineTier2Duration.observe(tier2Ms);
-    pipelineTier3Duration.observe(PERF.now() - tier3Start);
-
-    if (tier2.tier2CacheHit) {
-      pipelineTier2CacheHitsTotal.inc();
-    } else if (!speculativeHit) {
-      pipelineTier2CacheMissesTotal.inc();
-    }
-
     this.speakerStateTracker.ingest(
       utterance.sessionId,
       utterance,
@@ -497,13 +460,6 @@ export class MeetingPipelineEngine {
       );
     runTier4 = gatedTier4;
 
-    const gateMs = PERF.now() - gateStart;
-    pipelineGateDuration.observe(gateMs);
-
-    if (!runTier4 && tier4SuppressReason) {
-      pipelineTier4SuppressedTotal.inc({ reason: tier4SuppressReason });
-    }
-
     const { tier4Response, tier4Outcome, tier4Ms } =
       await this.evaluateTier4AfterGate({
         utterance,
@@ -514,20 +470,7 @@ export class MeetingPipelineEngine {
         payload,
       });
 
-    if (runTier4) {
-      pipelineTier4Duration.observe(tier4Ms ?? 0);
-      pipelineTier4InvokedTotal.inc({
-        surfaced: tier4Outcome?.surfaced ? "true" : "false",
-      });
-    }
-
     const totalMs = PERF.now() - start;
-    pipelineTotalDuration.observe(totalMs);
-
-    pipelineSessionCostDollars.set(
-      { session_id: utterance.sessionId },
-      sessionCost
-    );
 
     return {
       dropped: false,
@@ -836,8 +779,6 @@ export class MeetingPipelineEngine {
     this.speculativeProcessor.closeSession(sessionId);
     this.predictivePreloader.closeSession(sessionId);
     this.sessions.delete(sessionId);
-    // Clean up per-session Prometheus gauge to prevent unbounded memory growth
-    pipelineSessionCostDollars.remove({ session_id: sessionId });
     this.onPipelineSessionClosed?.(sessionId);
   }
 
@@ -1043,7 +984,6 @@ export class MeetingPipelineEngine {
     await this.constraintManager.ensureHydrated(sessionId);
     await this.commitmentManager.hydrateSession(sessionId);
 
-    pipelineContextPayloadCacheMissesTotal.inc();
     const payload = await this.getContextPayload(sessionId);
     this.tier1.seedContext(sessionId, payload);
 

@@ -1,7 +1,3 @@
-import { setupTelemetry } from "@larity/telemetry";
-
-setupTelemetry("workers");
-
 import { checkRedisHealth, connectRedis } from "@larity/infra/redis";
 import { Elysia } from "elysia";
 import { rootLogger } from "./logger";
@@ -97,12 +93,12 @@ export async function startWorkersApp(): Promise<void> {
   });
 
   process.on("uncaughtException", (error) => {
-    rootLogger.fatal({ err: error }, "FATAL: Uncaught exception");
+    rootLogger.fatal({ error }, "FATAL: Uncaught exception");
     process.exit(1);
   });
 
   process.on("unhandledRejection", (reason) => {
-    rootLogger.fatal({ err: reason }, "FATAL: Unhandled rejection");
+    rootLogger.fatal({ reason }, "FATAL: Unhandled rejection");
     process.exit(1);
   });
 }

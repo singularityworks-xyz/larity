@@ -5,7 +5,6 @@ import type { Redis } from "ioredis";
 import { ledgerChannel } from "../channels";
 import { LEDGER_SNAPSHOT_DEBOUNCE_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
-import { ledgerSnapshotFlushesTotal } from "../pipeline/metrics";
 import { packEmbeddingToBase64, unpackEmbeddingFromBase64 } from "./encoding";
 import type {
   Commitment,
@@ -332,8 +331,6 @@ export class CommitmentLedger {
     if (this.commitments.size === 0) {
       return;
     }
-
-    ledgerSnapshotFlushesTotal.inc({ kind: "commitment" });
 
     const snapshot: LedgerSnapshot = {
       version: SNAPSHOT_VERSION,

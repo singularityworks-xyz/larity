@@ -1,8 +1,3 @@
-import { setupTelemetry } from "@larity/telemetry";
-
-// Initialize telemetry before other imports
-setupTelemetry("realtime");
-
 import { connectRedis } from "@larity/infra/redis";
 import {
   sessionManager,
@@ -99,30 +94,30 @@ async function shutdown(signal: string): Promise<void> {
 // Handle shutdown signals
 process.on("SIGTERM", () => {
   shutdown("SIGTERM").catch((error) => {
-    rootLogger.error({ err: error }, "SIGTERM shutdown failed");
+    rootLogger.error({ error }, "SIGTERM shutdown failed");
     process.exit(1);
   });
 });
 process.on("SIGINT", () => {
   shutdown("SIGINT").catch((error) => {
-    rootLogger.error({ err: error }, "SIGINT shutdown failed");
+    rootLogger.error({ error }, "SIGINT shutdown failed");
     process.exit(1);
   });
 });
 
 // Handle uncaught errors
 process.on("uncaughtException", (error) => {
-  rootLogger.fatal({ err: error }, "FATAL: Uncaught exception");
+  rootLogger.fatal({ error }, "FATAL: Uncaught exception");
   process.exit(1);
 });
 
 process.on("unhandledRejection", (reason) => {
-  rootLogger.fatal({ err: reason }, "FATAL: Unhandled rejection");
+  rootLogger.fatal({ reason }, "FATAL: Unhandled rejection");
   process.exit(1);
 });
 
 // Start the application
 main().catch((error) => {
-  rootLogger.fatal({ err: error }, "FATAL: Startup failed");
+  rootLogger.fatal({ error }, "FATAL: Startup failed");
   process.exit(1);
 });

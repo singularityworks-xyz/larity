@@ -1,11 +1,5 @@
 import { redis } from "@larity/infra/redis";
 import { createMeetingModeLogger } from "../logger";
-import {
-  pipelineSpeakerFinalSourceTotal,
-  pipelineSpeakerProvisionalAttemptsTotal,
-  pipelineSpeakerProvisionalDiscardsTotal,
-  pipelineSpeakerProvisionalHitsTotal,
-} from "../pipeline/metrics";
 import type { SpeakerIdentity } from "../utterance/types";
 import { createUnidentifiedSpeaker } from "../utterance/types";
 import { ClockOffsetTracker } from "./clock-offset";
@@ -256,12 +250,10 @@ export class SpeakerIdentifier {
   }
 
   processSttPartial(diarizationIndex: number, eventTimestamp: number): void {
-    pipelineSpeakerProvisionalAttemptsTotal.inc();
     if (
       this.indexToSpeakerId.has(diarizationIndex) ||
       this.clockTracker.isUntrusted()
     ) {
-      pipelineSpeakerProvisionalDiscardsTotal.inc();
       return;
     }
 
@@ -270,7 +262,6 @@ export class SpeakerIdentifier {
       useConfirmation: false,
     });
     if (!correlatedUserId) {
-      pipelineSpeakerProvisionalDiscardsTotal.inc();
       return;
     }
 
@@ -279,7 +270,6 @@ export class SpeakerIdentifier {
       updatedAt: eventTimestamp,
       confidence: 0.8,
     });
-    pipelineSpeakerProvisionalHitsTotal.inc();
   }
 
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: pre-existing, refactor deferred
@@ -356,12 +346,8 @@ export class SpeakerIdentifier {
         "final_confirmed",
         1
       );
-      if (speaker.type !== "EXTERNAL") {
-        pipelineSpeakerFinalSourceTotal.inc({ source: "final_confirmed" });
-      }
       return speaker;
     }
-    pipelineSpeakerFinalSourceTotal.inc({ source: "fallback_external" });
     return createUnidentifiedSpeaker(diarizationIndex);
   }
 
@@ -501,7 +487,6 @@ export class SpeakerIdentifier {
         );
 
         if (speaker.type !== "EXTERNAL") {
-          pipelineSpeakerFinalSourceTotal.inc({ source: "retroactive_vad" });
           results.push({ diarizationIndex: pending.diarizationIndex, speaker });
           log.info(
             {
