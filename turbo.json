@@ -8,31 +8,8 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["dist/**", "build/**", "out/**"]
-    },
-    "check": {
-      "cache": true,
-      "persistent": false
-    },
-    "check-types": {
-      "cache": true,
-      "dependsOn": ["^check-types"]
-    },
-    "lint": {
-      "cache": true,
-      "dependsOn": ["^lint"]
-    },
-    "lint:fix": {
-      "cache": false,
-      "dependsOn": ["^lint:fix"]
-    },
-    "format": {
-      "cache": true,
-      "dependsOn": ["^format"]
-    },
-    "format:check": {
-      "cache": true,
-      "dependsOn": ["^format:check"]
+      "outputs": ["dist/**", "build/**", "out/**"],
+      "cache": true
     }
   }
 }
