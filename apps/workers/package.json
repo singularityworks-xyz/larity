@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun --env-file=../../.env --watch index.ts"
+    "dev": "bun --env-file=../../.env --watch index.ts",
+    "check-types": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
@@ -20,7 +21,7 @@
     "@larity/telemetry": "workspace:*",
     "bullmq": "^5.48.1",
     "elysia": "^1.4.25",
-    "ioredis": "^5.9.0",
+    "ioredis": "^5.9.2",
     "meeting-mode": "workspace:*",
     "zod": "^4.4.3"
   }

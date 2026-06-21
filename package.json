@@ -2,14 +2,15 @@
   "name": "larity",
   "type": "module",
   "private": true,
-  "packageManager": "bun",
+  "packageManager": "bun@1.3.14",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build"
+    "build": "turbo run build",
+    "check-types": "turbo run check-types"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
@@ -18,7 +19,7 @@
     "@types/react-dom": "^19.2.3",
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
-    "turbo": "^2.6.3",
+    "turbo": "^2.9.18",
     "typescript": "^7.0.1-rc"
   },
   "patchedDependencies": {

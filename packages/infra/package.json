@@ -1,8 +1,11 @@
 {
   "name": "@larity/infra",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
   "exports": {
     "./prisma": "./prisma/generated/prisma/client.ts",
     "./generated/prisma": "./prisma/generated/prisma/client.ts",

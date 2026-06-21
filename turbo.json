@@ -6,9 +6,24 @@
       "persistent": true
     },
     "build": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["dist/**", "build/**", "out/**"],
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env*"
+      ],
+      "outputs": [
+        "dist/**",
+        "build/**",
+        "out/**"
+      ],
+      "cache": true
+    },
+    "check-types": {
+      "dependsOn": [
+        "^build"
+      ],
       "cache": true
     }
   }
