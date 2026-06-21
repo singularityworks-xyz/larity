@@ -1,4 +1,4 @@
-import { prisma } from "@larity/infra/prisma/client";
+import { prisma } from "@larity/db/client";
 import { getRedisClient } from "@larity/infra/redis";
 import { redisKeys } from "@larity/infra/redis/keys";
 import {

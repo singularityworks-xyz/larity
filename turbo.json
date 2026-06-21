@@ -18,6 +18,15 @@
     "check": {
       "dependsOn": ["check-types"],
       "cache": true
+    },
+    "generate": {
+      "cache": false
+    },
+    "push": {
+      "cache": false
+    },
+    "migrate": {
+      "cache": false
     }
   }
 }

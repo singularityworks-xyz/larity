@@ -45,8 +45,15 @@ export function getS3Config(): S3Config {
     missing.push("S3_AUDIO_BUCKET");
   }
 
+  const isDev = process.env.NODE_ENV !== "production";
   if (missing.length > 0) {
-    throw new Error(`Missing S3 config: ${missing.join(" and ")}`);
+    if (isDev) {
+      console.warn(
+        `[s3] Missing config: ${missing.join(", ")} — S3 features disabled`
+      );
+    } else {
+      throw new Error(`Missing S3 config: ${missing.join(" and ")}`);
+    }
   }
 
   return {

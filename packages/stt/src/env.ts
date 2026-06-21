@@ -50,6 +50,11 @@ export const env = {
  */
 export function validateEnv(): void {
   if (!DEEPGRAM_API_KEY) {
-    throw new Error("DEEPGRAM_API_KEY environment variable is required");
+    const isDev = process.env.NODE_ENV !== "production";
+    if (isDev) {
+      console.warn("[stt] DEEPGRAM_API_KEY not set — STT features disabled");
+    } else {
+      throw new Error("DEEPGRAM_API_KEY environment variable is required");
+    }
   }
 }

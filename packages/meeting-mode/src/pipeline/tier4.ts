@@ -214,11 +214,29 @@ export class Tier4DeepReasoner {
   ) => Promise<string>;
 
   constructor(options: Tier4DeepReasonerOptions = {}) {
-    this.ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    this.ai = GEMINI_API_KEY
+      ? new GoogleGenAI({ apiKey: GEMINI_API_KEY })
+      : (null as unknown as GoogleGenAI);
     this.timeoutMs = options.timeoutMs ?? GEMINI_TIER4_TIMEOUT_MS;
-    this.invoke =
-      options.invoke ??
-      ((prompt, timeoutMs) => this.invokeGeminiTier4(prompt, timeoutMs));
+    if (GEMINI_API_KEY) {
+      this.invoke =
+        options.invoke ??
+        ((prompt, timeoutMs) => this.invokeGeminiTier4(prompt, timeoutMs));
+    } else {
+      this.invoke = async () =>
+        JSON.stringify({
+          alertType: "none",
+          confidence: 0,
+          shouldSurface: false,
+          reasoning: "GEMINI_API_KEY not set",
+          routing: "shared",
+          severity: "low",
+          message: "",
+          surfaceReason: null,
+          suggestion: null,
+          targetUserId: null,
+        });
+    }
   }
 
   /**

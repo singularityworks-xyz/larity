@@ -38,7 +38,7 @@ export class Tier2Classifier {
     if (options.invoke) {
       this.openai = undefined;
       this.invoke = options.invoke;
-    } else {
+    } else if (SAMBANOVA_API_KEY) {
       this.openai = new OpenAI({
         apiKey: SAMBANOVA_API_KEY,
         baseURL: "https://api.sambanova.ai/v1",
@@ -46,6 +46,17 @@ export class Tier2Classifier {
       });
       this.invoke = (input, timeoutMs) =>
         this.invokeSambaNovaTier2(input, timeoutMs);
+    } else {
+      this.openai = undefined;
+      this.invoke = async () => ({
+        completionTokens: 0,
+        promptTokens: 0,
+        text: JSON.stringify({
+          action: "none",
+          confidence: 0,
+          reasoning: "SAMBANOVA_API_KEY not set",
+        }),
+      });
     }
   }
 

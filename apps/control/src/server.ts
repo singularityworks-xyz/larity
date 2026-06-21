@@ -1,6 +1,6 @@
 import { cors } from "@elysiajs/cors";
 import { cron } from "@elysiajs/cron";
-import { Prisma } from "@larity/infra/prisma";
+import { Prisma } from "@larity/db/prisma";
 import { preMeetingBriefQueue } from "@larity/jobs";
 import { Elysia } from "elysia";
 import { env } from "./env";

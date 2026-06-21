@@ -1,6 +1,6 @@
 services:
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    image: docker.io/rabbitmq:3-management-alpine
     container_name: larity-rabbitmq
     ports:
       - "5672:5672"   # AMQP protocol port

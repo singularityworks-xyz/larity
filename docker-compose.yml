@@ -17,6 +17,8 @@ services:
     extends:
       file: ./docker/postgres.yml
       service: postgres
+    volumes:
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - larity-network
 

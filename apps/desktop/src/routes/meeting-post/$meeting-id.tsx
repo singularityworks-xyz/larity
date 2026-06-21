@@ -1,4 +1,4 @@
-import type { MeetingAnalysis } from "@larity/infra/prisma/meeting-analysis.types";
+import type { MeetingAnalysis } from "@larity/db/meeting-analysis.types";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,

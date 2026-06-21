@@ -1,4 +1,4 @@
-import type { Prisma } from "@larity/infra/prisma";
+import type { Prisma } from "@larity/db/prisma";
 import { prisma } from "../lib/prisma";
 
 function startOfToday(): Date {

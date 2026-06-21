@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "tauri dev",
+    "dev": "WEBKIT_DISABLE_COMPOSITING_MODE=1 tauri dev",
     "build": "tsc && vite build",
     "check-types": "tsc --noEmit",
     "preview": "vite preview",
@@ -15,6 +15,7 @@
     "@fontsource/geist-sans": "^5.2.5",
     "@fontsource/manrope": "^5.2.8",
     "@fontsource/share-tech-mono": "^5.2.7",
+    "@larity/db": "workspace:*",
     "@larity/infra": "workspace:*",
     "@tanstack/react-query": "^5.90.3",
     "@tauri-apps/api": "^2",

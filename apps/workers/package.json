@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.7.0",
+    "@larity/db": "workspace:*",
     "@larity/infra": "workspace:*",
     "@larity/jobs": "workspace:*",
     "@larity/logger": "workspace:*",

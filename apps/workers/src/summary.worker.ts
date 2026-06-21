@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { prisma } from "@larity/infra/prisma/client";
-import type { MeetingAnalysis } from "@larity/infra/prisma/meeting-analysis.types";
+import { prisma } from "@larity/db/client";
+import type { MeetingAnalysis } from "@larity/db/meeting-analysis.types";
+import { Prisma } from "@larity/db/prisma";
 import type { SummaryJobData } from "@larity/jobs";
 import type { Job } from "bullmq";
-import { Prisma } from "../../../packages/infra/prisma/generated/prisma/client";
 import { chunkUtterances } from "./lib/chunking";
 import {
   getCommitmentEmbedding,

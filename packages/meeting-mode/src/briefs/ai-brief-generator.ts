@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { GoogleGenAI, Type } from "@google/genai";
-import { ImportantPointCategory } from "@larity/infra/prisma";
-import { prisma } from "@larity/infra/prisma/client";
+import { prisma } from "@larity/db/client";
+import { ImportantPointCategory } from "@larity/db/prisma";
 import { getRedisClient } from "@larity/infra/redis";
 import { z } from "zod";
 

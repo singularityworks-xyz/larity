@@ -17,7 +17,7 @@ export class PreMeetingBriefWorker extends BaseWorker {
         await AIBriefGeneratorService.generateAndSaveBrief(meetingId);
       if (brief) {
         // Fetch host to publish
-        const { prisma } = await import("@larity/infra/prisma/client");
+        const { prisma } = await import("@larity/db/client");
         const meeting = await prisma.meeting.findUnique({
           where: { id: meetingId },
           include: {

@@ -7,10 +7,6 @@
     "check-types": "tsc --noEmit"
   },
   "exports": {
-    "./prisma": "./prisma/generated/prisma/client.ts",
-    "./generated/prisma": "./prisma/generated/prisma/client.ts",
-    "./prisma/client": "./prisma/client.ts",
-    "./prisma/meeting-analysis.types": "./prisma/meeting-analysis.types.ts",
     "./redis": "./redis/index.ts",
     "./redis/keys": "./redis/keys.ts",
     "./redis/ttl": "./redis/ttl.ts",
@@ -19,9 +15,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1053.0",
     "@larity/logger": "workspace:*",
-    "@prisma/adapter-pg": "^7.2.0",
-    "@prisma/client": "^7.2.0",
-    "@prisma/config": "^7.8.0",
     "amqplib": "^0.10.4",
     "ioredis": "^5.11.1"
   },

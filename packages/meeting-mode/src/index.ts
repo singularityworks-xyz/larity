@@ -1,4 +1,4 @@
-import { prisma } from "@larity/infra/prisma/client";
+import { prisma } from "@larity/db/client";
 import {
   connectRedis,
   disconnectRedis,

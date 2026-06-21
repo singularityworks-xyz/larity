@@ -102,18 +102,30 @@ export const GEMINI_TIER4_TIMEOUT_MS =
     : 1500;
 
 export function validateEnv(): void {
-  // Logic only validation if needed
   if (!REDIS_URL) {
     throw new Error("REDIS_URL is required");
   }
+  const isDev = process.env.NODE_ENV !== "production";
   if (!GEMINI_API_KEY) {
-    throw new Error(
-      "GEMINI_API_KEY is required for meeting intelligence (topics, embeddings, Tier 4)"
-    );
+    if (isDev) {
+      console.warn(
+        "[meeting-mode] GEMINI_API_KEY not set — AI features disabled"
+      );
+    } else {
+      throw new Error(
+        "GEMINI_API_KEY is required for meeting intelligence (topics, embeddings, Tier 4)"
+      );
+    }
   }
   if (!SAMBANOVA_API_KEY) {
-    throw new Error(
-      "SAMBANOVA_API_KEY is required for Tier 2 classification (meeting-mode)"
-    );
+    if (isDev) {
+      console.warn(
+        "[meeting-mode] SAMBANOVA_API_KEY not set — Tier 2 classification disabled"
+      );
+    } else {
+      throw new Error(
+        "SAMBANOVA_API_KEY is required for Tier 2 classification (meeting-mode)"
+      );
+    }
   }
 }

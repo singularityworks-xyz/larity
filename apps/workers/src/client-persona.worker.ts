@@ -1,5 +1,5 @@
 import { Type } from "@google/genai";
-import { prisma } from "@larity/infra/prisma/client";
+import { prisma } from "@larity/db/client";
 import type { ClientPersonaJobData } from "@larity/jobs";
 import type { Job } from "bullmq";
 import { ai } from "./lib/gemini";
