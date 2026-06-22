@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/react";
 import { ReactLenis } from "lenis/react";
 import { useState } from "react";
 import { Footer } from "./components/footer.tsx";
@@ -52,6 +53,7 @@ export default function App() {
           isOpen={isLegalModalOpen}
           onClose={() => setIsLegalModalOpen(false)}
         />
+        <Analytics />
       </div>
     </ReactLenis>
   );
