@@ -11,7 +11,10 @@ export function ContextStrip() {
       <div className="mx-auto max-w-5xl px-6">
         <div className="grid grid-cols-2 items-center justify-between gap-x-4 gap-y-6 md:flex md:flex-wrap">
           {claims.map((claim, index) => (
-            <div className="flex items-center gap-4 md:gap-8" key={claim.label}>
+            <div
+              className="flex items-center justify-center gap-4 md:justify-start md:gap-8"
+              key={claim.label}
+            >
               {index > 0 && (
                 <div
                   aria-hidden="true"
