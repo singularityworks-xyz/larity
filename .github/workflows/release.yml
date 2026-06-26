@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -26,7 +26,7 @@ jobs:
           bun-version: "latest"
 
       - name: Restore Node Modules cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('**/bun.lock', '**/package-lock.json') }}
@@ -35,7 +35,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Save Node Modules cache
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('**/bun.lock', '**/package-lock.json') }}
@@ -52,7 +52,7 @@ jobs:
           components: clippy, rustfmt
 
       - name: Cache Cargo dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/bin/
@@ -83,7 +83,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -91,7 +91,7 @@ jobs:
           bun-version: "latest"
 
       - name: Restore Node Modules cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('**/bun.lock', '**/package-lock.json') }}
@@ -111,7 +111,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/bin/
@@ -129,14 +129,16 @@ jobs:
 
       - name: Convert DEB to RPM
         run: |
+          #!/bin/bash
+          # shellcheck disable=SC2035
           mkdir -p apps/desktop/src-tauri/target/release/bundle/rpm
           for deb in apps/desktop/src-tauri/target/release/bundle/deb/*.deb; do
             sudo alien --to-rpm --scripts "$deb"
-            mv *.rpm apps/desktop/src-tauri/target/release/bundle/rpm/
+            mv ./*.rpm apps/desktop/src-tauri/target/release/bundle/rpm/
           done
 
       - name: Upload Linux desktop artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-linux
           path: |
@@ -149,12 +151,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -162,7 +164,7 @@ jobs:
           bun-version: "latest"
 
       - name: Restore Node Modules cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('**/bun.lock', '**/package-lock.json') }}
@@ -177,7 +179,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/bin/
@@ -231,8 +233,8 @@ jobs:
       - name: Get Version
         shell: bash
         run: |
-          VERSION=$(node -e "console.log(require('./package.json').version)")
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          VERSION="$(node -e "console.log(require('./package.json').version)")"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - name: Build and push Docker image
         uses: useblacksmith/build-push-action@v2
@@ -273,8 +275,8 @@ jobs:
       - name: Get Version
         shell: bash
         run: |
-          VERSION=$(node -e "console.log(require('./package.json').version)")
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          VERSION="$(node -e "console.log(require('./package.json').version)")"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - name: Build and push Docker image
         uses: useblacksmith/build-push-action@v2
@@ -286,7 +288,13 @@ jobs:
           platforms: ${{ matrix.docker_platform }}
 
   create-release:
-    needs: [build-desktop-linux, build-desktop-windows, build-docker-realtime, build-docker-control]
+    needs:
+      [
+        build-desktop-linux,
+        build-desktop-windows,
+        build-docker-realtime,
+        build-docker-control,
+      ]
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - name: Checkout
@@ -295,13 +303,13 @@ jobs:
           fetch-depth: 0
 
       - name: Download Linux Desktop artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: desktop-linux
           path: artifacts-linux
 
       - name: Download Windows Desktop artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: desktop-windows
           path: artifacts-windows
@@ -310,7 +318,7 @@ jobs:
         uses: useblacksmith/setup-docker-builder@v1
 
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@v7
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -319,12 +327,14 @@ jobs:
       - name: Process Version
         shell: bash
         run: |
-          VERSION=$(node -e "console.log(require('./package.json').version)")
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          VERSION="$(node -e "console.log(require('./package.json').version)")"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - name: Create and Push Multi-arch Docker Manifests
         shell: bash
         run: |
+          #!/bin/bash
+          # shellcheck disable=SC2086
           # Realtime
           docker manifest create ghcr.io/${{ github.repository }}/larity-realtime:${{ env.VERSION }} \
             ghcr.io/${{ github.repository }}/larity-realtime:${{ env.VERSION }}-amd64 \
@@ -351,19 +361,23 @@ jobs:
           # Configure PKGBUILD version
           sed -i "s/__VERSION__/${{ env.VERSION }}/g" apps/desktop/PKGBUILD
           cp artifacts-linux/*.deb apps/desktop/
-          
+
           # Adjust PKGBUILD source to local deb file for offline makepkg
+          # shellcheck disable=SC2016
           sed -i 's/source=(.*)/source=("larity_${pkgver}_amd64.deb")/' apps/desktop/PKGBUILD
-          
+
           # Compile package inside Arch docker image
-          docker run --rm -v $PWD:/app -w /app archlinux:latest bash -c "pacman -Sy --noconfirm base-devel binutils && useradd -m builder && chown -R builder:builder . && cd apps/desktop && sudo -u builder makepkg -f"
-          
+          docker run --rm -v "$PWD:/app" -w /app archlinux:latest bash -c "pacman -Sy --noconfirm base-devel binutils && useradd -m builder && chown -R builder:builder . && cd apps/desktop && sudo -u builder makepkg -f"
+
           # Move build output to main artifacts
+          # shellcheck disable=SC2035
           mv apps/desktop/*.pkg.tar.zst artifacts-linux/
 
       - name: Configure NixOS default.nix derivation
         shell: bash
         run: |
+          #!/bin/bash
+          # shellcheck disable=SC2086
           DEB_FILE=$(ls artifacts-linux/*.deb)
           DEB_SHA256=$(sha256sum "$DEB_FILE" | cut -d' ' -f1)
           sed -i "s/__VERSION__/${{ env.VERSION }}/g" apps/desktop/default.nix
@@ -372,31 +386,33 @@ jobs:
       - name: Generate Changelog and Release Body
         shell: bash
         run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          
-          echo "![Larity Banner](https://github.com/user-attachments/assets/9314d788-93e8-4486-93c4-88225be0ffb7)" > release_body.md
-          echo "" >> release_body.md
-          echo "## Changelog (Commits since last version)" >> release_body.md
-          
-          if [ -n "$PREV_TAG" ]; then
-            git log ${PREV_TAG}..HEAD --oneline --format="* %h - %s (%an)" >> release_body.md
-            echo "" >> release_body.md
-            echo "## Contributors" >> release_body.md
-            git log ${PREV_TAG}..HEAD --format="* @%an" | sort -u >> release_body.md
-          else
-            git log --oneline --format="* %h - %s (%an)" >> release_body.md
-            echo "" >> release_body.md
-            echo "## Contributors" >> release_body.md
-            git log --format="* @%an" | sort -u >> release_body.md
-          fi
-          
-          echo "" >> release_body.md
-          echo "## Container Images (GHCR)" >> release_body.md
-          echo "* **Realtime Service:** \`ghcr.io/${{ github.repository }}/larity-realtime:${{ env.VERSION }}\`" >> release_body.md
-          echo "* **Control Service:** \`ghcr.io/${{ github.repository }}/larity-control:${{ env.VERSION }}\`" >> release_body.md
+          PREV_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "")"
+
+          {
+            echo "![Larity Banner](https://github.com/user-attachments/assets/9314d788-93e8-4486-93c4-88225be0ffb7)"
+            echo ""
+            echo "## Changelog (Commits since last version)"
+            
+            if [ -n "${PREV_TAG}" ]; then
+              git log "${PREV_TAG}..HEAD" --oneline --format="* %h - %s (%an)"
+              echo ""
+              echo "## Contributors"
+              git log "${PREV_TAG}..HEAD" --format="* @%an" | sort -u
+            else
+              git log --oneline --format="* %h - %s (%an)"
+              echo ""
+              echo "## Contributors"
+              git log --format="* @%an" | sort -u
+            fi
+            
+            echo ""
+            echo "## Container Images (GHCR)"
+            echo "* **Realtime Service:** \`ghcr.io/${{ github.repository }}/larity-realtime:${{ env.VERSION }}\`"
+            echo "* **Control Service:** \`ghcr.io/${{ github.repository }}/larity-control:${{ env.VERSION }}\`"
+          } > release_body.md
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ env.VERSION }}
           name: Larity v${{ env.VERSION }}
