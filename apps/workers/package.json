@@ -24,5 +24,6 @@
     "ioredis": "^5.11.1",
     "meeting-mode": "workspace:*",
     "zod": "^4.4.3"
-  }
+  },
+  "version": "0.0.2"
 }

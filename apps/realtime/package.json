@@ -23,5 +23,6 @@
     "elysia": "^1.4.29",
     "ioredis": "^5.11.1",
     "meeting-mode": "workspace:*"
-  }
+  },
+  "version": "0.0.2"
 }

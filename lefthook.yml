@@ -9,3 +9,6 @@ pre-commit:
       run: bun run check-types
       glob:
         - "**/*.{ts,tsx}"
+    - name: version-bump
+      run: bun scripts/version-manager.ts
+

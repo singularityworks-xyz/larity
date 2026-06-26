@@ -1,11 +1,9 @@
 [package]
-name = "desktop"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+name = "@larity/desktop"
+version = "0.0.3"
+description = "Your meetings forget nothing. Decisions, commitments, constraints captured in real-time, surfaced when it matters."
+authors = ["Singularity Works<itssingularity.com>", "Aman Aziz<aman.itssingularity.com>", "Parazeeknova<przknv.cc>"]
+edition = "2024"
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary
