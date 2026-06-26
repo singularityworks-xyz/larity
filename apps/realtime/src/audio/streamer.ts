@@ -13,22 +13,22 @@ export function defaultAudioStreamerConfig(): AudioStreamerConfig {
 }
 
 export interface ChannelInfo {
-  file: string;
-  source: "mic" | "system";
   bytes: number;
   durationMs: number;
+  file: string;
+  source: "mic" | "system";
 }
 
 export interface AudioManifest {
-  sessionId: string;
-  orgId: string;
-  codec: "pcm16";
-  sampleRate: 16000;
-  totalDurationMs: number;
   channels: {
     ch0: ChannelInfo;
     ch1: ChannelInfo;
   };
+  codec: "pcm16";
+  orgId: string;
+  sampleRate: 16000;
+  sessionId: string;
+  totalDurationMs: number;
 }
 
 export class AudioStreamer {

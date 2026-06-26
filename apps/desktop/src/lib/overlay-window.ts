@@ -6,13 +6,13 @@ const OVERLAY_LABEL = "meeting-overlay";
 const logger = createLogger("overlay-window");
 
 interface OverlayWindowParams {
-  sessionId: string;
-  role: string;
   clientName: string;
   meetingTitle: string;
+  role: string;
+  sessionId: string;
   startedAt: number;
-  wsBaseUrl: string;
   userId: string;
+  wsBaseUrl: string;
 }
 
 export async function createOverlayWindow(

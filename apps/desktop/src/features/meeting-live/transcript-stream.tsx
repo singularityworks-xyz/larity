@@ -74,13 +74,13 @@ function captureChannelLabel(channel: number): string {
 }
 
 interface TranscriptStreamProps {
+  alertHistory?: MeetingAlert[];
+  livePartial?: { text: string; ts: number; channel: number } | null;
   meetingStartedAtMs: number;
-  utterances: LiveUtterance[];
-  scrollTargetId: string | null;
   onConsumedScrollTarget: () => void;
   pendingFinals?: LivePendingUtterance[];
-  livePartial?: { text: string; ts: number; channel: number } | null;
-  alertHistory?: MeetingAlert[];
+  scrollTargetId: string | null;
+  utterances: LiveUtterance[];
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex component, would benefit from refactor
@@ -170,7 +170,9 @@ export function TranscriptStream({
     let currentSpeaker = "";
     let currentBlock: typeof visible = [];
     for (const row of visible) {
-      if (row.speakerName !== currentSpeaker) {
+      if (row.speakerName === currentSpeaker) {
+        currentBlock.push(row);
+      } else {
         if (currentBlock.length > 0) {
           commitmentsByBlock.push({
             speaker: currentSpeaker,
@@ -179,8 +181,6 @@ export function TranscriptStream({
         }
         currentSpeaker = row.speakerName || "Unknown";
         currentBlock = [row];
-      } else {
-        currentBlock.push(row);
       }
     }
     if (currentBlock.length > 0) {
@@ -432,10 +432,10 @@ export function TranscriptStream({
                   <div className="sticky top-0 z-10 flex items-center gap-2 border-border-subtle border-b bg-bg px-5 py-1.5">
                     <SpeakerChip
                       name={speaker}
-                      speakerType={rows[0].speakerType || "unknown"}
+                      speakerType={rows[0]?.speakerType || "unknown"}
                     />
                     <span className="font-mono text-[10px] text-fg-subtle">
-                      {rows.length} commitment{rows.length !== 1 ? "s" : ""}
+                      {rows.length} commitment{rows.length === 1 ? "" : "s"}
                     </span>
                   </div>
                   <div className="pl-2">

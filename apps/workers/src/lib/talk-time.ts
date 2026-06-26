@@ -1,6 +1,6 @@
 export interface TalkTimeUtterance {
-  speaker: string;
   duration: number;
+  speaker: string;
 }
 
 export interface TalkTimeStats {
@@ -37,6 +37,9 @@ export function computeTalkTime(
   const stats: TalkTimeStats = {};
   for (const speaker of Object.keys(msStats)) {
     const s = msStats[speaker];
+    if (!s) {
+      continue;
+    }
     stats[speaker] = {
       utteranceCount: s.utteranceCount,
       totalSeconds: s.totalMs / 1000,

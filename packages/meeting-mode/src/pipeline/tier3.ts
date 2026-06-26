@@ -1,4 +1,4 @@
-import { prisma } from "@larity/infra/prisma/client";
+import { prisma } from "@larity/db/client";
 import type { PreloadedContextPayload } from "../constraint/types";
 import { createMeetingModeLogger } from "../logger";
 import { cosineSimilarity } from "../topic/similarity";

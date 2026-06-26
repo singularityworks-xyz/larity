@@ -5,38 +5,38 @@ export interface ClientSummary {
 }
 
 export interface StartSessionResponse {
-  sessionId: string;
+  allowNameCustomization: boolean;
+  createdAt: number;
   meetingId: string;
+  sessionId: string;
   status: "initializing" | "active" | "paused" | "ending";
   websocketUrl: string;
-  createdAt: number;
-  allowNameCustomization: boolean;
 }
 
 export interface ActiveSession {
-  sessionId: string;
-  meetingId: string;
-  title: string;
+  allowNameCustomization: boolean;
   clientId: string;
   clientName: string;
-  hostUserId: string | null;
   hostName: string | null;
-  startedAt: number | null;
+  hostUserId: string | null;
+  meetingId: string;
   participantCount: number;
-  allowNameCustomization: boolean;
+  sessionId: string;
+  startedAt: number | null;
+  title: string;
 }
 
 export interface JoinSessionResponse {
-  success: boolean;
-  sessionId: string;
+  allowNameCustomization: boolean;
+  joinedAt: number;
   meetingId: string;
   role: "host" | "participant";
+  sessionId: string;
+  success: boolean;
   websocketUrl: string;
-  joinedAt: number;
-  allowNameCustomization: boolean;
 }
 export interface AgendaItem {
+  durationMinutes?: number;
   id: string;
   text: string;
-  durationMinutes?: number;
 }

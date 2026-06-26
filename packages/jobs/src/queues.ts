@@ -26,26 +26,31 @@ function getRedisConnection(): IORedis {
 }
 
 export const transcribeQueue = new Queue("meeting.transcribe", {
-  connection: getRedisConnection(),
+  // biome-ignore lint/suspicious/noExplicitAny: bullmq bundles ioredis@5.10.1 while workspace has 5.11.1
+  connection: getRedisConnection() as any,
   defaultJobOptions: COMMON_JOB_OPTIONS,
 });
 
 export const summaryQueue = new Queue("meeting.summary", {
-  connection: getRedisConnection(),
+  // biome-ignore lint/suspicious/noExplicitAny: bullmq bundles ioredis@5.10.1 while workspace has 5.11.1
+  connection: getRedisConnection() as any,
   defaultJobOptions: COMMON_JOB_OPTIONS,
 });
 
 export const audioCleanupQueue = new Queue("meeting.cleanupAudio", {
-  connection: getRedisConnection(),
+  // biome-ignore lint/suspicious/noExplicitAny: bullmq bundles ioredis@5.10.1 while workspace has 5.11.1
+  connection: getRedisConnection() as any,
   defaultJobOptions: COMMON_JOB_OPTIONS,
 });
 
 export const clientPersonaQueue = new Queue("client.personaExtraction", {
-  connection: getRedisConnection(),
+  // biome-ignore lint/suspicious/noExplicitAny: bullmq bundles ioredis@5.10.1 while workspace has 5.11.1
+  connection: getRedisConnection() as any,
   defaultJobOptions: COMMON_JOB_OPTIONS,
 });
 
 export const preMeetingBriefQueue = new Queue("meeting.preMeetingBrief", {
-  connection: getRedisConnection(),
+  // biome-ignore lint/suspicious/noExplicitAny: bullmq bundles ioredis@5.10.1 while workspace has 5.11.1
+  connection: getRedisConnection() as any,
   defaultJobOptions: COMMON_JOB_OPTIONS,
 });

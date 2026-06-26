@@ -3,12 +3,12 @@ import { api } from "../../lib/api";
 import type { StartSessionResponse } from "./types";
 
 interface StartAdhocInput {
-  clientId: string;
-  title?: string;
-  description?: string;
   agenda?: string;
+  clientId: string;
+  description?: string;
   /** ISO 8601 datetime string when scheduling for later */
   scheduledAt?: string;
+  title?: string;
 }
 
 export function useStartMeeting() {

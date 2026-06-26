@@ -1,4 +1,4 @@
-import type { Prisma } from "@larity/infra/prisma";
+import type { Prisma } from "@larity/db/prisma";
 import { prisma } from "../lib/prisma";
 
 function startOfToday(): Date {
@@ -43,14 +43,13 @@ export interface HomeData {
     attendeeCount: number;
     startsInMinutes: number;
   } | null;
-  todayMeetings: Array<{
+  openCommitments: Array<{
     id: string;
-    title: string;
+    content: string;
     client: { id: string; name: string };
-    scheduledAt: string | null;
-    status: string;
-    attendeeCount: number;
-    briefStatus: "prepped" | "not_prepped";
+    meetingId: string | null;
+    meetingTitle: string | null;
+    createdAt: string;
   }>;
   recentActivity: Array<{
     id: string;
@@ -62,13 +61,14 @@ export interface HomeData {
     tasksCreated: number;
     commitmentsCaptured: number;
   }>;
-  openCommitments: Array<{
+  todayMeetings: Array<{
     id: string;
-    content: string;
+    title: string;
     client: { id: string; name: string };
-    meetingId: string | null;
-    meetingTitle: string | null;
-    createdAt: string;
+    scheduledAt: string | null;
+    status: string;
+    attendeeCount: number;
+    briefStatus: "prepped" | "not_prepped";
   }>;
 }
 

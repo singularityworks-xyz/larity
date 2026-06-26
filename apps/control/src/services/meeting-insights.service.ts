@@ -1,4 +1,4 @@
-import { isMeetingAnalysis } from "@larity/infra/prisma/meeting-analysis.types";
+import { isMeetingAnalysis } from "@larity/db/meeting-analysis.types";
 import { prisma } from "../lib/prisma";
 
 export const MeetingInsightsService = {

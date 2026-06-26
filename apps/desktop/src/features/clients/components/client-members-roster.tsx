@@ -333,6 +333,7 @@ function EditableMemberCard({
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-gradient-to-br from-zinc-800 to-zinc-900">
         {member.image ? (
+          // biome-ignore lint/performance/noImgElement: not a Next.js project
           <img
             alt={member.name}
             className="h-full w-full rounded-full object-cover"

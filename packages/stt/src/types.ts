@@ -18,9 +18,9 @@ export interface SessionStartEvent {
  * Session end event from realtime plane
  */
 export interface SessionEndEvent {
+  duration: number;
   sessionId: string;
   ts: number;
-  duration: number;
 }
 
 /**
@@ -31,14 +31,14 @@ export interface SessionEndEvent {
  * happens downstream via voice embeddings.
  */
 export interface SttResult {
-  sessionId: string;
-  isFinal: boolean;
-  transcript: string;
+  channel: number; // 0 for host mic, 1 for loopback
   confidence: number;
   diarizationIndex: number; // Deepgram speaker index (0, 1, 2...)
-  channel: number; // 0 for host mic, 1 for loopback
-  start: number; // Seconds from Deepgram
   duration: number;
-  ts: number; // Unix timestamp when processed
+  isFinal: boolean;
+  sessionId: string;
   speechTimestamp: number; // Absolute Unix ms of speech (connectionStartTime + start*1000)
+  start: number; // Seconds from Deepgram
+  transcript: string;
+  ts: number; // Unix timestamp when processed
 }

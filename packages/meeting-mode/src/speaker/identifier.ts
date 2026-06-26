@@ -1,11 +1,5 @@
-import { redis } from "@larity/infra/redis";
+import { redis } from "@larity/db/redis";
 import { createMeetingModeLogger } from "../logger";
-import {
-  pipelineSpeakerFinalSourceTotal,
-  pipelineSpeakerProvisionalAttemptsTotal,
-  pipelineSpeakerProvisionalDiscardsTotal,
-  pipelineSpeakerProvisionalHitsTotal,
-} from "../pipeline/metrics";
 import type { SpeakerIdentity } from "../utterance/types";
 import { createUnidentifiedSpeaker } from "../utterance/types";
 import { ClockOffsetTracker } from "./clock-offset";
@@ -35,8 +29,8 @@ const CLOCK_OFFSET_TTL_SECONDS = 2 * 60 * 60;
 const MAX_VAD_INTERVAL_MS = 10_000;
 
 interface ClockOffsetRedisClient {
-  hset(key: string, field: string, value: string): Promise<unknown>;
   expire?(key: string, seconds: number): Promise<unknown>;
+  hset(key: string, field: string, value: string): Promise<unknown>;
 }
 
 interface ClockOffsetLogger {
@@ -256,12 +250,10 @@ export class SpeakerIdentifier {
   }
 
   processSttPartial(diarizationIndex: number, eventTimestamp: number): void {
-    pipelineSpeakerProvisionalAttemptsTotal.inc();
     if (
       this.indexToSpeakerId.has(diarizationIndex) ||
       this.clockTracker.isUntrusted()
     ) {
-      pipelineSpeakerProvisionalDiscardsTotal.inc();
       return;
     }
 
@@ -270,7 +262,6 @@ export class SpeakerIdentifier {
       useConfirmation: false,
     });
     if (!correlatedUserId) {
-      pipelineSpeakerProvisionalDiscardsTotal.inc();
       return;
     }
 
@@ -279,7 +270,6 @@ export class SpeakerIdentifier {
       updatedAt: eventTimestamp,
       confidence: 0.8,
     });
-    pipelineSpeakerProvisionalHitsTotal.inc();
   }
 
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: pre-existing, refactor deferred
@@ -337,7 +327,6 @@ export class SpeakerIdentifier {
         provisional.confidence
       );
       if (speaker.type !== "EXTERNAL") {
-        pipelineSpeakerFinalSourceTotal.inc({ source: "partial_provisional" });
         return speaker;
       }
     }
@@ -356,12 +345,8 @@ export class SpeakerIdentifier {
         "final_confirmed",
         1
       );
-      if (speaker.type !== "EXTERNAL") {
-        pipelineSpeakerFinalSourceTotal.inc({ source: "final_confirmed" });
-      }
       return speaker;
     }
-    pipelineSpeakerFinalSourceTotal.inc({ source: "fallback_external" });
     return createUnidentifiedSpeaker(diarizationIndex);
   }
 
@@ -397,7 +382,7 @@ export class SpeakerIdentifier {
     });
 
     if (speakingMembers.length === 0) {
-      return undefined;
+      return;
     }
 
     // Hardened filtering: only consider members whose role matches the physical channel
@@ -444,7 +429,7 @@ export class SpeakerIdentifier {
       );
     }
 
-    return undefined;
+    return;
   }
 
   private resolveLateIdentity(
@@ -501,7 +486,6 @@ export class SpeakerIdentifier {
         );
 
         if (speaker.type !== "EXTERNAL") {
-          pipelineSpeakerFinalSourceTotal.inc({ source: "retroactive_vad" });
           results.push({ diarizationIndex: pending.diarizationIndex, speaker });
           log.info(
             {
@@ -520,7 +504,7 @@ export class SpeakerIdentifier {
   getSpeakerMapping(diarizationIndex: number): SpeakerMapping | undefined {
     const speakerId = this.indexToSpeakerId.get(diarizationIndex);
     if (!speakerId) {
-      return undefined;
+      return;
     }
     return this.speakerMappings.get(speakerId);
   }

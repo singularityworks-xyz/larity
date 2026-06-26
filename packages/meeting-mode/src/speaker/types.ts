@@ -1,12 +1,12 @@
 import type { SpeakerIdentity } from "../utterance/types";
 
 export interface VadSignal {
+  clientSendTs: number;
+  role?: "host" | "participant";
+  serverReceiveTs: number;
+  sessionId: string;
   type: "vad_speaking" | "vad_silence";
   userId: string;
-  sessionId: string;
-  clientSendTs: number;
-  serverReceiveTs: number;
-  role?: "host" | "participant";
 }
 
 export interface VadSpeakerState {
@@ -17,9 +17,9 @@ export interface VadSpeakerState {
 export type VadState = Map<string, VadSpeakerState>;
 
 export interface VadActivityInterval {
-  userId: string;
-  startTs: number;
   endTs?: number;
+  startTs: number;
+  userId: string;
 }
 
 export type MappingSource =
@@ -28,34 +28,34 @@ export type MappingSource =
   | "retroactive_vad";
 
 export interface SpeakerMapping {
-  diarizationIndex: number;
-  speaker: SpeakerIdentity;
-  confirmedAt: number;
   confidence: number;
+  confirmedAt: number;
+  diarizationIndex: number;
   lastUtteranceTs: number;
   source?: MappingSource;
+  speaker: SpeakerIdentity;
 }
 
 export interface CorrelationResult {
+  confidence: number;
   identified: boolean;
   speaker: SpeakerIdentity;
-  confidence: number;
   wasRetroactive: boolean;
 }
 
 export interface PendingUtterance {
-  utteranceId: string;
   diarizationIndex: number;
-  timestamp: number;
   text: string;
+  timestamp: number;
+  utteranceId: string;
 }
 
 export interface SpeakerIdentifierConfig {
   correlationWindowMs: number;
   lateCorrelationWindowMs: number;
+  maxVadIntervalsPerUser: number;
   minConfirmationSignals: number;
   provisionalTtlMs: number;
-  maxVadIntervalsPerUser: number;
   vadTrailingCooldownMs: number;
 }
 
@@ -69,20 +69,20 @@ export const DEFAULT_SPEAKER_CONFIG: SpeakerIdentifierConfig = {
 };
 
 export interface SessionStateTeamMember {
-  userId: string;
   name: string;
   role?: "host" | "participant";
+  userId: string;
 }
 
 export type SessionStateSpeakerMapping = SpeakerMapping;
 
 export interface SessionSpeakerStatePayload {
+  speakerMappings: Record<string, SessionStateSpeakerMapping>;
+  teamMembers: SessionStateTeamMember[];
   vadHistory: Array<{
     userId: string;
     type: "vad_speaking" | "vad_silence";
     adjustedTs: number;
     role?: "host" | "participant";
   }>;
-  speakerMappings: Record<string, SessionStateSpeakerMapping>;
-  teamMembers: SessionStateTeamMember[];
 }

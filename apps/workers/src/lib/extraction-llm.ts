@@ -5,31 +5,30 @@ export const EXTRACTION_MODEL = "gemini-3.1-flash-lite";
 const EXTRACTION_TIMEOUT_MS = 30_000; // 30s timeout for bulk extraction
 
 export interface ExtractedDecision {
-  title: string;
   content: string;
-  rationale?: string;
   evidence?: string;
-  tags: string[];
+  rationale?: string;
   speakerAttribution?: string;
+  tags: string[];
+  title: string;
 }
 
 export interface ExtractedTask {
-  title: string;
-  description?: string;
   assigneeHint?: string;
+  description?: string;
   dueAt?: string;
   priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  title: string;
 }
 
 export interface ExtractedOpenQuestion {
-  question: string;
-  context?: string;
   assigneeHint?: string;
+  context?: string;
   dueAt?: string;
+  question: string;
 }
 
 export interface ExtractedImportantPoint {
-  content: string;
   category:
     | "COMMITMENT"
     | "CONSTRAINT"
@@ -37,15 +36,16 @@ export interface ExtractedImportantPoint {
     | "WARNING"
     | "RISK"
     | "OPPORTUNITY";
+  content: string;
   speakerHint?: string;
   transcriptEvidence?: string;
 }
 
 export interface ChunkExtractionResult {
   decisions: ExtractedDecision[];
-  tasks: ExtractedTask[];
-  openQuestions: ExtractedOpenQuestion[];
   importantPoints: ExtractedImportantPoint[];
+  openQuestions: ExtractedOpenQuestion[];
+  tasks: ExtractedTask[];
 }
 
 function getGeminiExtractionSchema() {

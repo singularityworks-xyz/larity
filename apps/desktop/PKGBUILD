@@ -1,0 +1,18 @@
+# Maintainer: Singularity Works <itssingularity.com>
+pkgname=larity-bin
+pkgver=__VERSION__
+pkgrel=1
+pkgdesc="Your meetings forget nothing. Decisions, commitments, constraints captured in real-time, surfaced when it matters."
+arch=('x86_64')
+url="https://github.com/singularityworks-xyz/larity"
+license=('Proprietary')
+depends=('gtk3' 'webkit2gtk-4.1' 'libayatana-appindicator' 'alsa-lib')
+provides=('larity')
+conflicts=('larity')
+source=("larity_${pkgver}_amd64.deb::https://github.com/singularityworks-xyz/larity/releases/download/v${pkgver}/larity_${pkgver}_amd64.deb")
+sha256sums=('SKIP')
+
+package() {
+    # Extract the deb package data
+    tar -xf data.tar.xz -C "${pkgdir}"
+}

@@ -1,10 +1,10 @@
-import { prisma } from "@larity/infra/prisma/client";
+import { prisma } from "@larity/db/client";
 import {
   connectRedis,
   disconnectRedis,
   getRedisClient,
-} from "@larity/infra/redis";
-import { redisKeys } from "@larity/infra/redis/keys";
+} from "@larity/db/redis";
+import { redisKeys } from "@larity/db/redis/keys";
 import type { Redis } from "ioredis";
 import { AlertPublisher } from "./alerts/publisher";
 import type { Alert } from "./alerts/types";
@@ -37,7 +37,6 @@ export * from "./channels";
 export * from "./commitment";
 export * from "./constraint";
 export * from "./pipeline/engine";
-export { getMetricsText, startDefaultMetrics } from "./pipeline/metrics";
 export * from "./pipeline/pre-filter";
 export * from "./pipeline/tier1";
 export * from "./pipeline/tier2";
@@ -174,6 +173,9 @@ async function main(): Promise<void> {
           const list = await redisClient.lrange(key, 0, -1);
           for (let i = list.length - 1; i >= 0; i--) {
             const item = list[i];
+            if (!item) {
+              continue;
+            }
             try {
               const parsed = JSON.parse(item) as { utteranceId?: string };
               if (parsed.utteranceId === utteranceId) {

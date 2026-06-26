@@ -94,13 +94,13 @@ export type Tier2Classification = z.infer<typeof tier2ClassificationSchema>;
 export type Tier2TopicDelta = z.infer<typeof tier2TopicDeltaSchema>;
 
 export interface Tier2Input {
-  utterance: string;
-  speaker: SpeakerIdentity;
+  knownClientMembers?: Array<{ id: string; name: string }>;
   recentSameSpeaker: string[];
-  topicLabel?: string;
+  speaker: SpeakerIdentity;
   /** Structural price/currency cue (aligned with Tier1 `pricingHit`) for Tier2 user message. */
   structuralPricingCue?: boolean;
-  knownClientMembers?: Array<{ id: string; name: string }>;
+  topicLabel?: string;
+  utterance: string;
 }
 
 export type Tier2Intent = z.infer<typeof tier2IntentSchema>;
@@ -116,36 +116,36 @@ export interface Tier1Detection {
 }
 
 export interface Tier1Result {
-  detections: Tier1Detection[];
-  technicalHit: boolean;
   blocklistHit: boolean;
+  detections: Tier1Detection[];
   /** True when the utterance contains a currency/price mention (e.g. $400, 300 rupees, €50).
    *  Drives the highSignal gate independently of Tier 2 classification quality. */
   pricingHit: boolean;
+  technicalHit: boolean;
 }
 
 export interface Tier2Outcome {
   classification: Tier2Classification;
-  shouldStopForDeepReasoning: boolean;
-  promptTokens?: number;
   completionTokens?: number;
+  promptTokens?: number;
+  shouldStopForDeepReasoning: boolean;
 }
 
 export interface Tier3Result {
   forceTier4: boolean;
-  noveltyScore: number;
-  memoryMatches: Array<{ type: string; id: string; score: number }>;
   ledgerMatches: Array<{ id: string; score: number }>;
+  memoryMatches: Array<{ type: string; id: string; score: number }>;
+  noveltyScore: number;
 }
 
 /** Historical memory hydrated for Tier 4 prompts */
 export interface Tier4HistoricalMatch {
-  memoryType: string;
-  sourceId: string;
   item: string;
   meetingDate?: string;
-  status?: string;
+  memoryType: string;
   similarity: number;
+  sourceId: string;
+  status?: string;
 }
 
 /** Ledger match hydrated with full commitment for Tier 4 */
@@ -156,18 +156,19 @@ export interface Tier4CommitmentMatch {
 
 /** Rich context assembled after Tiers 1–3 gate for Tier 4 */
 export interface Tier4Context {
-  triggerUtteranceId: string;
-  utterance: string;
+  matchedCommitments: Tier4CommitmentMatch[];
+  matchedHistoricalItems: Tier4HistoricalMatch[];
+  recentUtterances: Utterance[];
+  relevantConstraints: Constraint[];
+  sessionId: string;
   speaker: SpeakerIdentity;
-  topicId: string | undefined;
-  topicSummary: string;
+  speakerStates?: SpeakerStateSummary[];
   tier1Result: Tier1Result;
   tier2Classification: Tier2Classification;
-  recentUtterances: Utterance[];
-  matchedHistoricalItems: Tier4HistoricalMatch[];
-  matchedCommitments: Tier4CommitmentMatch[];
-  relevantConstraints: Constraint[];
-  speakerStates?: SpeakerStateSummary[];
+  topicId: string | undefined;
+  topicSummary: string;
+  triggerUtteranceId: string;
+  utterance: string;
 }
 
 export const tier4AlertTypeLiterals = [

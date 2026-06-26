@@ -107,13 +107,13 @@ const itemVariants = {
 /* ── Header ─────────────────────────────────────── */
 
 interface HeaderProps {
-  userName?: string;
-  orgName?: string;
   canManage: boolean;
-  showMemberPanel: boolean;
   onToggleMemberPanel: () => void;
   openCommitmentsCount: number;
+  orgName?: string;
+  showMemberPanel: boolean;
   todayMeetingsCount: number;
+  userName?: string;
 }
 
 function Header({
@@ -228,11 +228,11 @@ function Header({
 /* ── Invites ────────────────────────────────────── */
 
 interface InvitePanelProps {
-  invites: ReturnType<typeof useOrgInvites>;
   copyMessage: string;
   inviteError: string;
-  onCreateInvite: () => void;
+  invites: ReturnType<typeof useOrgInvites>;
   onCopyInvite: (code: string) => void;
+  onCreateInvite: () => void;
   onRevokeInvite: (id: string) => void;
 }
 
@@ -477,7 +477,7 @@ function NextMeetingHero({
   const startsSoon = meeting.startsInMinutes <= 15;
   const isStartingNow = meeting.startsInMinutes <= 1;
   const isPrepped = meeting.briefStatus === "prepped";
-  const attendeesLabel = `${meeting.attendeeCount} Attendee${meeting.attendeeCount !== 1 ? "s" : ""}`;
+  const attendeesLabel = `${meeting.attendeeCount} Attendee${meeting.attendeeCount === 1 ? "" : "s"}`;
 
   return (
     <motion.div

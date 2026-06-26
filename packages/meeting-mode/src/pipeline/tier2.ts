@@ -1,4 +1,4 @@
-import { publishSystemEvent } from "@larity/infra/redis";
+import { publishSystemEvent } from "@larity/db/redis";
 import OpenAI from "openai";
 import {
   SAMBANOVA_API_KEY,
@@ -15,14 +15,14 @@ const log = createMeetingModeLogger("tier2-classifier");
 const TIER2_MAX_COMPLETION_TOKENS = 1024;
 
 export interface Tier2InvokeResult {
-  text: string;
-  promptTokens: number;
   completionTokens: number;
+  promptTokens: number;
+  text: string;
 }
 
 export interface Tier2ClassifierOptions {
-  timeoutMs?: number;
   invoke?: (input: Tier2Input, timeoutMs: number) => Promise<Tier2InvokeResult>;
+  timeoutMs?: number;
 }
 
 export class Tier2Classifier {
@@ -38,7 +38,7 @@ export class Tier2Classifier {
     if (options.invoke) {
       this.openai = undefined;
       this.invoke = options.invoke;
-    } else {
+    } else if (SAMBANOVA_API_KEY) {
       this.openai = new OpenAI({
         apiKey: SAMBANOVA_API_KEY,
         baseURL: "https://api.sambanova.ai/v1",
@@ -46,6 +46,17 @@ export class Tier2Classifier {
       });
       this.invoke = (input, timeoutMs) =>
         this.invokeSambaNovaTier2(input, timeoutMs);
+    } else {
+      this.openai = undefined;
+      this.invoke = async () => ({
+        completionTokens: 0,
+        promptTokens: 0,
+        text: JSON.stringify({
+          action: "none",
+          confidence: 0,
+          reasoning: "SAMBANOVA_API_KEY not set",
+        }),
+      });
     }
   }
 
@@ -287,12 +298,12 @@ function parseTier2Response(raw: string): unknown {
 
   // Strip markdown formatting if SambaNova wraps the JSON
   if (trimmed.startsWith("```json")) {
-    trimmed = trimmed.substring(7);
+    trimmed = trimmed.slice(7);
   } else if (trimmed.startsWith("```")) {
-    trimmed = trimmed.substring(3);
+    trimmed = trimmed.slice(3);
   }
   if (trimmed.endsWith("```")) {
-    trimmed = trimmed.substring(0, trimmed.length - 3);
+    trimmed = trimmed.slice(0, trimmed.length - 3);
   }
   trimmed = trimmed.trim();
 

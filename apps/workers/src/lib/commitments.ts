@@ -1,5 +1,5 @@
-import { getRedisClient } from "@larity/infra/redis";
-import { redisKeys } from "@larity/infra/redis/keys";
+import { getRedisClient } from "@larity/db/redis";
+import { redisKeys } from "@larity/db/redis/keys";
 import {
   createS3Client,
   GetObjectCommand,
@@ -8,8 +8,9 @@ import {
 import { unpackEmbeddingFromBase64 } from "meeting-mode";
 
 export interface RedisCommitment {
+  embedding?: number[];
+  embeddingBase64?: string;
   id: string;
-  statement: string;
   normalizedStatement?: string;
   speaker: {
     userId?: string;
@@ -17,13 +18,12 @@ export interface RedisCommitment {
     name?: string;
     type: "TEAM" | "EXTERNAL";
   };
-  topicId: string;
-  type: string;
+  statement: string;
   status: string;
   timestamp: number;
+  topicId: string;
+  type: string;
   utteranceId: string;
-  embedding?: number[];
-  embeddingBase64?: string;
 }
 
 /**

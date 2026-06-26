@@ -28,8 +28,8 @@ function deriveInitialLabel(text?: string): string {
 }
 
 export interface TopicPublisher {
-  publish(channel: string, message: string): Promise<number>;
   hset(key: string, field: string, value: string): Promise<number>;
+  publish(channel: string, message: string): Promise<number>;
 }
 
 export interface TopicManagerOptions {
@@ -426,7 +426,7 @@ export class TopicManager {
   private generateTopicId(sessionId: string): string {
     return `topic_${sessionId}_${Date.now()}_${Math.random()
       .toString(36)
-      .substring(2, 7)}`;
+      .slice(2, 7)}`;
   }
 
   private createNewTopicState(

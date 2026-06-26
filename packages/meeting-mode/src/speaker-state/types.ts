@@ -3,8 +3,8 @@ import type { TopicCompleteness } from "../topic/types";
 import type { SpeakerIdentity } from "../utterance/types";
 
 export interface ToneEntry {
-  tone: string;
   timestamp: number;
+  tone: string;
   utteranceId: string;
   wordCount: number;
 }
@@ -14,17 +14,17 @@ export type ToneTrajectory = "stable" | "escalating" | "de-escalating";
 export type EngagementLevel = "active" | "passive" | "disengaged";
 
 export interface SpeakerState {
-  speakerId: string;
-  speaker: SpeakerIdentity;
-  toneHistory: ToneEntry[];
   avgResponseLength: number;
-  responseFrequency: number;
-  lastSpoke: number;
-  toneTrajectory: ToneTrajectory;
   engagementLevel: EngagementLevel;
-  utteranceCount: number;
-  totalWords: number;
+  lastSpoke: number;
+  responseFrequency: number;
   sessionStart: number;
+  speaker: SpeakerIdentity;
+  speakerId: string;
+  toneHistory: ToneEntry[];
+  toneTrajectory: ToneTrajectory;
+  totalWords: number;
+  utteranceCount: number;
 }
 
 export type SpeakerStateAlertCategory =
@@ -35,35 +35,35 @@ export type SpeakerStateAlertCategory =
 
 export interface SpeakerStateAlert {
   category: SpeakerStateAlertCategory;
-  severity: AlertSeverity;
-  message: string;
-  surfaceReason: string;
-  suggestion: string;
-  speakerId: string;
-  topicId?: string;
   confidence: number;
+  message: string;
+  severity: AlertSeverity;
+  speakerId: string;
+  suggestion: string;
+  surfaceReason: string;
+  topicId?: string;
 }
 
 export interface SpeakerStateSummary {
-  speakerId: string;
-  name: string;
-  type: "TEAM" | "EXTERNAL";
-  toneTrajectory: ToneTrajectory;
-  engagementLevel: EngagementLevel;
   avgResponseLength: number;
-  responseFrequency: number;
+  engagementLevel: EngagementLevel;
+  name: string;
   recentTone: string;
+  responseFrequency: number;
+  speakerId: string;
+  toneTrajectory: ToneTrajectory;
+  type: "TEAM" | "EXTERNAL";
 }
 
 export interface SpeakerStateTrackerConfig {
-  toneShiftWindowMs: number;
-  toneShiftThreshold: number;
-  disengagementMinResponses: number;
-  disengagementShortResponseWords: number;
+  agendaMatchThreshold: number;
+  clarityRequiredFields: string[];
   disengagementConsecutiveShort: number;
   disengagementFrequencyDropRatio: number;
-  clarityRequiredFields: string[];
-  agendaMatchThreshold: number;
+  disengagementMinResponses: number;
+  disengagementShortResponseWords: number;
+  toneShiftThreshold: number;
+  toneShiftWindowMs: number;
 }
 
 export const DEFAULT_SPEAKER_STATE_CONFIG: SpeakerStateTrackerConfig = {
@@ -86,14 +86,14 @@ export const TONE_NUMERIC_SCALE: Record<string, number> = {
 };
 
 export interface ClarityCheckInput {
-  prevTopicId: string | undefined;
-  prevTopicCompleteness: TopicCompleteness | undefined;
-  prevTopicUtteranceCount: number;
   currentTopicId: string | undefined;
   isTopicShift: boolean;
+  prevTopicCompleteness: TopicCompleteness | undefined;
+  prevTopicId: string | undefined;
+  prevTopicUtteranceCount: number;
 }
 
 export interface AgendaCheckInput {
-  discussedTopicLabels: string[];
   agendaItems: string[];
+  discussedTopicLabels: string[];
 }

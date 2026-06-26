@@ -14,13 +14,21 @@ export const PIPELINE_TRACE_VERSION = 1 as const;
 
 /** Safe for Redis + desktop logs — no embeddings or internal `reasoning`; surfaced copy is user-visible UI text */
 export interface PipelineTracePayload {
-  v: typeof PIPELINE_TRACE_VERSION;
-  sessionId: string;
-  utteranceId: string;
-  timestamp: number;
-  textPreview: string;
   dropped: boolean;
   dropReason?: string;
+  gate?: {
+    runTier4: boolean;
+    highSignalEstimate: boolean;
+  };
+  latencyMs?: {
+    tier2?: number;
+    gate?: number;
+    tier4?: number;
+    total?: number;
+  };
+  sessionId: string;
+  terminalLine: string;
+  textPreview: string;
   tier1?: Pick<Tier1Result, "technicalHit" | "blocklistHit" | "pricingHit">;
   tier2?: Pick<Tier2Classification, "intent" | "confidence"> & {
     riskSignalCount: number;
@@ -29,10 +37,6 @@ export interface PipelineTracePayload {
   tier3?: Pick<Tier3Result, "forceTier4" | "noveltyScore"> & {
     memoryMatchCount: number;
     ledgerMatchCount: number;
-  };
-  gate?: {
-    runTier4: boolean;
-    highSignalEstimate: boolean;
   };
   tier4?: {
     invoked: boolean;
@@ -44,13 +48,9 @@ export interface PipelineTracePayload {
     surfaceReason?: string;
     suggestion?: string;
   };
-  latencyMs?: {
-    tier2?: number;
-    gate?: number;
-    tier4?: number;
-    total?: number;
-  };
-  terminalLine: string;
+  timestamp: number;
+  utteranceId: string;
+  v: typeof PIPELINE_TRACE_VERSION;
 }
 
 const traceLog = createMeetingModeLogger("pipeline-trace");
@@ -93,7 +93,7 @@ function traceTier4SurfacedCopy(
   | undefined {
   const message = typeof t4Rsp.message === "string" ? t4Rsp.message.trim() : "";
   if (!message) {
-    return undefined;
+    return;
   }
 
   const out: Pick<Tier4TraceSnap, "message" | "surfaceReason" | "suggestion"> =

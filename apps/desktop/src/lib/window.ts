@@ -1,10 +1,10 @@
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 
 export interface WindowProfile {
-  width: number;
-  height: number;
   /** Whether to re-centre the window after resizing. */
   center?: boolean;
+  height: number;
+  width: number;
 }
 
 export const WINDOW_PROFILES = {
@@ -17,8 +17,8 @@ export const WINDOW_PROFILES = {
 } satisfies Record<string, WindowProfile>;
 
 export interface WindowSizeConstraints {
-  minWidth?: number;
   minHeight?: number;
+  minWidth?: number;
 }
 
 export const WINDOW_CONSTRAINTS: WindowSizeConstraints = {

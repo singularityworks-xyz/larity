@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { redis } from "@larity/infra/redis";
-import { redisKeys } from "@larity/infra/redis/keys";
-import { TTL } from "@larity/infra/redis/ttl";
+import { redis } from "@larity/db/redis";
+import { redisKeys } from "@larity/db/redis/keys";
+import { TTL } from "@larity/db/redis/ttl";
 import {
   createS3Client,
   getS3Config,
@@ -35,58 +35,58 @@ const AGENDA_BULLET_PREFIX_REGEX = /^\s*(?:[-*]|\d+[.)])\s*/;
 const KEYWORD_HINTS = ["blocklist", "keyword", "blocked"] as const;
 
 interface SessionPreloadedDecision {
-  id: string;
-  title: string;
   content: string;
-  tags: string[];
   createdAt: number;
+  id: string;
+  tags: string[];
+  title: string;
 }
 
 interface SessionPreloadedPolicyGuardrail {
-  id: string;
-  name: string;
+  clientId: string | null;
   description: string;
+  id: string;
+  keywords: string[];
+  name: string;
+  pattern: string | null;
   ruleType: string;
   severity: string;
-  keywords: string[];
-  pattern: string | null;
-  clientId: string | null;
 }
 
 interface SessionPreloadedPoint {
-  id: string;
   content: string;
   createdAt: number;
+  id: string;
 }
 
 interface SessionPreloadedContext {
-  version: 1;
-  sessionId: string;
-  meetingId: string;
-  clientId: string;
-  orgId: string;
-  loadedAt: number;
-  openDecisions: SessionPreloadedDecision[];
-  knownConstraints: SessionPreloadedPoint[];
   activePolicyGuardrails: SessionPreloadedPolicyGuardrail[];
-  priorCommitments: SessionPreloadedPoint[];
+  calendarAgendaItems: string[];
+  clientId: string;
   clientNameList: string[];
   keywordBlocklists: string[];
-  calendarAgendaItems: string[];
+  knownConstraints: SessionPreloadedPoint[];
+  loadedAt: number;
+  meetingId: string;
+  openDecisions: SessionPreloadedDecision[];
+  orgId: string;
+  priorCommitments: SessionPreloadedPoint[];
+  sessionId: string;
+  version: 1;
 }
 
 /**
  * Session data stored in Redis
  */
 interface SessionData {
-  sessionId: string;
-  meetingId: string;
-  userId: string;
-  status: SessionStatus;
-  startedAt: number;
   lastActivityAt: number;
-  utteranceCount: number;
+  meetingId: string;
   metadata?: Record<string, string>;
+  sessionId: string;
+  startedAt: number;
+  status: SessionStatus;
+  userId: string;
+  utteranceCount: number;
 }
 
 /**

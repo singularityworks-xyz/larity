@@ -241,6 +241,7 @@ export function RegisterPage() {
       <aside aria-hidden="true" className={authBrandPanelClass}>
         <div className={authBrandInnerClass}>
           <div className={authBrandLogoClass}>
+            {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
             <img
               alt=""
               className={authBrandLogoImageClass}

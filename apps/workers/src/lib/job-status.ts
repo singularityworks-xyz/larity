@@ -1,5 +1,5 @@
-import { redis } from "@larity/infra/redis";
-import { redisKeys } from "@larity/infra/redis/keys";
+import { redis } from "@larity/db/redis";
+import { redisKeys } from "@larity/db/redis/keys";
 
 export type JobStep = "transcribe" | "summary";
 export type JobStatus = "queued" | "processing" | "done" | "failed";

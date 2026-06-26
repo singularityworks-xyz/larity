@@ -1,8 +1,4 @@
-import { setupTelemetry } from "@larity/telemetry";
-
-setupTelemetry("workers");
-
-import { checkRedisHealth, connectRedis } from "@larity/infra/redis";
+import { checkRedisHealth, connectRedis } from "@larity/db/redis";
 import { Elysia } from "elysia";
 import { rootLogger } from "./logger";
 import type { BaseWorker } from "./worker";
@@ -31,10 +27,14 @@ export async function startWorkersApp(): Promise<void> {
   const { AudioCleanupWorker } = await import("./audio-cleanup.worker");
   const { ClientPersonaWorker } = await import("./client-persona.worker");
 
-  registerWorker(new TranscribeWorker());
-  registerWorker(new SummaryWorker());
-  registerWorker(new AudioCleanupWorker());
-  registerWorker(new ClientPersonaWorker());
+  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
+  registerWorker(new TranscribeWorker() as any);
+  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
+  registerWorker(new SummaryWorker() as any);
+  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
+  registerWorker(new AudioCleanupWorker() as any);
+  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
+  registerWorker(new ClientPersonaWorker() as any);
 
   const app = new Elysia()
     .get("/health", async () => {
@@ -97,12 +97,12 @@ export async function startWorkersApp(): Promise<void> {
   });
 
   process.on("uncaughtException", (error) => {
-    rootLogger.fatal({ err: error }, "FATAL: Uncaught exception");
+    rootLogger.fatal({ error }, "FATAL: Uncaught exception");
     process.exit(1);
   });
 
   process.on("unhandledRejection", (reason) => {
-    rootLogger.fatal({ err: reason }, "FATAL: Unhandled rejection");
+    rootLogger.fatal({ reason }, "FATAL: Unhandled rejection");
     process.exit(1);
   });
 }

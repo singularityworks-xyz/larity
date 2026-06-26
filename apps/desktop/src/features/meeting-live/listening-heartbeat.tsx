@@ -27,9 +27,9 @@ export function ListeningHeartbeat({
 }
 
 interface HeartbeatDotInlineProps {
+  className?: string;
   isActive: boolean;
   size?: number;
-  className?: string;
 }
 
 export function HeartbeatDotInline({

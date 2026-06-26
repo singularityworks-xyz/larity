@@ -5,9 +5,7 @@ import type { Meeting } from "./use-meetings";
 export function useMeeting(meetingId: string | undefined) {
   return useQuery({
     queryKey: ["meetings", meetingId],
-    queryFn: (): Promise<Meeting> => {
-      return api.get<Meeting>(`/meetings/${meetingId}`);
-    },
+    queryFn: (): Promise<Meeting> => api.get<Meeting>(`/meetings/${meetingId}`),
     enabled: !!meetingId,
   });
 }

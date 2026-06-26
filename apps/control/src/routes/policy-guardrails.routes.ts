@@ -84,7 +84,8 @@ export const policyGuardrailsRoutes = new Elysia({
   // Seed default guardrails for an org
   .post(
     "/seed",
-    async ({ body, user, set }) => {
+    // biome-ignore lint/suspicious/noExplicitAny: user is derived from global auth middleware
+    async ({ body, user, set }: any) => {
       try {
         const orgId = user?.orgId;
         if (!orgId) {

@@ -12,7 +12,7 @@ pub fn start_linux_sys_capture(
         // Start `parec` targeting the default monitor
         // Using s16le, 16000 Hz, 1 channel (mono), raw PCM
         let mut child = match Command::new("parec")
-            .args(&[
+            .args([
                 "-d",
                 "@DEFAULT_MONITOR@",
                 "--format=s16le",

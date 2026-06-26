@@ -3,10 +3,10 @@ import { api } from "../../lib/api";
 import type { ClientSummary } from "../meetings/types";
 
 export interface CreateClientInput {
-  name: string;
-  slug: string;
   description?: string;
   industry?: string;
+  name: string;
+  slug: string;
 }
 
 export function useCreateClient() {

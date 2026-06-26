@@ -7,10 +7,10 @@ import { createLogger } from "../lib/logger";
 export type VadSignalType = "vad_speaking" | "vad_silence";
 
 export interface VadSignal {
-  type: VadSignalType;
-  userId: string;
   sessionId: string;
   ts: number;
+  type: VadSignalType;
+  userId: string;
 }
 
 export class RealtimeSocket {

@@ -42,20 +42,20 @@ export const DEFAULT_DG_CONFIG = {
  * Deepgram word with optional speaker diarization index
  */
 export interface DeepgramWord {
-  word: string;
-  start: number;
-  end: number;
   confidence: number;
+  end: number;
   /** Speaker index from diarization (0, 1, 2...). Present when diarize=true. */
   speaker?: number;
+  start: number;
+  word: string;
 }
 
 /**
  * Deepgram transcript alternative
  */
 export interface TranscriptAlternative {
-  transcript: string;
   confidence: number;
+  transcript: string;
   words?: DeepgramWord[];
 }
 
@@ -70,11 +70,11 @@ export interface ChannelResult {
  * Deepgram transcript result event (v5 ListenV1Results shape)
  */
 export interface TranscriptResult {
-  type: "Results";
+  channel: ChannelResult;
   channel_index: number[];
   duration: number;
-  start: number;
   is_final?: boolean;
   speech_final?: boolean;
-  channel: ChannelResult;
+  start: number;
+  type: "Results";
 }

@@ -1,7 +1,7 @@
-import { prisma } from "@larity/infra/prisma/client";
-import { redis } from "@larity/infra/redis";
-import { redisKeys } from "@larity/infra/redis/keys";
-import { TTL } from "@larity/infra/redis/ttl";
+import { prisma } from "@larity/db/client";
+import { redis } from "@larity/db/redis";
+import { redisKeys } from "@larity/db/redis/keys";
+import { TTL } from "@larity/db/redis/ttl";
 import Redis from "ioredis";
 import type { SessionEndEvent, SttResult } from "../../stt/src/types";
 import {

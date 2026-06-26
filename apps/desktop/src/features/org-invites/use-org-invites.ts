@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 
 export interface OrgInvite {
-  id: string;
   code: string;
-  role: "ADMIN" | "MEMBER";
-  expiresAt: string;
   createdAt: string;
+  expiresAt: string;
+  id: string;
+  role: "ADMIN" | "MEMBER";
 }
 
 interface SessionUser {
@@ -16,7 +16,7 @@ interface SessionUser {
 
 function toSessionUser(user: unknown): SessionUser | undefined {
   if (!user || typeof user !== "object") {
-    return undefined;
+    return;
   }
 
   const record = user as Record<string, unknown>;
@@ -58,9 +58,8 @@ export function useOrgInvites(user: unknown) {
   });
 
   const revokeInvite = useMutation({
-    mutationFn: (inviteId: string) => {
-      return api.delete<{ success: boolean }>(`/orgs/invites/${inviteId}`);
-    },
+    mutationFn: (inviteId: string) =>
+      api.delete<{ success: boolean }>(`/orgs/invites/${inviteId}`),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["org-invites", orgId] });
     },

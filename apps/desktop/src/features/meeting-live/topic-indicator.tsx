@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { cx } from "../../lib/ui";
 
 interface TopicIndicatorProps {
-  topic: string | null;
   className?: string;
+  topic: string | null;
 }
 
 export function TopicIndicator({ topic, className }: TopicIndicatorProps) {

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 
 export interface HealthState {
-  serverOnline: boolean;
   audioDeviceAvailable: boolean;
   lastSync: Date | null;
+  serverOnline: boolean;
 }
 
 export function useHealth(): HealthState {

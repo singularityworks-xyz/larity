@@ -11,8 +11,8 @@ type VadDebugEventType = "speech_start" | "speech_end";
 
 interface VadDebugEvent {
   id: string;
-  type: VadDebugEventType;
   ts: number;
+  type: VadDebugEventType;
 }
 
 const TEAM_MEMBER_STATE: CorrelationState = "TEAM MEMBER";
@@ -47,13 +47,13 @@ export type GuardrailRuleType =
 export type GuardrailSeverity = "INFO" | "WARNING" | "BLOCK";
 
 export interface PolicyGuardrail {
-  id: string;
-  name: string;
+  clientId?: string;
   description: string;
+  id: string;
+  isActive: boolean;
+  name: string;
   ruleType: GuardrailRuleType;
   severity: GuardrailSeverity;
-  isActive: boolean;
-  clientId?: string;
 }
 
 function GuardrailCard({
@@ -196,14 +196,15 @@ export function SettingsPage() {
   }, [fetchGuardrails]);
 
   // VAD Cleanup
-  useEffect(() => {
-    return () => {
+  useEffect(
+    () => () => {
       invoke("audio_capture_stop").catch((e) => {
         console.warn("audio_capture_stop cleanup failed", e);
       });
       vadManager.destroy();
-    };
-  }, [vadManager]);
+    },
+    [vadManager]
+  );
 
   // VAD Permission Init
   useEffect(() => {

@@ -33,7 +33,7 @@ function scheduledIsoFromForm(
   scheduledAtLocal: string
 ): string | undefined {
   if (scheduleMode !== "schedule") {
-    return undefined;
+    return;
   }
   const trimmed = scheduledAtLocal.trim();
   return trimmed ? new Date(trimmed).toISOString() : undefined;
@@ -92,9 +92,9 @@ function formatTo24HourTime(
 }
 
 interface CustomDatePickerProps {
-  value: string;
   onChange: (val: string) => void;
   shortcuts: { label: string; value: string }[];
+  value: string;
 }
 
 function CustomDatePicker({
@@ -105,10 +105,10 @@ function CustomDatePicker({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [year, month, day] = useMemo(() => {
+  const [year, month, day] = useMemo((): [number, number, number] => {
     const parts = value.split("-").map((x) => Number.parseInt(x, 10));
     if (parts.length === 3 && !Number.isNaN(parts[0])) {
-      return [parts[0], parts[1] - 1, parts[2]];
+      return [parts[0] as number, (parts[1] ?? 1) - 1, parts[2] ?? 1];
     }
     const d = new Date();
     return [d.getFullYear(), d.getMonth(), d.getDate()];
@@ -296,9 +296,9 @@ function CustomDatePicker({
 }
 
 interface CustomTimePickerProps {
-  value: string;
   onChange: (val: string) => void;
   shortcuts: { label: string; value: string }[];
+  value: string;
 }
 
 function CustomTimePicker({
@@ -317,9 +317,7 @@ function CustomTimePicker({
     hour: parsedHour,
     minute: parsedMinute,
     isPm: parsedIsPm,
-  } = useMemo(() => {
-    return parse24HourTime(value);
-  }, [value]);
+  } = useMemo(() => parse24HourTime(value), [value]);
 
   const [hourInput, setHourInput] = useState(
     String(parsedHour).padStart(2, "0")
@@ -675,7 +673,10 @@ export function StartMeetingPage() {
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("now");
 
   // Custom Date/Time State & Shortcuts
-  const initialDate = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const initialDate = useMemo(
+    () => new Date().toISOString().split("T")[0] ?? "",
+    []
+  );
   const initialTime = useMemo(() => {
     const d = new Date();
     d.setHours(d.getHours() + 1);
@@ -702,7 +703,7 @@ export function StartMeetingPage() {
     const daysToFriday = (5 - today.getDay() + 7) % 7 || 7;
     nextFriday.setDate(today.getDate() + daysToFriday);
 
-    const formatDateString = (d: Date) => d.toISOString().split("T")[0];
+    const formatDateString = (d: Date) => d.toISOString().split("T")[0] ?? "";
 
     return [
       { label: "Today", value: formatDateString(today) },
@@ -712,15 +713,16 @@ export function StartMeetingPage() {
     ];
   }, []);
 
-  const timeShortcuts = useMemo(() => {
-    return [
+  const timeShortcuts = useMemo(
+    () => [
       { label: "9:00 AM", value: "09:00" },
       { label: "11:00 AM", value: "11:00" },
       { label: "1:00 PM", value: "13:00" },
       { label: "3:00 PM", value: "15:00" },
       { label: "5:00 PM", value: "17:00" },
-    ];
-  }, []);
+    ],
+    []
+  );
 
   const { data: members } = useClientMembers(clientId);
 
@@ -728,23 +730,24 @@ export function StartMeetingPage() {
     new Set()
   );
 
-  const selectedClient = useMemo(() => {
-    return (clientsQuery.data ?? []).find((c) => c.id === clientId);
-  }, [clientsQuery.data, clientId]);
+  const selectedClient = useMemo(
+    () => (clientsQuery.data ?? []).find((c) => c.id === clientId),
+    [clientsQuery.data, clientId]
+  );
 
-  const isSubmitDisabled = useMemo(() => {
-    return (
+  const isSubmitDisabled = useMemo(
+    () =>
       clientId.trim().length === 0 ||
       startMeetingMutation.isPending ||
       scheduleMeetingMutation.isPending ||
-      createParticipant.isPending
-    );
-  }, [
-    clientId,
-    startMeetingMutation.isPending,
-    scheduleMeetingMutation.isPending,
-    createParticipant.isPending,
-  ]);
+      createParticipant.isPending,
+    [
+      clientId,
+      startMeetingMutation.isPending,
+      scheduleMeetingMutation.isPending,
+      createParticipant.isPending,
+    ]
+  );
 
   async function syncParticipants(meetingId: string) {
     if (expectedMemberIds.size === 0 || !members) {

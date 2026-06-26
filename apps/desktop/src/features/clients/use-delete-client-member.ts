@@ -10,9 +10,8 @@ export function useDeleteClientMember() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ memberId }: DeleteClientMemberInput): Promise<void> => {
-      return api.delete<void>(`/clients/members/${memberId}`);
-    },
+    mutationFn: ({ memberId }: DeleteClientMemberInput): Promise<void> =>
+      api.delete<void>(`/clients/members/${memberId}`),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["client-members", variables.clientId],

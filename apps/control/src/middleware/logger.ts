@@ -9,12 +9,10 @@ const log = createControlLogger("request-logger");
  * Adds request ID and logs request/response details
  */
 export const requestLogger = new Elysia({ name: "request-logger" })
-  .derive(() => {
-    return {
-      requestId: randomUUID(),
-      requestStart: Date.now(),
-    };
-  })
+  .derive(() => ({
+    requestId: randomUUID(),
+    requestStart: Date.now(),
+  }))
   .onBeforeHandle(({ request, requestId }) => {
     log.info(
       {

@@ -47,19 +47,19 @@ const HIGH_SIGNAL_KEYWORDS = [
 const HIGH_SIGNAL_KEYWORD_SET = new Set<string>(HIGH_SIGNAL_KEYWORDS);
 
 export interface SpeculativeProcessorDeps {
-  tier1: Tier1StructuralDetector;
-  tier2: Tier2Classifier;
   cache?: SpeculativeCache;
   costManager?: CostManager;
+  getCurrentTopicLabel?: (
+    sessionId: string,
+    topicId?: string
+  ) => Promise<string | undefined>;
   getRecentSameSpeakerText?: (
     sessionId: string,
     speakerId: string,
     limit?: number
   ) => string[];
-  getCurrentTopicLabel?: (
-    sessionId: string,
-    topicId?: string
-  ) => Promise<string | undefined>;
+  tier1: Tier1StructuralDetector;
+  tier2: Tier2Classifier;
 }
 
 export class SpeculativeProcessor {

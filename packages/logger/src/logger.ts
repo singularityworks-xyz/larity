@@ -4,8 +4,8 @@ import pretty from "pino-pretty";
 export type { Logger } from "pino";
 
 export interface CreateLoggerOptions {
-  service: string;
   level?: string;
+  service: string;
 }
 
 /**

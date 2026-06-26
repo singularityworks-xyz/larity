@@ -2,8 +2,8 @@ import type { TodayMeeting } from "../../features/home/types";
 import { metricChipClass, panelClass } from "../../lib/ui";
 
 interface TodayPanelProps {
-  meetings: TodayMeeting[];
   loading: boolean;
+  meetings: TodayMeeting[];
 }
 
 function formatTime(iso: string | null): string {

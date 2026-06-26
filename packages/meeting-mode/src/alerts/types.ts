@@ -21,30 +21,30 @@ export type AlertRouting = "shared" | "personal" | "both";
 export type AlertStatus = "pending" | "shown" | "dismissed" | "expired";
 
 export interface Alert {
-  id: string;
   category: AlertCategory;
+  confidence: number;
+  expiresAt?: number;
+  id: string;
+  message: string;
+  reasoning?: string;
+
+  routing: AlertRouting;
   severity: AlertSeverity;
-  triggerUtteranceId: string;
+  shownAt?: number;
   speaker: SpeakerIdentity;
-  topicId: string;
+
+  status: AlertStatus;
+  suggestion?: string;
+  /** Brief user-visible “why flagged” line from Tier 4 when surfaced */
+  surfaceReason?: string;
+  targetUserId?: string;
   timestamp: number;
 
   title: string;
-  message: string;
-  /** Brief user-visible “why flagged” line from Tier 4 when surfaced */
-  surfaceReason?: string;
-  suggestion?: string;
-
-  routing: AlertRouting;
-  targetUserId?: string;
-
-  status: AlertStatus;
-  shownAt?: number;
-  expiresAt?: number;
+  topicId: string;
 
   triggerTier: 1 | 2 | 3 | 4;
-  confidence: number;
-  reasoning?: string;
+  triggerUtteranceId: string;
 }
 
 export const ALERT_PRIORITY: Record<AlertCategory, number> = {
@@ -109,7 +109,7 @@ export function createAlert(
     >
 ): Alert {
   return {
-    id: `alert_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+    id: `alert_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
     topicId: "",
     timestamp: Date.now(),
     status: "pending",

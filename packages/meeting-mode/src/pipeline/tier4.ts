@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { publishSystemEvent } from "@larity/infra/redis";
+import { publishSystemEvent } from "@larity/db/redis";
 import {
   GEMINI_API_KEY,
   GEMINI_TIER4_MODEL,
@@ -13,8 +13,8 @@ import { tier4ResponseSchema } from "./types";
 const log = createMeetingModeLogger("tier4-deep-reason");
 
 export interface Tier4DeepReasonerOptions {
-  timeoutMs?: number;
   invoke?: (prompt: string, timeoutMs: number) => Promise<string>;
+  timeoutMs?: number;
 }
 
 const CATEGORY_PROMPT_BLOCK = `
@@ -214,11 +214,29 @@ export class Tier4DeepReasoner {
   ) => Promise<string>;
 
   constructor(options: Tier4DeepReasonerOptions = {}) {
-    this.ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    this.ai = GEMINI_API_KEY
+      ? new GoogleGenAI({ apiKey: GEMINI_API_KEY })
+      : (null as unknown as GoogleGenAI);
     this.timeoutMs = options.timeoutMs ?? GEMINI_TIER4_TIMEOUT_MS;
-    this.invoke =
-      options.invoke ??
-      ((prompt, timeoutMs) => this.invokeGeminiTier4(prompt, timeoutMs));
+    if (GEMINI_API_KEY) {
+      this.invoke =
+        options.invoke ??
+        ((prompt, timeoutMs) => this.invokeGeminiTier4(prompt, timeoutMs));
+    } else {
+      this.invoke = async () =>
+        JSON.stringify({
+          alertType: "none",
+          confidence: 0,
+          shouldSurface: false,
+          reasoning: "GEMINI_API_KEY not set",
+          routing: "shared",
+          severity: "low",
+          message: "",
+          surfaceReason: null,
+          suggestion: null,
+          targetUserId: null,
+        });
+    }
   }
 
   /**
@@ -233,7 +251,7 @@ export class Tier4DeepReasoner {
     tokenCount: number;
   }> {
     const prompt = buildTier4Prompt(context);
-    const sessionId = context.utterance.sessionId;
+    const sessionId = context.sessionId;
 
     try {
       const raw = await this.invoke(prompt, this.timeoutMs);
@@ -311,9 +329,10 @@ export class Tier4DeepReasoner {
           temperature: 0,
           responseMimeType: "application/json",
           responseSchema: geminiTier4StructuredSchema(),
-          signal: controller.signal,
         },
-      });
+        signal: controller.signal,
+        // biome-ignore lint/suspicious/noExplicitAny: Gemini SDK signal type mismatch
+      } as any);
 
       if (!response.text) {
         throw new Error("Gemini tier4 returned empty content");

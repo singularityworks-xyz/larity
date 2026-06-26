@@ -1,5 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
   "tasks": {
     "dev": {
       "cache": false,
@@ -8,31 +9,25 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["dist/**", "build/**", "out/**"]
-    },
-    "check": {
-      "cache": true,
-      "persistent": false
+      "outputs": ["dist/**", "build/**", "out/**"],
+      "cache": true
     },
     "check-types": {
-      "cache": true,
-      "dependsOn": ["^check-types"]
+      "dependsOn": ["^build"],
+      "cache": true
     },
-    "lint": {
-      "cache": true,
-      "dependsOn": ["^lint"]
+    "check": {
+      "dependsOn": ["check-types"],
+      "cache": true
     },
-    "lint:fix": {
-      "cache": false,
-      "dependsOn": ["^lint:fix"]
+    "generate": {
+      "cache": false
     },
-    "format": {
-      "cache": true,
-      "dependsOn": ["^format"]
+    "push": {
+      "cache": false
     },
-    "format:check": {
-      "cache": true,
-      "dependsOn": ["^format:check"]
+    "migrate": {
+      "cache": false
     }
   }
 }

@@ -13,25 +13,25 @@ export const SPECULATIVE_MAX_ENTRIES_PER_SESSION = Number.parseInt(
 export const SPECULATIVE_TTL_MS = 10_000;
 
 export interface PartialUtterance {
+  readonly confidence: number;
   readonly sessionId: string;
   readonly speaker: SpeakerIdentity;
   readonly text: string;
-  readonly confidence: number;
   readonly timestamp: number;
 }
 
 export interface SpeculativeResult {
-  readonly partialText: string;
   readonly classification: Tier2Classification;
-  readonly tier1Result: Tier1Result;
-  readonly predictedTopicId?: string;
   readonly createdAt: number;
+  readonly partialText: string;
+  readonly predictedTopicId?: string;
+  readonly tier1Result: Tier1Result;
 }
 
 export interface SpeculativeMatch {
   readonly matched: boolean;
-  readonly result: SpeculativeResult | null;
   readonly mismatchRatio: number;
+  readonly result: SpeculativeResult | null;
 }
 
 export type SpeakerProcessingPriority = "high" | "standard" | "low";

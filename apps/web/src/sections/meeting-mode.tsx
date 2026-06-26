@@ -120,6 +120,7 @@ export function MeetingMode() {
           <div className="relative mt-16 w-full">
             {/* The screenshot image wrapper */}
             <div className="relative overflow-hidden rounded-2xl border border-accent/20 bg-white/10 p-2 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.12)] backdrop-blur-sm">
+              {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
               <img
                 alt="Larity Meeting Mode interface"
                 className="w-full rounded-xl object-cover shadow-inner"

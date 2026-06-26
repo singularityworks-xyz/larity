@@ -1,5 +1,5 @@
-import { redis } from "@larity/infra/redis";
-import { redisKeys } from "@larity/infra/redis/keys";
+import { redis } from "@larity/db/redis";
+import { redisKeys } from "@larity/db/redis/keys";
 import { Elysia, t } from "elysia";
 import { createControlLogger } from "../logger";
 import { meetingSessionService } from "../services/meeting-session.service";
@@ -39,7 +39,7 @@ export const internalSessionRoutes = new Elysia({
         const validatedBody = validateSessionSchema.parse(body);
         userId = validatedBody.userId;
         role = validatedBody.role as "host" | "participant" | undefined;
-      } catch (_e) {
+      } catch {
         // Body is optional — ignore parse failures
       }
 
@@ -61,7 +61,7 @@ export const internalSessionRoutes = new Elysia({
               orgId = context.orgId;
             }
           }
-        } catch (_e) {
+        } catch {
           // Ignore
         }
       }

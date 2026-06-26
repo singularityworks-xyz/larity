@@ -1,5 +1,5 @@
 import { Type } from "@google/genai";
-import { prisma } from "@larity/infra/prisma/client";
+import { prisma } from "@larity/db/client";
 import type { ClientPersonaJobData } from "@larity/jobs";
 import type { Job } from "bullmq";
 import { ai } from "./lib/gemini";
@@ -153,7 +153,8 @@ ${utterancesText}
       await prisma.clientMember.update({
         where: { id: clientMemberId },
         data: {
-          persona: mergedPersona,
+          // biome-ignore lint/suspicious/noExplicitAny: deepMerge returns unknown
+          persona: mergedPersona as any,
         },
       });
 

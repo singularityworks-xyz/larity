@@ -2,11 +2,11 @@ import { useMutation } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 
 interface ScheduleMeetingInput {
-  clientId: string;
-  title?: string;
-  description?: string;
   agenda?: string;
+  clientId: string;
+  description?: string;
   scheduledAt: string;
+  title?: string;
 }
 
 export function useScheduleMeeting() {

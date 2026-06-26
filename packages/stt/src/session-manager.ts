@@ -5,16 +5,16 @@
  * Enforces connection limits and provides session lifecycle methods.
  */
 
-import { createDualChannelSession } from "./dual-channel-session";
+import { createDualChannelSession } from "./deepgram/dual-channel-session";
 import { MAX_CONNECTIONS } from "./env";
 import { createSttLogger } from "./logger";
 
 const log = createSttLogger("session-manager");
 
 interface SessionConnection {
+  close(): void;
   sendAudio(audioBuffer: Buffer): Promise<void>;
   setAudioStreamStart(serverAudioStartTs: number): void;
-  close(): void;
 }
 
 type ConnectionFactory = (sessionId: string) => SessionConnection;

@@ -77,14 +77,14 @@ function CounterBadge({
 }
 
 interface AmbientStatusBarProps {
-  isStreamActive: boolean;
-  currentTopic: string | null;
-  constraintCount: number;
-  teamCommitmentCount: number;
-  externalCommitmentCount: number; // Ignored for badges per spec, or combine?
-  contradictionCount: number;
-  participants: LiveParticipant[];
   className?: string;
+  constraintCount: number;
+  contradictionCount: number;
+  currentTopic: string | null;
+  externalCommitmentCount: number; // Ignored for badges per spec, or combine?
+  isStreamActive: boolean;
+  participants: LiveParticipant[];
+  teamCommitmentCount: number;
 }
 
 export function AmbientStatusBar({

@@ -1,4 +1,7 @@
 import { S3Client } from "@aws-sdk/client-s3";
+import { createComponentLogger, createRootLogger } from "@larity/logger";
+
+export type { S3Client } from "@aws-sdk/client-s3";
 
 // biome-ignore lint/performance/noBarrelFile: shared s3 entrypoint
 export {
@@ -7,12 +10,17 @@ export {
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
 
+const log = createComponentLogger(
+  createRootLogger({ service: "infra", level: process.env.LOG_LEVEL }),
+  "s3"
+);
+
 export interface S3Config {
+  accessKeyId: string;
+  bucket: string;
   endpoint: string;
   region: string;
-  accessKeyId: string;
   secretAccessKey: string;
-  bucket: string;
 }
 
 export function getS3Config(): S3Config {
@@ -43,8 +51,13 @@ export function getS3Config(): S3Config {
     missing.push("S3_AUDIO_BUCKET");
   }
 
+  const isDev = process.env.NODE_ENV !== "production";
   if (missing.length > 0) {
-    throw new Error(`Missing S3 config: ${missing.join(" and ")}`);
+    if (isDev) {
+      log.warn({ missing }, "S3 config incomplete — S3 features disabled");
+    } else {
+      throw new Error(`Missing S3 config: ${missing.join(" and ")}`);
+    }
   }
 
   return {
@@ -58,6 +71,10 @@ export function getS3Config(): S3Config {
 
 export function createS3Client(config?: S3Config): S3Client {
   const cfg = config ?? getS3Config();
+  log.info(
+    { endpoint: cfg.endpoint, region: cfg.region, bucket: cfg.bucket },
+    "Creating S3 client"
+  );
   return new S3Client({
     endpoint: cfg.endpoint,
     region: cfg.region,

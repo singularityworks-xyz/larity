@@ -52,11 +52,11 @@ function hydrateDecisionHistorical(
   m: Tier3Result["memoryMatches"][number]
 ): Tier4HistoricalMatch | undefined {
   if (m.type !== "decision") {
-    return undefined;
+    return;
   }
   const decision = payload.openDecisions.find((row) => row.id === m.id);
   if (!decision) {
-    return undefined;
+    return;
   }
   return {
     memoryType: m.type,
@@ -75,11 +75,11 @@ function hydratePolicyHistorical(
   m: Tier3Result["memoryMatches"][number]
 ): Tier4HistoricalMatch | undefined {
   if (m.type !== "policy_guardrail") {
-    return undefined;
+    return;
   }
   const pol = payload.activePolicyGuardrails.find((row) => row.id === m.id);
   if (!pol) {
-    return undefined;
+    return;
   }
   return {
     memoryType: m.type,
@@ -95,7 +95,7 @@ function hydrateImportantHistorical(
   m: Tier3Result["memoryMatches"][number]
 ): Tier4HistoricalMatch | undefined {
   if (m.type !== "important_point") {
-    return undefined;
+    return;
   }
   const prior = payload.priorCommitments.find((row) => row.id === m.id);
   const known =
@@ -104,7 +104,7 @@ function hydrateImportantHistorical(
       : undefined;
   const point = prior ?? known;
   if (!point) {
-    return undefined;
+    return;
   }
   return {
     memoryType: m.type,
@@ -196,17 +196,17 @@ function capConstraints(
 }
 
 export interface Tier4AssemblyInput {
-  utterance: Utterance;
-  topicSummary: string;
-  tier1: Tier1Result;
-  tier2: Tier2Classification;
-  tier3: Tier3Result;
-  payload: PreloadedContextPayload | null;
-  recentUtterances: Utterance[];
   allCommitments: readonly Commitment[];
   allConstraints: readonly Constraint[];
   maxConstraints?: number;
+  payload: PreloadedContextPayload | null;
+  recentUtterances: Utterance[];
   speakerStates?: SpeakerStateSummary[];
+  tier1: Tier1Result;
+  tier2: Tier2Classification;
+  tier3: Tier3Result;
+  topicSummary: string;
+  utterance: Utterance;
 }
 
 export function assembleTier4Context(input: Tier4AssemblyInput): Tier4Context {
@@ -226,6 +226,7 @@ export function assembleTier4Context(input: Tier4AssemblyInput): Tier4Context {
 
   return {
     triggerUtteranceId: input.utterance.utteranceId,
+    sessionId: input.utterance.sessionId,
     utterance: input.utterance.text,
     speaker: input.utterance.speaker,
     topicId: input.utterance.topicId,

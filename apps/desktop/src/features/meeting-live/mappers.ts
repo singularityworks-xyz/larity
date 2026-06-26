@@ -8,64 +8,64 @@ import type {
 } from "./types";
 
 interface BackendSpeaker {
+  confidence: number;
+  diarizationIndices: number[];
+  isCurrentUser: boolean;
+  name: string;
   speakerId: string;
   type: "TEAM" | "EXTERNAL";
   userId?: string;
-  name: string;
-  diarizationIndices: number[];
-  isCurrentUser: boolean;
-  confidence: number;
 }
 
 interface BackendUtterance {
-  utteranceId: string;
+  confidenceScore: number;
+  duration: number;
+  embedding?: number[];
+  mergedCount: number;
   sessionId: string;
   speaker: BackendSpeaker;
+  startOffset: number;
   text: string;
   timestamp: number;
-  confidenceScore: number;
-  startOffset: number;
-  duration: number;
-  wordCount: number;
-  mergedCount: number;
   topicId?: string;
-  embedding?: number[];
+  utteranceId: string;
+  wordCount: number;
 }
 
 interface BackendTopicState {
-  topicId: string;
-  label: string;
-  summary: string;
   centroid: number[];
-  utteranceCount: number;
-  lastUpdated: number;
-  constraintsMentioned?: unknown[];
   commitmentsMentioned?: unknown[];
-  riskFlags?: unknown[];
   completeness?: Record<string, unknown>;
+  constraintsMentioned?: unknown[];
+  label: string;
+  lastUpdated: number;
+  riskFlags?: unknown[];
+  summary: string;
+  topicId: string;
+  utteranceCount: number;
 }
 
 interface BackendCommitment {
+  contradicts?: string;
+  extractedData?: Record<string, unknown>;
   id: string;
-  statement: string;
   normalizedStatement?: string;
+  relatedCommitments?: string[];
   speaker: BackendSpeaker;
+  statement: string;
+  status: "tentative" | "confirmed" | "contradicted" | "superseded";
+  supersedes?: string;
+  timestamp: number;
   topicId: string;
   type: string;
-  status: "tentative" | "confirmed" | "contradicted" | "superseded";
-  timestamp: number;
   utteranceId: string;
-  relatedCommitments?: string[];
-  contradicts?: string;
-  supersedes?: string;
-  extractedData?: Record<string, unknown>;
 }
 
 interface BackendCommitmentLedgerEvent {
-  type: "insert" | "status_change";
+  commitment: BackendCommitment;
   sessionId: string;
   timestamp: number;
-  commitment: BackendCommitment;
+  type: "insert" | "status_change";
 }
 
 const BACKEND_STATUS_TO_FRONTEND: Record<string, CommitmentStatus> = {

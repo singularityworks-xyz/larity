@@ -2,22 +2,22 @@ export type MeetingPromptSource = "calendar" | "heuristic";
 
 export interface ScheduledMeeting {
   id: string;
-  title: string;
   startTimeMs: number;
+  title: string;
 }
 
 export interface MeetingPrompt {
-  id: string;
-  title: string;
-  startTimeMs: number;
-  source: MeetingPromptSource;
   context?: string;
+  id: string;
+  source: MeetingPromptSource;
+  startTimeMs: number;
+  title: string;
 }
 
 interface FindCalendarPromptParams {
+  lookaheadMs: number;
   meetings: ScheduledMeeting[];
   nowMs: number;
-  lookaheadMs: number;
   promptedMeetingIds: Set<string>;
 }
 

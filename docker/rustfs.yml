@@ -1,0 +1,47 @@
+services:
+  rustfs:
+    image: docker.io/rustfs/rustfs:latest
+    container_name: larity-rustfs
+    restart: unless-stopped
+    security_opt:
+      - "no-new-privileges:true"
+    ports:
+      - "59000:9000"
+      - "59002:9001" # Realtime app uses port 9001, so we map RustFS console to 59002
+    environment:
+      - RUSTFS_VOLUMES=/data/rustfs
+      - RUSTFS_ADDRESS=0.0.0.0:9000
+      - RUSTFS_CONSOLE_ADDRESS=0.0.0.0:9001
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_ACCESS_KEY=${S3_ACCESS_KEY_ID:-larityadmin}
+      - RUSTFS_SECRET_KEY=${S3_SECRET_ACCESS_KEY:-laritysecret}
+      - RUSTFS_ROOT_USER=${S3_ACCESS_KEY_ID:-larityadmin}
+      - RUSTFS_ROOT_PASSWORD=${S3_SECRET_ACCESS_KEY:-laritysecret}
+    volumes:
+      - rustfs_data:/data/rustfs
+    networks:
+      - larity-network
+
+  rustfs-init:
+    image: docker.io/minio/mc:latest
+    container_name: larity-rustfs-init
+    depends_on:
+      - rustfs
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for RustFS to start...';
+      sleep 3;
+      mc alias set local-rustfs http://rustfs:9000 ${S3_ACCESS_KEY_ID:-larityadmin} ${S3_SECRET_ACCESS_KEY:-laritysecret};
+      mc mb local-rustfs/${S3_AUDIO_BUCKET:-larity-audio} --ignore-existing;
+      echo 'Bucket created/verified successfully!';
+      "
+    networks:
+      - larity-network
+
+volumes:
+  rustfs_data:
+
+networks:
+  larity-network:
+    external: true
+    name: larity-network

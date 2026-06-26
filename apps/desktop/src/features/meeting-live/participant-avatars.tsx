@@ -21,8 +21,8 @@ function connectionDotClass(isConnected: boolean): string {
 }
 
 interface ParticipantAvatarsProps {
-  participants: LiveParticipant[];
   className?: string;
+  participants: LiveParticipant[];
 }
 
 export function ParticipantAvatars({
@@ -39,7 +39,7 @@ export function ParticipantAvatars({
 
   return (
     <section
-      aria-label={`${team.length} team member${team.length !== 1 ? "s" : ""}`}
+      aria-label={`${team.length} team member${team.length === 1 ? "" : "s"}`}
       className={cx("inline-flex items-center -space-x-1.5", className)}
     >
       {visible.map((p) => (
