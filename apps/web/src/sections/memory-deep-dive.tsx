@@ -105,16 +105,16 @@ function TypewriterInput() {
   }, [subIndex, isDeleting, index]);
 
   return (
-    <div className="flex w-full flex-col rounded-2xl border border-zinc-900/15 bg-white p-5 text-left shadow-[0_12px_40px_rgba(0,0,0,0.04)] md:p-6">
+    <div className="flex w-full flex-col rounded-2xl border border-zinc-900/15 bg-white p-4 text-left shadow-[0_12px_40px_rgba(0,0,0,0.04)] sm:p-5 md:p-6">
       {/* Multi-line Typing Area */}
-      <div className="min-h-[120px] w-full flex-1">
-        <span className="block break-words font-mono font-normal text-lg text-zinc-900 leading-relaxed sm:text-xl md:text-2xl">
+      <div className="min-h-[80px] w-full flex-1 sm:min-h-[100px] md:min-h-[120px]">
+        <span className="block break-words font-body font-normal text-base text-zinc-900 leading-relaxed sm:text-xl md:text-2xl">
           {displayText}
-          <span className="ml-1 inline-block h-5 w-2 animate-pulse bg-accent/80 align-middle md:h-6 md:w-2" />
+          <span className="ml-1 inline-block h-4 w-1.5 animate-pulse bg-accent/80 align-middle sm:h-5 sm:w-2 md:h-6 md:w-2" />
         </span>
       </div>
       {/* Bottom Row / Toolbar */}
-      <div className="mt-4 flex min-h-[40px] items-center justify-between border-zinc-100 border-t pt-4">
+      <div className="mt-3 flex min-h-[40px] items-center justify-between border-zinc-100 border-t pt-3 sm:mt-4 sm:pt-4">
         {/* Dynamic Company Pill */}
         <div className="flex min-h-[32px] items-center">
           {(() => {
@@ -123,14 +123,16 @@ function TypewriterInput() {
             );
             return (
               <div
-                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                className={`flex items-center gap-1.5 rounded-full border px-2 py-1 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] sm:gap-2 sm:px-3 sm:py-1.5 ${
                   matchedCompany
                     ? `translate-y-0 scale-100 opacity-100 shadow-[0_8px_20px_rgba(0,0,0,0.08)] ${matchedCompany.color}`
                     : "pointer-events-none -translate-y-8 scale-90 opacity-0"
                 }`}
               >
-                {matchedCompany?.logo}
-                <span className="font-medium text-sm tracking-tight">
+                <div className="scale-75 sm:scale-100">
+                  {matchedCompany?.logo}
+                </div>
+                <span className="font-medium text-xs tracking-tight sm:text-sm">
                   {matchedCompany?.name}
                 </span>
               </div>
@@ -140,11 +142,11 @@ function TypewriterInput() {
         {/* Send Button */}
         <button
           aria-label="Send query"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white transition-colors hover:bg-zinc-800"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white transition-colors hover:bg-zinc-800 sm:h-10 sm:w-10"
           type="button"
         >
           <svg
-            className="h-4.5 w-4.5"
+            className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5"
             fill="none"
             stroke="currentColor"
             strokeWidth="2.5"
@@ -218,7 +220,7 @@ export function MemoryDeepDive() {
 
           {/* Block 2: Semantic Search (Coded Typewriter Visual) */}
           <div className="border-zinc-900/30 border-t pt-10">
-            <div className="relative flex aspect-[2.39/1] w-full items-center justify-center overflow-hidden rounded-xl border border-zinc-900/30 p-6">
+            <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl border border-zinc-900/30 p-4 sm:aspect-[16/9] sm:p-6 lg:aspect-[2.39/1]">
               {/* Background image */}
               {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
               <img

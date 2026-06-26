@@ -1,4 +1,9 @@
-export function Footer() {
+interface FooterProps {
+  onOpenPrivacy: () => void;
+  onOpenTerms: () => void;
+}
+
+export function Footer({ onOpenPrivacy, onOpenTerms }: FooterProps) {
   return (
     <footer className="relative w-full overflow-hidden bg-bg pt-16 sm:pt-24">
       {/* Background Image with Opacity Gradient */}
@@ -33,21 +38,26 @@ export function Footer() {
 
           {/* Minimalist Navigation */}
           <div className="flex flex-wrap gap-x-8 gap-y-4 font-medium text-sm text-zinc-600 sm:justify-end">
-            <a
+            {/* <a
               className="transition-colors hover:text-zinc-900"
               href="#product"
             >
               Product
-            </a>
-            <a
-              className="transition-colors hover:text-zinc-900"
-              href="#privacy"
+            </a> */}
+            <button
+              className="cursor-pointer transition-colors hover:text-zinc-900 focus-visible:outline-none"
+              onClick={onOpenPrivacy}
+              type="button"
             >
               Privacy
-            </a>
-            <a className="transition-colors hover:text-zinc-900" href="#terms">
+            </button>
+            <button
+              className="cursor-pointer transition-colors hover:text-zinc-900 focus-visible:outline-none"
+              onClick={onOpenTerms}
+              type="button"
+            >
               Terms
-            </a>
+            </button>
             <a
               className="transition-colors hover:text-zinc-900"
               href="https://x.com/amancooks"
