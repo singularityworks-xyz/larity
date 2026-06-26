@@ -9,11 +9,11 @@
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
-    "@types/node": "^26.0.0",
+    "@types/node": "^26.0.1",
     "typescript": "^7.0.1-rc"
   },
   "dependencies": {
-    "@google/genai": "^2.9.0",
+    "@google/genai": "^2.10.0",
     "@larity/db": "workspace:*",
     "@larity/infra": "workspace:*",
     "@larity/jobs": "workspace:*",
@@ -25,5 +25,5 @@
     "meeting-mode": "workspace:*",
     "zod": "^4.4.3"
   },
-  "version": "0.0.2"
+  "version": "0.0.3"
 }

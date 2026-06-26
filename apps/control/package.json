@@ -16,18 +16,18 @@
     "@larity/infra": "workspace:*",
     "@larity/jobs": "workspace:*",
     "@larity/logger": "workspace:*",
-    "better-auth": "^1.6.20",
+    "better-auth": "^1.6.22",
     "dotenv": "^17.4.2",
     "elysia": "^1.4.29",
     "ioredis": "^5.11.1",
     "meeting-mode": "workspace:*",
-    "resend": "^6.14.0",
+    "resend": "^6.16.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
-    "@types/node": "^26.0.0",
+    "@types/node": "^26.0.1",
     "typescript": "^7.0.1-rc"
   },
-  "version": "0.0.2"
+  "version": "0.0.3"
 }
