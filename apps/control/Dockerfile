@@ -9,7 +9,7 @@ WORKDIR /app
 FROM base AS pruner
 RUN bun install -g turbo
 COPY . .
-RUN turbo prune control --docker
+RUN turbo prune @larity/control --docker
 
 # ────────────────────────────────────────────────────────────────────────────
 # Stage 2: BUILDER (dev + prod deps)
@@ -57,7 +57,7 @@ COPY --from=builder /app/apps/control/dist /app/apps/control/dist
 COPY --from=builder /app/apps/control/package.json /app/apps/control/package.json
 
 # Copy prisma config for database migrations directly from build context
-COPY prisma.config.ts /app/prisma.config.ts
+COPY packages/db/prisma.config.ts /app/prisma.config.ts
 
 WORKDIR /app/apps/control
 EXPOSE 3000

@@ -60,7 +60,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: "./apps/desktop"
-          includeRelease: false
+          includeRelease: true
 
       - name: Convert DEB to RPM
         run: |
@@ -127,7 +127,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: "./apps/desktop"
-          includeRelease: false
+          includeRelease: true
 
       - name: Upload Windows desktop artifacts
         uses: actions/upload-artifact@v4

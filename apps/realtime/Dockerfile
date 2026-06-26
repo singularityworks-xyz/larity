@@ -9,7 +9,7 @@ WORKDIR /app
 FROM base AS pruner
 RUN bun install -g turbo
 COPY . .
-RUN turbo prune realtime --docker
+RUN turbo prune @larity/realtime --docker
 
 # ────────────────────────────────────────────────────────────────────────────
 # Stage 2: BUILDER (dev + prod deps)
