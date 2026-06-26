@@ -100,7 +100,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: bun x prisma generate
+        run: bun run db:gen
 
       - name: Install Linux build dependencies
         run: |
@@ -173,7 +173,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Generate Prisma client
-        run: bun x prisma generate
+        run: bun run db:gen
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable

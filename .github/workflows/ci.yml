@@ -31,7 +31,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Generate Prisma Client
-        run: bun x prisma generate
+        run: bun run db:gen
 
       - name: Run Build
         run: bun run build
