@@ -1,6 +1,6 @@
 {
   "name": "@larity/db",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -28,6 +28,7 @@
     "ioredis": "^5.11.1"
   },
   "devDependencies": {
+    "@larity/config": "workspace:*",
     "@prisma/config": "^7.8.0",
     "prisma": "^7.8.0"
   }
