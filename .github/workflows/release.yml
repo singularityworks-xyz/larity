@@ -177,6 +177,7 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}-${{ matrix.platform }}
           platforms: ${{ matrix.docker_platform }}
+          provenance: false
 
   build-docker-control:
     strategy:
@@ -218,6 +219,7 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}-${{ matrix.platform }}
           platforms: ${{ matrix.docker_platform }}
+          provenance: false
 
   create-release:
     needs:
