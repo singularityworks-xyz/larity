@@ -18,8 +18,8 @@
     "dev": "turbo run dev",
     "mock": "cd apps/mock && bun run mock",
     "build": "turbo run build",
-    "check-types": "turbo run check-types",
-    "check": "ultracite fix --unsafe",
+    "check-types": "turbo run check-types && make rust-clippy",
+    "check": "ultracite fix --unsafe && make rust-fix",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "db:gen": "turbo run generate --filter=@larity/db",
@@ -38,5 +38,5 @@
   "patchedDependencies": {
     "@deepgram/sdk@5.4.0": "patches/@deepgram%2Fsdk@5.4.0.patch"
   },
-  "version": "0.0.6"
+  "version": "0.0.7"
 }

@@ -1,4 +1,4 @@
-.PHONY: rust-fmt rust-fmt-check rust-clippy rust-lint rust-fix
+.PHONY: rust-fmt rust-fmt-check rust-clippy rust-lint rust-fix check check-types
 
 rust-fmt:
 	$(MAKE) -C apps/desktop/src-tauri fmt
@@ -14,3 +14,10 @@ rust-lint:
 
 rust-fix:
 	$(MAKE) -C apps/desktop/src-tauri fix
+
+check:
+	bun run check
+
+check-types:
+	bun run check-types
+
