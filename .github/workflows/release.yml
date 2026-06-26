@@ -41,10 +41,10 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/bun.lock', '**/package-lock.json') }}
 
       - name: Run JS/TS Linter
-        run: bun run check
+        run: bun x ultracite check
 
       - name: Run JS/TS Typechecker
-        run: bun run check-types
+        run: bun x turbo run check-types
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
