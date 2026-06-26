@@ -26,4 +26,12 @@ pkgs.stdenv.mkDerivation rec {
     wrapProgram $out/bin/larity \
       --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath buildInputs}"
   '';
+
+  meta = with pkgs.lib; {
+    description = "Larity - AI Meeting Companion and Workspace";
+    homepage = "https://github.com/singularityworks-xyz/larity";
+    license = licenses.mit;
+    platforms = [ "x86_64-linux" ];
+    mainProgram = "larity";
+  };
 }

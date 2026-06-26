@@ -175,7 +175,7 @@ jobs:
           context: .
           file: apps/realtime/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}/larity-realtime:${{ env.VERSION }}-${{ matrix.platform }}
+          tags: ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}-${{ matrix.platform }}
           platforms: ${{ matrix.docker_platform }}
 
   build-docker-control:
@@ -216,7 +216,7 @@ jobs:
           context: .
           file: apps/control/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}/larity-control:${{ env.VERSION }}-${{ matrix.platform }}
+          tags: ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}-${{ matrix.platform }}
           platforms: ${{ matrix.docker_platform }}
 
   create-release:
@@ -250,7 +250,7 @@ jobs:
         uses: useblacksmith/setup-docker-builder@v1
 
       - name: Login to GHCR
-        uses: docker/login-action@v7
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -268,24 +268,24 @@ jobs:
           #!/bin/bash
           # shellcheck disable=SC2086
           # Realtime
-          docker manifest create ghcr.io/${{ github.repository }}/larity-realtime:${{ env.VERSION }} \
-            ghcr.io/${{ github.repository }}/larity-realtime:${{ env.VERSION }}-amd64 \
-            ghcr.io/${{ github.repository }}/larity-realtime:${{ env.VERSION }}-arm64
-          docker manifest create ghcr.io/${{ github.repository }}/larity-realtime:latest \
-            ghcr.io/${{ github.repository }}/larity-realtime:${{ env.VERSION }}-amd64 \
-            ghcr.io/${{ github.repository }}/larity-realtime:${{ env.VERSION }}-arm64
-          docker manifest push ghcr.io/${{ github.repository }}/larity-realtime:${{ env.VERSION }}
-          docker manifest push ghcr.io/${{ github.repository }}/larity-realtime:latest
+          docker manifest create ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }} \
+            ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}-amd64 \
+            ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}-arm64
+          docker manifest create ghcr.io/${{ github.repository }}/realtime:latest \
+            ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}-amd64 \
+            ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}-arm64
+          docker manifest push ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}
+          docker manifest push ghcr.io/${{ github.repository }}/realtime:latest
 
           # Control
-          docker manifest create ghcr.io/${{ github.repository }}/larity-control:${{ env.VERSION }} \
-            ghcr.io/${{ github.repository }}/larity-control:${{ env.VERSION }}-amd64 \
-            ghcr.io/${{ github.repository }}/larity-control:${{ env.VERSION }}-arm64
-          docker manifest create ghcr.io/${{ github.repository }}/larity-control:latest \
-            ghcr.io/${{ github.repository }}/larity-control:${{ env.VERSION }}-amd64 \
-            ghcr.io/${{ github.repository }}/larity-control:${{ env.VERSION }}-arm64
-          docker manifest push ghcr.io/${{ github.repository }}/larity-control:${{ env.VERSION }}
-          docker manifest push ghcr.io/${{ github.repository }}/larity-control:latest
+          docker manifest create ghcr.io/${{ github.repository }}/control:${{ env.VERSION }} \
+            ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}-amd64 \
+            ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}-arm64
+          docker manifest create ghcr.io/${{ github.repository }}/control:latest \
+            ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}-amd64 \
+            ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}-arm64
+          docker manifest push ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}
+          docker manifest push ghcr.io/${{ github.repository }}/control:latest
 
       - name: Build Arch Linux package (makepkg)
         shell: bash
@@ -339,8 +339,8 @@ jobs:
             
             echo ""
             echo "## Container Images (GHCR)"
-            echo "* **Realtime Service:** \`ghcr.io/${{ github.repository }}/larity-realtime:${{ env.VERSION }}\`"
-            echo "* **Control Service:** \`ghcr.io/${{ github.repository }}/larity-control:${{ env.VERSION }}\`"
+            echo "* **Realtime Service:** \`ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}\`"
+            echo "* **Control Service:** \`ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}\`"
           } > release_body.md
 
       - name: Create Release
