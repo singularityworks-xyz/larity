@@ -1,4 +1,4 @@
-FROM oven/bun:1-slim AS base
+FROM docker.io/oven/bun:1-slim AS base
 ENV CI=true
 ENV HUSKY=0
 WORKDIR /app
@@ -13,7 +13,7 @@ COPY --from=pruner /app/out/json/ .
 COPY --from=pruner /app/out/bun.lock* ./
 RUN bun install --frozen-lockfile --ignore-scripts
 COPY --from=pruner /app/out/full/ .
-WORKDIR /app/packages/infra
+WORKDIR /app/packages/db
 RUN bunx prisma generate
 WORKDIR /app/apps/control
 RUN bun run build

@@ -21,7 +21,7 @@
     },
     "apps/control": {
       "name": "@larity/control",
-      "version": "0.0.3",
+      "version": "0.0.5",
       "dependencies": {
         "@elysiajs/cors": "^1.4.2",
         "@elysiajs/cron": "^1.4.2",
@@ -45,7 +45,7 @@
     },
     "apps/desktop": {
       "name": "@larity/desktop",
-      "version": "0.0.9",
+      "version": "0.0.13",
       "dependencies": {
         "@fontsource/geist-mono": "^5.2.8",
         "@fontsource/geist-sans": "^5.2.5",
@@ -81,7 +81,7 @@
     },
     "apps/mock": {
       "name": "@larity/mock-overlay",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "dependencies": {
         "@larity/stt": "workspace:*",
         "@tailwindcss/vite": "^4.3.1",
@@ -107,7 +107,7 @@
     },
     "apps/realtime": {
       "name": "@larity/realtime",
-      "version": "0.0.3",
+      "version": "0.0.5",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1075.0",
         "@aws-sdk/lib-storage": "^3.1075.0",
@@ -190,6 +190,7 @@
         "ioredis": "^5.11.1",
       },
       "devDependencies": {
+        "@larity/config": "workspace:*",
         "@prisma/config": "^7.8.0",
         "prisma": "^7.8.0",
       },
