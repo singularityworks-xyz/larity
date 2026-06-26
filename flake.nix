@@ -17,6 +17,7 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             bun
+            rustup
             pkg-config
             openssl
             glib

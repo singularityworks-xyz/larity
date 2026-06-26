@@ -52,7 +52,8 @@
 
   # Scripts
   scripts = {
-    check.exec = "bun run check";
-    check-types.exec = "bun run check-types";
+    check-all.exec = "bun x ultracite check && bun x turbo run check-types && cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml -- --check && cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings";
+    tauri-build.exec = "bun run build && bunx tauri build";
+    tauri-dev.exec = "bunx tauri dev";
   };
 }
