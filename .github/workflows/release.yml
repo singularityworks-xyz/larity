@@ -294,7 +294,7 @@ jobs:
         run: |
           # Configure PKGBUILD version
           sed -i "s/__VERSION__/${{ env.VERSION }}/g" apps/desktop/PKGBUILD
-          cp artifacts-linux/*.deb apps/desktop/
+          cp artifacts-linux/deb/*.deb apps/desktop/
 
           # Adjust PKGBUILD source to local deb file for offline makepkg
           # shellcheck disable=SC2016
@@ -312,7 +312,7 @@ jobs:
         run: |
           #!/bin/bash
           # shellcheck disable=SC2086
-          DEB_FILE=$(ls artifacts-linux/*.deb)
+          DEB_FILE=$(ls artifacts-linux/deb/*.deb)
           DEB_SHA256=$(sha256sum "$DEB_FILE" | cut -d' ' -f1)
           sed -i "s/__VERSION__/${{ env.VERSION }}/g" apps/desktop/default.nix
           sed -i "s/sha256 = \".*\";/sha256 = \"${DEB_SHA256}\";/g" apps/desktop/default.nix
