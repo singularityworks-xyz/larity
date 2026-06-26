@@ -846,29 +846,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "desktop"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "byteorder",
- "cpal",
- "rfd",
- "rubato",
- "screencapturekit",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-http",
- "tauri-plugin-opener",
- "thiserror 2.0.18",
- "tokio",
- "voice_activity_detector",
- "webkit2gtk",
- "window-vibrancy 0.7.1",
-]
-
-[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2122,6 +2099,29 @@ dependencies = [
  "html5ever",
  "indexmap 2.12.1",
  "selectors",
+]
+
+[[package]]
+name = "larity"
+version = "0.0.4"
+dependencies = [
+ "base64 0.22.1",
+ "byteorder",
+ "cpal",
+ "rfd",
+ "rubato",
+ "screencapturekit",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-http",
+ "tauri-plugin-opener",
+ "thiserror 2.0.18",
+ "tokio",
+ "voice_activity_detector",
+ "webkit2gtk",
+ "window-vibrancy 0.7.1",
 ]
 
 [[package]]

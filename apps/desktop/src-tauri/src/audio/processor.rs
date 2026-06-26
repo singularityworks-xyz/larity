@@ -65,7 +65,7 @@ impl AudioProcessor {
 
             let mut pcm_samples = Vec::with_capacity(SAMPLES_PER_FRAME);
             for &sample in &chunk_f32 {
-                let s = (sample.max(-1.0).min(1.0) * i16::MAX as f32) as i16;
+                let s = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
                 pcm_samples.push(s);
             }
             chunks.push(pcm_samples);

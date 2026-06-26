@@ -1,6 +1,6 @@
 [package]
-name = "@larity/desktop"
-version = "0.0.3"
+name = "larity"
+version = "0.0.5"
 description = "Your meetings forget nothing. Decisions, commitments, constraints captured in real-time, surfaced when it matters."
 authors = ["Singularity Works<itssingularity.com>", "Aman Aziz<aman.itssingularity.com>", "Parazeeknova<przknv.cc>"]
 edition = "2024"

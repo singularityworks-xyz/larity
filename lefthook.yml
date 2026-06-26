@@ -11,4 +11,11 @@ pre-commit:
         - "**/*.{ts,tsx}"
     - name: version-bump
       run: bun scripts/version-manager.ts
+    - name: rust-fmt
+      glob: "apps/desktop/src-tauri/**/*.rs"
+      run: make -C apps/desktop/src-tauri fmt
+      stage_fixed: true
+    - name: rust-clippy
+      glob: "apps/desktop/src-tauri/**/*.rs"
+      run: make -C apps/desktop/src-tauri clippy
 

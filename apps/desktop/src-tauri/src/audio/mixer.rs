@@ -1,4 +1,4 @@
-use base64::{engine::general_purpose::STANDARD, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use byteorder::{LittleEndian, WriteBytesExt};
 use serde_json::json;
 use tauri::{AppHandle, Emitter};

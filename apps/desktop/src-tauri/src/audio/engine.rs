@@ -1,7 +1,7 @@
-use crate::audio::mixer::{AudioMixer, MixerMessage, SourceType};
-use crate::audio::processor::AudioProcessor;
 use crate::audio::AudioDevice;
 use crate::audio::VadState;
+use crate::audio::mixer::{AudioMixer, MixerMessage, SourceType};
+use crate::audio::processor::AudioProcessor;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Sample, Stream};
 use std::collections::hash_map::DefaultHasher;
@@ -127,12 +127,11 @@ pub fn start_capture(
                             .duration_since(std::time::UNIX_EPOCH)
                             .unwrap()
                             .as_millis() as u64;
-                        if let Some(vad_state) = app_vad.try_state::<VadState>() {
-                            if let Ok(guard) = vad_state.vad_tx.try_lock() {
-                                if let Some(vad_tx) = &*guard {
-                                    vad_tx.send(chunk.clone());
-                                }
-                            }
+                        if let Some(vad_state) = app_vad.try_state::<VadState>()
+                            && let Ok(guard) = vad_state.vad_tx.try_lock()
+                            && let Some(vad_tx) = &*guard
+                        {
+                            vad_tx.send(chunk.clone());
                         }
 
                         // Emit raw amplitude bypassing VAD
@@ -152,7 +151,7 @@ pub fn start_capture(
                         });
                     }
                 },
-                err_fn.clone(),
+                err_fn,
                 None,
             )
         }
@@ -168,12 +167,11 @@ pub fn start_capture(
                             .duration_since(std::time::UNIX_EPOCH)
                             .unwrap()
                             .as_millis() as u64;
-                        if let Some(vad_state) = app_vad.try_state::<VadState>() {
-                            if let Ok(guard) = vad_state.vad_tx.try_lock() {
-                                if let Some(vad_tx) = &*guard {
-                                    vad_tx.send(chunk.clone());
-                                }
-                            }
+                        if let Some(vad_state) = app_vad.try_state::<VadState>()
+                            && let Ok(guard) = vad_state.vad_tx.try_lock()
+                            && let Some(vad_tx) = &*guard
+                        {
+                            vad_tx.send(chunk.clone());
                         }
 
                         // Emit raw amplitude bypassing VAD
@@ -193,7 +191,7 @@ pub fn start_capture(
                         });
                     }
                 },
-                err_fn.clone(),
+                err_fn,
                 None,
             )
         }
