@@ -14,7 +14,6 @@
     librsvg
     patchelf
     dpkg
-    alien
     cargo-edit
   ];
 
@@ -23,7 +22,7 @@
     enable = true;
     bun.enable = true;
     npm.enable = true;
-    node.enable = true;
+    nodejs.enable = true;
   };
 
   languages.rust = {
