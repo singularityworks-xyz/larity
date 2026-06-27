@@ -327,6 +327,9 @@ jobs:
           # Compile package inside Arch docker image
           docker run --rm -v "$PWD:/app" -w /app archlinux:latest bash -c "pacman -Sy --noconfirm base-devel binutils && useradd -m builder && chown -R builder:builder . && cd apps/desktop && sudo -u builder makepkg -fd"
 
+          # Restore ownership of files to the runner user
+          sudo chown -R $(id -u):$(id -g) .
+
           # Move build output to main artifacts
           # shellcheck disable=SC2035
           mv apps/desktop/*.pkg.tar.zst artifacts-linux/
