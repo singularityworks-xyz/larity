@@ -14,5 +14,5 @@ sha256sums=('SKIP')
 
 package() {
     # Extract the deb package data
-    tar -xf data.tar.xz -C "${pkgdir}"
+    tar -xf data.tar.* -C "${pkgdir}"
 }
