@@ -1,5 +1,4 @@
 import { execSync } from "node:child_process";
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -179,10 +178,6 @@ if (import.meta.main) {
           /version\s*=\s*"[^"]*";/,
           `version = "0.0.1";`
         );
-        content = content.replace(
-          /sha256\s*=\s*"[^"]*";/,
-          `sha256 = "0000000000000000000000000000000000000000000000000000000000000000";`
-        );
         fs.writeFileSync(defaultNixPath, content);
         updatedFiles.push(defaultNixPath);
       }
@@ -263,47 +258,6 @@ if (import.meta.main) {
           /version\s*=\s*"[^"]*";/,
           `version = "${newVersion}";`
         );
-
-        // Check if a local deb file exists to compute its sha256
-        const debDir = path.join(
-          wsPath,
-          "src-tauri",
-          "target",
-          "release",
-          "bundle",
-          "deb"
-        );
-        if (fs.existsSync(debDir)) {
-          const debFiles = fs
-            .readdirSync(debDir)
-            .filter((f) => f.endsWith(".deb"));
-          if (debFiles.length > 0) {
-            // Find the deb file matching newVersion or fallback to first found deb file
-            const debFile =
-              debFiles.find((f) => f.includes(newVersion)) || debFiles[0];
-            const debPath = path.join(debDir, debFile);
-            try {
-              const fileBuffer = fs.readFileSync(debPath);
-              const sha256 = crypto
-                .createHash("sha256")
-                .update(fileBuffer)
-                .digest("hex");
-              content = content.replace(
-                /sha256\s*=\s*"[^"]*";/,
-                `sha256 = "${sha256}";`
-              );
-              console.log(
-                `Workspace ${ws} default.nix sha256 updated to ${sha256}`
-              );
-            } catch (err) {
-              console.warn(
-                "Failed to calculate SHA256 of local deb file:",
-                err
-              );
-            }
-          }
-        }
-
         fs.writeFileSync(defaultNixPath, content);
         updatedFiles.push(defaultNixPath);
         console.log(
