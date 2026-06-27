@@ -346,6 +346,8 @@ jobs:
 
       - name: Generate Changelog and Release Body
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PREV_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "")"
 
@@ -356,14 +358,28 @@ jobs:
             
             if [ -n "${PREV_TAG}" ]; then
               git log "${PREV_TAG}..HEAD" --oneline --format="* %h - %s (%an)"
-              echo ""
-              echo "## Contributors"
-              git log "${PREV_TAG}..HEAD" --format="* @%an" | sort -u
             else
               git log --oneline --format="* %h - %s (%an)"
-              echo ""
-              echo "## Contributors"
-              git log --format="* @%an" | sort -u
+            fi
+            
+            echo ""
+            echo "## Contributors"
+            
+            CONTRIBUTORS=""
+            if [ -n "${PREV_TAG}" ]; then
+              CONTRIBUTORS=$(gh api "repos/:owner/:repo/compare/${PREV_TAG}...HEAD" --jq '.commits[] | if .author then "* @" + .author.login else "* " + .commit.author.name end' 2>/dev/null | sort -u)
+            else
+              CONTRIBUTORS=$(gh api "repos/:owner/:repo/commits?per_page=100" --jq '.[] | if .author then "* @" + .author.login else "* " + .commit.author.name end' 2>/dev/null | sort -u)
+            fi
+            
+            if [ -n "${CONTRIBUTORS}" ]; then
+              echo "${CONTRIBUTORS}"
+            else
+              if [ -n "${PREV_TAG}" ]; then
+                git log "${PREV_TAG}..HEAD" --format="* %an" | sort -u
+              else
+                git log --format="* %an" | sort -u
+              fi
             fi
             
             echo ""
