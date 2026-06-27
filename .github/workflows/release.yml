@@ -344,6 +344,13 @@ jobs:
           sed -i "s/__VERSION__/${{ env.VERSION }}/g" apps/desktop/default.nix
           sed -i "s/sha256 = \".*\";/sha256 = \"${DEB_SHA256}\";/g" apps/desktop/default.nix
 
+          # Commit and push the updated default.nix back to the repository so nix run works
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/desktop/default.nix
+          git commit -m "chore(nix): update derivation for release v${{ env.VERSION }} [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:main || echo "Failed to push updated derivation"
+
       - name: Generate Changelog and Release Body
         shell: bash
         env:
