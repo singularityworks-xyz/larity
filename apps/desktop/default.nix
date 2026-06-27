@@ -2,11 +2,11 @@
 
 pkgs.stdenv.mkDerivation rec {
   pname = "larity";
-  version = "__VERSION__";
+  version = "0.0.35";
 
   src = pkgs.fetchurl {
     url = "https://github.com/singularityworks-xyz/larity/releases/download/v${version}/larity_${version}_amd64.deb";
-    sha256 = "0000000000000000000000000000000000000000000000000000000000000000";
+    sha256 = "5b57fd4f0ff76ad570d5c4bc674a6a3615b9a3a15bde4f4fcc3a66913fb4dca5";
   };
 
   nativeBuildInputs = [ pkgs.dpkg pkgs.autoPatchelfHook pkgs.makeWrapper ];
