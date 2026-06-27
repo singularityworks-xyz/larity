@@ -241,6 +241,7 @@ jobs:
         uses: useblacksmith/checkout@v1
         with:
           fetch-depth: 0
+          token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
 
       - name: Download Linux Desktop artifacts
         uses: actions/download-artifact@v8
@@ -360,7 +361,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add apps/desktop/default.nix
           git commit -m "chore(nix): update derivation for release v${{ env.VERSION }} [skip ci]" || echo "No changes to commit"
-          git push origin HEAD:release --force || echo "Failed to push updated derivation"
+          git push origin HEAD:main || echo "Failed to push updated derivation"
 
       - name: Generate Changelog and Release Body
         shell: bash
