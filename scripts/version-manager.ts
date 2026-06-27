@@ -169,6 +169,18 @@ if (import.meta.main) {
         );
         updatedFiles.push(tauriConfPath);
       }
+
+      // Nix default.nix
+      const defaultNixPath = path.join(wsPath, "default.nix");
+      if (fs.existsSync(defaultNixPath)) {
+        let content = fs.readFileSync(defaultNixPath, "utf8");
+        content = content.replace(
+          /version\s*=\s*"[^"]*";/,
+          `version = "0.0.1";`
+        );
+        fs.writeFileSync(defaultNixPath, content);
+        updatedFiles.push(defaultNixPath);
+      }
     }
   } else {
     // Normal Mode: Bump versions based on modified files
@@ -235,6 +247,21 @@ if (import.meta.main) {
         updatedFiles.push(tauriConfPath);
         console.log(
           `Workspace ${ws} tauri.conf.json updated to version ${newVersion}`
+        );
+      }
+
+      // Nix default.nix
+      const defaultNixPath = path.join(wsPath, "default.nix");
+      if (fs.existsSync(defaultNixPath)) {
+        let content = fs.readFileSync(defaultNixPath, "utf8");
+        content = content.replace(
+          /version\s*=\s*"[^"]*";/,
+          `version = "${newVersion}";`
+        );
+        fs.writeFileSync(defaultNixPath, content);
+        updatedFiles.push(defaultNixPath);
+        console.log(
+          `Workspace ${ws} default.nix updated to version ${newVersion}`
         );
       }
     }
