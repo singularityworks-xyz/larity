@@ -352,7 +352,7 @@ jobs:
           # shellcheck disable=SC2086
           DEB_FILE=$(ls artifacts-linux/deb/*.deb)
           DEB_SHA256=$(sha256sum "$DEB_FILE" | cut -d' ' -f1)
-          sed -i "s/__VERSION__/${{ env.VERSION }}/g" apps/desktop/default.nix
+          sed -i "s/version = \".*\";/version = \"${{ env.VERSION }}\";/g" apps/desktop/default.nix
           sed -i "s/sha256 = \".*\";/sha256 = \"${DEB_SHA256}\";/g" apps/desktop/default.nix
 
           # Commit and push the updated default.nix back to the repository so nix run works
