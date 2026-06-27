@@ -11,6 +11,9 @@ permissions:
 jobs:
   build-desktop-linux:
     runs-on: blacksmith-2vcpu-ubuntu-2404
+    env:
+      VITE_CONTROL_URL: https://larityapi.itssingularity.com
+      VITE_WS_URL: wss://larityws.itssingularity.com
     steps:
       - name: Checkout
         uses: useblacksmith/checkout@v1
@@ -83,6 +86,9 @@ jobs:
 
   build-desktop-windows:
     runs-on: windows-latest
+    env:
+      VITE_CONTROL_URL: https://larityapi.itssingularity.com
+      VITE_WS_URL: wss://larityws.itssingularity.com
     steps:
       - name: Checkout
         uses: actions/checkout@v7
