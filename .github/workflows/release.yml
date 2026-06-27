@@ -322,8 +322,13 @@ jobs:
       - name: Build Arch Linux package (makepkg)
         shell: bash
         run: |
-          # Configure PKGBUILD version
+          # Calculate local DEB checksum
+          DEB_FILE=$(ls artifacts-linux/deb/*.deb)
+          DEB_SHA256=$(sha256sum "$DEB_FILE" | cut -d' ' -f1)
+
+          # Configure PKGBUILD version and checksum
           sed -i "s/__VERSION__/${{ env.VERSION }}/g" apps/desktop/PKGBUILD
+          sed -i "s/sha256sums=('SKIP')/sha256sums=('${DEB_SHA256}')/g" apps/desktop/PKGBUILD
           cp artifacts-linux/deb/*.deb apps/desktop/
 
           # Adjust PKGBUILD source to local deb file for offline makepkg
@@ -401,6 +406,19 @@ jobs:
             echo "* **Control Service:** \`ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}\`"
           } > release_body.md
 
+      - name: Generate SHA256 Checksums
+        shell: bash
+        run: |
+          shopt -s globstar
+          sha256sum artifacts-linux/**/*.deb \
+                    artifacts-linux/**/*.AppImage \
+                    artifacts-linux/**/*.rpm \
+                    artifacts-linux/**/*.pkg.tar.zst \
+                    artifacts-windows/**/*.msi \
+                    artifacts-windows/**/*.exe \
+                    apps/desktop/PKGBUILD \
+                    apps/desktop/default.nix > sha256sums.txt
+
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
@@ -418,3 +436,5 @@ jobs:
             artifacts-windows/**/*.exe
             apps/desktop/PKGBUILD
             apps/desktop/default.nix
+            sha256sums.txt
+
