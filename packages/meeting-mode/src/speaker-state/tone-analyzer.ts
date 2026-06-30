@@ -2,8 +2,8 @@ import type { SpeakerState, SpeakerStateAlert, ToneTrajectory } from "./types";
 import { DEFAULT_SPEAKER_STATE_CONFIG, TONE_NUMERIC_SCALE } from "./types";
 
 export interface ToneAnalysisResult {
-  trajectory: ToneTrajectory;
   alert: SpeakerStateAlert | null;
+  trajectory: ToneTrajectory;
 }
 
 export function analyzeToneTrajectory(
@@ -25,8 +25,8 @@ export function analyzeToneTrajectory(
 
   const scores = recent.map((entry) => TONE_NUMERIC_SCALE[entry.tone] ?? 0);
 
-  const first = scores[0];
-  const last = scores.at(-1);
+  const first = scores[0] as number;
+  const last = scores.at(-1) as number;
   const delta = last - first;
 
   let trajectory: ToneTrajectory = "stable";
@@ -47,7 +47,7 @@ export function analyzeToneTrajectory(
     category: "tone_warning",
     severity: speaker.type === "EXTERNAL" ? "medium" : "low",
     message: `${speakerLabel}'s tone is escalating — consider adjusting approach.`,
-    surfaceReason: `Tone shifted from ${recent[0].tone} to ${recent.at(-1).tone} over the last ${Math.round((recent.at(-1).timestamp - recent[0].timestamp) / 60_000)} minutes.`,
+    surfaceReason: `Tone shifted from ${recent[0]?.tone} to ${recent.at(-1)?.tone} over the last ${Math.round(((recent.at(-1)?.timestamp ?? 0) - (recent[0]?.timestamp ?? 0)) / 60_000)} minutes.`,
     suggestion:
       speaker.type === "EXTERNAL"
         ? "Pause and acknowledge their concern before continuing."

@@ -8,8 +8,8 @@ interface ThemeProviderProps {
 }
 
 interface ThemeProviderState {
-  theme: Theme;
   setTheme: (theme: Theme) => void;
+  theme: Theme;
   toggleTheme: () => void;
 }
 
@@ -26,9 +26,13 @@ export function ThemeProvider({
   defaultTheme = "dark",
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem("larity-theme") as Theme | null;
-    if (saved) {
-      return saved;
+    try {
+      const saved = localStorage.getItem("larity-theme") as Theme | null;
+      if (saved) {
+        return saved;
+      }
+    } catch (e) {
+      console.warn("localStorage is not available:", e);
     }
 
     // Check system preference
@@ -50,7 +54,11 @@ export function ThemeProvider({
       root.classList.add("light");
     }
 
-    localStorage.setItem("larity-theme", theme);
+    try {
+      localStorage.setItem("larity-theme", theme);
+    } catch (e) {
+      console.warn("localStorage is not available:", e);
+    }
   }, [theme]);
 
   const toggleTheme = () => {

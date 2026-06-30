@@ -51,6 +51,7 @@ export function Supports() {
                 className="group flex cursor-pointer items-center justify-center"
                 key={app.name}
               >
+                {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
                 <img
                   alt={app.name}
                   className="h-8 w-auto object-contain opacity-90 transition-all duration-300 group-hover:scale-105 group-hover:opacity-100"

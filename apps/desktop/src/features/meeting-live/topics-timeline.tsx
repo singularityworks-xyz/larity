@@ -11,10 +11,10 @@ function formatOffset(meetingStartMs: number, topicStartMs: number): string {
 }
 
 interface TopicsTimelineProps {
-  topics: LiveTopic[];
-  meetingStartedAtMs: number;
   activeTopicId: string | null;
+  meetingStartedAtMs: number;
   onSelectTopic: (topic: LiveTopic) => void;
+  topics: LiveTopic[];
 }
 
 function TopicSegment({
@@ -76,7 +76,7 @@ export function TopicsTimeline({
     }
 
     // biome-ignore lint/style/useAtIndex: .at(-1) returns undefined, tsc rejects it
-    const lastTopicStartedAt = topics[topics.length - 1].startedAt;
+    const lastTopicStartedAt = topics[topics.length - 1]?.startedAt ?? 0;
     const now = Math.max(lastTopicStartedAt, Date.now());
     const totalElapsed = Math.max(1, now - meetingStartedAtMs);
 
@@ -84,7 +84,7 @@ export function TopicsTimeline({
       const start = topic.startedAt - meetingStartedAtMs;
       const end =
         i < topics.length - 1
-          ? topics[i + 1].startedAt - meetingStartedAtMs
+          ? (topics[i + 1]?.startedAt ?? 0) - meetingStartedAtMs
           : totalElapsed;
       const duration = Math.max(0, end - start);
       const proportion =

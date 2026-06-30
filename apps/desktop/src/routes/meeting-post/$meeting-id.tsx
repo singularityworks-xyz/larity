@@ -1,4 +1,4 @@
-import type { MeetingAnalysis } from "@larity/infra/prisma/meeting-analysis.types";
+import type { MeetingAnalysis } from "@larity/db/meeting-analysis.types";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -588,20 +588,21 @@ function OpenQuestionsTab({ questions }: { questions: OpenQuestion[] }) {
   );
 }
 
+const IMPORTANT_POINT_ORDER: ImportantPointCategory[] = [
+  "WARNING",
+  "RISK",
+  "CONSTRAINT",
+  "COMMITMENT",
+  "OPPORTUNITY",
+  "INSIGHT",
+];
+
 function ImportantPointsTab({ points }: { points: ImportantPoint[] }) {
   const safePoints = Array.isArray(points) ? points : [];
-  const ORDER: ImportantPointCategory[] = [
-    "WARNING",
-    "RISK",
-    "CONSTRAINT",
-    "COMMITMENT",
-    "OPPORTUNITY",
-    "INSIGHT",
-  ];
 
   const grouped = useMemo(() => {
     const map = new Map<ImportantPointCategory, ImportantPoint[]>();
-    for (const cat of ORDER) {
+    for (const cat of IMPORTANT_POINT_ORDER) {
       map.set(cat, []);
     }
     for (const p of safePoints) {
@@ -625,7 +626,7 @@ function ImportantPointsTab({ points }: { points: ImportantPoint[] }) {
       initial="hidden"
       variants={containerVariants}
     >
-      {ORDER.map((cat) => {
+      {IMPORTANT_POINT_ORDER.map((cat) => {
         const items = grouped.get(cat) ?? [];
         if (items.length === 0) {
           return null;
@@ -635,7 +636,7 @@ function ImportantPointsTab({ points }: { points: ImportantPoint[] }) {
             <div className="mb-4 flex items-center gap-3 border-border/50 border-b pb-2">
               <CategoryChip category={cat} />
               <span className="rounded-full bg-bg-subtle px-2 py-0.5 font-mono text-[10px] text-fg-muted">
-                {items.length} item{items.length !== 1 ? "s" : ""}
+                {items.length} item{items.length === 1 ? "" : "s"}
               </span>
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -851,10 +852,10 @@ type TabId =
   | "notes";
 
 interface Tab {
+  count?: number;
+  icon: React.ElementType;
   id: TabId;
   label: string;
-  icon: React.ElementType;
-  count?: number;
 }
 
 // ── Tab Content Renderer ──────────────────────────────────────────────────────

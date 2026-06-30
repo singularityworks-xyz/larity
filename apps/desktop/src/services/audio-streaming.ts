@@ -7,9 +7,9 @@ export interface AudioStatusSnapshot {
 }
 
 export interface AudioFramePayload {
-  ts: number;
-  sessionId: string;
   data: string;
+  sessionId: string;
+  ts: number;
 }
 
 export interface AudioFrameEvent {
@@ -17,18 +17,18 @@ export interface AudioFrameEvent {
 }
 
 export interface AudioStreamingMetrics {
-  framesSent: number;
   framesDropped: number;
+  framesSent: number;
   lastFrameTs: number;
 }
 
 export interface AudioStreamingOptions {
-  wsBaseUrl?: string;
-  userId?: string;
-  userName?: string;
-  role?: "host" | "participant";
   backpressureThresholdBytes?: number;
   maxPendingFrames?: number;
+  role?: "host" | "participant";
+  userId?: string;
+  userName?: string;
+  wsBaseUrl?: string;
 }
 
 export type IncomingMessageType =
@@ -47,8 +47,8 @@ export type IncomingMessageType =
 export type IncomingMessageHandler = (data: Record<string, unknown>) => void;
 
 interface SendResult {
-  sent: boolean;
   dropped: boolean;
+  sent: boolean;
 }
 
 const DEFAULT_WS_URL = "ws://127.0.0.1:9001";
@@ -125,9 +125,9 @@ function sendAlertClassificationDebugLog(
     return;
   }
   const isDebugEnv =
-    typeof process !== "undefined"
-      ? process.env.ENABLE_ALERT_CLASSIFICATION_DEBUG
-      : import.meta.env?.VITE_ENABLE_ALERT_CLASSIFICATION_DEBUG;
+    typeof process === "undefined"
+      ? import.meta.env?.VITE_ENABLE_ALERT_CLASSIFICATION_DEBUG
+      : process.env.ENABLE_ALERT_CLASSIFICATION_DEBUG;
   const enabled = isDebugEnv === "true" || isDebugEnv === "1";
   if (!enabled) {
     return;

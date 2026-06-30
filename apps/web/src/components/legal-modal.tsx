@@ -2,9 +2,9 @@ import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface LegalModalProps {
+  initialTab?: "privacy" | "terms";
   isOpen: boolean;
   onClose: () => void;
-  initialTab?: "privacy" | "terms";
 }
 
 export function LegalModal({

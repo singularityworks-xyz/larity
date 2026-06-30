@@ -8,8 +8,8 @@ interface Props {
 }
 
 interface State {
-  hasError: boolean;
   error: Error | null;
+  hasError: boolean;
 }
 
 export class AppErrorBoundary extends React.Component<Props, State> {
@@ -22,7 +22,7 @@ export class AppErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("App Error Boundary:", error, errorInfo);
     logger.error("App Error Boundary caught an error", {
       error: error.message,
@@ -31,7 +31,7 @@ export class AppErrorBoundary extends React.Component<Props, State> {
     });
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-bg p-6 text-fg">

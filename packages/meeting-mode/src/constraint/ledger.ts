@@ -1,11 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { redisKeys } from "@larity/infra/redis/keys";
-import { TTL } from "@larity/infra/redis/ttl";
+import { redisKeys } from "@larity/db/redis/keys";
+import { TTL } from "@larity/db/redis/ttl";
 import type { Redis } from "ioredis";
 import { constraintChannel } from "../channels";
 import { LEDGER_SNAPSHOT_DEBOUNCE_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
-import { ledgerSnapshotFlushesTotal } from "../pipeline/metrics";
 import type {
   Constraint,
   ConstraintHydrationResult,
@@ -19,15 +18,15 @@ const log = createMeetingModeLogger("constraint-ledger");
 const SNAPSHOT_VERSION = 1;
 
 interface ConstraintLedgerSnapshot {
-  version: number;
-  sessionId: string;
-  savedAt: number;
   constraints: Constraint[];
+  savedAt: number;
+  sessionId: string;
+  version: number;
 }
 
 export interface ConstraintLedgerOptions {
-  now?: () => number;
   idFactory?: () => string;
+  now?: () => number;
   snapshotDebounceMs?: number;
 }
 
@@ -105,9 +104,9 @@ export class ConstraintLedger {
   }
 
   getAll(): Constraint[] {
-    return [...this.constraints.values()].sort((left, right) => {
-      return left.value.localeCompare(right.value);
-    });
+    return [...this.constraints.values()].sort((left, right) =>
+      left.value.localeCompare(right.value)
+    );
   }
 
   size(): number {
@@ -117,7 +116,7 @@ export class ConstraintLedger {
   findByValue(value: string, type: ConstraintType): Constraint | undefined {
     const id = this.indexByNormalizedValue.get(constraintIndexKey(type, value));
     if (!id) {
-      return undefined;
+      return;
     }
     return this.constraints.get(id);
   }
@@ -218,8 +217,6 @@ export class ConstraintLedger {
     if (this.constraints.size === 0) {
       return;
     }
-
-    ledgerSnapshotFlushesTotal.inc({ kind: "constraint" });
 
     const snapshot: ConstraintLedgerSnapshot = {
       version: SNAPSHOT_VERSION,

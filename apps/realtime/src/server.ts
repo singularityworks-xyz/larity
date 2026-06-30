@@ -1,6 +1,4 @@
-import { opentelemetry } from "@elysiajs/opentelemetry";
 import { Elysia, t } from "elysia";
-import { getMetricsText, startDefaultMetrics } from "meeting-mode";
 import { env } from "./env";
 import { onClose } from "./handlers/on-close";
 import { onDrain } from "./handlers/on-drain";
@@ -27,30 +25,21 @@ const WEBSOCKET_IDLE_TIMEOUT_SECONDS = 600;
 export function startServer(): Promise<any> {
   return new Promise((resolve, reject) => {
     try {
-      startDefaultMetrics();
+      const app = new Elysia().derive(async ({ query }) => {
+        const sessionId = query?.sessionId;
+        if (sessionId) {
+          const validation = await validateSession(
+            sessionId,
+            query.userId,
+            query.role
+          );
+          return { sessionValidation: validation };
+        }
+        return { sessionValidation: { isValid: false } };
+      });
 
-      const app = new Elysia()
-        .use(opentelemetry({ serviceName: "realtime" }))
-        .get("/metrics", async () => {
-          const metrics = await getMetricsText();
-          return new Response(metrics, {
-            headers: { "Content-Type": "text/plain; version=0.0.4" },
-          });
-        })
-        .derive(async ({ query }) => {
-          const sessionId = query?.sessionId;
-          if (sessionId) {
-            const validation = await validateSession(
-              sessionId,
-              query.userId,
-              query.role
-            );
-            return { sessionValidation: validation };
-          }
-          return { sessionValidation: { isValid: false } };
-        });
-
-      addAdminRoutes(app);
+      // biome-ignore lint/suspicious/noExplicitAny: complex Elysia generic types
+      addAdminRoutes(app as any);
 
       app.ws("/*", {
         // Schema validation for the connection URL query parameters
@@ -83,7 +72,10 @@ export function startServer(): Promise<any> {
          */
         open(socket) {
           const { sessionId, userId, role, name } = socket.data.query;
-          const orgId = socket.data.sessionValidation?.orgId || "default";
+          const orgId =
+            ("orgId" in socket.data.sessionValidation &&
+              socket.data.sessionValidation.orgId) ||
+            "default";
           const now = Date.now();
 
           Object.assign(socket.data, {

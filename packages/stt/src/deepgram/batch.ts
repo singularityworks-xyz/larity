@@ -5,11 +5,11 @@ import { getDeepgramClient } from "./client";
 const log = createSttLogger("dg-batch");
 
 export interface BatchUtterance {
-  start: number;
-  end: number;
-  text: string;
-  speaker: number;
   confidence: number;
+  end: number;
+  speaker: number;
+  start: number;
+  text: string;
   words?: Array<{
     word: string;
     start: number;

@@ -147,12 +147,12 @@
 /* Voice Gradient canvas mask */
 .voice-gradient-canvas {
   position: absolute;
+  right: 0;
   bottom: 0;
   left: 0;
-  right: 0;
+  z-index: 0;
   height: 200px;
   pointer-events: none;
-  z-index: 0;
   /* Fade to transparent across the top 55% of the canvas height */
   -webkit-mask-image: linear-gradient(
     to top,
@@ -173,8 +173,8 @@
   .speak-pulse,
   .remember-ripple,
   .commitment-row-enter {
-    animation: none !important;
-    transition: none !important;
     transform: none !important;
+    transition: none !important;
+    animation: none !important;
   }
 }

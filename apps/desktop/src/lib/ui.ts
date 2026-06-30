@@ -284,5 +284,5 @@ export function metricChipClass(
     warning: `${base} border-warning bg-warning-bg text-warning`,
     muted: `${base} border-border bg-bg-overlay text-fg-muted`,
   };
-  return variants[variant] ?? variants.muted;
+  return variants[variant] ?? variants.muted ?? "";
 }

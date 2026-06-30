@@ -1,5 +1,5 @@
-import { redis } from "@larity/infra/redis";
-import { redisKeys } from "@larity/infra/redis/keys";
+import { redis } from "@larity/db/redis";
+import { redisKeys } from "@larity/db/redis/keys";
 import { applyPagination } from "../lib/pagination";
 import { prisma } from "../lib/prisma";
 import type {
@@ -118,7 +118,8 @@ export const MeetingService = {
   update(id: string, data: UpdateMeetingInput) {
     return prisma.meeting.update({
       where: { id },
-      data,
+      // biome-ignore lint/suspicious/noExplicitAny: prisma input type mismatch
+      data: data as any,
       include: {
         client: { select: { id: true, name: true, slug: true } },
       },
@@ -383,12 +384,8 @@ export const MeetingService = {
     };
   },
 
-  getDbSessionStatus(meeting: {
-    id: string;
-    status: string;
-    transcript: { content: string; wordCount: number | null } | null;
-    summary: string | null;
-  }) {
+  // biome-ignore lint/suspicious/noExplicitAny: prisma include returns wider types
+  getDbSessionStatus(meeting: any) {
     if (meeting.status === "ENDED") {
       const hasTranscript = hasValidTranscript(meeting.transcript);
       const transcribeStatus = hasTranscript ? "done" : "failed";

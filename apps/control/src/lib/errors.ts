@@ -4,8 +4,8 @@
 
 export interface PrismaError {
   code: string;
-  meta?: Record<string, unknown>;
   message?: string;
+  meta?: Record<string, unknown>;
 }
 
 /**
@@ -36,9 +36,9 @@ export const PrismaErrorCode = {
  * Standard API error response structure
  */
 export interface ApiErrorResponse {
-  success: false;
   error: string;
   message?: string;
+  success: false;
 }
 
 /**

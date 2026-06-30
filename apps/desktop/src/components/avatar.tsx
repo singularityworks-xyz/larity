@@ -6,7 +6,7 @@ export function getInitials(name: string) {
   const trimmedName = name.trim();
   const parts = trimmedName.split(WHITESPACE_REGEX);
   if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return `${parts[0]?.[0] ?? ""}${parts[1]?.[0] ?? ""}`.toUpperCase();
   }
   return trimmedName.slice(0, 2).toUpperCase();
 }
@@ -43,6 +43,7 @@ export function Avatar({
 }) {
   if (image) {
     return (
+      // biome-ignore lint/performance/noImgElement: not a Next.js project
       <img
         alt={name}
         className={cx("rounded-full object-cover", className)}

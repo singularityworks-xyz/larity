@@ -2,10 +2,6 @@ import type { SttResult } from "../../../stt/src/types";
 import { utteranceChannel } from "../channels";
 import { MERGE_GROUPING_MS, MERGE_PUBLISH_GAP_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
-import {
-  finalizerEmbedDurationMs,
-  finalizerPublishWaitMs,
-} from "../pipeline/metrics";
 import type { Tier2TopicDelta } from "../pipeline/types";
 import type { SpeakerIdentifier } from "../speaker/identifier";
 import { calculateTextSimilarity } from "../speaker/offline-correlation";
@@ -44,8 +40,8 @@ const LIVE_ECHO_TIME_WINDOW_MS = 4000;
 const LIVE_ECHO_SIMILARITY_THRESHOLD = 0.4;
 
 export interface UtterancePublisher extends TopicPublisher {
-  publish(channel: string, message: string): Promise<number>;
   hset(key: string, field: string, value: string): Promise<number>;
+  publish(channel: string, message: string): Promise<number>;
 }
 
 export type RetroactiveUpdateHandler = (
@@ -298,22 +294,21 @@ export class UtteranceFinalizer {
       mergedCount: 1,
     };
 
-    const embedWallStart = PERF.now();
+    const _embedWallStart = PERF.now();
     utterance.embeddingPromise = this.embedder
       .embed(utterance.text)
-      .catch((error) => {
+      .catch((error): undefined => {
         log.warn(
           { err: error, utteranceId: utterance.utteranceId },
           "Failed to generate embedding for utterance"
         );
-        return undefined;
+        return;
       });
 
     // Assign topic (awaits in-flight embedding via TopicManager)
     const topicId = await this.topicManager.assignTopic(utterance);
     utterance.topicId = topicId;
 
-    finalizerEmbedDurationMs.observe(PERF.now() - embedWallStart);
     utterance.embeddingPromise = undefined;
 
     const merger = this.getOrCreateMerger(sessionId);
@@ -423,7 +418,7 @@ export class UtteranceFinalizer {
     topicId: string | undefined
   ): string | undefined {
     if (!topicId) {
-      return undefined;
+      return;
     }
 
     const topic = this.topicManager
@@ -582,7 +577,7 @@ export class UtteranceFinalizer {
 
   private async publishUtterance(
     utterance: Utterance,
-    finalizeStartMs?: number
+    _finalizeStartMs?: number
   ): Promise<void> {
     const channel = utteranceChannel(utterance.sessionId);
     const message = JSON.stringify(utterance, (key, value) =>
@@ -591,10 +586,6 @@ export class UtteranceFinalizer {
 
     try {
       await this.publisher.publish(channel, message);
-
-      if (finalizeStartMs !== undefined) {
-        finalizerPublishWaitMs.observe(PERF.now() - finalizeStartMs);
-      }
 
       for (const handler of this.publishedHandlers) {
         const inflight = Promise.resolve(handler(utterance)).catch((error) => {
@@ -611,7 +602,7 @@ export class UtteranceFinalizer {
           sessionId: utterance.sessionId,
           utteranceId: utterance.utteranceId,
           topicId: utterance.topicId,
-          textPrefix: utterance.text.substring(0, 50),
+          textPrefix: utterance.text.slice(0, 50),
         },
         "Published utterance"
       );

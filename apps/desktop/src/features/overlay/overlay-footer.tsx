@@ -2,17 +2,17 @@ import { Bell, BellOff, Clock, Maximize2, PhoneOff } from "lucide-react";
 import { cx } from "../../lib/ui";
 
 interface OverlayFooterProps {
-  isHost: boolean;
   alertsMuted: boolean;
-  isEndingBusy: boolean;
   // rememberFlash: boolean;
   autoExpiryEnabled: boolean;
-  pendingCount?: number;
+  isEndingBusy: boolean;
+  isHost: boolean;
   onEndMeeting: () => void;
-  onMuteAlerts: () => void;
   onExpandToPanel: () => void;
+  onMuteAlerts: () => void;
   // onRememberThis: () => void;
   onToggleAutoExpiry: () => void;
+  pendingCount?: number;
 }
 
 const footerButtonBase =

@@ -5,7 +5,6 @@ import { createWorkerLogger } from "./logger";
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
 export interface WorkerHealth {
-  name: string;
   active: boolean;
   jobCounts?: {
     active: number;
@@ -14,6 +13,7 @@ export interface WorkerHealth {
     completed: number;
   };
   lastError?: string;
+  name: string;
   uptimeMs: number;
 }
 
@@ -73,7 +73,8 @@ export abstract class BaseWorker<TJobData = unknown, TJobResult = unknown> {
         }
       },
       {
-        connection: this.connection,
+        // biome-ignore lint/suspicious/noExplicitAny: bullmq bundles ioredis@5.10.1 while workspace has 5.11.1
+        connection: this.connection as any,
         concurrency: options?.concurrency ?? 5,
         prefix: options?.prefix,
       }

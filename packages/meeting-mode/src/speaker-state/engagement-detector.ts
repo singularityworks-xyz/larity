@@ -2,8 +2,8 @@ import type { EngagementLevel, SpeakerState, SpeakerStateAlert } from "./types";
 import { DEFAULT_SPEAKER_STATE_CONFIG } from "./types";
 
 export interface EngagementResult {
-  level: EngagementLevel;
   alert: SpeakerStateAlert | null;
+  level: EngagementLevel;
 }
 
 export function detectDisengagement(
@@ -22,7 +22,8 @@ export function detectDisengagement(
 
   let consecutiveShort = 0;
   for (let i = toneHistory.length - 1; i >= 0; i--) {
-    if (toneHistory[i].wordCount <= config.disengagementShortResponseWords) {
+    const entry = toneHistory[i];
+    if (entry && entry.wordCount <= config.disengagementShortResponseWords) {
       consecutiveShort++;
     } else {
       break;
@@ -49,11 +50,13 @@ export function detectDisengagement(
   }
 
   const firstHalfCount = Math.floor(utteranceCount / 2);
-  const firstHalfDuration =
+  const firstHalfEntry =
     firstHalfCount > 0 && toneHistory.length > firstHalfCount
-      ? (toneHistory[firstHalfCount - 1].timestamp - state.sessionStart) /
-        60_000
-      : sessionDuration / 2;
+      ? toneHistory[firstHalfCount - 1]
+      : undefined;
+  const firstHalfDuration = firstHalfEntry
+    ? (firstHalfEntry.timestamp - state.sessionStart) / 60_000
+    : sessionDuration / 2;
 
   const secondHalfDuration = sessionDuration - firstHalfDuration;
 

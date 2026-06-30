@@ -103,13 +103,13 @@ function formatEvidenceClock(meetingStartMs: number, ts: number): string {
 
 interface MeetingSidebarProps {
   clientId?: string;
-  sessionId: string;
-  participants: LiveParticipant[];
   commitments: LiveCommitment[];
   meetingStartedAtMs: number;
-  onEvidenceClick: (utteranceId: string) => void;
   onChangeRole?: (speakerId: string, role: "TEAM" | "EXTERNAL") => void;
+  onEvidenceClick: (utteranceId: string) => void;
+  participants: LiveParticipant[];
   pendingAgenda?: Array<{ id: string; text: string }>;
+  sessionId: string;
 }
 
 export function MeetingSidebar({

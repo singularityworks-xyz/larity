@@ -1,46 +1,46 @@
 export interface Constraint {
-  id: string;
   description: string;
+  id: string;
 }
 
 export interface Commitment {
-  id: string;
   description: string;
-  owner?: string;
   dueDate?: string;
+  id: string;
+  owner?: string;
 }
 
 export interface RiskFlag {
-  id: string;
   description: string;
+  id: string;
   severity: "low" | "medium" | "high";
 }
 
 export interface TopicCompleteness {
-  hasOwner: boolean;
-  ownerName?: string;
-  hasDeadline: boolean;
+  actionItems: string[];
   deadline?: string;
   hasActionItems: boolean;
-  actionItems: string[];
+  hasDeadline: boolean;
   hasExplicitConfirmation: boolean;
+  hasOwner: boolean;
+  ownerName?: string;
 }
 
 export interface TopicState {
-  topicId: string;
-  label: string;
-  summary: string;
-  constraintsMentioned: Constraint[];
-  commitmentsMentioned: Commitment[];
-  riskFlags: RiskFlag[];
   centroid: number[];
-  utteranceCount: number; // Important for calculating running centroid
-  lastUpdated: number;
+  commitmentsMentioned: Commitment[];
   completeness: TopicCompleteness;
+  constraintsMentioned: Constraint[];
+  label: string;
+  lastUpdated: number;
+  riskFlags: RiskFlag[];
+  summary: string;
+  topicId: string;
+  utteranceCount: number; // Important for calculating running centroid
 }
 
 export interface UtteranceWithTopic {
-  utteranceId: string;
-  topicId: string;
   text: string;
+  topicId: string;
+  utteranceId: string;
 }

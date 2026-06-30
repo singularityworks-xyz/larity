@@ -6,10 +6,10 @@
  * Handles transcript events and publishes to Redis.
  */
 
-import { publishSystemEvent, redis } from "@larity/infra/redis";
-import { partialChannel, transcriptChannel } from "../channels";
+import { publishSystemEvent, redis } from "@larity/db/redis";
 import { createSttLogger } from "../logger";
 import type { SttResult } from "../types";
+import { partialChannel, transcriptChannel } from "./channels";
 import { getDeepgramClient } from "./client";
 import {
   DEFAULT_DG_CONFIG,
@@ -20,10 +20,10 @@ import {
 
 /** Minimal handle for a v5 Listen V1 WebSocket connection. */
 interface LiveConnection {
+  close(): void;
+  connect(): void;
   on(event: string, callback: (...args: unknown[]) => void): void;
   sendMedia(message: ArrayBuffer | Blob | ArrayBufferView): void;
-  connect(): void;
-  close(): void;
   waitForOpen(): Promise<unknown>;
 }
 

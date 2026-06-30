@@ -22,11 +22,11 @@ import { ALERT_CATEGORY_META, type MeetingAlert } from "./types";
 
 interface AlertCardProps {
   alert: MeetingAlert;
-  onDismiss?: () => void;
   expandedId?: string | null;
-  onToggleExpand?: (id: string) => void;
-  isHistoryView?: boolean;
   isExiting?: boolean;
+  isHistoryView?: boolean;
+  onDismiss?: () => void;
+  onToggleExpand?: (id: string) => void;
   style?: React.CSSProperties;
 }
 

@@ -114,6 +114,7 @@ export function WelcomePage() {
             visible("logo") && "translate-y-0 scale-100 opacity-100 blur-none"
           )}
         >
+          {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
           <img
             alt="Larity logo"
             className="block h-auto w-11 drop-shadow-[0_0_18px_rgba(255,255,255,0.55)]"

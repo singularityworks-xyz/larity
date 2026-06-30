@@ -1,12 +1,12 @@
 export interface Client {
-  id: string;
-  orgId: string;
-  name: string;
-  slug: string;
-  description: string | null;
-  status: "ACTIVE" | "INACTIVE" | "ARCHIVED";
-  industry: string | null;
   createdAt: string;
+  description: string | null;
+  id: string;
+  industry: string | null;
+  name: string;
+  orgId: string;
+  slug: string;
+  status: "ACTIVE" | "INACTIVE" | "ARCHIVED";
   updatedAt: string;
 }
 
@@ -17,27 +17,27 @@ export type ClientMemberRole =
   | "DECISION_MAKER";
 
 export interface MemberPersona {
-  tone?: string;
   communicationStyle?: string;
-  likes?: string[];
   dislikes?: string[];
   keyPriorities?: string[];
+  likes?: string[];
   notes?: string;
+  tone?: string;
   [key: string]: unknown;
 }
 
 export interface ClientMember {
-  id: string;
   clientId: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  title: string | null;
-  department: string | null;
-  notes: string | null;
-  image: string | null;
-  persona: MemberPersona | null;
-  role: ClientMemberRole;
   createdAt: string;
+  department: string | null;
+  email: string | null;
+  id: string;
+  image: string | null;
+  name: string;
+  notes: string | null;
+  persona: MemberPersona | null;
+  phone: string | null;
+  role: ClientMemberRole;
+  title: string | null;
   updatedAt: string;
 }

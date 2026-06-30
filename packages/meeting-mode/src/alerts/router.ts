@@ -53,7 +53,7 @@ export function resolveTargetUserId(input: RoutingInput): string | undefined {
     return input.speaker.userId;
   }
 
-  return undefined;
+  return;
 }
 
 export function resolveFullRouting(input: RoutingInput): {

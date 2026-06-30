@@ -2,10 +2,10 @@ import { cosineSimilarity } from "../topic/similarity";
 import type { Tier2Classification } from "./types";
 
 interface CacheEntry {
-  text: string;
-  normalizedText: string;
-  embedding: number[];
   classification: Tier2Classification;
+  embedding: number[];
+  normalizedText: string;
+  text: string;
 }
 
 const MAX_CACHE_SIZE = 200;
@@ -20,7 +20,7 @@ export class Tier2SemanticCache {
   ): Tier2Classification | undefined {
     const entries = this.sessions.get(sessionId);
     if (!entries || entries.length === 0) {
-      return undefined;
+      return;
     }
 
     const normalized = normalizeText(text);
@@ -40,7 +40,7 @@ export class Tier2SemanticCache {
       }
     }
 
-    return undefined;
+    return;
   }
 
   set(

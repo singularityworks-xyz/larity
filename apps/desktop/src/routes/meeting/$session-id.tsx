@@ -53,20 +53,20 @@ import {
 import { VadManager } from "../../services/vad";
 
 interface MeetingLocationState {
-  role?: "host" | "participant";
-  websocketUrl?: string;
-  clientName?: string;
-  meetingTitle?: string;
-  startedAt?: number;
   allowNameCustomization?: boolean;
+  clientName?: string;
   meetingId?: string;
+  meetingTitle?: string;
   pendingAgenda?: Array<{ id: string; text: string }>;
+  role?: "host" | "participant";
+  startedAt?: number;
+  websocketUrl?: string;
 }
 
 interface AudioDevice {
   id: string;
-  name: string;
   is_default: boolean;
+  name: string;
 }
 
 const DEFAULT_WS_URL = import.meta.env.VITE_WS_URL ?? "ws://127.0.0.1:9001";
@@ -159,14 +159,16 @@ export function MeetingPage() {
   );
   const displayName = configuredName ?? accountName;
 
-  const streamingClient = useMemo(() => {
-    return new AudioStreamingClient({
-      wsBaseUrl,
-      userId,
-      userName: displayName,
-      role,
-    });
-  }, [role, userId, displayName, wsBaseUrl]);
+  const streamingClient = useMemo(
+    () =>
+      new AudioStreamingClient({
+        wsBaseUrl,
+        userId,
+        userName: displayName,
+        role,
+      }),
+    [role, userId, displayName, wsBaseUrl]
+  );
 
   const vadManager = useMemo(() => new VadManager(), []);
   const isHost = role === "host";
@@ -978,7 +980,7 @@ export function MeetingPage() {
                 </span>{" "}
                 {event.message}
               </span>
-              {event.severity !== "error" ? (
+              {event.severity === "error" ? null : (
                 <button
                   aria-label="Dismiss"
                   className="ml-2 shrink-0 text-xs opacity-60 hover:opacity-100"
@@ -991,7 +993,7 @@ export function MeetingPage() {
                 >
                   ✕
                 </button>
-              ) : null}
+              )}
             </div>
           ))}
         </div>

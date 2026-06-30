@@ -143,6 +143,9 @@ export class SpeakerStateTracker {
     }
 
     const prevTopic = topics.at(-2);
+    if (!prevTopic) {
+      return;
+    }
     const clarityInput: ClarityCheckInput = {
       prevTopicId: prevTopic.topicId,
       prevTopicCompleteness: prevTopic.completeness,
@@ -210,7 +213,7 @@ export class SpeakerStateTracker {
       responseFrequency: state.responseFrequency,
       recentTone:
         state.toneHistory.length > 0
-          ? state.toneHistory.at(-1).tone
+          ? (state.toneHistory.at(-1)?.tone ?? "neutral")
           : "neutral",
     }));
   }

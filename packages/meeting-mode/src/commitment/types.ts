@@ -23,51 +23,51 @@ export const commitmentTypes = [
 export type CommitmentType = (typeof commitmentTypes)[number];
 
 export interface CommitmentExtractedData {
+  amount?: number;
+  currency?: string;
   deadline?: string;
   quantity?: number;
   scope?: string[];
-  amount?: number;
-  currency?: string;
 }
 
 export interface Commitment {
+  contradicts?: string;
+  embedding: number[];
+  extractedData?: CommitmentExtractedData;
   id: string;
-  statement: string;
   normalizedStatement: string;
+  relatedCommitments: string[];
   speaker: SpeakerIdentity;
+  statement: string;
+  status: CommitmentStatus;
+  supersedes?: string;
+  timestamp: number;
   topicId: string;
   type: CommitmentType;
-  status: CommitmentStatus;
-  timestamp: number;
   utteranceId: string;
-  embedding: number[];
-  relatedCommitments: string[];
-  contradicts?: string;
-  supersedes?: string;
-  extractedData?: CommitmentExtractedData;
 }
 
 export interface CommitmentInsertInput {
-  id?: string;
-  statement: string;
-  normalizedStatement?: string;
-  speaker: SpeakerIdentity;
-  topicId: string;
-  type: CommitmentType;
-  timestamp: number;
-  utteranceId: string;
+  contradicts?: string;
   embedding: number[];
   extractedData?: CommitmentExtractedData;
+  id?: string;
+  normalizedStatement?: string;
   relatedCommitments?: string[];
+  speaker: SpeakerIdentity;
+  statement: string;
   status?: CommitmentStatus;
-  contradicts?: string;
   supersedes?: string;
+  timestamp: number;
+  topicId: string;
+  type: CommitmentType;
+  utteranceId: string;
 }
 
 export interface CommitmentStatusUpdate {
-  status: CommitmentStatus;
-  relatedCommitments?: string[];
   contradicts?: string;
+  relatedCommitments?: string[];
+  status: CommitmentStatus;
   supersedes?: string;
 }
 
@@ -77,13 +77,13 @@ export interface CommitmentMatch {
 }
 
 export interface CommitmentSearchOptions {
+  excludeCommitmentId?: string;
   k?: number;
   minSimilarity?: number;
   speakerId?: string;
+  statuses?: CommitmentStatus[];
   topicId?: string;
   type?: CommitmentType;
-  statuses?: CommitmentStatus[];
-  excludeCommitmentId?: string;
 }
 
 export interface CommitmentCrossSpeakerSearchOptions
@@ -97,8 +97,8 @@ export interface LedgerHydrationResult {
 }
 
 export interface CommitmentLedgerEvent {
-  type: "insert" | "status_change";
+  commitment: Omit<Commitment, "embedding">;
   sessionId: string;
   timestamp: number;
-  commitment: Omit<Commitment, "embedding">;
+  type: "insert" | "status_change";
 }

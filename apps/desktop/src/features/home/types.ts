@@ -5,48 +5,48 @@ export interface ClientRef {
 }
 
 export interface NextMeeting {
-  id: string;
-  title: string;
-  client: ClientRef;
-  scheduledAt: string | null;
-  briefStatus: "prepped" | "not_prepped";
   attendeeCount: number;
+  briefStatus: "prepped" | "not_prepped";
+  client: ClientRef;
+  id: string;
+  scheduledAt: string | null;
   startsInMinutes: number;
+  title: string;
 }
 
 export interface TodayMeeting {
-  id: string;
-  title: string;
-  client: ClientRef;
-  scheduledAt: string | null;
-  status: string;
   attendeeCount: number;
   briefStatus: "prepped" | "not_prepped";
+  client: ClientRef;
+  id: string;
+  scheduledAt: string | null;
+  status: string;
+  title: string;
 }
 
 export interface RecentActivityItem {
-  id: string;
-  title: string;
   client: ClientRef;
-  endedAt: string | null;
-  durationMs: number | null;
-  decisionsExtracted: number;
-  tasksCreated: number;
   commitmentsCaptured: number;
+  decisionsExtracted: number;
+  durationMs: number | null;
+  endedAt: string | null;
+  id: string;
+  tasksCreated: number;
+  title: string;
 }
 
 export interface OpenCommitmentItem {
-  id: string;
-  content: string;
   client: ClientRef;
+  content: string;
+  createdAt: string;
+  id: string;
   meetingId: string | null;
   meetingTitle: string | null;
-  createdAt: string;
 }
 
 export interface HomeData {
   nextMeeting: NextMeeting | null;
-  todayMeetings: TodayMeeting[];
-  recentActivity: RecentActivityItem[];
   openCommitments: OpenCommitmentItem[];
+  recentActivity: RecentActivityItem[];
+  todayMeetings: TodayMeeting[];
 }

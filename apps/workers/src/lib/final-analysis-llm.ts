@@ -1,5 +1,5 @@
 import { Type } from "@google/genai";
-import type { MeetingAnalysis } from "@larity/infra/prisma/meeting-analysis.types";
+import type { MeetingAnalysis } from "@larity/db/meeting-analysis.types";
 import type {
   ExtractedDecision,
   ExtractedImportantPoint,
@@ -25,18 +25,18 @@ function sanitizeForPrompt(text: string, maxLength = 300): string {
 }
 
 export interface FinalAnalysisInput {
-  meetingTitle: string;
   clientName: string;
+  decisions: ExtractedDecision[];
+  durationSeconds: number;
+  importantPoints: ExtractedImportantPoint[];
+  meetingTitle: string;
+  openQuestions: ExtractedOpenQuestion[];
   participants: {
     name: string;
     role: "TEAM_MEMBER" | "EXTERNAL" | "UNKNOWN";
   }[];
-  decisions: ExtractedDecision[];
-  tasks: ExtractedTask[];
-  openQuestions: ExtractedOpenQuestion[];
-  importantPoints: ExtractedImportantPoint[];
   talkTimeStats: TalkTimeStats;
-  durationSeconds: number;
+  tasks: ExtractedTask[];
   utterances: { speaker: string; text: string; timestamp: number }[];
 }
 
@@ -171,7 +171,7 @@ export async function generateMeetingAnalysis(
       return null;
     };
 
-    const fmtTs = (ts: number | null) => (ts !== null ? ` (at ${ts}s)` : "");
+    const fmtTs = (ts: number | null) => (ts === null ? "" : ` (at ${ts}s)`);
 
     // Format decisions with timestamps
     const decisionsFormatted = input.decisions
@@ -183,16 +183,18 @@ export async function generateMeetingAnalysis(
 
     // Format tasks
     const tasksFormatted = input.tasks
-      .map((t) => {
-        return `- Title: ${sanitizeForPrompt(t.title)}\n  Priority: ${t.priority}\n  Assignee Hint: ${sanitizeForPrompt(t.assigneeHint || "None")}`;
-      })
+      .map(
+        (t) =>
+          `- Title: ${sanitizeForPrompt(t.title)}\n  Priority: ${t.priority}\n  Assignee Hint: ${sanitizeForPrompt(t.assigneeHint || "None")}`
+      )
       .join("\n");
 
     // Format open questions
     const openQuestionsFormatted = input.openQuestions
-      .map((q) => {
-        return `- Question: ${sanitizeForPrompt(q.question)}\n  Assignee Hint: ${sanitizeForPrompt(q.assigneeHint || "None")}`;
-      })
+      .map(
+        (q) =>
+          `- Question: ${sanitizeForPrompt(q.question)}\n  Assignee Hint: ${sanitizeForPrompt(q.assigneeHint || "None")}`
+      )
       .join("\n");
 
     // Format important points by category
@@ -202,7 +204,7 @@ export async function generateMeetingAnalysis(
         pointsByCategory[p.category] = [];
       }
       const ts = findTimestamp(p.transcriptEvidence);
-      pointsByCategory[p.category].push(
+      pointsByCategory[p.category]?.push(
         `- Content: ${sanitizeForPrompt(p.content)}${fmtTs(ts)}\n  Speaker: ${sanitizeForPrompt(p.speakerHint || "Unknown")}`
       );
     }

@@ -105,6 +105,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::assertions_on_constants)]
     fn test_threshold_range() {
         assert!(POSITIVE_THRESHOLD > 0.0);
         assert!(POSITIVE_THRESHOLD < 1.0);

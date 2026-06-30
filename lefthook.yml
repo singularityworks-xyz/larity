@@ -1,0 +1,21 @@
+pre-commit:
+  jobs:
+    - name: lint
+      run: bun run check
+      glob:
+        - "**/*.{js,jsx,ts,tsx,json,jsonc,css}"
+      stage_fixed: true
+    - name: typecheck
+      run: bun run check-types
+      glob:
+        - "**/*.{ts,tsx}"
+    - name: version-bump
+      run: bun scripts/version-manager.ts
+    - name: rust-fmt
+      glob: "apps/desktop/src-tauri/**/*.rs"
+      run: make -C apps/desktop/src-tauri fmt
+      stage_fixed: true
+    - name: rust-clippy
+      glob: "apps/desktop/src-tauri/**/*.rs"
+      run: make -C apps/desktop/src-tauri clippy
+

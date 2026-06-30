@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { cx } from "../../lib/ui";
 
 interface ConstraintCounterProps {
-  count: number;
   className?: string;
+  count: number;
 }
 
 export function ConstraintCounter({
@@ -29,7 +29,7 @@ export function ConstraintCounter({
 
   return (
     <output
-      aria-label={`${count} tracked constraint${count !== 1 ? "s" : ""}`}
+      aria-label={`${count} tracked constraint${count === 1 ? "" : "s"}`}
       className={cx(
         "inline-flex h-[20px] shrink-0 items-center gap-1.5 rounded-[5px] border px-2 font-medium font-mono text-[10px] tabular-nums leading-none transition-shadow duration-300",
         "border-[rgba(210,153,34,0.2)] bg-[rgba(210,153,34,0.06)] text-warning-fg",

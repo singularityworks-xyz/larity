@@ -1,0 +1,35 @@
+{
+  "name": "@larity/db",
+  "version": "0.0.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "generate": "bun prisma generate",
+    "push": "bun prisma db push",
+    "migrate": "bun prisma migrate dev",
+    "studio": "bun prisma studio"
+  },
+  "exports": {
+    ".": "./src/client.ts",
+    "./prisma": "./prisma/generated/prisma/client.ts",
+    "./generated/prisma": "./prisma/generated/prisma/client.ts",
+    "./client": "./src/client.ts",
+    "./prisma.config": "./prisma.config.ts",
+    "./meeting-analysis.types": "./src/meeting-analysis.types.ts",
+    "./redis": "./redis/index.ts",
+    "./redis/keys": "./redis/keys.ts",
+    "./redis/ttl": "./redis/ttl.ts"
+  },
+  "dependencies": {
+    "@larity/logger": "workspace:*",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "ioredis": "^5.11.1"
+  },
+  "devDependencies": {
+    "@larity/config": "workspace:*",
+    "@prisma/config": "^7.8.0",
+    "prisma": "^7.8.0"
+  }
+}

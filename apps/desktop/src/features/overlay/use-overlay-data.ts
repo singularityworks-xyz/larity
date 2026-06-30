@@ -75,11 +75,13 @@ export function useOverlayData() {
     return alertQueue.visibleAlerts;
   }, [alertQueue.visibleAlerts, alertsMuted]);
 
-  const connectedTeammates = useMemo(() => {
-    return participants
-      .filter((p) => p.type === "TEAM" && !p.isSelf)
-      .map(participantToTeammate);
-  }, [participants]);
+  const connectedTeammates = useMemo(
+    () =>
+      participants
+        .filter((p) => p.type === "TEAM" && !p.isSelf)
+        .map(participantToTeammate),
+    [participants]
+  );
 
   const dismissAlert = useCallback(
     (id: string) => {

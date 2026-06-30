@@ -67,7 +67,7 @@ export function removeConnection(
 ): SessionEntry | undefined {
   const session = sessions.get(sessionId);
   if (!session) {
-    return undefined;
+    return;
   }
 
   const currentConnection = session.connections.get(userId);
@@ -84,7 +84,7 @@ export function removeConnection(
     return session;
   }
 
-  return undefined;
+  return;
 }
 
 /**
@@ -138,7 +138,7 @@ export function broadcast(sessionId: string, message: string): void {
   for (const connection of session.connections.values()) {
     try {
       connection.socket.send(message);
-    } catch (_err) {
+    } catch {
       // Ignore send errors
     }
   }
@@ -170,7 +170,7 @@ export function sendToUser(
   }
   try {
     connection.socket.send(message);
-  } catch (_err) {
+  } catch {
     // Ignore send errors
   }
 }
