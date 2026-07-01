@@ -16,9 +16,9 @@ export const ClientService = {
     });
   },
 
-  findById(id: string) {
-    return prisma.client.findUnique({
-      where: { id },
+  findById(id: string, orgId: string) {
+    return prisma.client.findFirst({
+      where: { id, orgId },
       include: {
         org: { select: { id: true, name: true, slug: true } },
         _count: {
@@ -74,7 +74,12 @@ export const ClientService = {
     });
   },
 
-  update(id: string, data: UpdateClientInput) {
+  async update(id: string, orgId: string, data: UpdateClientInput) {
+    const existing = await prisma.client.findFirst({ where: { id, orgId } });
+    if (!existing) {
+      throw new Error("Client not found");
+    }
+
     return prisma.client.update({
       where: { id },
       data,
@@ -84,7 +89,12 @@ export const ClientService = {
     });
   },
 
-  delete(id: string) {
+  async delete(id: string, orgId: string) {
+    const existing = await prisma.client.findFirst({ where: { id, orgId } });
+    if (!existing) {
+      throw new Error("Client not found");
+    }
+
     return prisma.client.delete({
       where: { id },
     });

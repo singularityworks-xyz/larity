@@ -1,5 +1,5 @@
 import { Elysia } from "elysia";
-import { requireAuth, requireOwnerOrAdmin } from "../middleware/auth";
+import { requireOrg, requireOwnerOrAdmin } from "../middleware/auth";
 import { ClientMemberService, ClientService } from "../services";
 import {
   clientIdSchema,
@@ -12,22 +12,15 @@ import {
 } from "../validators";
 
 export const clientsRoutes = new Elysia({ prefix: "/clients" })
-  .use(requireAuth)
+  .use(requireOrg) // ensures user!.orgId! is present
   // List all clients - any authenticated user can view
   .get(
     "/",
-    async ({ query, user, set }) => {
-      const orgId = user?.orgId as string | undefined;
-      if (!orgId) {
-        set.status = 400;
-        return {
-          success: false,
-          error: "ORGANIZATION_REQUIRED",
-          message: "You must belong to an organization",
-        };
-      }
-
-      const clients = await ClientService.findAll({ ...query, orgId });
+    async ({ query, user }) => {
+      const clients = await ClientService.findAll({
+        ...query,
+        orgId: user?.orgId!,
+      });
       return { success: true, data: clients };
     },
     { query: clientQuerySchema }
@@ -35,8 +28,8 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
   // Get client by id - any authenticated user can view
   .get(
     "/:id",
-    async ({ params, set }) => {
-      const client = await ClientService.findById(params.id);
+    async ({ params, set, user }) => {
+      const client = await ClientService.findById(params.id, user?.orgId!);
       if (!client) {
         set.status = 404;
         return { success: false, error: "Client not found" };
@@ -51,17 +44,10 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
     "/",
     async ({ body, user, set }) => {
       try {
-        const orgId = user?.orgId as string | undefined;
-        if (!orgId) {
-          set.status = 400;
-          return {
-            success: false,
-            error: "ORGANIZATION_REQUIRED",
-            message: "You must belong to an organization",
-          };
-        }
-
-        const client = await ClientService.create({ ...body, orgId });
+        const client = await ClientService.create({
+          ...body,
+          orgId: user?.orgId!,
+        });
         return { success: true, data: client };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -84,13 +70,18 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
   // Update client - requires OWNER or ADMIN role
   .patch(
     "/:id",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
-        const client = await ClientService.update(params.id, body);
+        const client = await ClientService.update(
+          params.id,
+          user?.orgId!,
+          body
+        );
         return { success: true, data: client };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === "P2025") {
+        const errObj = e as Error;
+        if (err.code === "P2025" || errObj.message === "Client not found") {
           set.status = 404;
           return { success: false, error: "Client not found" };
         }
@@ -109,13 +100,14 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
   // Delete client - requires OWNER or ADMIN role
   .delete(
     "/:id",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        await ClientService.delete(params.id);
+        await ClientService.delete(params.id, user?.orgId!);
         return { success: true, message: "Client deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === "P2025") {
+        const errObj = e as Error;
+        if (err.code === "P2025" || errObj.message === "Client not found") {
           set.status = 404;
           return { success: false, error: "Client not found" };
         }
@@ -128,8 +120,11 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
   // List members/contacts of a client - requires OWNER or ADMIN role
   .get(
     "/:id/members",
-    async ({ params }) => {
-      const members = await ClientMemberService.findByClient(params.id);
+    async ({ params, user }) => {
+      const members = await ClientMemberService.findByClient(
+        params.id,
+        user?.orgId!
+      );
       return { success: true, data: members };
     },
     { params: clientIdSchema }
@@ -137,15 +132,20 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
   // Add member/contact to client - requires OWNER or ADMIN role
   .post(
     "/:id/members",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
-        const member = await ClientMemberService.create({
+        const member = await ClientMemberService.create(user?.orgId!, {
           ...body,
           clientId: params.id,
         });
         return { success: true, data: member };
       } catch (e: unknown) {
         const err = e as { code?: string };
+        const errObj = e as Error;
+        if (errObj.message === "Client not found or access denied") {
+          set.status = 403;
+          return { success: false, error: errObj.message };
+        }
         if (err.code === "P2002") {
           set.status = 409;
           return {
@@ -168,13 +168,21 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
   // Update member/contact - requires OWNER or ADMIN role
   .patch(
     "/members/:id",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
-        const member = await ClientMemberService.update(params.id, body);
+        const member = await ClientMemberService.update(
+          params.id,
+          user?.orgId!,
+          body
+        );
         return { success: true, data: member };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === "P2025") {
+        const errObj = e as Error;
+        if (
+          err.code === "P2025" ||
+          errObj.message === "Client contact not found"
+        ) {
           set.status = 404;
           return { success: false, error: "Client contact not found" };
         }
@@ -193,13 +201,17 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
   // Remove member/contact from client - requires OWNER or ADMIN role
   .delete(
     "/members/:id",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        await ClientMemberService.delete(params.id);
+        await ClientMemberService.delete(params.id, user?.orgId!);
         return { success: true, message: "Contact removed from client" };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === "P2025") {
+        const errObj = e as Error;
+        if (
+          err.code === "P2025" ||
+          errObj.message === "Client contact not found"
+        ) {
           set.status = 404;
           return { success: false, error: "Client contact not found" };
         }

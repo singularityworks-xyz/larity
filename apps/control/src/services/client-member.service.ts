@@ -6,8 +6,18 @@ import type {
 
 // ClientMembers are external contacts (not linked to User)
 export const ClientMemberService = {
-  create(data: CreateClientMemberInput) {
+  async create(orgId: string, data: CreateClientMemberInput) {
     const { clientId, ...rest } = data;
+
+    // Verify client exists and belongs to org
+    const client = await prisma.client.findFirst({
+      where: { id: clientId, orgId },
+    });
+
+    if (!client) {
+      throw new Error("Client not found or access denied");
+    }
+
     return prisma.clientMember.create({
       data: {
         ...rest,
@@ -20,13 +30,29 @@ export const ClientMemberService = {
     });
   },
 
-  delete(id: string) {
+  async delete(id: string, orgId: string) {
+    const existing = await prisma.clientMember.findFirst({
+      where: { id, client: { orgId } },
+    });
+
+    if (!existing) {
+      throw new Error("Client contact not found");
+    }
+
     return prisma.clientMember.delete({
       where: { id },
     });
   },
 
-  update(id: string, data: UpdateClientMemberInput) {
+  async update(id: string, orgId: string, data: UpdateClientMemberInput) {
+    const existing = await prisma.clientMember.findFirst({
+      where: { id, client: { orgId } },
+    });
+
+    if (!existing) {
+      throw new Error("Client contact not found");
+    }
+
     return prisma.clientMember.update({
       where: { id },
       // biome-ignore lint/suspicious/noExplicitAny: prisma input type mismatch
@@ -37,27 +63,27 @@ export const ClientMemberService = {
     });
   },
 
-  findById(id: string) {
-    return prisma.clientMember.findUnique({
-      where: { id },
-      include: {
-        client: { select: { id: true, name: true, slug: true } },
-      },
-    });
-  },
-
-  findByClientAndEmail(clientId: string, email: string) {
+  findById(id: string, orgId: string) {
     return prisma.clientMember.findFirst({
-      where: { clientId, email },
+      where: { id, client: { orgId } },
       include: {
         client: { select: { id: true, name: true, slug: true } },
       },
     });
   },
 
-  findByClient(clientId: string) {
+  findByClientAndEmail(clientId: string, email: string, orgId: string) {
+    return prisma.clientMember.findFirst({
+      where: { clientId, email, client: { orgId } },
+      include: {
+        client: { select: { id: true, name: true, slug: true } },
+      },
+    });
+  },
+
+  findByClient(clientId: string, orgId: string) {
     return prisma.clientMember.findMany({
-      where: { clientId },
+      where: { clientId, client: { orgId } },
       orderBy: [
         { role: "asc" }, // PRIMARY_CONTACT first
         { updatedAt: "desc" },
@@ -65,9 +91,9 @@ export const ClientMemberService = {
     });
   },
 
-  findByEmail(email: string) {
+  findByEmail(email: string, orgId: string) {
     return prisma.clientMember.findMany({
-      where: { email },
+      where: { email, client: { orgId } },
       include: {
         client: { select: { id: true, name: true, slug: true, status: true } },
       },
