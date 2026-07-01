@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { requireOrg } from "../middleware/auth";
 import { DocumentService } from "../services";
 import type { DocumentQueryInput } from "../validators";
 import {
@@ -9,11 +10,13 @@ import {
 } from "../validators";
 
 export const documentsRoutes = new Elysia({ prefix: "/documents" })
+  .use(requireOrg)
   // List all documents
   .get(
     "/",
-    async ({ query }) => {
+    async ({ query, user }) => {
       const documents = await DocumentService.findAll(
+        user?.orgId!,
         query as unknown as DocumentQueryInput
       );
       return { success: true, data: documents };
@@ -23,8 +26,8 @@ export const documentsRoutes = new Elysia({ prefix: "/documents" })
   // Get document by id
   .get(
     "/:id",
-    async ({ params, set }) => {
-      const document = await DocumentService.findById(params.id);
+    async ({ params, set, user }) => {
+      const document = await DocumentService.findById(params.id, user?.orgId!);
       if (!document) {
         set.status = 404;
         return { success: false, error: "Document not found" };
@@ -36,9 +39,9 @@ export const documentsRoutes = new Elysia({ prefix: "/documents" })
   // Create document
   .post(
     "/",
-    async ({ body, set }) => {
+    async ({ body, set, user }) => {
       try {
-        const document = await DocumentService.create(body);
+        const document = await DocumentService.create(user?.orgId!, body);
         return { success: true, data: document };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -57,9 +60,13 @@ export const documentsRoutes = new Elysia({ prefix: "/documents" })
   // Update document
   .patch(
     "/:id",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
-        const document = await DocumentService.update(params.id, body);
+        const document = await DocumentService.update(
+          params.id,
+          user?.orgId!,
+          body
+        );
         return { success: true, data: document };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -75,9 +82,9 @@ export const documentsRoutes = new Elysia({ prefix: "/documents" })
   // Delete document
   .delete(
     "/:id",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        await DocumentService.delete(params.id);
+        await DocumentService.delete(params.id, user?.orgId!);
         return { success: true, message: "Document deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -93,9 +100,9 @@ export const documentsRoutes = new Elysia({ prefix: "/documents" })
   // Archive document
   .post(
     "/:id/archive",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const document = await DocumentService.archive(params.id);
+        const document = await DocumentService.archive(params.id, user?.orgId!);
         return { success: true, data: document };
       } catch (e: unknown) {
         const err = e as { code?: string };

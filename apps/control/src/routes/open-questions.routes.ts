@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { z } from "zod";
+import { requireOrg } from "../middleware/auth";
 import { OpenQuestionService } from "../services";
 import {
   createOpenQuestionSchema,
@@ -9,11 +10,12 @@ import {
 } from "../validators";
 
 export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
+  .use(requireOrg)
   // List all open questions
   .get(
     "/",
-    async ({ query }) => {
-      const questions = await OpenQuestionService.findAll(query);
+    async ({ query, user }) => {
+      const questions = await OpenQuestionService.findAll(user?.orgId!, query);
       return { success: true, data: questions };
     },
     { query: openQuestionQuerySchema }
@@ -21,8 +23,11 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
   // Get open question by id
   .get(
     "/:id",
-    async ({ params, set }) => {
-      const question = await OpenQuestionService.findById(params.id);
+    async ({ params, set, user }) => {
+      const question = await OpenQuestionService.findById(
+        params.id,
+        user?.orgId!
+      );
       if (!question) {
         set.status = 404;
         return { success: false, error: "Open question not found" };
@@ -34,9 +39,9 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
   // Create open question
   .post(
     "/",
-    async ({ body, set }) => {
+    async ({ body, set, user }) => {
       try {
-        const question = await OpenQuestionService.create(body);
+        const question = await OpenQuestionService.create(user?.orgId!, body);
         return { success: true, data: question };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -55,9 +60,13 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
   // Update open question
   .patch(
     "/:id",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
-        const question = await OpenQuestionService.update(params.id, body);
+        const question = await OpenQuestionService.update(
+          params.id,
+          user?.orgId!,
+          body
+        );
         return { success: true, data: question };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -73,9 +82,9 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
   // Delete open question
   .delete(
     "/:id",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        await OpenQuestionService.delete(params.id);
+        await OpenQuestionService.delete(params.id, user?.orgId!);
         return { success: true, message: "Open question deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -91,10 +100,11 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
   // Resolve open question
   .post(
     "/:id/resolve",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
         const question = await OpenQuestionService.resolve(
           params.id,
+          user?.orgId!,
           body?.decisionId
         );
         return { success: true, data: question };
@@ -115,9 +125,12 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
   // Defer open question
   .post(
     "/:id/defer",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const question = await OpenQuestionService.defer(params.id);
+        const question = await OpenQuestionService.defer(
+          params.id,
+          user?.orgId!
+        );
         return { success: true, data: question };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -133,9 +146,12 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
   // Reopen question
   .post(
     "/:id/reopen",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const question = await OpenQuestionService.reopen(params.id);
+        const question = await OpenQuestionService.reopen(
+          params.id,
+          user?.orgId!
+        );
         return { success: true, data: question };
       } catch (e: unknown) {
         const err = e as { code?: string };

@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { requireOrg } from "../middleware/auth";
 import { TaskService } from "../services";
 import type { TaskQueryInput } from "../validators";
 import {
@@ -9,11 +10,13 @@ import {
 } from "../validators";
 
 export const tasksRoutes = new Elysia({ prefix: "/tasks" })
+  .use(requireOrg)
   // List all tasks (with optional filters)
   .get(
     "/",
-    async ({ query }) => {
+    async ({ query, user }) => {
       const tasks = await TaskService.findAll(
+        user?.orgId!,
         query as unknown as TaskQueryInput
       );
       return { success: true, data: tasks };
@@ -23,8 +26,8 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
   // Get task by id
   .get(
     "/:id",
-    async ({ params, set }) => {
-      const task = await TaskService.findById(params.id);
+    async ({ params, set, user }) => {
+      const task = await TaskService.findById(params.id, user?.orgId!);
       if (!task) {
         set.status = 404;
         return { success: false, error: "Task not found" };
@@ -36,9 +39,9 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
   // Create task
   .post(
     "/",
-    async ({ body, set }) => {
+    async ({ body, set, user }) => {
       try {
-        const task = await TaskService.create(body);
+        const task = await TaskService.create(user?.orgId!, body);
         return { success: true, data: task };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -58,9 +61,9 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
   // Update task
   .patch(
     "/:id",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
-        const task = await TaskService.update(params.id, body);
+        const task = await TaskService.update(params.id, user?.orgId!, body);
         return { success: true, data: task };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -83,9 +86,9 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
   // Delete task
   .delete(
     "/:id",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        await TaskService.delete(params.id);
+        await TaskService.delete(params.id, user?.orgId!);
         return { success: true, message: "Task deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -101,9 +104,9 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
   // Mark task as complete
   .post(
     "/:id/complete",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const task = await TaskService.markComplete(params.id);
+        const task = await TaskService.markComplete(params.id, user?.orgId!);
         return { success: true, data: task };
       } catch (e: unknown) {
         const err = e as { code?: string; message?: string };
@@ -119,9 +122,9 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
   // Reopen task
   .post(
     "/:id/reopen",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const task = await TaskService.markOpen(params.id);
+        const task = await TaskService.markOpen(params.id, user?.orgId!);
         return { success: true, data: task };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -137,9 +140,9 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
   // Mark task as in progress
   .post(
     "/:id/start",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const task = await TaskService.markInProgress(params.id);
+        const task = await TaskService.markInProgress(params.id, user?.orgId!);
         return { success: true, data: task };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -155,9 +158,9 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
   // Mark task as blocked
   .post(
     "/:id/block",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const task = await TaskService.markBlocked(params.id);
+        const task = await TaskService.markBlocked(params.id, user?.orgId!);
         return { success: true, data: task };
       } catch (e: unknown) {
         const err = e as { code?: string };

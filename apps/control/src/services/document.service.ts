@@ -7,7 +7,14 @@ import type {
 } from "../validators";
 
 export const DocumentService = {
-  create(data: CreateDocumentInput) {
+  async create(orgId: string, data: CreateDocumentInput) {
+    const client = await prisma.client.findFirst({
+      where: { id: data.clientId, orgId },
+    });
+    if (!client) {
+      throw new Error("Client not found or access denied");
+    }
+
     return prisma.document.create({
       data,
       include: {
@@ -18,9 +25,9 @@ export const DocumentService = {
     });
   },
 
-  findById(id: string) {
-    return prisma.document.findUnique({
-      where: { id },
+  findById(id: string, orgId: string) {
+    return prisma.document.findFirst({
+      where: { id, client: { orgId } },
       include: {
         client: { select: { id: true, name: true } },
         createdBy: { select: { id: true, name: true, email: true } },
@@ -32,9 +39,10 @@ export const DocumentService = {
     });
   },
 
-  findAll(query?: DocumentQueryInput) {
+  findAll(orgId: string, query?: DocumentQueryInput) {
     return prisma.document.findMany({
       where: {
+        client: { orgId },
         clientId: query?.clientId,
         type: query?.type as
           | "NOTE"
@@ -59,7 +67,13 @@ export const DocumentService = {
     });
   },
 
-  update(id: string, data: UpdateDocumentInput) {
+  async update(id: string, orgId: string, data: UpdateDocumentInput) {
+    const existing = await prisma.document.findFirst({
+      where: { id, client: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Document not found");
+    }
     // Use atomic increment for version to avoid race condition
     // Only increment version if content is being updated
     if (data.content) {
@@ -88,14 +102,26 @@ export const DocumentService = {
     });
   },
 
-  archive(id: string) {
+  async archive(id: string, orgId: string) {
+    const existing = await prisma.document.findFirst({
+      where: { id, client: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Document not found");
+    }
     return prisma.document.update({
       where: { id },
       data: { status: "ARCHIVED" },
     });
   },
 
-  delete(id: string) {
+  async delete(id: string, orgId: string) {
+    const existing = await prisma.document.findFirst({
+      where: { id, client: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Document not found");
+    }
     return prisma.document.delete({
       where: { id },
     });

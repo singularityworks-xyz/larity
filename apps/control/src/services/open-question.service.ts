@@ -5,7 +5,14 @@ import type {
 } from "../validators";
 
 export const OpenQuestionService = {
-  create(data: CreateOpenQuestionInput) {
+  async create(orgId: string, data: CreateOpenQuestionInput) {
+    const client = await prisma.client.findFirst({
+      where: { id: data.clientId, orgId },
+    });
+    if (!client) {
+      throw new Error("Client not found or access denied");
+    }
+
     return prisma.openQuestion.create({
       data,
       include: {
@@ -16,9 +23,9 @@ export const OpenQuestionService = {
     });
   },
 
-  findById(id: string) {
-    return prisma.openQuestion.findUnique({
-      where: { id },
+  findById(id: string, orgId: string) {
+    return prisma.openQuestion.findFirst({
+      where: { id, client: { orgId } },
       include: {
         client: { select: { id: true, name: true } },
         meeting: { select: { id: true, title: true } },
@@ -30,14 +37,18 @@ export const OpenQuestionService = {
     });
   },
 
-  findAll(query?: {
-    clientId?: string;
-    meetingId?: string;
-    assigneeId?: string;
-    status?: string;
-  }) {
+  findAll(
+    orgId: string,
+    query?: {
+      clientId?: string;
+      meetingId?: string;
+      assigneeId?: string;
+      status?: string;
+    }
+  ) {
     return prisma.openQuestion.findMany({
       where: {
+        client: { orgId },
         clientId: query?.clientId,
         meetingId: query?.meetingId,
         assigneeId: query?.assigneeId,
@@ -52,7 +63,13 @@ export const OpenQuestionService = {
     });
   },
 
-  update(id: string, data: UpdateOpenQuestionInput) {
+  async update(id: string, orgId: string, data: UpdateOpenQuestionInput) {
+    const existing = await prisma.openQuestion.findFirst({
+      where: { id, client: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Open question not found");
+    }
     return prisma.openQuestion.update({
       where: { id },
       data,
@@ -66,7 +83,13 @@ export const OpenQuestionService = {
     });
   },
 
-  resolve(id: string, decisionId?: string) {
+  async resolve(id: string, orgId: string, decisionId?: string) {
+    const existing = await prisma.openQuestion.findFirst({
+      where: { id, client: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Open question not found");
+    }
     return prisma.openQuestion.update({
       where: { id },
       data: {
@@ -82,14 +105,26 @@ export const OpenQuestionService = {
     });
   },
 
-  defer(id: string) {
+  async defer(id: string, orgId: string) {
+    const existing = await prisma.openQuestion.findFirst({
+      where: { id, client: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Open question not found");
+    }
     return prisma.openQuestion.update({
       where: { id },
       data: { status: "DEFERRED" },
     });
   },
 
-  reopen(id: string) {
+  async reopen(id: string, orgId: string) {
+    const existing = await prisma.openQuestion.findFirst({
+      where: { id, client: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Open question not found");
+    }
     return prisma.openQuestion.update({
       where: { id },
       data: {
@@ -100,7 +135,13 @@ export const OpenQuestionService = {
     });
   },
 
-  delete(id: string) {
+  async delete(id: string, orgId: string) {
+    const existing = await prisma.openQuestion.findFirst({
+      where: { id, client: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Open question not found");
+    }
     return prisma.openQuestion.delete({
       where: { id },
     });

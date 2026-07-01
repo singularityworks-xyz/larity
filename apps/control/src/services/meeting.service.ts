@@ -41,7 +41,14 @@ function hasValidTranscript(
 }
 
 export const MeetingService = {
-  create(data: CreateMeetingInput) {
+  async create(orgId: string, data: CreateMeetingInput) {
+    const client = await prisma.client.findFirst({
+      where: { id: data.clientId, orgId },
+    });
+    if (!client) {
+      throw new ForbiddenError("Client not found or access denied");
+    }
+
     return prisma.meeting.create({
       data,
       include: {
@@ -50,9 +57,9 @@ export const MeetingService = {
     });
   },
 
-  findById(id: string) {
-    return prisma.meeting.findUnique({
-      where: { id },
+  findById(id: string, orgId: string) {
+    return prisma.meeting.findFirst({
+      where: { id, client: { orgId } },
       include: {
         client: { select: { id: true, name: true, slug: true } },
         participants: {
@@ -83,10 +90,11 @@ export const MeetingService = {
     });
   },
 
-  findAll(query?: MeetingQueryInput) {
+  findAll(orgId: string, query?: MeetingQueryInput) {
     return prisma.meeting.findMany({
       where: {
         clientId: query?.clientId,
+        client: { orgId },
         status: query?.status as
           | "SCHEDULED"
           | "LIVE"
@@ -115,7 +123,14 @@ export const MeetingService = {
     });
   },
 
-  update(id: string, data: UpdateMeetingInput) {
+  async update(id: string, orgId: string, data: UpdateMeetingInput) {
+    const existing = await prisma.meeting.findFirst({
+      where: { id, client: { orgId } },
+    });
+    if (!existing) {
+      throw new NotFoundError("Meeting not found");
+    }
+
     return prisma.meeting.update({
       where: { id },
       // biome-ignore lint/suspicious/noExplicitAny: prisma input type mismatch
@@ -126,16 +141,23 @@ export const MeetingService = {
     });
   },
 
-  delete(id: string) {
+  async delete(id: string, orgId: string) {
+    const existing = await prisma.meeting.findFirst({
+      where: { id, client: { orgId } },
+    });
+    if (!existing) {
+      throw new NotFoundError("Meeting not found");
+    }
+
     return prisma.meeting.delete({
       where: { id },
     });
   },
 
-  async startMeeting(id: string) {
+  async startMeeting(id: string, orgId: string) {
     // Validate status transition: only SCHEDULED meetings can be started
-    const meeting = await prisma.meeting.findUnique({
-      where: { id },
+    const meeting = await prisma.meeting.findFirst({
+      where: { id, client: { orgId } },
       select: { status: true },
     });
 
@@ -166,10 +188,10 @@ export const MeetingService = {
     });
   },
 
-  async endMeeting(id: string) {
+  async endMeeting(id: string, orgId: string) {
     // Validate status transition: only LIVE meetings can be ended
-    const meeting = await prisma.meeting.findUnique({
-      where: { id },
+    const meeting = await prisma.meeting.findFirst({
+      where: { id, client: { orgId } },
       select: { status: true },
     });
 
@@ -195,10 +217,10 @@ export const MeetingService = {
     });
   },
 
-  async cancelMeeting(id: string) {
+  async cancelMeeting(id: string, orgId: string) {
     // Validate status transition: only SCHEDULED meetings can be cancelled
-    const meeting = await prisma.meeting.findUnique({
-      where: { id },
+    const meeting = await prisma.meeting.findFirst({
+      where: { id, client: { orgId } },
       select: { status: true },
     });
 
@@ -219,9 +241,13 @@ export const MeetingService = {
   },
 
   // Bulk extraction endpoint for post-meeting processing
-  async extractFromMeeting(meetingId: string, data: MeetingExtractionInput) {
-    const meeting = await prisma.meeting.findUnique({
-      where: { id: meetingId },
+  async extractFromMeeting(
+    meetingId: string,
+    orgId: string,
+    data: MeetingExtractionInput
+  ) {
+    const meeting = await prisma.meeting.findFirst({
+      where: { id: meetingId, client: { orgId } },
       select: { clientId: true },
     });
 
@@ -318,9 +344,9 @@ export const MeetingService = {
     });
   },
 
-  async getProcessingStatus(meetingId: string) {
-    const meeting = await prisma.meeting.findUnique({
-      where: { id: meetingId },
+  async getProcessingStatus(meetingId: string, orgId: string) {
+    const meeting = await prisma.meeting.findFirst({
+      where: { id: meetingId, client: { orgId } },
       include: { transcript: true },
     });
 
@@ -419,9 +445,9 @@ export const MeetingService = {
     };
   },
 
-  async reprocessMeeting(meetingId: string) {
-    const meeting = await prisma.meeting.findUnique({
-      where: { id: meetingId },
+  async reprocessMeeting(meetingId: string, orgId: string) {
+    const meeting = await prisma.meeting.findFirst({
+      where: { id: meetingId, client: { orgId } },
       include: {
         client: {
           select: { orgId: true },
@@ -464,8 +490,6 @@ export const MeetingService = {
       }
       throw new Error("Could not resolve session ID for meeting");
     }
-
-    const orgId = meeting.client.orgId;
 
     if (meeting.transcript) {
       // Reprocess summary only
@@ -511,6 +535,7 @@ export const MeetingService = {
 
   async confirmSpeakerMapping(
     meetingIdOrSessionId: string,
+    orgId: string,
     deepgramIndex: string,
     clientMemberId: string
   ) {
@@ -523,8 +548,8 @@ export const MeetingService = {
       meetingId = mappedMeetingId;
     }
 
-    const meeting = await prisma.meeting.findUnique({
-      where: { id: meetingId },
+    const meeting = await prisma.meeting.findFirst({
+      where: { id: meetingId, client: { orgId } },
       select: {
         clientId: true,
       },

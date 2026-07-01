@@ -5,11 +5,19 @@ import type {
 } from "../validators";
 
 export const MeetingParticipantService = {
-  addInternal(
+  async addInternal(
     meetingId: string,
+    orgId: string,
     userId: string,
     role: "HOST" | "PARTICIPANT" | "OBSERVER" = "PARTICIPANT"
   ) {
+    const meeting = await prisma.meeting.findFirst({
+      where: { id: meetingId, client: { orgId } },
+    });
+    if (!meeting) {
+      throw new Error("Meeting not found");
+    }
+
     return prisma.meetingParticipant.create({
       data: { meetingId, userId, role },
       include: {
@@ -18,18 +26,32 @@ export const MeetingParticipantService = {
     });
   },
 
-  addExternal(
+  async addExternal(
     meetingId: string,
+    orgId: string,
     externalName: string,
     externalEmail: string,
     role: "HOST" | "PARTICIPANT" | "OBSERVER" = "PARTICIPANT"
   ) {
+    const meeting = await prisma.meeting.findFirst({
+      where: { id: meetingId, client: { orgId } },
+    });
+    if (!meeting) {
+      throw new Error("Meeting not found");
+    }
+
     return prisma.meetingParticipant.create({
       data: { meetingId, externalName, externalEmail, role },
     });
   },
 
-  create(data: CreateMeetingParticipantInput) {
+  async create(orgId: string, data: CreateMeetingParticipantInput) {
+    const meeting = await prisma.meeting.findFirst({
+      where: { id: data.meetingId, client: { orgId } },
+    });
+    if (!meeting) {
+      throw new Error("Meeting not found");
+    }
     return prisma.meetingParticipant.create({
       data,
       include: {
@@ -40,9 +62,9 @@ export const MeetingParticipantService = {
     });
   },
 
-  findById(id: string) {
-    return prisma.meetingParticipant.findUnique({
-      where: { id },
+  findById(id: string, orgId: string) {
+    return prisma.meetingParticipant.findFirst({
+      where: { id, meeting: { client: { orgId } } },
       include: {
         meeting: { select: { id: true, title: true } },
         user: { select: { id: true, name: true, email: true } },
@@ -50,9 +72,9 @@ export const MeetingParticipantService = {
     });
   },
 
-  findByMeeting(meetingId: string) {
+  findByMeeting(meetingId: string, orgId: string) {
     return prisma.meetingParticipant.findMany({
-      where: { meetingId },
+      where: { meetingId, meeting: { client: { orgId } } },
       include: {
         user: { select: { id: true, name: true, email: true } },
       },
@@ -60,7 +82,13 @@ export const MeetingParticipantService = {
     });
   },
 
-  update(id: string, data: UpdateMeetingParticipantInput) {
+  async update(id: string, orgId: string, data: UpdateMeetingParticipantInput) {
+    const existing = await prisma.meetingParticipant.findFirst({
+      where: { id, meeting: { client: { orgId } } },
+    });
+    if (!existing) {
+      throw new Error("Participant not found");
+    }
     return prisma.meetingParticipant.update({
       where: { id },
       data,
@@ -70,14 +98,26 @@ export const MeetingParticipantService = {
     });
   },
 
-  markAttended(id: string) {
+  async markAttended(id: string, orgId: string) {
+    const existing = await prisma.meetingParticipant.findFirst({
+      where: { id, meeting: { client: { orgId } } },
+    });
+    if (!existing) {
+      throw new Error("Participant not found");
+    }
     return prisma.meetingParticipant.update({
       where: { id },
       data: { attendedAt: new Date() },
     });
   },
 
-  remove(id: string) {
+  async remove(id: string, orgId: string) {
+    const existing = await prisma.meetingParticipant.findFirst({
+      where: { id, meeting: { client: { orgId } } },
+    });
+    if (!existing) {
+      throw new Error("Participant not found");
+    }
     return prisma.meetingParticipant.delete({
       where: { id },
     });

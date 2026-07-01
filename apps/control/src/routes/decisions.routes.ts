@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { z } from "zod";
+import { requireOrg } from "../middleware/auth";
 import { DecisionService } from "../services";
 import {
   createDecisionSchema,
@@ -10,11 +11,12 @@ import {
 } from "../validators";
 
 export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
+  .use(requireOrg)
   // List all decisions (latest versions only, with optional filters)
   .get(
     "/",
-    async ({ query }) => {
-      const decisions = await DecisionService.findAll(query);
+    async ({ query, user }) => {
+      const decisions = await DecisionService.findAll(user?.orgId!, query);
       return { success: true, data: decisions };
     },
     { query: decisionQuerySchema }
@@ -22,8 +24,8 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
   // Get decision by id (specific record)
   .get(
     "/:id",
-    async ({ params, set }) => {
-      const decision = await DecisionService.findById(params.id);
+    async ({ params, set, user }) => {
+      const decision = await DecisionService.findById(params.id, user?.orgId!);
       if (!decision) {
         set.status = 404;
         return { success: false, error: "Decision not found" };
@@ -35,9 +37,10 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
   // Get latest version of a decision by ref
   .get(
     "/ref/:decisionRef",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       const decision = await DecisionService.findLatestByRef(
-        params.decisionRef
+        params.decisionRef,
+        user?.orgId!
       );
       if (!decision) {
         set.status = 404;
@@ -50,9 +53,10 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
   // Get all versions of a decision (full history)
   .get(
     "/ref/:decisionRef/history",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       const versions = await DecisionService.findAllVersions(
-        params.decisionRef
+        params.decisionRef,
+        user?.orgId!
       );
       if (versions.length === 0) {
         set.status = 404;
@@ -65,10 +69,11 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
   // Get specific version of a decision
   .get(
     "/ref/:decisionRef/version/:version",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       const decision = await DecisionService.findByRefAndVersion(
         params.decisionRef,
-        params.version
+        params.version,
+        user?.orgId!
       );
       if (!decision) {
         set.status = 404;
@@ -86,9 +91,9 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
   // Create new decision (version 1)
   .post(
     "/",
-    async ({ body, set }) => {
+    async ({ body, set, user }) => {
       try {
-        const decision = await DecisionService.create(body);
+        const decision = await DecisionService.create(user?.orgId!, body);
         return { success: true, data: decision };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -107,9 +112,10 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
   // Create new revision of an existing decision
   .post(
     "/ref/:decisionRef/revise",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
         const decision = await DecisionService.createRevision(
+          user?.orgId!,
           params.decisionRef,
           body
         );
@@ -131,9 +137,12 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
   // Revoke a decision
   .post(
     "/ref/:decisionRef/revoke",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const decision = await DecisionService.revoke(params.decisionRef);
+        const decision = await DecisionService.revoke(
+          params.decisionRef,
+          user?.orgId!
+        );
         return { success: true, data: decision };
       } catch (e: unknown) {
         const err = e as Error;
@@ -149,8 +158,11 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
   // Delete all versions of a decision
   .delete(
     "/ref/:decisionRef",
-    async ({ params, set }) => {
-      const result = await DecisionService.deleteByRef(params.decisionRef);
+    async ({ params, set, user }) => {
+      const result = await DecisionService.deleteByRef(
+        params.decisionRef,
+        user?.orgId!
+      );
       if (result.count === 0) {
         set.status = 404;
         return { success: false, error: "Decision not found" };
@@ -162,9 +174,9 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
   // Delete specific decision record by id
   .delete(
     "/:id",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        await DecisionService.deleteById(params.id);
+        await DecisionService.deleteById(params.id, user?.orgId!);
         return { success: true, message: "Decision deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };

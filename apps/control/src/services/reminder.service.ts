@@ -2,7 +2,16 @@ import { prisma } from "../lib/prisma";
 import type { CreateReminderInput, UpdateReminderInput } from "../validators";
 
 export const ReminderService = {
-  create(data: CreateReminderInput) {
+  async create(orgId: string, data: CreateReminderInput) {
+    // Validate client belongs to org if provided
+    if (data.clientId) {
+      const client = await prisma.client.findFirst({
+        where: { id: data.clientId, orgId },
+      });
+      if (!client) {
+        throw new Error("Client not found or access denied");
+      }
+    }
     return prisma.reminder.create({
       data,
       include: {
@@ -12,9 +21,9 @@ export const ReminderService = {
     });
   },
 
-  findById(id: string) {
-    return prisma.reminder.findUnique({
-      where: { id },
+  findById(id: string, orgId: string) {
+    return prisma.reminder.findFirst({
+      where: { id, user: { orgId } },
       include: {
         user: { select: { id: true, name: true, email: true } },
         client: { select: { id: true, name: true } },
@@ -22,16 +31,20 @@ export const ReminderService = {
     });
   },
 
-  findAll(query?: {
-    userId?: string;
-    clientId?: string;
-    status?: string;
-    linkedEntityType?: string;
-    dueBefore?: Date;
-    dueAfter?: Date;
-  }) {
+  findAll(
+    orgId: string,
+    query?: {
+      userId?: string;
+      clientId?: string;
+      status?: string;
+      linkedEntityType?: string;
+      dueBefore?: Date;
+      dueAfter?: Date;
+    }
+  ) {
     return prisma.reminder.findMany({
       where: {
+        user: { orgId },
         userId: query?.userId,
         clientId: query?.clientId,
         status: query?.status as
@@ -59,9 +72,10 @@ export const ReminderService = {
     });
   },
 
-  findDue(beforeDate: Date) {
+  findDue(orgId: string, beforeDate: Date) {
     return prisma.reminder.findMany({
       where: {
+        user: { orgId },
         status: "PENDING",
         dueAt: { lte: beforeDate },
       },
@@ -73,7 +87,13 @@ export const ReminderService = {
     });
   },
 
-  update(id: string, data: UpdateReminderInput) {
+  async update(id: string, orgId: string, data: UpdateReminderInput) {
+    const existing = await prisma.reminder.findFirst({
+      where: { id, user: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Reminder not found");
+    }
     return prisma.reminder.update({
       where: { id },
       data,
@@ -84,28 +104,52 @@ export const ReminderService = {
     });
   },
 
-  trigger(id: string) {
+  async trigger(id: string, orgId: string) {
+    const existing = await prisma.reminder.findFirst({
+      where: { id, user: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Reminder not found");
+    }
     return prisma.reminder.update({
       where: { id },
       data: { status: "TRIGGERED" },
     });
   },
 
-  dismiss(id: string) {
+  async dismiss(id: string, orgId: string) {
+    const existing = await prisma.reminder.findFirst({
+      where: { id, user: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Reminder not found");
+    }
     return prisma.reminder.update({
       where: { id },
       data: { status: "DISMISSED" },
     });
   },
 
-  snooze(id: string, newDueAt: Date) {
+  async snooze(id: string, orgId: string, newDueAt: Date) {
+    const existing = await prisma.reminder.findFirst({
+      where: { id, user: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Reminder not found");
+    }
     return prisma.reminder.update({
       where: { id },
       data: { status: "SNOOZED", dueAt: newDueAt },
     });
   },
 
-  delete(id: string) {
+  async delete(id: string, orgId: string) {
+    const existing = await prisma.reminder.findFirst({
+      where: { id, user: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Reminder not found");
+    }
     return prisma.reminder.delete({
       where: { id },
     });

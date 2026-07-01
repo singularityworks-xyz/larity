@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { z } from "zod";
+import { requireOrg } from "../middleware/auth";
 import { ReminderService } from "../services";
 import {
   createReminderSchema,
@@ -9,11 +10,12 @@ import {
 } from "../validators";
 
 export const remindersRoutes = new Elysia({ prefix: "/reminders" })
+  .use(requireOrg)
   // List all reminders
   .get(
     "/",
-    async ({ query }) => {
-      const reminders = await ReminderService.findAll(query);
+    async ({ query, user }) => {
+      const reminders = await ReminderService.findAll(user?.orgId!, query);
       return { success: true, data: reminders };
     },
     { query: reminderQuerySchema }
@@ -21,9 +23,9 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
   // Get due reminders
   .get(
     "/due",
-    async ({ query }) => {
+    async ({ query, user }) => {
       const beforeDate = query?.before ? new Date(query.before) : new Date();
-      const reminders = await ReminderService.findDue(beforeDate);
+      const reminders = await ReminderService.findDue(user?.orgId!, beforeDate);
       return { success: true, data: reminders };
     },
     {
@@ -37,8 +39,8 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
   // Get reminder by id
   .get(
     "/:id",
-    async ({ params, set }) => {
-      const reminder = await ReminderService.findById(params.id);
+    async ({ params, set, user }) => {
+      const reminder = await ReminderService.findById(params.id, user?.orgId!);
       if (!reminder) {
         set.status = 404;
         return { success: false, error: "Reminder not found" };
@@ -50,9 +52,9 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
   // Create reminder
   .post(
     "/",
-    async ({ body, set }) => {
+    async ({ body, set, user }) => {
       try {
-        const reminder = await ReminderService.create(body);
+        const reminder = await ReminderService.create(user?.orgId!, body);
         return { success: true, data: reminder };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -71,9 +73,13 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
   // Update reminder
   .patch(
     "/:id",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
-        const reminder = await ReminderService.update(params.id, body);
+        const reminder = await ReminderService.update(
+          params.id,
+          user?.orgId!,
+          body
+        );
         return { success: true, data: reminder };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -89,9 +95,9 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
   // Delete reminder
   .delete(
     "/:id",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        await ReminderService.delete(params.id);
+        await ReminderService.delete(params.id, user?.orgId!);
         return { success: true, message: "Reminder deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -107,9 +113,9 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
   // Trigger reminder
   .post(
     "/:id/trigger",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const reminder = await ReminderService.trigger(params.id);
+        const reminder = await ReminderService.trigger(params.id, user?.orgId!);
         return { success: true, data: reminder };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -125,9 +131,9 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
   // Dismiss reminder
   .post(
     "/:id/dismiss",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const reminder = await ReminderService.dismiss(params.id);
+        const reminder = await ReminderService.dismiss(params.id, user?.orgId!);
         return { success: true, data: reminder };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -143,10 +149,11 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
   // Snooze reminder
   .post(
     "/:id/snooze",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
         const reminder = await ReminderService.snooze(
           params.id,
+          user?.orgId!,
           new Date(body.dueAt)
         );
         return { success: true, data: reminder };

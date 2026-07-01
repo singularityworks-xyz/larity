@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
 import { AIBriefGeneratorService } from "meeting-mode";
 import { prisma } from "../lib/prisma";
-import { requireAuth } from "../middleware/auth";
+import { requireOrg } from "../middleware/auth";
 import {
   MeetingInsightsService,
   MeetingParticipantService,
@@ -26,12 +26,13 @@ import {
 } from "../validators";
 
 export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
-  .use(requireAuth)
+  .use(requireOrg)
   // List all meetings (with optional filters)
   .get(
     "/",
-    async ({ query }) => {
+    async ({ query, user }) => {
       const meetings = await MeetingService.findAll(
+        user?.orgId!,
         query as unknown as MeetingQueryInput
       );
       return { success: true, data: meetings };
@@ -41,8 +42,8 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Get meeting by id (includes tasks and decisions)
   .get(
     "/:id",
-    async ({ params, set }) => {
-      const meeting = await MeetingService.findById(params.id);
+    async ({ params, set, user }) => {
+      const meeting = await MeetingService.findById(params.id, user?.orgId!);
       if (!meeting) {
         set.status = 404;
         return { success: false, error: "Meeting not found" };
@@ -55,8 +56,8 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   .get(
     "/:id/brief",
     async ({ params, user, set }) => {
-      const meeting = await prisma.meeting.findUnique({
-        where: { id: params.id },
+      const meeting = await prisma.meeting.findFirst({
+        where: { id: params.id, client: { orgId: user?.orgId! } },
         select: { preMeetingBrief: true },
       });
       if (!meeting) {
@@ -84,9 +85,9 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Create meeting
   .post(
     "/",
-    async ({ body, set }) => {
+    async ({ body, set, user }) => {
       try {
-        const meeting = await MeetingService.create(body);
+        const meeting = await MeetingService.create(user?.orgId!, body);
         return { success: true, data: meeting };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -102,9 +103,13 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Update meeting
   .patch(
     "/:id",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
-        const meeting = await MeetingService.update(params.id, body);
+        const meeting = await MeetingService.update(
+          params.id,
+          user?.orgId!,
+          body
+        );
         return { success: true, data: meeting };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -120,9 +125,9 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Delete meeting
   .delete(
     "/:id",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        await MeetingService.delete(params.id);
+        await MeetingService.delete(params.id, user?.orgId!);
         return { success: true, message: "Meeting deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -138,9 +143,12 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Start meeting (transition to LIVE)
   .post(
     "/:id/start",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const meeting = await MeetingService.startMeeting(params.id);
+        const meeting = await MeetingService.startMeeting(
+          params.id,
+          user?.orgId!
+        );
         return { success: true, data: meeting };
       } catch (e: unknown) {
         const err = e as { code?: string; message?: string };
@@ -156,9 +164,12 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // End meeting (transition to ENDED)
   .post(
     "/:id/end",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const meeting = await MeetingService.endMeeting(params.id);
+        const meeting = await MeetingService.endMeeting(
+          params.id,
+          user?.orgId!
+        );
         return { success: true, data: meeting };
       } catch (e: unknown) {
         const err = e as { code?: string; message?: string };
@@ -174,9 +185,12 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Cancel meeting
   .post(
     "/:id/cancel",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const meeting = await MeetingService.cancelMeeting(params.id);
+        const meeting = await MeetingService.cancelMeeting(
+          params.id,
+          user?.orgId!
+        );
         return { success: true, data: meeting };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -192,9 +206,13 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Bulk extraction (post-meeting AI processing)
   .post(
     "/:id/extract",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
-        const result = await MeetingService.extractFromMeeting(params.id, body);
+        const result = await MeetingService.extractFromMeeting(
+          params.id,
+          user?.orgId!,
+          body
+        );
         return { success: true, data: result };
       } catch (e: unknown) {
         const err = e as Error;
@@ -211,9 +229,10 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Get meeting participants
   .get(
     "/:id/participants",
-    async ({ params }) => {
+    async ({ params, user }) => {
       const participants = await MeetingParticipantService.findByMeeting(
-        params.id
+        params.id,
+        user?.orgId!
       );
       return { success: true, data: participants };
     },
@@ -222,12 +241,15 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Add participant to meeting
   .post(
     "/:id/participants",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
-        const participant = await MeetingParticipantService.create({
-          meetingId: params.id,
-          ...body,
-        });
+        const participant = await MeetingParticipantService.create(
+          user?.orgId!,
+          {
+            meetingId: params.id,
+            ...body,
+          }
+        );
         return { success: true, data: participant };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -250,10 +272,11 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Update participant
   .patch(
     "/participants/:id",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
         const participant = await MeetingParticipantService.update(
           params.id,
+          user?.orgId!,
           body
         );
         return { success: true, data: participant };
@@ -271,10 +294,11 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Mark participant as attended
   .post(
     "/participants/:id/attended",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
         const participant = await MeetingParticipantService.markAttended(
-          params.id
+          params.id,
+          user?.orgId!
         );
         return { success: true, data: participant };
       } catch (e: unknown) {
@@ -291,9 +315,9 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Remove participant
   .delete(
     "/participants/:id",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        await MeetingParticipantService.remove(params.id);
+        await MeetingParticipantService.remove(params.id, user?.orgId!);
         return { success: true, message: "Participant removed" };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -310,8 +334,11 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Get meeting transcript
   .get(
     "/:id/transcript",
-    async ({ params, set }) => {
-      const transcript = await TranscriptService.findByMeeting(params.id);
+    async ({ params, set, user }) => {
+      const transcript = await TranscriptService.findByMeeting(
+        params.id,
+        user?.orgId!
+      );
       if (!transcript) {
         set.status = 404;
         return { success: false, error: "Transcript not found" };
@@ -323,9 +350,9 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Create transcript for meeting
   .post(
     "/:id/transcript",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
-        const transcript = await TranscriptService.create({
+        const transcript = await TranscriptService.create(user?.orgId!, {
           meetingId: params.id,
           ...body,
         });
@@ -355,14 +382,21 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Update transcript
   .patch(
     "/:id/transcript",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
-        const transcript = await TranscriptService.findByMeeting(params.id);
+        const transcript = await TranscriptService.findByMeeting(
+          params.id,
+          user?.orgId!
+        );
         if (!transcript) {
           set.status = 404;
           return { success: false, error: "Transcript not found" };
         }
-        const updated = await TranscriptService.update(transcript.id, body);
+        const updated = await TranscriptService.update(
+          transcript.id,
+          user?.orgId!,
+          body
+        );
         return { success: true, data: updated };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -378,14 +412,17 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Delete transcript
   .delete(
     "/:id/transcript",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const transcript = await TranscriptService.findByMeeting(params.id);
+        const transcript = await TranscriptService.findByMeeting(
+          params.id,
+          user?.orgId!
+        );
         if (!transcript) {
           set.status = 404;
           return { success: false, error: "Transcript not found" };
         }
-        await TranscriptService.delete(transcript.id);
+        await TranscriptService.delete(transcript.id, user?.orgId!);
         return { success: true, message: "Transcript deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -401,8 +438,11 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Get processing status of meeting
   .get(
     "/:id/processing-status",
-    async ({ params, set }) => {
-      const status = await MeetingService.getProcessingStatus(params.id);
+    async ({ params, set, user }) => {
+      const status = await MeetingService.getProcessingStatus(
+        params.id,
+        user?.orgId!
+      );
       if (!status) {
         set.status = 404;
         return { success: false, error: "Meeting not found" };
@@ -414,9 +454,12 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Trigger reprocessing of meeting insights
   .post(
     "/:id/reprocess",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const result = await MeetingService.reprocessMeeting(params.id);
+        const result = await MeetingService.reprocessMeeting(
+          params.id,
+          user?.orgId!
+        );
         return { success: true, data: result };
       } catch (error) {
         set.status = 400;
@@ -431,8 +474,11 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Get aggregated insights for meeting
   .get(
     "/:id/insights",
-    async ({ params }) => {
-      const insights = await MeetingInsightsService.getInsights(params.id);
+    async ({ params, user }) => {
+      const insights = await MeetingInsightsService.getInsights(
+        params.id,
+        user?.orgId!
+      );
       return { success: true, data: insights };
     },
     {
@@ -443,7 +489,7 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   // Confirm speaker mapping deduction
   .post(
     "/:id/speaker-mappings",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
         const deepgramIndex = body.deepgramIndex ?? body.index;
         if (!deepgramIndex) {
@@ -455,6 +501,7 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
         }
         const result = await MeetingService.confirmSpeakerMapping(
           params.id,
+          user?.orgId!,
           deepgramIndex,
           body.clientMemberId
         );

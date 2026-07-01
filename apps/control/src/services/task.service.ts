@@ -7,7 +7,14 @@ import type {
 } from "../validators";
 
 export const TaskService = {
-  create(data: CreateTaskInput) {
+  async create(orgId: string, data: CreateTaskInput) {
+    const client = await prisma.client.findFirst({
+      where: { id: data.clientId, orgId },
+    });
+    if (!client) {
+      throw new Error("Client not found or access denied");
+    }
+
     return prisma.task.create({
       data,
       include: {
@@ -20,9 +27,9 @@ export const TaskService = {
     });
   },
 
-  findById(id: string) {
-    return prisma.task.findUnique({
-      where: { id },
+  findById(id: string, orgId: string) {
+    return prisma.task.findFirst({
+      where: { id, client: { orgId } },
       include: {
         client: { select: { id: true, name: true, slug: true } },
         meeting: { select: { id: true, title: true } },
@@ -33,9 +40,10 @@ export const TaskService = {
     });
   },
 
-  findAll(query?: TaskQueryInput) {
+  findAll(orgId: string, query?: TaskQueryInput) {
     return prisma.task.findMany({
       where: {
+        client: { orgId },
         clientId: query?.clientId,
         status: query?.status as
           | "OPEN"
@@ -70,7 +78,13 @@ export const TaskService = {
     });
   },
 
-  update(id: string, data: UpdateTaskInput) {
+  async update(id: string, orgId: string, data: UpdateTaskInput) {
+    const existing = await prisma.task.findFirst({
+      where: { id, client: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Task not found");
+    }
     return prisma.task.update({
       where: { id },
       data,
@@ -84,16 +98,22 @@ export const TaskService = {
     });
   },
 
-  delete(id: string) {
+  async delete(id: string, orgId: string) {
+    const existing = await prisma.task.findFirst({
+      where: { id, client: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Task not found");
+    }
     return prisma.task.delete({
       where: { id },
     });
   },
 
-  async markComplete(id: string) {
+  async markComplete(id: string, orgId: string) {
     // Validate status transition: cannot complete CANCELLED tasks
-    const task = await prisma.task.findUnique({
-      where: { id },
+    const task = await prisma.task.findFirst({
+      where: { id, client: { orgId } },
       select: { status: true },
     });
 
@@ -122,9 +142,9 @@ export const TaskService = {
     });
   },
 
-  async markOpen(id: string) {
-    const task = await prisma.task.findUnique({
-      where: { id },
+  async markOpen(id: string, orgId: string) {
+    const task = await prisma.task.findFirst({
+      where: { id, client: { orgId } },
       select: { status: true },
     });
 
@@ -145,9 +165,9 @@ export const TaskService = {
     });
   },
 
-  async markInProgress(id: string) {
-    const task = await prisma.task.findUnique({
-      where: { id },
+  async markInProgress(id: string, orgId: string) {
+    const task = await prisma.task.findFirst({
+      where: { id, client: { orgId } },
       select: { status: true },
     });
 
@@ -165,9 +185,9 @@ export const TaskService = {
     });
   },
 
-  async markBlocked(id: string) {
-    const task = await prisma.task.findUnique({
-      where: { id },
+  async markBlocked(id: string, orgId: string) {
+    const task = await prisma.task.findFirst({
+      where: { id, client: { orgId } },
       select: { status: true },
     });
 

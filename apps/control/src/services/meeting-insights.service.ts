@@ -2,15 +2,16 @@ import { isMeetingAnalysis } from "@larity/db/meeting-analysis.types";
 import { prisma } from "../lib/prisma";
 
 export const MeetingInsightsService = {
-  async getInsights(meetingId: string) {
+  async getInsights(meetingId: string, orgId: string) {
     const importantPointWhere: {
       meetingId: string;
-    } = { meetingId };
+      client: { orgId: string };
+    } = { meetingId, client: { orgId } };
 
     const [meeting, decisions, tasks, openQuestions, importantPoints] =
       await Promise.all([
-        prisma.meeting.findUnique({
-          where: { id: meetingId },
+        prisma.meeting.findFirst({
+          where: { id: meetingId, client: { orgId } },
           select: {
             summary: true,
             startedAt: true,
@@ -18,16 +19,16 @@ export const MeetingInsightsService = {
           },
         }),
         prisma.decision.findMany({
-          where: { meetingId },
+          where: { meetingId, client: { orgId } },
           orderBy: { createdAt: "desc" },
         }),
         prisma.task.findMany({
-          where: { meetingId },
+          where: { meetingId, client: { orgId } },
           include: { assignee: true },
           orderBy: { createdAt: "desc" },
         }),
         prisma.openQuestion.findMany({
-          where: { meetingId },
+          where: { meetingId, client: { orgId } },
           include: { resolvedByDecision: true, assignee: true },
           orderBy: { createdAt: "desc" },
         }),

@@ -6,7 +6,14 @@ import type {
 } from "../validators";
 
 export const TranscriptService = {
-  async create(data: CreateTranscriptInput) {
+  async create(orgId: string, data: CreateTranscriptInput) {
+    const meeting = await prisma.meeting.findFirst({
+      where: { id: data.meetingId, client: { orgId } },
+    });
+    if (!meeting) {
+      throw new Error("Meeting not found");
+    }
+
     // Use try/catch with unique constraint instead of check-then-create
     // This avoids race condition where two concurrent requests could both pass a check
     try {
@@ -24,25 +31,31 @@ export const TranscriptService = {
     }
   },
 
-  findById(id: string) {
-    return prisma.transcript.findUnique({
-      where: { id },
+  findById(id: string, orgId: string) {
+    return prisma.transcript.findFirst({
+      where: { id, meeting: { client: { orgId } } },
       include: {
         meeting: { select: { id: true, title: true, clientId: true } },
       },
     });
   },
 
-  findByMeeting(meetingId: string) {
-    return prisma.transcript.findUnique({
-      where: { meetingId },
+  findByMeeting(meetingId: string, orgId: string) {
+    return prisma.transcript.findFirst({
+      where: { meetingId, meeting: { client: { orgId } } },
       include: {
         meeting: { select: { id: true, title: true, clientId: true } },
       },
     });
   },
 
-  update(id: string, data: UpdateTranscriptInput) {
+  async update(id: string, orgId: string, data: UpdateTranscriptInput) {
+    const existing = await prisma.transcript.findFirst({
+      where: { id, meeting: { client: { orgId } } },
+    });
+    if (!existing) {
+      throw new Error("Transcript not found");
+    }
     return prisma.transcript.update({
       where: { id },
       data,
@@ -52,7 +65,13 @@ export const TranscriptService = {
     });
   },
 
-  delete(id: string) {
+  async delete(id: string, orgId: string) {
+    const existing = await prisma.transcript.findFirst({
+      where: { id, meeting: { client: { orgId } } },
+    });
+    if (!existing) {
+      throw new Error("Transcript not found");
+    }
     return prisma.transcript.delete({
       where: { id },
     });

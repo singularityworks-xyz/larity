@@ -3,7 +3,14 @@ import { prisma } from "../lib/prisma";
 import type { CreateDecisionInput, ReviseDecisionInput } from "../validators";
 
 export const DecisionService = {
-  create(data: CreateDecisionInput) {
+  async create(orgId: string, data: CreateDecisionInput) {
+    const client = await prisma.client.findFirst({
+      where: { id: data.clientId, orgId },
+    });
+    if (!client) {
+      throw new Error("Client not found or access denied");
+    }
+
     return prisma.decision.create({
       data: {
         decisionRef: randomUUID(),
@@ -23,9 +30,13 @@ export const DecisionService = {
     });
   },
 
-  async createRevision(decisionRef: string, data: ReviseDecisionInput) {
+  async createRevision(
+    orgId: string,
+    decisionRef: string,
+    data: ReviseDecisionInput
+  ) {
     const latest = await prisma.decision.findFirst({
-      where: { decisionRef },
+      where: { decisionRef, client: { orgId } },
       orderBy: { version: "desc" },
     });
 
@@ -59,9 +70,9 @@ export const DecisionService = {
     });
   },
 
-  findById(id: string) {
-    return prisma.decision.findUnique({
-      where: { id },
+  findById(id: string, orgId: string) {
+    return prisma.decision.findFirst({
+      where: { id, client: { orgId } },
       include: {
         client: { select: { id: true, name: true, slug: true } },
         meeting: { select: { id: true, title: true } },
@@ -71,9 +82,9 @@ export const DecisionService = {
     });
   },
 
-  findLatestByRef(decisionRef: string) {
+  findLatestByRef(decisionRef: string, orgId: string) {
     return prisma.decision.findFirst({
-      where: { decisionRef },
+      where: { decisionRef, client: { orgId } },
       orderBy: { version: "desc" },
       include: {
         client: { select: { id: true, name: true, slug: true } },
@@ -83,9 +94,9 @@ export const DecisionService = {
     });
   },
 
-  findAllVersions(decisionRef: string) {
+  findAllVersions(decisionRef: string, orgId: string) {
     return prisma.decision.findMany({
-      where: { decisionRef },
+      where: { decisionRef, client: { orgId } },
       orderBy: { version: "desc" },
       include: {
         client: { select: { id: true, name: true, slug: true } },
@@ -94,9 +105,9 @@ export const DecisionService = {
     });
   },
 
-  findByRefAndVersion(decisionRef: string, version: number) {
-    return prisma.decision.findUnique({
-      where: { decisionRef_version: { decisionRef, version } },
+  findByRefAndVersion(decisionRef: string, version: number, orgId: string) {
+    return prisma.decision.findFirst({
+      where: { decisionRef, version, client: { orgId } },
       include: {
         client: { select: { id: true, name: true, slug: true } },
         meeting: { select: { id: true, title: true } },
@@ -104,18 +115,22 @@ export const DecisionService = {
     });
   },
 
-  async findAll(query?: {
-    clientId?: string;
-    meetingId?: string;
-    decisionRef?: string;
-    status?: string;
-  }) {
+  async findAll(
+    orgId: string,
+    query?: {
+      clientId?: string;
+      meetingId?: string;
+      decisionRef?: string;
+      status?: string;
+    }
+  ) {
     if (query?.decisionRef) {
-      return DecisionService.findAllVersions(query.decisionRef);
+      return DecisionService.findAllVersions(query.decisionRef, orgId);
     }
 
     const decisions = await prisma.decision.findMany({
       where: {
+        client: { orgId },
         clientId: query?.clientId,
         meetingId: query?.meetingId,
         status: query?.status as
@@ -147,9 +162,9 @@ export const DecisionService = {
     return decisions;
   },
 
-  async revoke(decisionRef: string) {
+  async revoke(decisionRef: string, orgId: string) {
     const latest = await prisma.decision.findFirst({
-      where: { decisionRef, status: "ACTIVE" },
+      where: { decisionRef, status: "ACTIVE", client: { orgId } },
       orderBy: { version: "desc" },
     });
 
@@ -166,13 +181,25 @@ export const DecisionService = {
     });
   },
 
-  deleteByRef(decisionRef: string) {
+  async deleteByRef(decisionRef: string, orgId: string) {
+    const existing = await prisma.decision.findFirst({
+      where: { decisionRef, client: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Decision not found");
+    }
     return prisma.decision.deleteMany({
       where: { decisionRef },
     });
   },
 
-  deleteById(id: string) {
+  async deleteById(id: string, orgId: string) {
+    const existing = await prisma.decision.findFirst({
+      where: { id, client: { orgId } },
+    });
+    if (!existing) {
+      throw new Error("Decision not found");
+    }
     return prisma.decision.delete({
       where: { id },
     });
