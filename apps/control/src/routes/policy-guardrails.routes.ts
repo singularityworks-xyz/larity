@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 import { z } from "zod";
 import { createControlLogger } from "../logger";
+import { requireOrg } from "../middleware/auth";
 import { PolicyGuardrailService } from "../services";
 import {
   createPolicyGuardrailSchema,
@@ -14,11 +15,15 @@ const log = createControlLogger("policy-guardrails-routes");
 export const policyGuardrailsRoutes = new Elysia({
   prefix: "/policy-guardrails",
 })
+  .use(requireOrg) // Enforce tenant isolation
   // List all policy guardrails
   .get(
     "/",
-    async ({ query }) => {
-      const guardrails = await PolicyGuardrailService.findAll(query);
+    async ({ query, user }) => {
+      const guardrails = await PolicyGuardrailService.findAll(
+        user?.orgId!,
+        query
+      );
       return { success: true, data: guardrails };
     },
     { query: policyGuardrailQuerySchema }
@@ -26,23 +31,22 @@ export const policyGuardrailsRoutes = new Elysia({
   // Get active guardrails for a client (includes org-level)
   .get(
     "/active",
-    async ({ query, set }) => {
-      if (!(query?.orgId && query?.clientId)) {
+    async ({ query, set, user }) => {
+      if (!query?.clientId) {
         set.status = 400;
         return {
           success: false,
-          error: "Both orgId and clientId are required",
+          error: "clientId is required",
         };
       }
       const guardrails = await PolicyGuardrailService.findActiveForClient(
-        query.orgId,
+        user?.orgId!,
         query.clientId
       );
       return { success: true, data: guardrails };
     },
     {
       query: z.object({
-        orgId: z.string().uuid(),
         clientId: z.string().uuid(),
       }),
     }
@@ -50,8 +54,11 @@ export const policyGuardrailsRoutes = new Elysia({
   // Get policy guardrail by id
   .get(
     "/:id",
-    async ({ params, set }) => {
-      const guardrail = await PolicyGuardrailService.findById(params.id);
+    async ({ params, set, user }) => {
+      const guardrail = await PolicyGuardrailService.findById(
+        params.id,
+        user?.orgId!
+      );
       if (!guardrail) {
         set.status = 404;
         return { success: false, error: "Policy guardrail not found" };
@@ -63,9 +70,13 @@ export const policyGuardrailsRoutes = new Elysia({
   // Create policy guardrail
   .post(
     "/",
-    async ({ body, set }) => {
+    async ({ body, set, user }) => {
       try {
-        const guardrail = await PolicyGuardrailService.create(body);
+        // Enforce the user's orgId on the created guardrail
+        const guardrail = await PolicyGuardrailService.create({
+          ...body,
+          orgId: user?.orgId!,
+        });
         return { success: true, data: guardrail };
       } catch (e: unknown) {
         const err = e as { code?: string };
@@ -79,7 +90,7 @@ export const policyGuardrailsRoutes = new Elysia({
         throw e;
       }
     },
-    { body: createPolicyGuardrailSchema }
+    { body: createPolicyGuardrailSchema.omit({ orgId: true }) }
   )
   // Seed default guardrails for an org
   .post(
@@ -92,7 +103,7 @@ export const policyGuardrailsRoutes = new Elysia({
           set.status = 400;
           return { success: false, error: "User has no organization context" };
         }
-        if (body.orgId !== orgId) {
+        if (body.orgId && body.orgId !== orgId) {
           set.status = 403;
           return {
             success: false,
@@ -113,18 +124,26 @@ export const policyGuardrailsRoutes = new Elysia({
         };
       }
     },
-    { body: z.object({ orgId: z.string().uuid() }) }
+    { body: z.object({ orgId: z.string().uuid().optional() }) }
   )
   // Update policy guardrail
   .patch(
     "/:id",
-    async ({ params, body, set }) => {
+    async ({ params, body, set, user }) => {
       try {
-        const guardrail = await PolicyGuardrailService.update(params.id, body);
+        const guardrail = await PolicyGuardrailService.update(
+          params.id,
+          user?.orgId!,
+          body
+        );
         return { success: true, data: guardrail };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === "P2025") {
+        const errObj = e as Error;
+        if (
+          err.code === "P2025" ||
+          errObj.message === "Policy guardrail not found"
+        ) {
           set.status = 404;
           return { success: false, error: "Policy guardrail not found" };
         }
@@ -136,13 +155,17 @@ export const policyGuardrailsRoutes = new Elysia({
   // Delete policy guardrail
   .delete(
     "/:id",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        await PolicyGuardrailService.delete(params.id);
+        await PolicyGuardrailService.delete(params.id, user?.orgId!);
         return { success: true, message: "Policy guardrail deleted" };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === "P2025") {
+        const errObj = e as Error;
+        if (
+          err.code === "P2025" ||
+          errObj.message === "Policy guardrail not found"
+        ) {
           set.status = 404;
           return { success: false, error: "Policy guardrail not found" };
         }
@@ -154,13 +177,20 @@ export const policyGuardrailsRoutes = new Elysia({
   // Activate guardrail
   .post(
     "/:id/activate",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const guardrail = await PolicyGuardrailService.activate(params.id);
+        const guardrail = await PolicyGuardrailService.activate(
+          params.id,
+          user?.orgId!
+        );
         return { success: true, data: guardrail };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === "P2025") {
+        const errObj = e as Error;
+        if (
+          err.code === "P2025" ||
+          errObj.message === "Policy guardrail not found"
+        ) {
           set.status = 404;
           return { success: false, error: "Policy guardrail not found" };
         }
@@ -172,13 +202,20 @@ export const policyGuardrailsRoutes = new Elysia({
   // Deactivate guardrail
   .post(
     "/:id/deactivate",
-    async ({ params, set }) => {
+    async ({ params, set, user }) => {
       try {
-        const guardrail = await PolicyGuardrailService.deactivate(params.id);
+        const guardrail = await PolicyGuardrailService.deactivate(
+          params.id,
+          user?.orgId!
+        );
         return { success: true, data: guardrail };
       } catch (e: unknown) {
         const err = e as { code?: string };
-        if (err.code === "P2025") {
+        const errObj = e as Error;
+        if (
+          err.code === "P2025" ||
+          errObj.message === "Policy guardrail not found"
+        ) {
           set.status = 404;
           return { success: false, error: "Policy guardrail not found" };
         }

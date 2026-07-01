@@ -17,9 +17,9 @@ export const PolicyGuardrailService = {
     });
   },
 
-  findById(id: string) {
-    return prisma.policyGuardrail.findUnique({
-      where: { id },
+  findById(id: string, orgId: string) {
+    return prisma.policyGuardrail.findFirst({
+      where: { id, orgId },
       include: {
         org: { select: { id: true, name: true } },
         client: { select: { id: true, name: true } },
@@ -28,16 +28,18 @@ export const PolicyGuardrailService = {
     });
   },
 
-  findAll(query?: {
-    orgId?: string;
-    clientId?: string;
-    ruleType?: string;
-    severity?: string;
-    isActive?: boolean;
-  }) {
+  findAll(
+    orgId: string,
+    query?: {
+      clientId?: string;
+      ruleType?: string;
+      severity?: string;
+      isActive?: boolean;
+    }
+  ) {
     return prisma.policyGuardrail.findMany({
       where: {
-        orgId: query?.orgId,
+        orgId,
         clientId: query?.clientId,
         ruleType: query?.ruleType as
           | "NDA"
@@ -72,7 +74,14 @@ export const PolicyGuardrailService = {
     });
   },
 
-  update(id: string, data: UpdatePolicyGuardrailInput) {
+  async update(id: string, orgId: string, data: UpdatePolicyGuardrailInput) {
+    const existing = await prisma.policyGuardrail.findFirst({
+      where: { id, orgId },
+    });
+    if (!existing) {
+      throw new Error("Policy guardrail not found");
+    }
+
     return prisma.policyGuardrail.update({
       where: { id },
       data,
@@ -83,21 +92,42 @@ export const PolicyGuardrailService = {
     });
   },
 
-  activate(id: string) {
+  async activate(id: string, orgId: string) {
+    const existing = await prisma.policyGuardrail.findFirst({
+      where: { id, orgId },
+    });
+    if (!existing) {
+      throw new Error("Policy guardrail not found");
+    }
+
     return prisma.policyGuardrail.update({
       where: { id },
       data: { isActive: true },
     });
   },
 
-  deactivate(id: string) {
+  async deactivate(id: string, orgId: string) {
+    const existing = await prisma.policyGuardrail.findFirst({
+      where: { id, orgId },
+    });
+    if (!existing) {
+      throw new Error("Policy guardrail not found");
+    }
+
     return prisma.policyGuardrail.update({
       where: { id },
       data: { isActive: false },
     });
   },
 
-  delete(id: string) {
+  async delete(id: string, orgId: string) {
+    const existing = await prisma.policyGuardrail.findFirst({
+      where: { id, orgId },
+    });
+    if (!existing) {
+      throw new Error("Policy guardrail not found");
+    }
+
     return prisma.policyGuardrail.delete({
       where: { id },
     });
