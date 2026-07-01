@@ -36,6 +36,20 @@ export const requireAuth = new Elysia({ name: "require-auth" })
     }
   });
 
+// Require user to have an organization ID for tenant isolation
+export const requireOrg = new Elysia({ name: "require-org" })
+  .use(requireAuth)
+  .onBeforeHandle({ as: "scoped" }, ({ user, set }) => {
+    if (!user?.orgId) {
+      set.status = 403;
+      return {
+        success: false,
+        error: "Forbidden",
+        message: "This action requires an active organization",
+      };
+    }
+  });
+
 // Require OWNER or ADMIN role for sensitive operations
 export const requireOwnerOrAdmin = new Elysia({ name: "require-owner-admin" })
   .use(requireAuth)
