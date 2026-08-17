@@ -460,6 +460,7 @@ jobs:
             echo "## Container Images (GHCR)"
             echo "* **Realtime Service:** \`ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}\`"
             echo "* **Control Service:** \`ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}\`"
+            echo "* **Workers Service:** \`ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}\`"
           } > release_body.md
 
       - name: Generate SHA256 Checksums
