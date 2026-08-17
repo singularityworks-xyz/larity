@@ -1,0 +1,92 @@
+# Production stack for Dokploy (managed via the Dokploy dashboard).
+# - All services run in a single compose project; Dokploy routes traffic to
+#   control (api.larity.aamn.dev) and realtime (ws.larity.aamn.dev) via Traefik.
+# - Environment variables are provided by Dokploy's .env editor (env_file: .env),
+#   NOT a committed file.
+# - Volume names are pinned so existing data (larity_postgres_data, larity_redis_data)
+#   is picked up on first deploy regardless of the Dokploy project name.
+# - No host port binds: Traefik reaches containers on their internal ports.
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  control:
+    build:
+      context: .
+      dockerfile: apps/control/Dockerfile
+    restart: unless-stopped
+    expose:
+      - 3000
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  realtime:
+    build:
+      context: .
+      dockerfile: apps/realtime/Dockerfile
+    restart: unless-stopped
+    expose:
+      - 9001
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  workers:
+    build:
+      context: .
+      dockerfile: apps/workers/Dockerfile
+    restart: unless-stopped
+    expose:
+      - 8080
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  meeting-mode:
+    build:
+      context: .
+      dockerfile: apps/workers/Dockerfile
+    entrypoint: ["bun", "run", "packages/meeting-mode/src/index.ts"]
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis_data:
+    name: larity_redis_data
+  postgres_data:
+    name: larity_postgres_data
