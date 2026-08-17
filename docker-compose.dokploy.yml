@@ -1,8 +1,7 @@
 # Production stack for Dokploy (managed via the Dokploy dashboard).
-# - All services run in a single compose project; Dokploy routes traffic to
-#   control (api.larity.aamn.dev) and realtime (ws.larity.aamn.dev) via Traefik.
-# - Environment variables are provided by Dokploy's .env editor (env_file: .env),
-#   NOT a committed file.
+# Images are prebuilt on GitHub Actions (see .github/workflows/release.yml) and
+# pushed to GHCR. Dokploy pulls these images — no git source required.
+# - Environment variables are provided by Dokploy's .env editor (env_file: .env).
 # - Volume names are pinned so existing data (larity_postgres_data, larity_redis_data)
 #   is picked up on first deploy regardless of the Dokploy project name.
 # - No host port binds: Traefik reaches containers on their internal ports.
@@ -35,9 +34,7 @@ services:
       retries: 5
 
   control:
-    build:
-      context: .
-      dockerfile: apps/control/Dockerfile
+    image: ghcr.io/singularityworks-xyz/larity/control:latest
     restart: unless-stopped
     expose:
       - 3000
@@ -49,9 +46,7 @@ services:
         condition: service_healthy
 
   realtime:
-    build:
-      context: .
-      dockerfile: apps/realtime/Dockerfile
+    image: ghcr.io/singularityworks-xyz/larity/realtime:latest
     restart: unless-stopped
     expose:
       - 9001
@@ -61,9 +56,7 @@ services:
         condition: service_healthy
 
   workers:
-    build:
-      context: .
-      dockerfile: apps/workers/Dockerfile
+    image: ghcr.io/singularityworks-xyz/larity/workers:latest
     restart: unless-stopped
     expose:
       - 8080
@@ -75,9 +68,7 @@ services:
         condition: service_healthy
 
   meeting-mode:
-    build:
-      context: .
-      dockerfile: apps/workers/Dockerfile
+    image: ghcr.io/singularityworks-xyz/larity/workers:latest
     entrypoint: ["bun", "run", "packages/meeting-mode/src/index.ts"]
     restart: unless-stopped
     env_file: .env

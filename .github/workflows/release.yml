@@ -227,6 +227,48 @@ jobs:
           platforms: ${{ matrix.docker_platform }}
           provenance: false
 
+  build-docker-workers:
+    strategy:
+      matrix:
+        platform: [amd64, arm64]
+        include:
+          - platform: amd64
+            runner: blacksmith-2vcpu-ubuntu-2404
+            docker_platform: linux/amd64
+          - platform: arm64
+            runner: blacksmith-2vcpu-ubuntu-2404-arm
+            docker_platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@v1
+
+      - name: Setup Docker Builder
+        uses: useblacksmith/setup-docker-builder@v1
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get Version
+        shell: bash
+        run: |
+          VERSION="$(node -e "console.log(require('./package.json').version)")"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Build and push workers image
+        uses: useblacksmith/build-push-action@v2
+        with:
+          context: .
+          file: apps/workers/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}-${{ matrix.platform }}
+          platforms: ${{ matrix.docker_platform }}
+          provenance: false
+
   create-release:
     needs:
       [
@@ -234,6 +276,7 @@ jobs:
         build-desktop-windows,
         build-docker-realtime,
         build-docker-control,
+        build-docker-workers,
       ]
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
@@ -319,6 +362,16 @@ jobs:
             ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}-arm64
           docker manifest push ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}
           docker manifest push ghcr.io/${{ github.repository }}/control:latest
+
+          # Workers
+          docker manifest create ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }} \
+            ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}-amd64 \
+            ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}-arm64
+          docker manifest create ghcr.io/${{ github.repository }}/workers:latest \
+            ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}-amd64 \
+            ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}-arm64
+          docker manifest push ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}
+          docker manifest push ghcr.io/${{ github.repository }}/workers:latest
 
       - name: Build Arch Linux package (makepkg)
         shell: bash
