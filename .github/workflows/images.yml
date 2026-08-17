@@ -1,0 +1,178 @@
+name: Images
+
+# Builds and pushes the backend container images to GHCR on every push to main.
+# This is the fast, cheap path that feeds Dokploy (which pulls :latest).
+# Desktop release packaging is handled separately by release.yml on version tags.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-docker-realtime:
+    strategy:
+      matrix:
+        platform: [amd64, arm64]
+        include:
+          - platform: amd64
+            runner: blacksmith-2vcpu-ubuntu-2404
+            docker_platform: linux/amd64
+          - platform: arm64
+            runner: blacksmith-2vcpu-ubuntu-2404-arm
+            docker_platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@v1
+
+      - name: Setup Docker Builder
+        uses: useblacksmith/setup-docker-builder@v1
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get short SHA
+        shell: bash
+        run: echo "SHA_SHORT=${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
+
+      - name: Build and push realtime image
+        uses: useblacksmith/build-push-action@v2
+        with:
+          context: .
+          file: apps/realtime/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/realtime:latest-${{ matrix.platform }}
+            ghcr.io/${{ github.repository }}/realtime:${{ env.SHA_SHORT }}-${{ matrix.platform }}
+          platforms: ${{ matrix.docker_platform }}
+          provenance: false
+
+  build-docker-control:
+    strategy:
+      matrix:
+        platform: [amd64, arm64]
+        include:
+          - platform: amd64
+            runner: blacksmith-2vcpu-ubuntu-2404
+            docker_platform: linux/amd64
+          - platform: arm64
+            runner: blacksmith-2vcpu-ubuntu-2404-arm
+            docker_platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@v1
+
+      - name: Setup Docker Builder
+        uses: useblacksmith/setup-docker-builder@v1
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get short SHA
+        shell: bash
+        run: echo "SHA_SHORT=${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
+
+      - name: Build and push control image
+        uses: useblacksmith/build-push-action@v2
+        with:
+          context: .
+          file: apps/control/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/control:latest-${{ matrix.platform }}
+            ghcr.io/${{ github.repository }}/control:${{ env.SHA_SHORT }}-${{ matrix.platform }}
+          platforms: ${{ matrix.docker_platform }}
+          provenance: false
+
+  build-docker-workers:
+    strategy:
+      matrix:
+        platform: [amd64, arm64]
+        include:
+          - platform: amd64
+            runner: blacksmith-2vcpu-ubuntu-2404
+            docker_platform: linux/amd64
+          - platform: arm64
+            runner: blacksmith-2vcpu-ubuntu-2404-arm
+            docker_platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@v1
+
+      - name: Setup Docker Builder
+        uses: useblacksmith/setup-docker-builder@v1
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get short SHA
+        shell: bash
+        run: echo "SHA_SHORT=${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
+
+      - name: Build and push workers image
+        uses: useblacksmith/build-push-action@v2
+        with:
+          context: .
+          file: apps/workers/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/workers:latest-${{ matrix.platform }}
+            ghcr.io/${{ github.repository }}/workers:${{ env.SHA_SHORT }}-${{ matrix.platform }}
+          platforms: ${{ matrix.docker_platform }}
+          provenance: false
+
+  push-manifests:
+    needs: [build-docker-realtime, build-docker-control, build-docker-workers]
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@v1
+
+      - name: Setup Docker Builder
+        uses: useblacksmith/setup-docker-builder@v1
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get short SHA
+        shell: bash
+        run: echo "SHA_SHORT=${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
+
+      - name: Create and push multi-arch manifests
+        shell: bash
+        run: |
+          #!/bin/bash
+          # shellcheck disable=SC2086
+          for img in realtime control workers; do
+            docker manifest create ghcr.io/${{ github.repository }}/$img:latest \
+              ghcr.io/${{ github.repository }}/$img:latest-amd64 \
+              ghcr.io/${{ github.repository }}/$img:latest-arm64
+            docker manifest push ghcr.io/${{ github.repository }}/$img:latest
+
+            docker manifest create ghcr.io/${{ github.repository }}/$img:${{ env.SHA_SHORT }} \
+              ghcr.io/${{ github.repository }}/$img:${{ env.SHA_SHORT }}-amd64 \
+              ghcr.io/${{ github.repository }}/$img:${{ env.SHA_SHORT }}-arm64
+            docker manifest push ghcr.io/${{ github.repository }}/$img:${{ env.SHA_SHORT }}
+          done

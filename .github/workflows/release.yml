@@ -1,8 +1,12 @@
 name: Release
 
+# Publishes a GitHub Release (desktop installers + checksums).
+# Triggered manually by pushing a version tag (e.g. v0.0.43).
+# Backend container images are built on every push to main by images.yml.
+
 on:
   push:
-    branches: [main]
+    tags: ["v*"]
 
 permissions:
   contents: write
@@ -145,141 +149,8 @@ jobs:
             apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
           retention-days: 3
 
-  build-docker-realtime:
-    strategy:
-      matrix:
-        platform: [amd64, arm64]
-        include:
-          - platform: amd64
-            runner: blacksmith-2vcpu-ubuntu-2404
-            docker_platform: linux/amd64
-          - platform: arm64
-            runner: blacksmith-2vcpu-ubuntu-2404-arm
-            docker_platform: linux/arm64
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - name: Checkout
-        uses: useblacksmith/checkout@v1
-
-      - name: Setup Docker Builder
-        uses: useblacksmith/setup-docker-builder@v1
-
-      - name: Login to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Get Version
-        shell: bash
-        run: |
-          VERSION="$(node -e "console.log(require('./package.json').version)")"
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
-
-      - name: Build and push Docker image
-        uses: useblacksmith/build-push-action@v2
-        with:
-          context: .
-          file: apps/realtime/Dockerfile
-          push: true
-          tags: ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}-${{ matrix.platform }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false
-
-  build-docker-control:
-    strategy:
-      matrix:
-        platform: [amd64, arm64]
-        include:
-          - platform: amd64
-            runner: blacksmith-2vcpu-ubuntu-2404
-            docker_platform: linux/amd64
-          - platform: arm64
-            runner: blacksmith-2vcpu-ubuntu-2404-arm
-            docker_platform: linux/arm64
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - name: Checkout
-        uses: useblacksmith/checkout@v1
-
-      - name: Setup Docker Builder
-        uses: useblacksmith/setup-docker-builder@v1
-
-      - name: Login to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Get Version
-        shell: bash
-        run: |
-          VERSION="$(node -e "console.log(require('./package.json').version)")"
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
-
-      - name: Build and push Docker image
-        uses: useblacksmith/build-push-action@v2
-        with:
-          context: .
-          file: apps/control/Dockerfile
-          push: true
-          tags: ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}-${{ matrix.platform }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false
-
-  build-docker-workers:
-    strategy:
-      matrix:
-        platform: [amd64, arm64]
-        include:
-          - platform: amd64
-            runner: blacksmith-2vcpu-ubuntu-2404
-            docker_platform: linux/amd64
-          - platform: arm64
-            runner: blacksmith-2vcpu-ubuntu-2404-arm
-            docker_platform: linux/arm64
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - name: Checkout
-        uses: useblacksmith/checkout@v1
-
-      - name: Setup Docker Builder
-        uses: useblacksmith/setup-docker-builder@v1
-
-      - name: Login to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Get Version
-        shell: bash
-        run: |
-          VERSION="$(node -e "console.log(require('./package.json').version)")"
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
-
-      - name: Build and push workers image
-        uses: useblacksmith/build-push-action@v2
-        with:
-          context: .
-          file: apps/workers/Dockerfile
-          push: true
-          tags: ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}-${{ matrix.platform }}
-          platforms: ${{ matrix.docker_platform }}
-          provenance: false
-
   create-release:
-    needs:
-      [
-        build-desktop-linux,
-        build-desktop-windows,
-        build-docker-realtime,
-        build-docker-control,
-        build-docker-workers,
-      ]
+    needs: [build-desktop-linux, build-desktop-windows]
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - name: Checkout
@@ -287,6 +158,10 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.ADMIN_GITHUB_TOKEN }}
+
+      - name: Derive Version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
       - name: Download Linux Desktop artifacts
         uses: actions/download-artifact@v8
@@ -309,12 +184,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Process Version
-        shell: bash
-        run: |
-          VERSION="$(node -e "console.log(require('./package.json').version)")"
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - name: Rename Desktop Artifacts to Match Release Version
         shell: bash
@@ -339,41 +208,6 @@ jobs:
           for f in artifacts-windows/nsis/*.exe; do
             [ -e "$f" ] && mv "$f" "artifacts-windows/nsis/larity_${VERSION}_x64-setup.exe"
           done
-
-      - name: Create and Push Multi-arch Docker Manifests
-        shell: bash
-        run: |
-          #!/bin/bash
-          # shellcheck disable=SC2086
-          # Realtime
-          docker manifest create ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }} \
-            ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}-amd64 \
-            ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}-arm64
-          docker manifest create ghcr.io/${{ github.repository }}/realtime:latest \
-            ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}-amd64 \
-            ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}-arm64
-          docker manifest push ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}
-          docker manifest push ghcr.io/${{ github.repository }}/realtime:latest
-
-          # Control
-          docker manifest create ghcr.io/${{ github.repository }}/control:${{ env.VERSION }} \
-            ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}-amd64 \
-            ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}-arm64
-          docker manifest create ghcr.io/${{ github.repository }}/control:latest \
-            ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}-amd64 \
-            ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}-arm64
-          docker manifest push ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}
-          docker manifest push ghcr.io/${{ github.repository }}/control:latest
-
-          # Workers
-          docker manifest create ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }} \
-            ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}-amd64 \
-            ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}-arm64
-          docker manifest create ghcr.io/${{ github.repository }}/workers:latest \
-            ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}-amd64 \
-            ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}-arm64
-          docker manifest push ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}
-          docker manifest push ghcr.io/${{ github.repository }}/workers:latest
 
       - name: Build Arch Linux package (makepkg)
         shell: bash
@@ -455,12 +289,6 @@ jobs:
                 git log --format="* %an" | sort -u
               fi
             fi
-            
-            echo ""
-            echo "## Container Images (GHCR)"
-            echo "* **Realtime Service:** \`ghcr.io/${{ github.repository }}/realtime:${{ env.VERSION }}\`"
-            echo "* **Control Service:** \`ghcr.io/${{ github.repository }}/control:${{ env.VERSION }}\`"
-            echo "* **Workers Service:** \`ghcr.io/${{ github.repository }}/workers:${{ env.VERSION }}\`"
           } > release_body.md
 
       - name: Generate SHA256 Checksums
@@ -479,8 +307,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v${{ env.VERSION }}
-          name: Larity v${{ env.VERSION }}
+          tag_name: ${{ github.ref_name }}
+          name: Larity ${{ github.ref_name }}
           body_path: release_body.md
           draft: false
           prerelease: false
@@ -494,4 +322,3 @@ jobs:
             apps/desktop/PKGBUILD
             apps/desktop/default.nix
             sha256sums.txt
-
