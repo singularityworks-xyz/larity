@@ -3,7 +3,6 @@ import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
-import larityLogo from "../assets/larity-logo-dark.svg";
 import { GitHubIcon, GoogleIcon } from "../components/icons";
 import { TitleBar } from "../components/title-bar";
 import { api } from "../lib/api";
@@ -42,6 +41,9 @@ import {
   ssoGroupClass,
 } from "../lib/ui";
 import { applyWindowProfile, WINDOW_PROFILES } from "../lib/window";
+
+const larityLogo =
+  "https://pub-7499bc1836a04bc988d92a1fb64db638.r2.dev/images/larity-logo-dark.svg";
 
 function toSlug(value: string): string {
   return value

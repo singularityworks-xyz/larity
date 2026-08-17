@@ -24,7 +24,7 @@
       {
         "identifier": "http:default",
         "allow": [
-          { "url": "https://larityapi.itssingularity.com/*" },
+          { "url": "https://api.larity.aamn.dev/*" },
           { "url": "http://localhost:3000/*" },
           { "url": "http://127.0.0.1:3000/*" }
         ]
