@@ -212,6 +212,7 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true
+          trivyignores: .trivyignore
 
       - name: Scan realtime image
         uses: aquasecurity/trivy-action@v0.36.0
@@ -221,6 +222,7 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true
+          trivyignores: .trivyignore
 
       - name: Scan workers image
         uses: aquasecurity/trivy-action@v0.36.0
@@ -230,6 +232,7 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true
+          trivyignores: .trivyignore
 
   # Boot the freshly-built images against an ephemeral postgres+redis and
   # verify they start and serve /health. Catches crash-on-boot defects (e.g.
@@ -315,6 +318,11 @@ jobs:
           docker run -d --name smoke-realtime --network smoke-net \
             -e REDIS_URL="redis://smoke-redis:6379" \
             -e DEEPGRAM_API_KEY="smoke" \
+            -e S3_ENDPOINT="https://smoke.invalid" \
+            -e S3_REGION="auto" \
+            -e S3_ACCESS_KEY_ID="smoke" \
+            -e S3_SECRET_ACCESS_KEY="smoke" \
+            -e S3_AUDIO_BUCKET="smoke" \
             ghcr.io/${{ github.repository }}/realtime:${{ env.SHA_SHORT }}
           for i in $(seq 1 30); do
             docker logs smoke-realtime 2>&1 | grep -q "Realtime plane is ready" && break

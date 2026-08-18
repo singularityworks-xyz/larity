@@ -20,13 +20,15 @@ RUN bun run build
 
 FROM base AS release
 ENV NODE_ENV=production
+# Upgrade base image packages to pick up security fixes (openssl, util-linux, etc.)
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 # Production standard: install in the final stage so node_modules is complete
 # and correctly linked (no cross-stage COPY of bun's store/symlinks). Uses
 # hoisted linker (bunfig.toml) so @prisma/client resolves from /app/node_modules.
 COPY --from=pruner /app/out/json/ .
 COPY --from=pruner /app/out/bun.lock* ./
 COPY --from=pruner /app/out/full/ .
-RUN bun install --frozen-lockfile --ignore-scripts
+RUN bun install --frozen-lockfile --ignore-scripts --production
 WORKDIR /app/packages/db
 RUN bunx prisma generate
 WORKDIR /app/apps/control
