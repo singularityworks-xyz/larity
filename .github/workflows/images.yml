@@ -193,6 +193,9 @@ jobs:
     needs: [push-manifests]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@v1
+
       - name: Get short SHA
         shell: bash
         run: echo "SHA_SHORT=${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
