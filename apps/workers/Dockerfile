@@ -16,16 +16,17 @@ COPY --from=pruner /app/out/full/ .
 WORKDIR /app/packages/db
 RUN bunx prisma generate
 
-FROM base AS prod-install
-COPY --from=pruner /app/out/json/ .
-COPY --from=pruner /app/out/bun.lock* ./
-RUN bun install --frozen-lockfile --production --ignore-scripts
-
 FROM base AS release
 ENV NODE_ENV=production
-COPY --from=prod-install /app /app
-COPY --from=pruner /app/out/full/ /app
-COPY --from=builder /app/packages/db/prisma/generated /app/packages/db/prisma/generated
+# Production standard: install in the final stage so node_modules is complete
+# and correctly linked (no cross-stage COPY of bun's store/symlinks). Uses
+# hoisted linker (bunfig.toml) so @prisma/client resolves from /app/node_modules.
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/bun.lock* ./
+COPY --from=pruner /app/out/full/ .
+RUN bun install --frozen-lockfile --ignore-scripts
+WORKDIR /app/packages/db
+RUN bunx prisma generate
 WORKDIR /app
 EXPOSE 8080
 USER bun
