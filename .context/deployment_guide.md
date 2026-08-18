@@ -1,7 +1,7 @@
 # Larity — Deployment Guide (Dokploy)
 > Every step explained: what it does, why it matters, what to expect
 >
-> **Target:** Dokploy-managed stack on a GCE VM, domains `api.larity.aamn.dev` and `ws.larity.aamn.dev` (DNS on Cloudflare).
+> **Target:** Dokploy-managed stack on a GCE VM, domains `larity-api.aamn.dev` and `larity-ws.aamn.dev` (DNS on Cloudflare).
 
 ---
 
@@ -26,8 +26,8 @@ Before touching a server, understand what you're running.
 │                                                                     │
 │   Dokploy (web UI on :3000)                                         │
 │    └── Traefik (reverse proxy — the doorman)                        │
-│         ├── api.larity.aamn.dev → control:3000  (REST API)          │
-│         └── ws.larity.aamn.dev  → realtime:9001 (WebSocket + audio) │
+│         ├── larity-api.aamn.dev → control:3000  (REST API)          │
+│         └── larity-ws.aamn.dev  → realtime:9001 (WebSocket + audio) │
 │                                                                     │
 │   Docker Compose project "larity" (one compose, one network)        │
 │    ├── control      — REST API, auth, DB queries, job enqueuing     │
@@ -44,7 +44,7 @@ Before touching a server, understand what you're running.
 ```
 
 **Data flow for a meeting:**
-1. Desktop app connects to `realtime` via `wss://ws.larity.aamn.dev`
+1. Desktop app connects to `realtime` via `wss://larity-ws.aamn.dev`
 2. Audio frames go: Desktop → realtime → Deepgram (live STT)
 3. `realtime` validates the session with `control` via `CONTROL_API_URL` (`POST /internal/meeting-session/:id/validate`)
 4. When meeting ends, `control` enqueues a job in Redis
@@ -78,21 +78,21 @@ Required secrets and where they come from:
 
 ## Step 1.2 — Configure OAuth Providers
 
-The app uses `better-auth` with Google and GitHub OAuth. When a user clicks "Sign in with Google", Google redirects them back to `https://api.larity.aamn.dev/auth/callback/google`. If this URL isn't registered, login fails with `Error 400: redirect_uri_mismatch`.
+The app uses `better-auth` with Google and GitHub OAuth. When a user clicks "Sign in with Google", Google redirects them back to `https://larity-api.aamn.dev/auth/callback/google`. If this URL isn't registered, login fails with `Error 400: redirect_uri_mismatch`.
 
 ### Google OAuth Setup:
 1. Open [console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials)
 2. **Create Credentials → OAuth 2.0 Client ID** (type: Web application)
 3. Under **Authorized redirect URIs** add:
    ```
-   https://api.larity.aamn.dev/auth/callback/google
+   https://larity-api.aamn.dev/auth/callback/google
    ```
 4. Copy **Client ID** and **Client Secret**
 
 ### GitHub OAuth Setup:
 1. [github.com/settings/developers](https://github.com/settings/developers) → **OAuth Apps → New OAuth App**
-2. Homepage URL: `https://api.larity.aamn.dev`
-3. Authorization callback URL: `https://api.larity.aamn.dev/auth/callback/github`
+2. Homepage URL: `https://larity-api.aamn.dev`
+3. Authorization callback URL: `https://larity-api.aamn.dev/auth/callback/github`
 4. Generate a client secret; copy both values
 
 > Keep both browser tabs open — you'll paste these into Dokploy's Environment tab in Section 5.
@@ -148,13 +148,13 @@ In **Cloudflare → aamn.dev → DNS → Records → Add record**:
 
 | Type | Name | Value | Proxy status |
 |------|------|-------|--------------|
-| A | `larity.api` | `<your static IP>` | Proxied |
-| A | `larity.ws` | `<your static IP>` | Proxied |
+| A | `larity-api` | `<your static IP>` | Proxied |
+| A | `larity-ws` | `<your static IP>` | Proxied |
 
 Wait a few minutes, then verify:
 ```bash
-nslookup api.larity.aamn.dev
-nslookup ws.larity.aamn.dev
+nslookup larity-api.aamn.dev
+nslookup larity-ws.aamn.dev
 ```
 
 ## Step 2.4 — Configure Firewall Rules
@@ -254,10 +254,10 @@ REALTIME_PORT=9001
 WORKERS_PORT=8080
 
 # AUTH
-BETTER_AUTH_URL=https://api.larity.aamn.dev
+BETTER_AUTH_URL=https://larity-api.aamn.dev
 BETTER_AUTH_SECRET=YOUR_64_CHAR_SECRET
-FRONTEND_URL=https://api.larity.aamn.dev
-FRONTEND_URLS=tauri://localhost,http://tauri.localhost,https://api.larity.aamn.dev
+FRONTEND_URL=https://larity-api.aamn.dev
+FRONTEND_URLS=tauri://localhost,http://tauri.localhost,https://larity-api.aamn.dev
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 GITHUB_CLIENT_ID=...
@@ -291,7 +291,7 @@ MAX_BUFFER_SIZE=20
 # realtime → control session validation
 CONTROL_API_URL=http://control:3000
 # control → realtime WebSocket (for session URLs handed to the app)
-REALTIME_WS_URL=wss://ws.larity.aamn.dev
+REALTIME_WS_URL=wss://larity-ws.aamn.dev
 ```
 
 > Dokploy writes these to `.env` in the project directory; the compose file loads them with `env_file: .env`.
@@ -302,8 +302,8 @@ In the **Domains** tab, add:
 
 | Host | Service | Container port | HTTPS | Certificate |
 |------|---------|----------------|-------|-------------|
-| `api.larity.aamn.dev` | `control` | 3000 | ON | Let's Encrypt |
-| `ws.larity.aamn.dev` | `realtime` | 9001 | ON | Let's Encrypt |
+| `larity-api.aamn.dev` | `control` | 3000 | ON | Let's Encrypt |
+| `larity-ws.aamn.dev` | `realtime` | 9001 | ON | Let's Encrypt |
 
 **Why this matters:** Dokploy injects Traefik labels automatically from these settings — no manual Nginx config, no Certbot. TLS certs are issued and auto-renewed by Let's Encrypt. Traefik passes WebSocket upgrades through by default (no special buffering config needed).
 
@@ -380,7 +380,7 @@ psql -U larity_user -d larity -c "SELECT extname, extversion FROM pg_extension W
 ## Test 1 — Control API health
 
 ```bash
-curl -i https://api.larity.aamn.dev/health
+curl -i https://larity-api.aamn.dev/health
 ```
 **Expected:**
 ```json
@@ -390,7 +390,7 @@ curl -i https://api.larity.aamn.dev/health
 ## Test 2 — Realtime WebSocket (unauthenticated probe)
 
 ```bash
-wscat -c "wss://ws.larity.aamn.dev/?sessionId=test&userId=test&role=host"
+wscat -c "wss://larity-ws.aamn.dev/?sessionId=test&userId=test&role=host"
 ```
 **Expected:**
 ```
@@ -423,13 +423,13 @@ curl http://localhost:8080/health
 ## Test 4 — Auth signup flow
 
 ```bash
-curl -X POST https://api.larity.aamn.dev/auth/sign-up/email \
+curl -X POST https://larity-api.aamn.dev/auth/sign-up/email \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"TestPass123!","name":"Test User"}'
 ```
 **Expected:** a `user` object in the JSON response.
 
-> Note: `auth` base path is `/auth` (`apps/control/src/lib/auth.ts`). OAuth callbacks live under `https://api.larity.aamn.dev/auth/callback/{google,github}`.
+> Note: `auth` base path is `/auth` (`apps/control/src/lib/auth.ts`). OAuth callbacks live under `https://larity-api.aamn.dev/auth/callback/{google,github}`.
 
 ---
 
@@ -439,12 +439,12 @@ The desktop app targets the new domains at **build time** via env files:
 
 - `apps/desktop/.env` / `.env.production` / `.env.local`:
   ```
-  VITE_CONTROL_URL=https://api.larity.aamn.dev
-  VITE_BETTER_AUTH_URL=https://api.larity.aamn.dev
-  VITE_WS_URL=wss://ws.larity.aamn.dev
+  VITE_CONTROL_URL=https://larity-api.aamn.dev
+  VITE_BETTER_AUTH_URL=https://larity-api.aamn.dev
+  VITE_WS_URL=wss://larity-ws.aamn.dev
   ```
-- `apps/desktop/src-tauri/tauri.conf.json` — CSP `connect-src` must list `https://api.larity.aamn.dev wss://ws.larity.aamn.dev`
-- `apps/desktop/src-tauri/capabilities/default.json` — `http:default` allow must include `https://api.larity.aamn.dev/*`
+- `apps/desktop/src-tauri/tauri.conf.json` — CSP `connect-src` must list `https://larity-api.aamn.dev wss://larity-ws.aamn.dev`
+- `apps/desktop/src-tauri/capabilities/default.json` — `http:default` allow must include `https://larity-api.aamn.dev/*`
 
 Build + package:
 
@@ -553,14 +553,14 @@ SECRETS
 INFRASTRUCTURE
   ✅ GCE VM running in asia-south1-a
   ✅ Static IP reserved (larity-prod) and assigned
-  ✅ DNS A records: larity.api + larity.ws → static IP (Cloudflare)
+  ✅ DNS A records: larity-api + larity-ws → static IP (Cloudflare)
   ✅ Firewall allows only 80 and 443
 
 DOKPLOY
   ✅ Dokploy installed, admin account created, panel secured
   ✅ Docker Compose project "larity" from GitHub → docker-compose.dokploy.yml
   ✅ Environment tab populated (env_file: .env)
-  ✅ Domains: api.larity.aamn.dev → control:3000, ws.larity.aamn.dev → realtime:9001
+  ✅ Domains: larity-api.aamn.dev → control:3000, larity-ws.aamn.dev → realtime:9001
   ✅ Isolated Deployments ON, Auto Deploy ON
   ✅ First deploy completed, 6 services running/healthy
 
@@ -570,13 +570,13 @@ DATA
   ✅ pgvector extension installed
 
 NETWORKING
-  ✅ https://api.larity.aamn.dev/health → {"status":"ok"}
-  ✅ wss://ws.larity.aamn.dev → 401 (WebSocket path works)
+  ✅ https://larity-api.aamn.dev/health → {"status":"ok"}
+  ✅ wss://larity-ws.aamn.dev → 401 (WebSocket path works)
   ✅ OAuth redirect URIs updated in Google + GitHub consoles
 
 CLIENT
   ✅ apps/desktop env files point at new domains
-  ✅ Tauri CSP + capabilities include api/ws.larity.aamn.dev
+  ✅ Tauri CSP + capabilities include api/larity-ws.aamn.dev
   ✅ Desktop bundle rebuilt and distributed
 
 MAINTENANCE
