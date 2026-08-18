@@ -354,7 +354,8 @@ jobs:
             echo "::warning::DOKPLOY_API_KEY or DOKPLOY_COMPOSE_ID not set — skipping auto-deploy"
             exit 0
           fi
-          curl -fsS -X POST "https://dokploy.aamn.dev/api/compose.deploy" \
+          curl -sS -X POST "https://dokploy.aamn.dev/api/compose.deploy" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ${DOKPLOY_API_KEY}" \
-            -d "{\"composeId\":\"${COMPOSE_ID}\",\"title\":\"auto-deploy ${GITHUB_SHA}\"}"
+            -d "{\"composeId\":\"${COMPOSE_ID}\",\"title\":\"auto-deploy ${GITHUB_SHA}\"}" \
+            -w "\nHTTP_STATUS:%{http_code}\n"
