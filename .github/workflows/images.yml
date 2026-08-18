@@ -349,12 +349,19 @@ jobs:
         env:
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           COMPOSE_ID: ${{ secrets.DOKPLOY_COMPOSE_ID }}
+          DOKPLOY_ORIGIN_IP: ${{ secrets.DOKPLOY_ORIGIN_IP }}
         run: |
           if [ -z "$DOKPLOY_API_KEY" ] || [ -z "$COMPOSE_ID" ]; then
             echo "::warning::DOKPLOY_API_KEY or DOKPLOY_COMPOSE_ID not set — skipping auto-deploy"
             exit 0
           fi
-          curl -sS -X POST "https://dokploy.aamn.dev/api/compose.deploy" \
+          # Bypass Cloudflare's bot challenge (it returns a JS challenge page /
+          # 403 to GitHub runner IPs) by resolving the hostname to the origin IP.
+          RESOLVE_ARGS=()
+          if [ -n "$DOKPLOY_ORIGIN_IP" ]; then
+            RESOLVE_ARGS=(--resolve "dokploy.aamn.dev:443:${DOKPLOY_ORIGIN_IP}")
+          fi
+          curl -sS "${RESOLVE_ARGS[@]}" -X POST "https://dokploy.aamn.dev/api/compose.deploy" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ${DOKPLOY_API_KEY}" \
             -d "{\"composeId\":\"${COMPOSE_ID}\",\"title\":\"auto-deploy ${GITHUB_SHA}\"}" \
