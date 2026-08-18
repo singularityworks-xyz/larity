@@ -34,4 +34,4 @@ WORKDIR /app/apps/control
 COPY --from=builder /app/apps/control/dist /app/apps/control/dist
 EXPOSE 3000
 USER bun
-ENTRYPOINT [ "bun", "run", "start" ]
+ENTRYPOINT [ "sh", "-c", "cd /app/packages/db && bunx prisma migrate deploy && cd /app/apps/control && bun run start" ]

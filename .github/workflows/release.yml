@@ -67,7 +67,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: "./apps/desktop"
-          includeRelease: true
+          includeRelease: false
 
       - name: Convert DEB to RPM
         run: |
@@ -138,7 +138,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         with:
           projectPath: "./apps/desktop"
-          includeRelease: true
+          includeRelease: false
 
       - name: Upload Windows desktop artifacts
         uses: actions/upload-artifact@v4
@@ -310,7 +310,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Larity ${{ github.ref_name }}
           body_path: release_body.md
-          draft: false
+          draft: true
           prerelease: false
           files: |
             artifacts-linux/**/*.deb

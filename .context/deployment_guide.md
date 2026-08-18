@@ -342,21 +342,20 @@ docker volume ls | grep larity
 #   larity_redis_data
 ```
 
-## Step 6.2 — Run database migrations
+## Step 6.2 — Database migrations (automatic)
 
-The Postgres container starts with your existing volume. If schema is behind (new migrations added), apply them via **Dokploy → control → Terminal**:
+Migrations run **automatically on every control boot**: the container entrypoint runs `bunx prisma migrate deploy` before starting the app. No manual step needed on deploy.
 
-```bash
-cd /app && bunx prisma migrate deploy --schema=packages/db/prisma/schema.prisma
-```
-
-**What you'll see:**
+**What you'll see in control's logs on each restart:**
 ```
 Prisma schema loaded from packages/db/prisma/schema.prisma
 ... migrations applied
+All migrations have been successfully applied.
 ```
 
 The migrations live at `packages/db/prisma/migrations/` (currently **14** migrations + `migration_lock.toml`). The HNSW index migration installs pgvector support.
+
+> Manual equivalent (if you ever need it): `bun run db:deploy` in `packages/db`, or `docker exec <control-container> sh -c "cd /app/packages/db && bunx prisma migrate deploy"`.
 
 ## Step 6.3 — Verify schema + pgvector
 
@@ -489,17 +488,31 @@ sudo systemctl restart docker
 
 ## Deploying a new version
 
-```bash
-# Push to main → Auto Deploy re-deploys from Dokploy.
-# Or click Deploy in the Dokploy UI.
-```
+The pipeline is fully automatic for backend changes:
+
+1. **Push to `main`** → `images.yml` runs on GitHub Actions:
+   - builds `control` / `realtime` / `workers` images (amd64 + arm64) → GHCR
+   - merges into multi-arch `:latest` + `:{sha7}` tags
+   - **Trivy-scans** each image (fails on high/critical CVEs)
+   - **smoke-tests** each image (boots against ephemeral postgres+redis, checks `/health`)
+   - calls **Dokploy's API** → deploys the compose project (`compose.deploy`), pulling the new `:latest`
+2. `control` boots, runs `prisma migrate deploy`, then serves.
+
+**Rollback to a known-good image** (if a deploy misbehaves):
+1. Find the last-good commit SHA (e.g. `abc1234`)
+2. In **Dokploy → Environment**, set:
+   ```
+   CONTROL_TAG=abc1234
+   REALTIME_TAG=abc1234
+   WORKERS_TAG=abc1234
+   ```
+3. Click **Deploy**. The compose file uses `${CONTROL_TAG:-latest}` etc., so the pinned SHA image is pulled instead of `latest`.
+
+> The `deploy-dokploy` job requires the GitHub secrets `DOKPLOY_API_KEY` (Dokploy profile → API/CLI) and `DOKPLOY_COMPOSE_ID` (the compose's `composeId`). If unset, the job warns and skips.
 
 ## Running a new database migration
 
-**Dokploy → control → Terminal:**
-```bash
-cd /app && bunx prisma migrate deploy --schema=packages/db/prisma/schema.prisma
-```
+Migrations apply **automatically** when `control` restarts (entrypoint runs `prisma migrate deploy`). Just push a migration to `main` and the auto-deploy runs it.
 
 ## Restarting a single service
 
@@ -525,20 +538,36 @@ docker compose -p <dokploy-project-name> up -d
 
 # SECTION 11 — Backups & Rollback
 
-## Backup the database
+## Automated backups (nightly)
 
-Via **Dokploy → postgres → Terminal**, or on the VM:
+A cron job on the VM dumps the database nightly at **02:30 UTC** and uploads it to **Cloudflare R2** (`larity-backups` bucket):
+
+- **Script:** `/opt/larity-backup/backup.sh` (from `packages/infra/backup.sh`)
+- **Config:** `/root/.config/larity-backup/env` (container/user/db names, 0600)
+- **rclone remote:** `/root/.config/rclone/rclone.conf` (`larity-r2`, 0600)
+- **Local retention:** 7 days (`/var/backups/larity`)
+- **Remote retention:** 30 days (R2)
+- **Log:** `/var/log/larity-backup.log`
+
+**Restore drill** (verify a dump restores cleanly):
 
 ```bash
-# stop app services so the dump is consistent
-docker compose -p <project-name> stop control realtime workers meeting-mode
-docker exec <postgres-container> pg_dump -U larity_user -d larity -Fc -f /tmp/larity.dump
-gcloud compute scp larity-prod:/tmp/larity.dump . --zone=asia-south1-a
+# pick a dump
+DUMP=$(sudo rclone ls larity-r2:larity-backups | tail -1 | awk '{print $2}')
+
+# restore into a throwaway postgres
+docker run -d --name restore-test -e POSTGRES_USER=larity_user \
+  -e POSTGRES_PASSWORD=test -e POSTGRES_DB=larity pgvector/pgvector:pg16
+sleep 5
+sudo rclone cat "larity-r2:larity-backups/$DUMP" \
+  | docker exec -i restore-test psql -U larity_user -d larity -v ON_ERROR_STOP=1
+docker exec restore-test psql -U larity_user -d larity -tAc "SELECT count(*) FROM users"
+docker rm -f restore-test
 ```
 
 ## Rollback
 
-The previous Nginx stack is preserved in git history (`docker-compose.prod.yml`) — restoring it requires reinstalling Nginx, re-pointing DNS, and restoring the DB from `larity.dump`. Not needed unless the Dokploy migration fails.
+To revert to a previous image, pin `CONTROL_TAG` / `REALTIME_TAG` / `WORKERS_TAG` to the last-good SHA in the Dokploy Environment (see Section 10). To restore the database, use the nightly dump above.
 
 ---
 
@@ -581,7 +610,10 @@ CLIENT
 
 MAINTENANCE
   ✅ Docker log rotation configured (optional)
-  ✅ DB backup procedure documented
+  ✅ Nightly DB backups → R2 (cron at 02:30 UTC, 7d local / 30d remote)
+  ✅ Migrations run automatically on control boot
+  ✅ Auto-deploy on push to main (Dokploy API via DOKPLOY_API_KEY secret)
+  ✅ Rollback via pinned image tags (CONTROL_TAG / REALTIME_TAG / WORKERS_TAG)
 ```
 
 ---

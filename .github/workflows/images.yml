@@ -7,6 +7,16 @@ name: Images
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "apps/desktop/**"
+      - "apps/web/**"
+      - "docs/**"
+      - ".context/**"
+      - "**.md"
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -176,3 +186,155 @@ jobs:
               ghcr.io/${{ github.repository }}/$img:${{ env.SHA_SHORT }}-arm64
             docker manifest push ghcr.io/${{ github.repository }}/$img:${{ env.SHA_SHORT }}
           done
+
+  # Scan the freshly-built images for known vulnerabilities (high/critical
+  # severities fail the build). Blocks shipping images with unpatched CVEs.
+  scan:
+    needs: [push-manifests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get short SHA
+        shell: bash
+        run: echo "SHA_SHORT=${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan images with Trivy
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          scan-type: image
+          scan-ref: ghcr.io/${{ github.repository }}/control:${{ env.SHA_SHORT }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Scan realtime image
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          scan-type: image
+          scan-ref: ghcr.io/${{ github.repository }}/realtime:${{ env.SHA_SHORT }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Scan workers image
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          scan-type: image
+          scan-ref: ghcr.io/${{ github.repository }}/workers:${{ env.SHA_SHORT }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+  # Boot the freshly-built images against an ephemeral postgres+redis and
+  # verify they start and serve /health. Catches crash-on-boot defects (e.g.
+  # unresolvable @prisma/client) before the image reaches production.
+  smoke-test:
+    needs: [push-manifests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@v1
+
+      - name: Get short SHA
+        shell: bash
+        run: echo "SHA_SHORT=${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Start ephemeral postgres and redis
+        run: |
+          docker network create smoke-net
+          docker run -d --name smoke-pg --network smoke-net \
+            -e POSTGRES_USER=larity_user -e POSTGRES_PASSWORD=smoke_pass -e POSTGRES_DB=larity \
+            pgvector/pgvector:pg16
+          docker run -d --name smoke-redis --network smoke-net redis:7-alpine
+
+      - name: Wait for postgres
+        run: |
+          for i in $(seq 1 30); do
+            docker exec smoke-pg pg_isready -U larity_user >/dev/null 2>&1 && break
+            sleep 1
+          done
+          docker exec smoke-pg pg_isready -U larity_user
+
+      - name: Boot control image and check health
+        run: |
+          docker run -d --name smoke-control --network smoke-net \
+            -p 3000:3000 \
+            -e DATABASE_URL="postgresql://larity_user:smoke_pass@smoke-pg:5432/larity?schema=public" \
+            -e REDIS_URL="redis://smoke-redis:6379" \
+            -e BETTER_AUTH_SECRET="smoke_test_secret_that_is_long_enough_000000" \
+            -e BETTER_AUTH_URL="http://localhost:3000" \
+            -e FRONTEND_URL="http://localhost:3000" \
+            -e FRONTEND_URLS="tauri://localhost,http://tauri.localhost" \
+            -e LOG_LEVEL="error" \
+            ghcr.io/${{ github.repository }}/control:${{ env.SHA_SHORT }}
+          for i in $(seq 1 60); do
+            body=$(curl -sf -m 2 http://localhost:3000/health 2>/dev/null) && break
+            sleep 2
+          done
+          echo "health: ${body}"
+          echo "$body" | grep -q '"status":"ok"' || { echo "control health check FAILED"; exit 1; }
+
+      - name: Boot workers image and check health
+        run: |
+          docker run -d --name smoke-workers --network smoke-net \
+            -p 8080:8080 \
+            -e DATABASE_URL="postgresql://larity_user:smoke_pass@smoke-pg:5432/larity?schema=public" \
+            -e REDIS_URL="redis://smoke-redis:6379" \
+            -e LOG_LEVEL="error" \
+            ghcr.io/${{ github.repository }}/workers:${{ env.SHA_SHORT }}
+          for i in $(seq 1 30); do
+            body=$(curl -sf -m 2 http://localhost:8080/health 2>/dev/null) && break
+            sleep 1
+          done
+          echo "workers health: ${body}"
+          echo "$body" | grep -q '"status":"ok"' || { echo "workers health check FAILED"; exit 1; }
+
+      - name: Boot realtime image and check readiness
+        run: |
+          docker run -d --name smoke-realtime --network smoke-net \
+            -e REDIS_URL="redis://smoke-redis:6379" \
+            ghcr.io/${{ github.repository }}/realtime:${{ env.SHA_SHORT }}
+          for i in $(seq 1 30); do
+            docker logs smoke-realtime 2>&1 | grep -q "Realtime plane is ready" && break
+            sleep 1
+          done
+          docker logs smoke-realtime 2>&1 | tail -2
+          docker logs smoke-realtime 2>&1 | grep -q "Realtime plane is ready"
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f smoke-control smoke-workers smoke-realtime smoke-pg smoke-redis >/dev/null 2>&1 || true
+          docker network rm smoke-net >/dev/null 2>&1 || true
+
+  # Trigger the Dokploy deploy once images are built and smoke-tested.
+  # Requires DOKPLOY_API_KEY secret (generated in Dokploy profile → API/CLI).
+  deploy-dokploy:
+    needs: [smoke-test, scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Dokploy deploy
+        env:
+          DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          COMPOSE_ID: ${{ secrets.DOKPLOY_COMPOSE_ID }}
+        run: |
+          if [ -z "$DOKPLOY_API_KEY" ] || [ -z "$COMPOSE_ID" ]; then
+            echo "::warning::DOKPLOY_API_KEY or DOKPLOY_COMPOSE_ID not set — skipping auto-deploy"
+            exit 0
+          fi
+          curl -fsS -X POST "https://dokploy.aamn.dev/api/compose.deploy" \
+            -H "Content-Type: application/json" \
+            -H "x-api-key: ${DOKPLOY_API_KEY}" \
+            -d "{\"composeId\":\"${COMPOSE_ID}\",\"title\":\"auto-deploy ${GITHUB_SHA}\"}"

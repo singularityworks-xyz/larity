@@ -28,6 +28,10 @@
     },
     "migrate": {
       "cache": false
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "cache": true
     }
   }
 }
