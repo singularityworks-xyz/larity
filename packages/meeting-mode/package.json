@@ -1,7 +1,7 @@
 {
   "name": "meeting-mode",
   "type": "module",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "exports": {
     ".": "./src/index.ts"
@@ -19,6 +19,8 @@
     "@google/genai": "^2.10.0",
     "@larity/db": "workspace:*",
     "@larity/logger": "workspace:*",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "ioredis": "^5.11.1",
     "openai": "^6.45.0",
     "zod": "^4.4.3"

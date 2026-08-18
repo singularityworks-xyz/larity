@@ -20,9 +20,11 @@
     "@larity/jobs": "workspace:*",
     "@larity/logger": "workspace:*",
     "@larity/stt": "workspace:*",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
     "elysia": "^1.4.29",
     "ioredis": "^5.11.1",
     "meeting-mode": "workspace:*"
   },
-  "version": "0.0.6"
+  "version": "0.0.7"
 }
