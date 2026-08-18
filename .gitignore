@@ -46,3 +46,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 llms.txt
 
 .plans
+
+# sensitive backups / dumps
+*.dump
+*.backup
+*.sql.gz
