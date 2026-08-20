@@ -35,15 +35,16 @@ jobs:
             runner: blacksmith-2vcpu-ubuntu-2404-arm
             docker_platform: linux/arm64
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: useblacksmith/checkout@v1
+        uses: useblacksmith/checkout@2d63ce5ba61677748c4e92f6eb578a8694226225
 
       - name: Setup Docker Builder
-        uses: useblacksmith/setup-docker-builder@v1
+        uses: useblacksmith/setup-docker-builder@adc691ae88ab0b60a1ea3db000af973ad0f8dbfd
 
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -54,7 +55,7 @@ jobs:
         run: echo "SHA_SHORT=${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
 
       - name: Build and push realtime image
-        uses: useblacksmith/build-push-action@v2
+        uses: useblacksmith/build-push-action@9b0579bbec7a6cad2f171596c57e7ac1e7658850
         with:
           context: .
           file: apps/realtime/Dockerfile
@@ -63,6 +64,8 @@ jobs:
             ghcr.io/${{ github.repository }}/realtime:latest-${{ matrix.platform }}
             ghcr.io/${{ github.repository }}/realtime:${{ env.SHA_SHORT }}-${{ matrix.platform }}
           platforms: ${{ matrix.docker_platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           provenance: false
 
   build-docker-control:
@@ -77,15 +80,16 @@ jobs:
             runner: blacksmith-2vcpu-ubuntu-2404-arm
             docker_platform: linux/arm64
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: useblacksmith/checkout@v1
+        uses: useblacksmith/checkout@2d63ce5ba61677748c4e92f6eb578a8694226225
 
       - name: Setup Docker Builder
-        uses: useblacksmith/setup-docker-builder@v1
+        uses: useblacksmith/setup-docker-builder@adc691ae88ab0b60a1ea3db000af973ad0f8dbfd
 
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -96,7 +100,7 @@ jobs:
         run: echo "SHA_SHORT=${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
 
       - name: Build and push control image
-        uses: useblacksmith/build-push-action@v2
+        uses: useblacksmith/build-push-action@9b0579bbec7a6cad2f171596c57e7ac1e7658850
         with:
           context: .
           file: apps/control/Dockerfile
@@ -105,6 +109,8 @@ jobs:
             ghcr.io/${{ github.repository }}/control:latest-${{ matrix.platform }}
             ghcr.io/${{ github.repository }}/control:${{ env.SHA_SHORT }}-${{ matrix.platform }}
           platforms: ${{ matrix.docker_platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           provenance: false
 
   build-docker-workers:
@@ -119,15 +125,16 @@ jobs:
             runner: blacksmith-2vcpu-ubuntu-2404-arm
             docker_platform: linux/arm64
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: useblacksmith/checkout@v1
+        uses: useblacksmith/checkout@2d63ce5ba61677748c4e92f6eb578a8694226225
 
       - name: Setup Docker Builder
-        uses: useblacksmith/setup-docker-builder@v1
+        uses: useblacksmith/setup-docker-builder@adc691ae88ab0b60a1ea3db000af973ad0f8dbfd
 
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -138,7 +145,7 @@ jobs:
         run: echo "SHA_SHORT=${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
 
       - name: Build and push workers image
-        uses: useblacksmith/build-push-action@v2
+        uses: useblacksmith/build-push-action@9b0579bbec7a6cad2f171596c57e7ac1e7658850
         with:
           context: .
           file: apps/workers/Dockerfile
@@ -147,20 +154,23 @@ jobs:
             ghcr.io/${{ github.repository }}/workers:latest-${{ matrix.platform }}
             ghcr.io/${{ github.repository }}/workers:${{ env.SHA_SHORT }}-${{ matrix.platform }}
           platforms: ${{ matrix.docker_platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           provenance: false
 
   push-manifests:
     needs: [build-docker-realtime, build-docker-control, build-docker-workers]
     runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: useblacksmith/checkout@v1
+        uses: useblacksmith/checkout@2d63ce5ba61677748c4e92f6eb578a8694226225
 
       - name: Setup Docker Builder
-        uses: useblacksmith/setup-docker-builder@v1
+        uses: useblacksmith/setup-docker-builder@adc691ae88ab0b60a1ea3db000af973ad0f8dbfd
 
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -176,15 +186,15 @@ jobs:
           #!/bin/bash
           # shellcheck disable=SC2086
           for img in realtime control workers; do
-            docker manifest create ghcr.io/${{ github.repository }}/$img:latest \
+            docker buildx imagetools create \
+              -t ghcr.io/${{ github.repository }}/$img:latest \
               ghcr.io/${{ github.repository }}/$img:latest-amd64 \
               ghcr.io/${{ github.repository }}/$img:latest-arm64
-            docker manifest push ghcr.io/${{ github.repository }}/$img:latest
 
-            docker manifest create ghcr.io/${{ github.repository }}/$img:${{ env.SHA_SHORT }} \
+            docker buildx imagetools create \
+              -t ghcr.io/${{ github.repository }}/$img:${{ env.SHA_SHORT }} \
               ghcr.io/${{ github.repository }}/$img:${{ env.SHA_SHORT }}-amd64 \
               ghcr.io/${{ github.repository }}/$img:${{ env.SHA_SHORT }}-arm64
-            docker manifest push ghcr.io/${{ github.repository }}/$img:${{ env.SHA_SHORT }}
           done
 
   # Scan the freshly-built images for known vulnerabilities (high/critical
@@ -192,23 +202,24 @@ jobs:
   scan:
     needs: [push-manifests]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: useblacksmith/checkout@v1
+        uses: useblacksmith/checkout@2d63ce5ba61677748c4e92f6eb578a8694226225
 
       - name: Get short SHA
         shell: bash
         run: echo "SHA_SHORT=${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
 
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Scan images with Trivy
-        uses: aquasecurity/trivy-action@v0.36.0
+      - name: Scan control image with Trivy
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8
         with:
           scan-type: image
           scan-ref: ghcr.io/${{ github.repository }}/control:${{ env.SHA_SHORT }}
@@ -218,7 +229,7 @@ jobs:
           trivyignores: .trivyignore
 
       - name: Scan realtime image
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8
         with:
           scan-type: image
           scan-ref: ghcr.io/${{ github.repository }}/realtime:${{ env.SHA_SHORT }}
@@ -228,7 +239,7 @@ jobs:
           trivyignores: .trivyignore
 
       - name: Scan workers image
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8
         with:
           scan-type: image
           scan-ref: ghcr.io/${{ github.repository }}/workers:${{ env.SHA_SHORT }}
@@ -243,16 +254,17 @@ jobs:
   smoke-test:
     needs: [push-manifests]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: useblacksmith/checkout@v1
+        uses: useblacksmith/checkout@2d63ce5ba61677748c4e92f6eb578a8694226225
 
       - name: Get short SHA
         shell: bash
         run: echo "SHA_SHORT=${GITHUB_SHA:0:7}" >> "$GITHUB_ENV"
 
       - name: Login to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -336,7 +348,8 @@ jobs:
 
       - name: Cleanup
         if: always()
-        run: docker rm -f smoke-control smoke-workers smoke-realtime smoke-pg smoke-redis >/dev/null 2>&1 || true
+        run: |
+          docker rm -f smoke-control smoke-workers smoke-realtime smoke-pg smoke-redis >/dev/null 2>&1 || true
           docker network rm smoke-net >/dev/null 2>&1 || true
 
   # Trigger the Dokploy deploy once images are built and smoke-tested.
@@ -344,11 +357,13 @@ jobs:
   deploy-dokploy:
     needs: [smoke-test, scan]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Trigger Dokploy deploy
         env:
           DOKPLOY_API_KEY: ${{ secrets.DOKPLOY_API_KEY }}
           COMPOSE_ID: ${{ secrets.DOKPLOY_COMPOSE_ID }}
+          DOKPLOY_ORIGIN_IP: ${{ secrets.DOKPLOY_ORIGIN_IP }}
         run: |
           if [ -z "$DOKPLOY_API_KEY" ] || [ -z "$COMPOSE_ID" ]; then
             echo "::warning::DOKPLOY_API_KEY or DOKPLOY_COMPOSE_ID not set — skipping auto-deploy"
@@ -356,8 +371,13 @@ jobs:
           fi
           # GitHub runner IPs hit a Cloudflare JS challenge (HTTP 403) on
           # dokploy.aamn.dev, so bypass it by resolving the hostname to the
-          # GCE origin's static IP (8.231.114.184) directly.
-          curl -sS --resolve "dokploy.aamn.dev:443:8.231.114.184" \
+          # GCE origin's static IP directly (kept as a repo secret).
+          if [ -n "$DOKPLOY_ORIGIN_IP" ]; then
+            RESOLVE_ARGS=(--resolve "dokploy.aamn.dev:443:${DOKPLOY_ORIGIN_IP}")
+          else
+            RESOLVE_ARGS=()
+          fi
+          curl -sS --retry 3 --retry-delay 5 "${RESOLVE_ARGS[@]}" \
             -X POST "https://dokploy.aamn.dev/api/compose.deploy" \
             -H "Content-Type: application/json" \
             -H "x-api-key: ${DOKPLOY_API_KEY}" \
