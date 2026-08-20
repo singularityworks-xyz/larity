@@ -108,7 +108,7 @@ jobs:
             archlinux:latest bash -lc '
               set -euo pipefail
               pacman -Syu --noconfirm --needed \
-                base-devel git curl wget file openssl pkg-config \
+                base-devel git curl wget file openssl pkg-config unzip \
                 webkit2gtk-4.1 gtk3 libappindicator-gtk3 librsvg patchelf alsa-lib \
                 gst-plugins-base gst-plugins-good
               curl -fsSL https://bun.sh/install | bash
