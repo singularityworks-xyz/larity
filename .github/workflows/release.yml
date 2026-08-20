@@ -177,25 +177,34 @@ jobs:
       - name: Rename Desktop Artifacts to Match Release Version
         shell: bash
         run: |
+          set -euo pipefail
+          # Tauri already names artifacts with the version; only rename when
+          # the source differs from the target (mv errors on same-file).
+          rename_one() {
+            local src="$1" dst="$2"
+            [ -e "$src" ] || return 0
+            [ "$(readlink -f "$src")" = "$(readlink -f "$dst")" ] && return 0
+            mv -f "$src" "$dst"
+          }
           # Rename Linux deb
           for f in artifacts-linux/deb/*.deb; do
-            [ -e "$f" ] && mv "$f" "artifacts-linux/deb/larity_${VERSION}_amd64.deb"
+            rename_one "$f" "artifacts-linux/deb/larity_${VERSION}_amd64.deb"
           done
           # Rename Linux AppImage
           for f in artifacts-linux/appimage/*.AppImage; do
-            [ -e "$f" ] && mv "$f" "artifacts-linux/appimage/larity_${VERSION}_amd64.AppImage"
+            rename_one "$f" "artifacts-linux/appimage/larity_${VERSION}_amd64.AppImage"
           done
           # Rename Linux RPM
           for f in artifacts-linux/rpm/*.rpm; do
-            [ -e "$f" ] && mv "$f" "artifacts-linux/rpm/larity_${VERSION}-1.x86_64.rpm"
+            rename_one "$f" "artifacts-linux/rpm/larity_${VERSION}-1.x86_64.rpm"
           done
           # Rename Windows MSI
           for f in artifacts-windows/msi/*.msi; do
-            [ -e "$f" ] && mv "$f" "artifacts-windows/msi/larity_${VERSION}_x64_en-US.msi"
+            rename_one "$f" "artifacts-windows/msi/larity_${VERSION}_x64_en-US.msi"
           done
           # Rename Windows EXE
           for f in artifacts-windows/nsis/*.exe; do
-            [ -e "$f" ] && mv "$f" "artifacts-windows/nsis/larity_${VERSION}_x64-setup.exe"
+            rename_one "$f" "artifacts-windows/nsis/larity_${VERSION}_x64-setup.exe"
           done
 
       - name: Build Arch Linux package (makepkg)
