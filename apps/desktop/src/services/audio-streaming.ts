@@ -1,3 +1,4 @@
+import { WS_URL } from "../lib/env";
 import { createLogger } from "../lib/logger";
 
 export interface AudioStatusSnapshot {
@@ -51,7 +52,7 @@ interface SendResult {
   sent: boolean;
 }
 
-const DEFAULT_WS_URL = "ws://127.0.0.1:9001";
+const DEFAULT_WS_URL = WS_URL;
 const DEFAULT_USER_ID = "desktop-host";
 const DEFAULT_BACKPRESSURE_THRESHOLD = 64 * 1024;
 const DEFAULT_MAX_PENDING_FRAMES = 8;
@@ -115,6 +116,9 @@ function sendAlertClassificationDebugLog(
   data: Record<string, unknown>,
   resolvedType: IncomingMessageType
 ): void {
+  if (!import.meta.env.DEV) {
+    return;
+  }
   const cat = data.category;
   const sev = data.severity;
   const looksLikeAlert =
