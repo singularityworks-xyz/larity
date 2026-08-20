@@ -6,7 +6,7 @@ pkgs.stdenv.mkDerivation rec {
 
   src = pkgs.fetchurl {
     url = "https://github.com/singularityworks-xyz/larity/releases/download/v${version}/larity_${version}_amd64.deb";
-    sha256 = "63150a3a0ffb6d660b293bdca7f6a347f0da8c5ef3208a1cff88823269ff7ce6";
+    sha256 = "cdb31dbe641cba0f7c5b14706785dff5ad14119c2e4723d2203ceedb758f51ee";
   };
 
   nativeBuildInputs = [ pkgs.dpkg pkgs.autoPatchelfHook pkgs.makeWrapper ];
