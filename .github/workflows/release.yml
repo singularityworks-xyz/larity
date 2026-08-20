@@ -72,7 +72,7 @@ jobs:
         uses: tauri-apps/tauri-action@fce9c6108b31ea247710505d3aaaa893ee6768d4
         with:
           projectPath: "./apps/desktop"
-          includeRelease: false
+          includeRelease: true
 
       - name: Upload Linux desktop artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -134,7 +134,7 @@ jobs:
         uses: tauri-apps/tauri-action@fce9c6108b31ea247710505d3aaaa893ee6768d4
         with:
           projectPath: "./apps/desktop"
-          includeRelease: false
+          includeRelease: true
 
       - name: Upload Windows desktop artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
