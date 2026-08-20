@@ -72,6 +72,7 @@ jobs:
         uses: tauri-apps/tauri-action@fce9c6108b31ea247710505d3aaaa893ee6768d4
         with:
           projectPath: "./apps/desktop"
+          args: --bundles deb,rpm
           includeRelease: true
 
       - name: Upload Linux desktop artifacts
@@ -80,8 +81,52 @@ jobs:
           name: desktop-linux
           path: |
             apps/desktop/src-tauri/target/release/bundle/deb/*.deb
-            apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
             apps/desktop/src-tauri/target/release/bundle/rpm/*.rpm
+          retention-days: 3
+
+  build-desktop-linux-appimage:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 60
+    env:
+      VITE_CONTROL_URL: ${{ secrets.VITE_CONTROL_URL }}
+      VITE_WS_URL: ${{ secrets.VITE_WS_URL }}
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@2d63ce5ba61677748c4e92f6eb578a8694226225
+
+      - name: Build AppImage on Arch Linux
+        run: |
+          HOST_UID="$(id -u)"
+          HOST_GID="$(id -g)"
+          docker run --rm \
+            -v "$PWD:/app" \
+            -w /app \
+            -e VITE_CONTROL_URL="$VITE_CONTROL_URL" \
+            -e VITE_WS_URL="$VITE_WS_URL" \
+            -e HOST_UID="$HOST_UID" \
+            -e HOST_GID="$HOST_GID" \
+            archlinux:latest bash -lc '
+              set -euo pipefail
+              pacman -Syu --noconfirm --needed \
+                base-devel git curl wget file openssl pkg-config \
+                webkit2gtk-4.1 gtk3 libappindicator-gtk3 librsvg patchelf alsa-lib \
+                gst-plugins-base gst-plugins-good
+              curl -fsSL https://bun.sh/install | bash
+              export PATH="$HOME/.bun/bin:$PATH"
+              curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+              export PATH="$HOME/.cargo/bin:$PATH"
+              bun install --frozen-lockfile
+              cd apps/desktop
+              bunx tauri build --bundles appimage
+              cd /app
+              chown -R "$HOST_UID:$HOST_GID" apps/desktop/src-tauri/target/release/bundle/appimage
+            '
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: desktop-appimage
+          path: apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
           retention-days: 3
 
   build-desktop-windows:
@@ -138,7 +183,7 @@ jobs:
           retention-days: 3
 
   create-release:
-    needs: [build-desktop-linux, build-desktop-windows]
+    needs: [build-desktop-linux, build-desktop-linux-appimage, build-desktop-windows]
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 30
     steps:
@@ -157,6 +202,12 @@ jobs:
         with:
           name: desktop-linux
           path: artifacts-linux
+
+      - name: Download AppImage artifact (built on Arch)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: desktop-appimage
+          path: artifacts-linux/appimage
 
       - name: Download Windows Desktop artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
