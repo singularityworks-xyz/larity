@@ -54,7 +54,7 @@ jobs:
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev alien
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -75,26 +75,7 @@ jobs:
         uses: tauri-apps/tauri-action@fce9c6108b31ea247710505d3aaaa893ee6768d4
         with:
           projectPath: "./apps/desktop"
-          args: --bundles deb,appimage
           includeRelease: false
-
-      - name: Convert DEB to RPM
-        run: |
-          #!/bin/bash
-          # shellcheck disable=SC2035
-          shopt -s nullglob
-          debs=(apps/desktop/src-tauri/target/release/bundle/deb/*.deb)
-          if [ ${#debs[@]} -eq 0 ]; then
-            echo "::error::No .deb found in apps/desktop/src-tauri/target/release/bundle/deb/"
-            ls -R apps/desktop/src-tauri/target/release/bundle/ || true
-            exit 1
-          fi
-          mkdir -p apps/desktop/src-tauri/target/release/bundle/rpm
-          for deb in "${debs[@]}"; do
-            sudo alien --to-rpm --scripts "$deb"
-          done
-          sudo mv ./*.rpm apps/desktop/src-tauri/target/release/bundle/rpm/
-          sudo chown -R "$(id -u):$(id -g)" apps/desktop/src-tauri/target/release/bundle/rpm/
 
       - name: Upload Linux desktop artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -159,7 +140,6 @@ jobs:
         uses: tauri-apps/tauri-action@fce9c6108b31ea247710505d3aaaa893ee6768d4
         with:
           projectPath: "./apps/desktop"
-          args: --bundles nsis,msi
           includeRelease: false
 
       - name: Upload Windows desktop artifacts
