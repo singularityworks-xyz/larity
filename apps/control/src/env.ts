@@ -33,6 +33,7 @@ const DEFAULT_TRUSTED_ORIGINS = [
   "http://localhost:5173",
   "tauri://localhost",
   "http://tauri.localhost",
+  "larity://",
 ];
 
 const configuredOrigins = [

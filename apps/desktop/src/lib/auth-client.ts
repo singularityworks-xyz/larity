@@ -1,6 +1,8 @@
 import { createAuthClient } from "better-auth/react";
+import { CONTROL_URL } from "./env";
+import { getStoredSessionToken } from "./session-token";
 
-const controlUrl = import.meta.env.VITE_CONTROL_URL ?? "http://localhost:3000";
+const controlUrl = CONTROL_URL;
 
 import { isTauri } from "@tauri-apps/api/core";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
@@ -10,6 +12,10 @@ export const authClient = createAuthClient({
   basePath: "/auth",
   fetchOptions: {
     credentials: "include",
+    auth: {
+      type: "Bearer",
+      token: () => getStoredSessionToken() ?? undefined,
+    },
     customFetchImpl: (...args) => {
       if (isTauri()) {
         return tauriFetch(...args);

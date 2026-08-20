@@ -1,7 +1,7 @@
 {
   "name": "@larity/desktop",
   "private": true,
-  "version": "0.0.30",
+  "version": "0.0.31",
   "type": "module",
   "scripts": {
     "dev": "WEBKIT_DISABLE_COMPOSITING_MODE=1 tauri dev",
@@ -19,6 +19,7 @@
     "@larity/infra": "workspace:*",
     "@tanstack/react-query": "^5.101.1",
     "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-deep-link": "^2.4.9",
     "@tauri-apps/plugin-http": "~2.5.9",
     "@tauri-apps/plugin-opener": "^2.5.4",
     "better-auth": "^1.6.22",

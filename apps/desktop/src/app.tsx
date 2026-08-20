@@ -3,6 +3,7 @@ import { TitleBar } from "./components/title-bar";
 import { useAuthSession } from "./features/auth/use-session";
 import { useNotifications } from "./hooks/use-notifications";
 import { signOut } from "./lib/auth-client";
+import { clearStoredSessionToken } from "./lib/session-token";
 import { cx } from "./lib/ui";
 
 function App() {
@@ -33,8 +34,12 @@ function App() {
           <button
             className="ml-auto font-medium text-[11px] text-[rgba(161,161,161,0.5)] leading-none transition-colors duration-150 [-webkit-app-region:no-drag] [app-region:no-drag] hover:text-neutral-900 dark:hover:text-[rgba(237,237,237,0.8)]"
             onClick={async () => {
-              await signOut();
-              navigate("/login");
+              try {
+                await signOut();
+              } finally {
+                clearStoredSessionToken();
+                navigate("/login");
+              }
             }}
             type="button"
           >

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { GitHubIcon, GoogleIcon } from "../components/icons";
 import { TitleBar } from "../components/title-bar";
 import { signIn } from "../lib/auth-client";
+import { prepareOAuthDeepLink } from "../lib/auth-deeplink";
 import {
   authBackClass,
   authBrandBgClass,
@@ -38,8 +39,7 @@ import {
 } from "../lib/ui";
 import { applyWindowProfile, WINDOW_PROFILES } from "../lib/window";
 
-const larityLogo =
-  "https://pub-7499bc1836a04bc988d92a1fb64db638.r2.dev/images/larity-logo-dark.svg";
+const larityLogo = "/images/larity-logo-dark.svg";
 
 const loginSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email"),
@@ -99,7 +99,11 @@ export function LoginPage() {
     setIsSubmitting(true);
     setError(null);
 
-    const result = await signIn.social({ provider: "google" });
+    prepareOAuthDeepLink();
+    const result = await signIn.social({
+      provider: "google",
+      callbackURL: "larity://auth/callback",
+    });
 
     if (result.error) {
       setIsSubmitting(false);
@@ -111,7 +115,11 @@ export function LoginPage() {
     setIsSubmitting(true);
     setError(null);
 
-    const result = await signIn.social({ provider: "github" });
+    prepareOAuthDeepLink();
+    const result = await signIn.social({
+      provider: "github",
+      callbackURL: "larity://auth/callback",
+    });
 
     if (result.error) {
       setIsSubmitting(false);

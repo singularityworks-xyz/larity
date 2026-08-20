@@ -19,8 +19,6 @@
     "deps": "bunx taze -wr && bunx sherif@latest --fix",
     "mock": "cd apps/mock && bun run mock",
     "build": "turbo run build",
-    "docs:dev": "turbo run docs:dev --filter=@larity/web",
-    "docs:build": "turbo run docs:build --filter=@larity/web",
     "check-types": "turbo run check-types && make rust-clippy",
     "check": "ultracite fix --unsafe && make rust-fix",
     "test": "turbo run test",
@@ -47,5 +45,5 @@
   "patchedDependencies": {
     "@deepgram/sdk@5.4.0": "patches/@deepgram%2Fsdk@5.4.0.patch"
   },
-  "version": "0.0.55"
+  "version": "0.0.56"
 }

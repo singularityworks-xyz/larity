@@ -7,6 +7,7 @@ import { GitHubIcon, GoogleIcon } from "../components/icons";
 import { TitleBar } from "../components/title-bar";
 import { api } from "../lib/api";
 import { signIn, signUp } from "../lib/auth-client";
+import { prepareOAuthDeepLink } from "../lib/auth-deeplink";
 import {
   authBackClass,
   authBrandBgClass,
@@ -42,8 +43,7 @@ import {
 } from "../lib/ui";
 import { applyWindowProfile, WINDOW_PROFILES } from "../lib/window";
 
-const larityLogo =
-  "https://pub-7499bc1836a04bc988d92a1fb64db638.r2.dev/images/larity-logo-dark.svg";
+const larityLogo = "/images/larity-logo-dark.svg";
 
 function toSlug(value: string): string {
   return value
@@ -199,8 +199,12 @@ export function RegisterPage() {
     setIsSubmitting(true);
     setError(null);
 
+    prepareOAuthDeepLink();
     try {
-      const result = await signIn.social({ provider: "google" });
+      const result = await signIn.social({
+        provider: "google",
+        callbackURL: "larity://auth/callback",
+      });
       if (result.error) {
         throw new Error(result.error.message ?? "Google sign up failed");
       }
@@ -219,8 +223,12 @@ export function RegisterPage() {
     setIsSubmitting(true);
     setError(null);
 
+    prepareOAuthDeepLink();
     try {
-      const result = await signIn.social({ provider: "github" });
+      const result = await signIn.social({
+        provider: "github",
+        callbackURL: "larity://auth/callback",
+      });
       if (result.error) {
         throw new Error(result.error.message ?? "GitHub sign up failed");
       }

@@ -6,6 +6,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./app";
 import { AppErrorBoundary } from "./components/app-error-boundary";
 import { RouteErrorBoundary } from "./components/route-error-boundary";
+import { initAuthDeepLink } from "./lib/auth-deeplink";
 import { queryClient } from "./lib/query";
 import {
   authGateLoader,
@@ -125,6 +126,8 @@ const router = createBrowserRouter([
 ]);
 
 import { ThemeProvider } from "./components/theme-provider";
+
+initAuthDeepLink();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
