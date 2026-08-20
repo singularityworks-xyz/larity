@@ -117,7 +117,10 @@ jobs:
               export PATH="$HOME/.cargo/bin:$PATH"
               bun install --frozen-lockfile
               cd apps/desktop
-              bunx tauri build --bundles appimage
+              # Arch binaries use .relr.dyn ELF sections that linuxdeploy's
+              # bundled strip can't parse; skip stripping (release build is
+              # already stripped by cargo).
+              NO_STRIP=1 bunx tauri build --bundles appimage
               cd /app
               chown -R "$HOST_UID:$HOST_GID" apps/desktop/src-tauri/target/release/bundle/appimage
             '
