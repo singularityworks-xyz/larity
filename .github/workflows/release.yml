@@ -75,14 +75,22 @@ jobs:
         uses: tauri-apps/tauri-action@fce9c6108b31ea247710505d3aaaa893ee6768d4
         with:
           projectPath: "./apps/desktop"
+          args: --bundles deb,appimage
           includeRelease: false
 
       - name: Convert DEB to RPM
         run: |
           #!/bin/bash
           # shellcheck disable=SC2035
+          shopt -s nullglob
+          debs=(apps/desktop/src-tauri/target/release/bundle/deb/*.deb)
+          if [ ${#debs[@]} -eq 0 ]; then
+            echo "::error::No .deb found in apps/desktop/src-tauri/target/release/bundle/deb/"
+            ls -R apps/desktop/src-tauri/target/release/bundle/ || true
+            exit 1
+          fi
           mkdir -p apps/desktop/src-tauri/target/release/bundle/rpm
-          for deb in apps/desktop/src-tauri/target/release/bundle/deb/*.deb; do
+          for deb in "${debs[@]}"; do
             sudo alien --to-rpm --scripts "$deb"
           done
           sudo mv ./*.rpm apps/desktop/src-tauri/target/release/bundle/rpm/
@@ -151,6 +159,7 @@ jobs:
         uses: tauri-apps/tauri-action@fce9c6108b31ea247710505d3aaaa893ee6768d4
         with:
           projectPath: "./apps/desktop"
+          args: --bundles nsis,msi
           includeRelease: false
 
       - name: Upload Windows desktop artifacts
