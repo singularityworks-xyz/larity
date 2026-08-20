@@ -977,8 +977,7 @@ export function MeetingPostPage() {
           <div
             className="pointer-events-none absolute inset-0 bg-bottom bg-cover opacity-50 mix-blend-overlay"
             style={{
-              backgroundImage:
-                "url(https://pub-7499bc1836a04bc988d92a1fb64db638.r2.dev/images/larity-banner-full.png)",
+              backgroundImage: "url(/images/larity-banner-full.png)",
             }}
           />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-bg-base/90 via-bg-base/50 to-bg-base/20" />

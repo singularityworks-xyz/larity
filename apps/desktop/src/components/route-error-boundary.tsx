@@ -1,4 +1,5 @@
 import { type ErrorResponse, useRouteError } from "react-router-dom";
+import { CONTROL_URL } from "../lib/env";
 import { createLogger } from "../lib/logger";
 
 const logger = createLogger("route-error");
@@ -64,7 +65,7 @@ export function RouteErrorBoundary() {
             The application cannot reach the backend server. Please ensure the
             control server is running on{" "}
             <code className="rounded bg-bg px-1 py-px text-fg">
-              {import.meta.env.VITE_CONTROL_URL ?? "http://localhost:3000"}
+              {CONTROL_URL}
             </code>
             .
           </p>

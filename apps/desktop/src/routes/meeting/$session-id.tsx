@@ -29,6 +29,7 @@ import type {
   LiveUtterance,
 } from "../../features/meeting-live/types";
 import { api } from "../../lib/api";
+import { WS_URL } from "../../lib/env";
 import {
   closeOverlayWindow,
   createOverlayWindow,
@@ -69,7 +70,7 @@ interface AudioDevice {
   name: string;
 }
 
-const DEFAULT_WS_URL = import.meta.env.VITE_WS_URL ?? "ws://127.0.0.1:9001";
+const DEFAULT_WS_URL = WS_URL;
 const FALLBACK_USER_ID = import.meta.env.VITE_WS_USER_ID ?? "desktop-host";
 
 import { useClientMembers } from "../../features/clients/use-client-members";

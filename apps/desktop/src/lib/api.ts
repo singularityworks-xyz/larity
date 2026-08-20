@@ -1,5 +1,7 @@
+import { CONTROL_URL } from "./env";
+
 const API_PREFIX = "/api";
-const controlUrl = import.meta.env.VITE_CONTROL_URL ?? "http://localhost:3000";
+const controlUrl = CONTROL_URL;
 
 interface ApiEnvelope<T> {
   data?: T;

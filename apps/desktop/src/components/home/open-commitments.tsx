@@ -1,4 +1,5 @@
 import type { OpenCommitmentItem } from "../../features/home/types";
+import { CONTROL_URL } from "../../lib/env";
 import { panelClass } from "../../lib/ui";
 
 interface OpenCommitmentsProps {
@@ -64,7 +65,7 @@ export function OpenCommitments({
           <span className="font-medium text-[10.5px] text-fg-subtle leading-none">
             <a
               className="transition-colors duration-150 ease-out hover:text-fg-muted"
-              href={`${import.meta.env.VITE_CONTROL_URL ?? "http://localhost:3000"}/web/commitments`}
+              href={`${CONTROL_URL}/web/commitments`}
               rel="noopener noreferrer"
               target="_blank"
             >

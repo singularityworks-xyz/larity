@@ -36,6 +36,7 @@ import { useJoinMeeting } from "../features/meetings/use-join-meeting";
 import { useStartSession } from "../features/meetings/use-start-session";
 import { useOrgInvites } from "../features/org-invites/use-org-invites";
 import { useOrg } from "../features/orgs/use-org";
+import { CONTROL_URL } from "../lib/env";
 import { cx } from "../lib/ui";
 
 /* ── Utilities ──────────────────────────────────── */
@@ -155,8 +156,7 @@ function Header({
       <div
         className="pointer-events-none absolute inset-0 bg-bottom bg-cover"
         style={{
-          backgroundImage:
-            "url(https://pub-7499bc1836a04bc988d92a1fb64db638.r2.dev/images/larity-banner-full.png)",
+          backgroundImage: "url(/images/larity-banner-full.png)",
         }}
       />
       {theme === "dark" && (
@@ -877,7 +877,7 @@ function ActiveCommitments({
         {!loading && commitments.length > 0 && (
           <a
             className="font-semibold text-[10px] text-fg-subtle uppercase tracking-wider transition-colors hover:text-fg"
-            href={`${import.meta.env.VITE_CONTROL_URL ?? "http://localhost:3000"}/web/commitments`}
+            href={`${CONTROL_URL}/web/commitments`}
             rel="noreferrer"
             target="_blank"
           >

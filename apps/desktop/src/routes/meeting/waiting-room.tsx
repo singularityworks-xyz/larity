@@ -96,8 +96,7 @@ export function WaitingRoomPage() {
         <div
           className="pointer-events-none absolute inset-0 bg-bottom bg-cover opacity-40"
           style={{
-            backgroundImage:
-              "url(https://pub-7499bc1836a04bc988d92a1fb64db638.r2.dev/images/larity-banner-full.png)",
+            backgroundImage: "url(/images/larity-banner-full.png)",
           }}
         />
         {theme === "dark" && (

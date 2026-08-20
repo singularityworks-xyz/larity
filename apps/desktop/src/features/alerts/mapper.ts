@@ -89,8 +89,8 @@ export function mapBackendAlertToMeetingAlert(
   if (!id) {
     // #region agent log
     if (
-      typeof data.category === "string" ||
-      typeof data.alertType === "string"
+      import.meta.env.DEV &&
+      (typeof data.category === "string" || typeof data.alertType === "string")
     ) {
       fetch(
         "http://127.0.0.1:7268/ingest/d02c4985-7539-46d4-bc45-33f990c9f9a8",

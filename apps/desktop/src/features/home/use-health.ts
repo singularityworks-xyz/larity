@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CONTROL_URL } from "../../lib/env";
 
 export interface HealthState {
   audioDeviceAvailable: boolean;
@@ -19,9 +20,7 @@ export function useHealth(): HealthState {
 
     async function checkServer() {
       try {
-        const ctrlUrl =
-          import.meta.env.VITE_CONTROL_URL ?? "http://localhost:3000";
-        await fetch(`${ctrlUrl}/health`, { method: "GET" });
+        await fetch(`${CONTROL_URL}/health`, { method: "GET" });
         setState((prev) => ({
           ...prev,
           serverOnline: true,
