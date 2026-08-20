@@ -26,5 +26,5 @@
     "ioredis": "^5.11.1",
     "meeting-mode": "workspace:*"
   },
-  "version": "0.0.8"
+  "version": "0.1.0"
 }

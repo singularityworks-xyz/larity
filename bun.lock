@@ -21,7 +21,7 @@
     },
     "apps/control": {
       "name": "@larity/control",
-      "version": "0.0.9",
+      "version": "0.1.0",
       "dependencies": {
         "@elysiajs/cors": "^1.4.2",
         "@elysiajs/cron": "^1.4.2",
@@ -47,7 +47,7 @@
     },
     "apps/desktop": {
       "name": "@larity/desktop",
-      "version": "0.0.30",
+      "version": "0.1.0",
       "dependencies": {
         "@fontsource/geist-mono": "^5.2.8",
         "@fontsource/geist-sans": "^5.2.5",
@@ -84,7 +84,7 @@
     },
     "apps/mock": {
       "name": "@larity/mock-overlay",
-      "version": "0.0.5",
+      "version": "0.1.0",
       "dependencies": {
         "@larity/stt": "workspace:*",
         "@tailwindcss/vite": "^4.3.1",
@@ -110,7 +110,7 @@
     },
     "apps/realtime": {
       "name": "@larity/realtime",
-      "version": "0.0.8",
+      "version": "0.1.0",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1075.0",
         "@aws-sdk/lib-storage": "^3.1075.0",
@@ -133,7 +133,7 @@
     },
     "apps/web": {
       "name": "@larity/web",
-      "version": "0.0.9",
+      "version": "0.1.0",
       "dependencies": {
         "@tailwindcss/vite": "^4.3.1",
         "@vercel/analytics": "^2.0.1",
@@ -161,7 +161,7 @@
     },
     "apps/workers": {
       "name": "@larity/workers",
-      "version": "0.0.6",
+      "version": "0.1.0",
       "dependencies": {
         "@google/genai": "^2.10.0",
         "@larity/db": "workspace:*",
@@ -185,11 +185,11 @@
     },
     "packages/config": {
       "name": "@larity/config",
-      "version": "0.0.1",
+      "version": "0.1.0",
     },
     "packages/db": {
       "name": "@larity/db",
-      "version": "0.0.4",
+      "version": "0.1.0",
       "dependencies": {
         "@larity/logger": "workspace:*",
         "@prisma/adapter-pg": "^7.8.0",
@@ -204,7 +204,7 @@
     },
     "packages/infra": {
       "name": "@larity/infra",
-      "version": "0.0.3",
+      "version": "0.1.0",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1075.0",
         "@larity/logger": "workspace:*",
@@ -212,7 +212,7 @@
     },
     "packages/jobs": {
       "name": "@larity/jobs",
-      "version": "0.0.2",
+      "version": "0.1.0",
       "dependencies": {
         "bullmq": "^5.79.1",
         "ioredis": "^5.11.1",
@@ -226,7 +226,7 @@
     },
     "packages/logger": {
       "name": "@larity/logger",
-      "version": "0.0.2",
+      "version": "0.1.0",
       "dependencies": {
         "pino": "^10.3.1",
         "pino-pretty": "^13.1.3",
@@ -238,7 +238,7 @@
     },
     "packages/meeting-mode": {
       "name": "meeting-mode",
-      "version": "0.0.3",
+      "version": "0.1.0",
       "dependencies": {
         "@google/genai": "^2.10.0",
         "@larity/db": "workspace:*",
@@ -257,7 +257,7 @@
     },
     "packages/stt": {
       "name": "@larity/stt",
-      "version": "0.0.2",
+      "version": "0.1.0",
       "dependencies": {
         "@deepgram/sdk": "^5.4.0",
         "@larity/db": "workspace:*",

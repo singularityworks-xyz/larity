@@ -31,5 +31,5 @@
     "@types/node": "^26.0.1",
     "typescript": "^7.0.1-rc"
   },
-  "version": "0.0.10"
+  "version": "0.1.0"
 }
