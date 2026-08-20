@@ -255,8 +255,11 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
         run: |
-          PREV_TAG="$(git describe --tags --abbrev=0 2>/dev/null || echo "")"
+          # Latest tag strictly older than the current release (exclude v$VERSION itself)
+          PREV_TAG="$(git tag --sort=-creatordate | grep -v "^v${VERSION}$" | head -n1 || true)"
 
           {
             echo "![Larity Banner](https://github.com/user-attachments/assets/9314d788-93e8-4486-93c4-88225be0ffb7)"
@@ -264,9 +267,9 @@ jobs:
             echo "## Changelog (Commits since last version)"
 
             if [ -n "${PREV_TAG}" ]; then
-              git log "${PREV_TAG}..HEAD" --oneline --format="* %h - %s (%an)"
+              git log "${PREV_TAG}..HEAD" --oneline --format="* %h - %s (%an)" || true
             else
-              git log --oneline --format="* %h - %s (%an)"
+              git log --oneline --format="* %h - %s (%an)" || true
             fi
 
             echo ""
@@ -274,18 +277,18 @@ jobs:
 
             CONTRIBUTORS=""
             if [ -n "${PREV_TAG}" ]; then
-              CONTRIBUTORS=$(gh api "repos/:owner/:repo/compare/${PREV_TAG}...HEAD" --jq '.commits[] | if .author then "* @" + .author.login else "* " + .commit.author.name end' 2>/dev/null | sort -u)
+              CONTRIBUTORS="$(gh api "repos/${REPO}/compare/${PREV_TAG}...${SHA}" --jq '.commits[] | if .author then "* @" + .author.login else "* " + .commit.author.name end' 2>/dev/null | sort -u || true)"
             else
-              CONTRIBUTORS=$(gh api "repos/:owner/:repo/commits?per_page=100" --jq '.[] | if .author then "* @" + .author.login else "* " + .commit.author.name end' 2>/dev/null | sort -u)
+              CONTRIBUTORS="$(gh api "repos/${REPO}/commits?per_page=100" --jq '.[] | if .author then "* @" + .author.login else "* " + .commit.author.name end' 2>/dev/null | sort -u || true)"
             fi
 
             if [ -n "${CONTRIBUTORS}" ]; then
               echo "${CONTRIBUTORS}"
             else
               if [ -n "${PREV_TAG}" ]; then
-                git log "${PREV_TAG}..HEAD" --format="* %an" | sort -u
+                git log "${PREV_TAG}..HEAD" --format="* %an" | sort -u || true
               else
-                git log --format="* %an" | sort -u
+                git log --format="* %an" | sort -u || true
               fi
             fi
           } > release_body.md
