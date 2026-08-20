@@ -110,7 +110,7 @@ jobs:
               pacman -Syu --noconfirm --needed \
                 base-devel git curl wget file openssl pkg-config unzip \
                 webkit2gtk-4.1 gtk3 libappindicator-gtk3 librsvg patchelf alsa-lib \
-                gst-plugins-base gst-plugins-good
+                gst-plugins-base gst-plugins-good xdg-utils
               curl -fsSL https://bun.sh/install | bash
               export PATH="$HOME/.bun/bin:$PATH"
               curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
