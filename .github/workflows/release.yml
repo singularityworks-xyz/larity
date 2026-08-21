@@ -113,6 +113,9 @@ jobs:
                 gst-plugins-base gst-plugins-good xdg-utils
               curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
               export PATH="$HOME/.cargo/bin:$PATH"
+              # Prevent bun from self-switching (packageManager field vs
+              # pacman's canary build) which clobbers the binary as root.
+              sed -i '/"packageManager":/d' package.json
               bun install --frozen-lockfile
               cd apps/desktop
               # Arch binaries use .relr.dyn ELF sections that linuxdeploy's
