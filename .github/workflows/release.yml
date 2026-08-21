@@ -105,27 +105,7 @@ jobs:
             -e VITE_WS_URL="$VITE_WS_URL" \
             -e HOST_UID="$HOST_UID" \
             -e HOST_GID="$HOST_GID" \
-            archlinux:latest bash -c '
-              set -euo pipefail
-              pacman -Syu --noconfirm --needed \
-                base-devel git curl wget file openssl pkg-config unzip bun \
-                webkit2gtk-4.1 gtk3 libappindicator-gtk3 librsvg patchelf alsa-lib \
-                gst-plugins-base gst-plugins-good xdg-utils
-              curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-              export PATH="$HOME/.cargo/bin:$PATH"
-              # Prevent bun from self-switching (packageManager field vs
-              # pacman canary build) which clobbers the binary as root.
-              sed -i '/"packageManager":/d' package.json
-              BUN_BIN="$(command -v bun || echo /usr/bin/bun)"
-              "$BUN_BIN" install --frozen-lockfile
-              cd apps/desktop
-              # Arch binaries use .relr.dyn ELF sections that linuxdeploy's
-              # bundled strip can't parse; skip stripping (release build is
-              # already stripped by cargo).
-              NO_STRIP=1 "$BUN_BIN" x tauri build --bundles appimage
-              cd /app
-              chown -R "$HOST_UID:$HOST_GID" apps/desktop/src-tauri/target/release/bundle/appimage
-            '
+            archlinux:latest bash /app/scripts/build-appimage-arch.sh
 
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
