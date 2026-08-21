@@ -20,7 +20,7 @@ cd apps/desktop
 
 # Arch binaries use .relr.dyn ELF sections that linuxdeploy's bundled strip
 # cannot parse; skip stripping (the release build is already stripped).
-NO_STRIP=1 bun x tauri build --bundles appimage
+NO_STRIP=1 bun x tauri build --bundles appimage --verbose
 
 cd /app
 chown -R "$HOST_UID:$HOST_GID" apps/desktop/src-tauri/target/release/bundle/appimage
