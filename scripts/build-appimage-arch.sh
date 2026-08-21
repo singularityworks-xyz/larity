@@ -18,6 +18,12 @@ sed -i '/"packageManager":/d' package.json
 bun install --frozen-lockfile
 cd apps/desktop
 
+# linuxdeploy-plugin-gtk.sh tries to copy the gdk-pixbuf loader dir, but
+# modern gdk-pixbuf (>= 2.42) ships built-in loaders with no separate
+# /usr/lib/gdk-pixbuf-2.0/2.10.0 directory. Create the expected (empty)
+# path so the plugin does not abort.
+mkdir -p /usr/lib/gdk-pixbuf-2.0/2.10.0/loaders
+
 # Arch binaries use .relr.dyn ELF sections that linuxdeploy's bundled strip
 # cannot parse; skip stripping (the release build is already stripped).
 NO_STRIP=1 bun x tauri build --bundles appimage --verbose
