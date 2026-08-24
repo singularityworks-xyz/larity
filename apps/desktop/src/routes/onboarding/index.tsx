@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TitleBar } from "../../components/title-bar";
 import { useAuthSession } from "../../features/auth/use-session";
@@ -315,11 +315,22 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const frameRef = useRef(0);
+  const isRecordingRef = useRef(false);
+  const jitterSeeds = useMemo(
+    () =>
+      Array.from({ length: VOICE_BAR_COUNT }, () => 0.4 + 0.6 * Math.random()),
+    []
+  );
 
   useEffect(
     () => () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+      }
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
       }
       if (streamRef.current) {
         for (const track of streamRef.current.getTracks()) {
@@ -343,23 +354,29 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
       analyserRef.current = analyser;
 
       setState("recording");
+      isRecordingRef.current = true;
+      frameRef.current = 0;
       setCountdown(10);
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
       const animate = () => {
-        if (!analyserRef.current) {
+        if (!(analyserRef.current && isRecordingRef.current)) {
           return;
         }
         analyser.getByteFrequencyData(dataArray);
         const avg =
           dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length;
-        setLevel(Math.min(1, avg / 64));
-        if (state === "recording") {
-          requestAnimationFrame(animate);
+        const nextLevel = Math.min(1, avg / 64);
+        frameRef.current += 1;
+        if (frameRef.current % 2 === 0) {
+          setLevel(nextLevel);
+        }
+        if (isRecordingRef.current) {
+          rafRef.current = requestAnimationFrame(animate);
         }
       };
-      animate();
+      rafRef.current = requestAnimationFrame(animate);
 
       timerRef.current = setInterval(() => {
         setCountdown((prev) => {
@@ -376,6 +393,11 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
   }
 
   function stopRecording() {
+    isRecordingRef.current = false;
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -440,10 +462,10 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
         <div className="grid gap-4 text-center">
           <div className="flex h-10 items-end justify-center gap-0.5 py-1">
             {Array.from({ length: VOICE_BAR_COUNT }, (_, i) => {
-              const height =
-                state === "recording"
-                  ? Math.max(3, level * 40 * (0.4 + 0.6 * Math.random()))
-                  : 3;
+              const jitter = jitterSeeds[i] ?? 0.7;
+              const rawHeight =
+                state === "recording" ? Math.max(3, level * 40 * jitter) : 3;
+              const scaleY = rawHeight / 40;
               return (
                 <div
                   className={cx(
@@ -451,7 +473,11 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
                     state === "recording" && "bg-accent"
                   )}
                   key={`voice-bar-${i.toString()}`}
-                  style={{ height: `${height}px` }}
+                  style={{
+                    height: "40px",
+                    transform: `scaleY(${scaleY})`,
+                    transformOrigin: "bottom",
+                  }}
                 />
               );
             })}

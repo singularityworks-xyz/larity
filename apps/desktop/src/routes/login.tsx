@@ -7,6 +7,7 @@ import { GitHubIcon, GoogleIcon } from "../components/icons";
 import { TitleBar } from "../components/title-bar";
 import { signIn } from "../lib/auth-client";
 import { prepareOAuthDeepLink } from "../lib/auth-deeplink";
+import { storeSessionToken } from "../lib/session-token";
 import {
   authBackClass,
   authBrandBgClass,
@@ -90,6 +91,13 @@ export function LoginPage() {
     if (result.error) {
       setError(result.error.message ?? "Sign in failed");
       return;
+    }
+
+    // Persist the session token so route guards can authorize synchronously.
+    // Email sign-in returns the token (same as OAuth deep-link flow).
+    const token = result.data?.token;
+    if (token) {
+      storeSessionToken(token);
     }
 
     navigate("/");
