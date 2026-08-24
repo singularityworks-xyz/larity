@@ -1,6 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
+import { useAuthSession } from "../features/auth/use-session";
 import {
   cx,
   desktopShellClass,
@@ -46,4 +47,41 @@ export function AppShell({
       {children}
     </main>
   );
+}
+
+export function RouteSkeleton() {
+  return (
+    <div className="flex flex-col gap-6 p-6">
+      <div className="h-4 w-32 animate-pulse rounded bg-bg-subtle" />
+      <div className="h-16 w-full animate-pulse rounded-xl bg-bg-subtle" />
+      <div className="h-4 w-48 animate-pulse rounded bg-bg-subtle" />
+      <div className="h-32 w-full animate-pulse rounded-xl bg-bg-subtle" />
+      <div className="h-32 w-full animate-pulse rounded-xl bg-bg-subtle" />
+    </div>
+  );
+}
+
+export function AuthGuardSkeleton({
+  children,
+  requireOrg = true,
+}: {
+  children: ReactNode;
+  requireOrg?: boolean;
+}) {
+  const session = useAuthSession();
+
+  if (session.isPending) {
+    return <RouteSkeleton />;
+  }
+
+  if (!session.data?.user) {
+    return <Navigate replace to="/welcome" />;
+  }
+
+  const user = session.data.user as { orgId?: string | null };
+  if (requireOrg && !user.orgId) {
+    return <Navigate replace to="/onboarding" />;
+  }
+
+  return <>{children}</>;
 }

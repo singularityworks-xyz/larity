@@ -1,9 +1,6 @@
 import { redirect } from "react-router-dom";
 import { authClient } from "../lib/auth-client";
-
-interface SessionUser {
-  orgId?: string | null;
-}
+import { getStoredSessionToken } from "../lib/session-token";
 
 function isOnboardingPath(pathname: string): boolean {
   return pathname.startsWith("/onboarding");
@@ -15,13 +12,17 @@ function isGuestPath(pathname: string): boolean {
   );
 }
 
-async function getSessionUser(): Promise<SessionUser | null> {
-  const { data } = await authClient.getSession();
-  if (!data?.user) {
-    return null;
-  }
-  return data.user as SessionUser;
-}
+/**
+ * Loaders are fast-path synchronous when a session token is stored:
+ * the shell paints immediately and AuthGuardSkeleton validates the
+ * session client-side (cookie) after first paint.
+ *
+ * When NO token is stored, we fall back to the server cookie check so
+ * legacy cookie-only sessions (e.g. email login before token persistence)
+ * still resolve correctly. That round-trip only happens for users who are
+ * about to be redirected anyway, so it does not add perceived latency to
+ * normal logged-in navigation.
+ */
 
 export async function authGateLoader({
   request,
@@ -29,37 +30,36 @@ export async function authGateLoader({
   request: Request;
 }): Promise<null> {
   const pathname = new URL(request.url).pathname;
-  const user = await getSessionUser();
+  const token = getStoredSessionToken();
 
-  if (!user) {
+  if (token) {
+    // Token present: render shell immediately; AuthGuardSkeleton handles
+    // session validation + orgId redirect client-side after first paint.
+    return null;
+  }
+
+  // No stored token: could be a legacy cookie session — verify server-side.
+  const { data } = await authClient.getSession();
+  if (!data?.user) {
     if (isGuestPath(pathname)) {
       return null;
     }
     throw redirect("/welcome");
   }
 
-  if (!user.orgId) {
-    if (isOnboardingPath(pathname)) {
-      return null;
-    }
-    throw redirect("/onboarding");
-  }
-
-  if (isGuestPath(pathname) || pathname === "/onboarding") {
-    throw redirect("/home");
-  }
-
   return null;
 }
 
 export async function rootIndexLoader(): Promise<never> {
-  const user = await getSessionUser();
-  if (!user) {
-    throw redirect("/welcome");
+  const token = getStoredSessionToken();
+  if (token) {
+    throw redirect("/home");
   }
 
-  if (!user.orgId) {
-    throw redirect("/onboarding");
+  // Legacy cookie session fallback.
+  const { data } = await authClient.getSession();
+  if (!data?.user) {
+    throw redirect("/welcome");
   }
 
   throw redirect("/home");
@@ -71,17 +71,19 @@ export async function guestOnlyLoader({
   request: Request;
 }): Promise<null> {
   const pathname = new URL(request.url).pathname;
-  const user = await getSessionUser();
+  const token = getStoredSessionToken();
 
-  if (!user) {
+  if (token && isGuestPath(pathname)) {
+    throw redirect("/home");
+  }
+  if (token) {
     return null;
   }
 
-  if (!user.orgId) {
-    throw redirect("/onboarding");
-  }
-
-  if (isGuestPath(pathname)) {
+  // No stored token: verify cookie so signed-in users on guest pages are
+  // redirected even without a persisted token.
+  const { data } = await authClient.getSession();
+  if (data?.user && isGuestPath(pathname)) {
     throw redirect("/home");
   }
 
@@ -94,16 +96,23 @@ export async function onboardingLoader({
   request: Request;
 }): Promise<null> {
   const pathname = new URL(request.url).pathname;
-  const user = await getSessionUser();
+  const token = getStoredSessionToken();
 
-  if (!user) {
+  if (token) {
+    if (!isOnboardingPath(pathname)) {
+      throw redirect("/onboarding");
+    }
+    return null;
+  }
+
+  // Legacy cookie session fallback.
+  const { data } = await authClient.getSession();
+  if (!data?.user) {
     throw redirect("/welcome");
   }
-
-  if (user.orgId) {
+  if ((data.user as { orgId?: string | null }).orgId) {
     throw redirect("/home");
   }
-
   if (!isOnboardingPath(pathname)) {
     throw redirect("/onboarding");
   }

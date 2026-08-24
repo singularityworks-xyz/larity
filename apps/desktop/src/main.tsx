@@ -29,6 +29,7 @@ import { OnboardingPage } from "./routes/onboarding";
 import { OverlayPage } from "./routes/overlay";
 import { RegisterPage } from "./routes/register";
 import { SettingsPage } from "./routes/settings";
+import { AuthGuardSkeleton } from "./routes/shared";
 import { WelcomePage } from "./routes/welcome";
 
 const router = createBrowserRouter([
@@ -69,42 +70,74 @@ const router = createBrowserRouter([
       {
         path: "home",
         loader: authGateLoader,
-        element: <HomePage />,
+        element: (
+          <AuthGuardSkeleton>
+            <HomePage />
+          </AuthGuardSkeleton>
+        ),
       },
       {
         path: "clients",
         loader: authGateLoader,
-        element: <ClientsPage />,
+        element: (
+          <AuthGuardSkeleton>
+            <ClientsPage />
+          </AuthGuardSkeleton>
+        ),
       },
       {
         path: "clients/:clientId",
         loader: authGateLoader,
-        element: <ClientDetailPage />,
+        element: (
+          <AuthGuardSkeleton>
+            <ClientDetailPage />
+          </AuthGuardSkeleton>
+        ),
       },
       {
         path: "clients/add",
         loader: authGateLoader,
-        element: <AddClientPage />,
+        element: (
+          <AuthGuardSkeleton>
+            <AddClientPage />
+          </AuthGuardSkeleton>
+        ),
       },
       {
         path: "meetings/start",
         loader: authGateLoader,
-        element: <StartMeetingPage />,
+        element: (
+          <AuthGuardSkeleton>
+            <StartMeetingPage />
+          </AuthGuardSkeleton>
+        ),
       },
       {
         path: "meetings/join",
         loader: authGateLoader,
-        element: <JoinMeetingPage />,
+        element: (
+          <AuthGuardSkeleton>
+            <JoinMeetingPage />
+          </AuthGuardSkeleton>
+        ),
       },
       {
         path: "meeting/:sessionId/waiting-room",
         loader: authGateLoader,
-        element: <WaitingRoomPage />,
+        element: (
+          <AuthGuardSkeleton>
+            <WaitingRoomPage />
+          </AuthGuardSkeleton>
+        ),
       },
       {
         path: "meetings/:meetingId/brief",
         loader: authGateLoader,
-        element: <MeetingBriefPage />,
+        element: (
+          <AuthGuardSkeleton>
+            <MeetingBriefPage />
+          </AuthGuardSkeleton>
+        ),
       },
       {
         path: "meeting/:sessionId",
@@ -119,7 +152,11 @@ const router = createBrowserRouter([
       {
         path: "settings",
         loader: authGateLoader,
-        element: <SettingsPage />,
+        element: (
+          <AuthGuardSkeleton>
+            <SettingsPage />
+          </AuthGuardSkeleton>
+        ),
       },
     ],
   },
