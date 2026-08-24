@@ -1,5 +1,6 @@
 import { Bell, ChevronsDown, FileText, ListChecks } from "lucide-react";
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -20,7 +21,7 @@ function formatUtteranceClock(meetingStartMs: number, ts: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function SpeakerChip({
+const SpeakerChip = memo(function SpeakerChip({
   confidence,
   name,
   speakerType,
@@ -65,7 +66,73 @@ function SpeakerChip({
       {name}
     </span>
   );
-}
+});
+
+const TranscriptRow = memo(function TranscriptRow({
+  row,
+  meetingStartedAtMs,
+  showSpeaker = true,
+}: {
+  row: LiveUtterance;
+  meetingStartedAtMs: number;
+  showSpeaker?: boolean;
+}) {
+  return (
+    <div
+      className="group grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 border-border-subtle border-b py-2 pr-3 last:border-b-0 hover:bg-bg-subtle/60"
+      id={`utterance-${row.id}`}
+    >
+      <div
+        aria-hidden
+        className="col-start-1 row-span-2 flex w-5 shrink-0 flex-col items-center gap-1 pt-1"
+      >
+        {row.hasMemory && (
+          <span
+            className="h-[5px] w-[5px] rounded-[1px] bg-accent"
+            title="Remembered"
+          />
+        )}
+        {row.hasAlert && (
+          <span
+            className="h-[5px] w-[5px] rounded-[1px] bg-warning-fg"
+            title="Alert triggered"
+          />
+        )}
+        {row.isCommitment && (
+          <span
+            className="h-[5px] w-[5px] rounded-[1px] bg-success-fg"
+            title="Commitment"
+          />
+        )}
+        {!(row.hasMemory || row.hasAlert || row.isCommitment) && (
+          <span className="h-[5px] w-[5px] opacity-0" />
+        )}
+      </div>
+
+      <div className="col-start-2 flex flex-wrap items-center gap-2">
+        {showSpeaker && (
+          <SpeakerChip
+            confidence={row.confidence}
+            name={row.speakerName || "Unknown"}
+            speakerType={row.speakerType || "unknown"}
+          />
+        )}
+        <time className="font-mono text-[10px] text-fg-subtle tabular-nums">
+          {formatUtteranceClock(meetingStartedAtMs, row.timestamp)}
+        </time>
+        {row.isCommitment && (
+          <span className="inline-flex h-[14px] items-center rounded-[2px] border border-success-fg/25 bg-success-bg px-1 font-medium text-[9px] text-success-fg">
+            Commitment
+          </span>
+        )}
+      </div>
+
+      <p className="col-start-2 m-0 font-mono text-[13px] text-fg leading-relaxed">
+        {row.text}
+      </p>
+    </div>
+  );
+});
 
 type StreamMode = "full" | "commitments" | "alerts";
 
@@ -305,58 +372,11 @@ export function TranscriptStream({
           {!listIsEmpty && mode === "full" && (
             <div className="py-2 pl-2">
               {visible.map((row) => (
-                <div
-                  className="group grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 border-border-subtle border-b py-2 pr-3 last:border-b-0 hover:bg-bg-subtle/60"
-                  id={`utterance-${row.id}`}
+                <TranscriptRow
                   key={row.id}
-                >
-                  <div
-                    aria-hidden
-                    className="col-start-1 row-span-2 flex w-5 shrink-0 flex-col items-center gap-1 pt-1"
-                  >
-                    {row.hasMemory && (
-                      <span
-                        className="h-[5px] w-[5px] rounded-[1px] bg-accent"
-                        title="Remembered"
-                      />
-                    )}
-                    {row.hasAlert && (
-                      <span
-                        className="h-[5px] w-[5px] rounded-[1px] bg-warning-fg"
-                        title="Alert triggered"
-                      />
-                    )}
-                    {row.isCommitment && (
-                      <span
-                        className="h-[5px] w-[5px] rounded-[1px] bg-success-fg"
-                        title="Commitment"
-                      />
-                    )}
-                    {!(row.hasMemory || row.hasAlert || row.isCommitment) && (
-                      <span className="h-[5px] w-[5px] opacity-0" />
-                    )}
-                  </div>
-
-                  <div className="col-start-2 flex flex-wrap items-center gap-2">
-                    <SpeakerChip
-                      confidence={row.confidence}
-                      name={row.speakerName || "Unknown"}
-                      speakerType={row.speakerType || "unknown"}
-                    />
-                    <time className="font-mono text-[10px] text-fg-subtle tabular-nums">
-                      {formatUtteranceClock(meetingStartedAtMs, row.timestamp)}
-                    </time>
-                    {row.isCommitment && (
-                      <span className="inline-flex h-[14px] items-center rounded-[2px] border border-success-fg/25 bg-success-bg px-1 font-medium text-[9px] text-success-fg">
-                        Commitment
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="col-start-2 m-0 font-mono text-[13px] text-fg leading-relaxed">
-                    {row.text}
-                  </p>
-                </div>
+                  meetingStartedAtMs={meetingStartedAtMs}
+                  row={row}
+                />
               ))}
 
               {pendingFinals.map((row) => (
@@ -440,58 +460,12 @@ export function TranscriptStream({
                   </div>
                   <div className="pl-2">
                     {rows.map((row) => (
-                      <div
-                        className="group grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 border-border-subtle border-b py-2 pr-3 last:border-b-0 hover:bg-bg-subtle/60"
-                        id={`utterance-${row.id}`}
+                      <TranscriptRow
                         key={row.id}
-                      >
-                        <div
-                          aria-hidden
-                          className="col-start-1 row-span-2 flex w-5 shrink-0 flex-col items-center gap-1 pt-1"
-                        >
-                          {row.hasMemory && (
-                            <span
-                              className="h-[5px] w-[5px] rounded-[1px] bg-accent"
-                              title="Remembered"
-                            />
-                          )}
-                          {row.hasAlert && (
-                            <span
-                              className="h-[5px] w-[5px] rounded-[1px] bg-warning-fg"
-                              title="Alert triggered"
-                            />
-                          )}
-                          {row.isCommitment && (
-                            <span
-                              className="h-[5px] w-[5px] rounded-[1px] bg-success-fg"
-                              title="Commitment"
-                            />
-                          )}
-                          {!(
-                            row.hasMemory ||
-                            row.hasAlert ||
-                            row.isCommitment
-                          ) && <span className="h-[5px] w-[5px] opacity-0" />}
-                        </div>
-
-                        <div className="col-start-2 flex flex-wrap items-center gap-2">
-                          <time className="font-mono text-[10px] text-fg-subtle tabular-nums">
-                            {formatUtteranceClock(
-                              meetingStartedAtMs,
-                              row.timestamp
-                            )}
-                          </time>
-                          {row.isCommitment && (
-                            <span className="inline-flex h-[14px] items-center rounded-[2px] border border-success-fg/25 bg-success-bg px-1 font-medium text-[9px] text-success-fg">
-                              Commitment
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="col-start-2 m-0 font-mono text-[13px] text-fg leading-relaxed">
-                          {row.text}
-                        </p>
-                      </div>
+                        meetingStartedAtMs={meetingStartedAtMs}
+                        row={row}
+                        showSpeaker={false}
+                      />
                     ))}
                   </div>
                 </div>

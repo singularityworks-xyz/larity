@@ -26,9 +26,31 @@ pub fn start_linux_sys_capture(
             .spawn()
         {
             Ok(child) => child,
-            Err(e) => {
-                eprintln!("Failed to start parec: {}", e);
-                return;
+            Err(_) => {
+                // Fallback to pw-record on systems without parec
+                match Command::new("pw-record")
+                    .args([
+                        "--target",
+                        "@DEFAULT_MONITOR@",
+                        "--rate",
+                        "16000",
+                        "--channels",
+                        "1",
+                        "--format",
+                        "s16",
+                        "-",
+                    ])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::null())
+                    .kill_on_drop(true)
+                    .spawn()
+                {
+                    Ok(child) => child,
+                    Err(e) => {
+                        eprintln!("Failed to start parec or pw-record for system audio: {}", e);
+                        return;
+                    }
+                }
             }
         };
 

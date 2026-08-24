@@ -31,13 +31,21 @@ export function VoiceGradient({
   }, [isSpeaking, hasActiveAlert, alertSeverity]);
 
   useEffect(() => {
+    let isMounted = true;
     let unlisten: (() => void) | undefined;
     listen<number>("raw-mic-amplitude", (e) => {
       propsRef.current.amplitude = e.payload;
     }).then((f) => {
-      unlisten = f;
+      if (!isMounted) {
+        f();
+      } else {
+        unlisten = f;
+      }
     });
-    return () => unlisten?.();
+    return () => {
+      isMounted = false;
+      unlisten?.();
+    };
   }, []);
 
   useEffect(() => {

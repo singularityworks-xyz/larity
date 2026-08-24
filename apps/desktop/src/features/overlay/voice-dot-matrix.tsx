@@ -77,6 +77,7 @@ export function VoiceDotMatrix({
   }, [isSpeaking]);
 
   useEffect(() => {
+    let isMounted = true;
     let unlisten: (() => void) | undefined;
     listen<number>("raw-mic-amplitude", (e) => {
       if (!isSpeakingRef.current) return;
@@ -88,9 +89,16 @@ export function VoiceDotMatrix({
         activeLayerRef.current.style.opacity = String(Math.min(1, 0.3 + amplitude * 4));
       }
     }).then((f) => {
-      unlisten = f;
+      if (!isMounted) {
+        f();
+      } else {
+        unlisten = f;
+      }
     });
-    return () => unlisten?.();
+    return () => {
+      isMounted = false;
+      unlisten?.();
+    };
   }, []);
 
   return (

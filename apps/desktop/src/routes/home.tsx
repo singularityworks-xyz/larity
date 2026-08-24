@@ -160,7 +160,7 @@ interface HeaderProps {
   userName?: string;
 }
 
-function Header({
+const Header = memo(function Header({
   userName,
   orgName,
   canManage,
@@ -240,7 +240,7 @@ function Header({
       </div>
     </motion.header>
   );
-}
+});
 
 /* ── Invites ────────────────────────────────────── */
 
@@ -253,7 +253,7 @@ interface InvitePanelProps {
   onRevokeInvite: (id: string) => void;
 }
 
-function InvitePanel({
+const InvitePanel = memo(function InvitePanel({
   invites,
   copyMessage,
   inviteError,
@@ -344,11 +344,11 @@ function InvitePanel({
       </div>
     </motion.div>
   );
-}
+});
 
 /* ── Primary Action Card ────────────────────────── */
 
-function ActionGrid({ canManage }: { canManage: boolean }) {
+const ActionGrid = memo(function ActionGrid({ canManage }: { canManage: boolean }) {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"host" | "join">("host");
   const { data: activeSessions } = useActiveSessions();
@@ -458,11 +458,11 @@ function ActionGrid({ canManage }: { canManage: boolean }) {
       </div>
     </motion.div>
   );
-}
+});
 
 /* ── Next Meeting (Hero) ────────────────────────── */
 
-function NextMeetingHero({
+const NextMeetingHero = memo(function NextMeetingHero({
   meeting,
   loading,
 }: {
@@ -571,11 +571,11 @@ function NextMeetingHero({
       </div>
     </motion.div>
   );
-}
+});
 
 /* ── Bento Grid Sections ────────────────────────── */
 
-function TodayMeetingAction({
+const TodayMeetingAction = memo(function TodayMeetingAction({
   m,
   activeSessionInfo,
   startingMeetingId,
@@ -646,9 +646,9 @@ function TodayMeetingAction({
       {m.status}
     </span>
   );
-}
+});
 
-function TodayAgenda({
+const TodayAgenda = memo(function TodayAgenda({
   meetings,
   loading,
 }: {
@@ -670,7 +670,7 @@ function TodayAgenda({
     null
   );
 
-  const handleStart = async (e: React.MouseEvent, m: TodayMeeting) => {
+  const handleStart = useCallback(async (e: React.MouseEvent, m: TodayMeeting) => {
     e.stopPropagation();
     try {
       setStartingMeetingId(m.id);
@@ -690,9 +690,9 @@ function TodayAgenda({
       console.error("Failed to start session from schedule:", err);
       setStartingMeetingId(null);
     }
-  };
+  }, [navigate, startSession]);
 
-  const handleRejoin = async (
+  const handleRejoin = useCallback(async (
     e: React.MouseEvent,
     sessionId: string,
     m: TodayMeeting
@@ -716,7 +716,7 @@ function TodayAgenda({
       console.error("Failed to rejoin session:", err);
       setRejoiningMeetingId(null);
     }
-  };
+  }, [joinMeeting, navigate]);
 
   const isEmpty = !loading && meetings.length === 0;
   return (
@@ -795,9 +795,9 @@ function TodayAgenda({
       )}
     </motion.div>
   );
-}
+});
 
-function RecentActivityList({
+const RecentActivityList = memo(function RecentActivityList({
   activity,
   loading,
 }: {
@@ -878,9 +878,9 @@ function RecentActivityList({
       )}
     </motion.div>
   );
-}
+});
 
-function ActiveCommitments({
+const ActiveCommitments = memo(function ActiveCommitments({
   commitments,
   loading,
 }: {
@@ -947,9 +947,9 @@ function ActiveCommitments({
       )}
     </motion.div>
   );
-}
+});
 
-function ClientShortcuts() {
+const ClientShortcuts = memo(function ClientShortcuts() {
   const navigate = useNavigate();
   const { data: clients, isLoading } = useClients();
   const top = useMemo(
@@ -992,11 +992,11 @@ function ClientShortcuts() {
       </div>
     </motion.div>
   );
-}
+});
 
 /* ── Health Strip ───────────────────────────────── */
 
-function StatusDot({
+const StatusDot = memo(function StatusDot({
   label,
   state,
 }: {
@@ -1018,9 +1018,9 @@ function StatusDot({
       </span>
     </div>
   );
-}
+});
 
-function HealthStrip({ health }: { health: HealthState }) {
+const HealthStrip = memo(function HealthStrip({ health }: { health: HealthState }) {
   const serverState = health.serverOnline ? "online" : "offline";
   const audioState = health.audioDeviceAvailable ? "online" : "warning";
   const audioLabel = health.audioDeviceAvailable
@@ -1041,7 +1041,7 @@ function HealthStrip({ health }: { health: HealthState }) {
       </span>
     </div>
   );
-}
+});
 
 /* ── Main Page ──────────────────────────────────── */
 
@@ -1064,7 +1064,7 @@ export function HomePage() {
   const [copyMessage, setCopyMessage] = useState("");
   const [inviteError, setInviteError] = useState("");
 
-  async function handleCreateInvite() {
+  const handleCreateInvite = useCallback(async () => {
     setInviteError("");
     setCopyMessage("");
     try {
@@ -1076,14 +1076,14 @@ export function HomePage() {
         err instanceof Error ? err.message : "Could not create invite"
       );
     }
-  }
+  }, [invites.createInvite]);
 
-  async function handleCopyInvite(code: string) {
+  const handleCopyInvite = useCallback(async (code: string) => {
     await navigator.clipboard.writeText(code);
     setCopyMessage("Invite code copied to clipboard!");
-  }
+  }, []);
 
-  async function handleRevokeInvite(inviteId: string) {
+  const handleRevokeInvite = useCallback(async (inviteId: string) => {
     setInviteError("");
     setCopyMessage("");
     try {
@@ -1093,7 +1093,7 @@ export function HomePage() {
         err instanceof Error ? err.message : "Could not revoke invite"
       );
     }
-  }
+  }, [invites.revokeInvite]);
 
   if (error) {
     return (

@@ -396,6 +396,7 @@ export function MeetingPage() {
       return;
     }
 
+    let isMounted = true;
     let unlisten: (() => void) | null = null;
 
     listen<{ sessionId: string }>("overlay:end-meeting", (evt) => {
@@ -406,10 +407,15 @@ export function MeetingPage() {
         /* meeting already ended */
       });
     }).then((fn) => {
-      unlisten = fn;
+      if (!isMounted) {
+        fn();
+      } else {
+        unlisten = fn;
+      }
     });
 
     return () => {
+      isMounted = false;
       unlisten?.();
     };
   }, [sessionId, leaveMeeting]);
@@ -832,33 +838,54 @@ export function MeetingPage() {
       // overlay is optional
     });
 
-    const unlistenPromise = listen<AudioFramePayload>(
-      "audio-frame",
-      (event) => {
-        if (!isHost) {
-          return;
-        }
+    let isMounted = true;
+    let unlistenFn: (() => void) | null = null;
+    const metricsBuffer = {
+      framesReceived: 0,
+      framesSent: 0,
+      framesDropped: 0,
+      lastTs: 0,
+    };
 
-        setFramesReceived((previous) => previous + 1);
-        setLastTs(event.payload.ts);
+    const metricsSyncInterval = setInterval(() => {
+      if (!isMounted) return;
+      setFramesReceived(metricsBuffer.framesReceived);
+      setFramesSent(metricsBuffer.framesSent);
+      setFramesDropped(metricsBuffer.framesDropped);
+      setLastTs(metricsBuffer.lastTs);
+    }, 1000);
 
-        const result = streamingClient.handleAudioFrame({
-          payload: event.payload,
-        });
-        const metrics = streamingClient.getMetrics();
-        setFramesSent(metrics.framesSent);
-        setFramesDropped(metrics.framesDropped);
-
-        if (result.dropped || result.sent) {
-          setWarning(streamingClient.getWarning());
-        }
+    listen<AudioFramePayload>("audio-frame", (event) => {
+      if (!isHost) {
+        return;
       }
-    );
+
+      metricsBuffer.framesReceived += 1;
+      metricsBuffer.lastTs = event.payload.ts;
+
+      const result = streamingClient.handleAudioFrame({
+        payload: event.payload,
+      });
+      const metrics = streamingClient.getMetrics();
+      metricsBuffer.framesSent = metrics.framesSent;
+      metricsBuffer.framesDropped = metrics.framesDropped;
+
+      if (result.dropped || result.sent) {
+        const newWarning = streamingClient.getWarning();
+        setWarning((prev) => (prev !== newWarning ? newWarning : prev));
+      }
+    }).then((fn) => {
+      if (!isMounted) {
+        fn();
+      } else {
+        unlistenFn = fn;
+      }
+    });
 
     return () => {
-      unlistenPromise.then((unlisten) => {
-        unlisten();
-      });
+      isMounted = false;
+      clearInterval(metricsSyncInterval);
+      unlistenFn?.();
 
       closeOverlayWindow().catch(() => {
         /* overlay may already be closed */
