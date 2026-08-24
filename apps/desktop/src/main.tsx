@@ -6,6 +6,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./app";
 import { AppErrorBoundary } from "./components/app-error-boundary";
 import { RouteErrorBoundary } from "./components/route-error-boundary";
+import { ThemeProvider } from "./components/theme-provider";
 import { initAuthDeepLink } from "./lib/auth-deeplink";
 import { queryClient } from "./lib/query";
 import {
@@ -161,8 +162,6 @@ const router = createBrowserRouter([
     ],
   },
 ]);
-
-import { ThemeProvider } from "./components/theme-provider";
 
 initAuthDeepLink();
 

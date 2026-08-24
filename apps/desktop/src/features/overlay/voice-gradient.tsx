@@ -79,15 +79,22 @@ export function VoiceGradient({
     };
 
     const drawFrame = (time: number) => {
-      const dt = time - lastTime;
-      lastTime = time;
-
       const {
         isSpeaking: pIsSpeaking,
         hasActiveAlert: pHasActiveAlert,
         alertSeverity: pAlertSeverity,
         amplitude: pAmplitude = 0,
       } = propsRef.current;
+
+      const isIdle = !pIsSpeaking && !pHasActiveAlert && state.amp < 0.02;
+      const targetInterval = isIdle ? 33 : 16; // 30fps when idle, 60fps when active
+      const dt = time - lastTime;
+
+      if (dt < targetInterval) {
+        rafId = requestAnimationFrame(drawFrame);
+        return;
+      }
+      lastTime = time;
 
       const dpr = window.devicePixelRatio || 1;
       const W = canvas.width / dpr;
@@ -266,7 +273,7 @@ export function VoiceGradient({
 
   return (
     <div
-      className="voice-gradient-canvas"
+      className="voice-gradient-canvas pointer-events-none transform-gpu will-change-transform"
       style={{
         filter: alertsMuted ? "saturate(0) brightness(0.6)" : "none",
         transition: "filter 600ms ease-out",

@@ -16,7 +16,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.6.3", features = [] }
 
 [dependencies]
-tauri = { version = "2.11.3", features = ["macos-private-api"] }
+tauri = "2.11.3"
 tauri-plugin-opener = "2.5.4"
 tauri-plugin-deep-link = "2"
 tauri-plugin-single-instance = "2"
@@ -34,6 +34,7 @@ tauri-plugin-http = "2.5.9"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 screencapturekit = "1.5.4"
+tauri = { version = "2.11.3", features = ["macos-private-api"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 webkit2gtk = { version = "2.0.2", features = ["v2_40"] }

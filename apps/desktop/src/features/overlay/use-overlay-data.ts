@@ -240,27 +240,50 @@ export function useOverlayData() {
   }, [params.userId]);
 
   useEffect(() => {
-    let unlistenStart: (() => void) | null = null;
-    let unlistenEnd: (() => void) | null = null;
-    let unlistenAmp: (() => void) | null = null;
+    let cancelled = false;
+    const cleanups: Array<() => void> = [];
 
     async function attach() {
-      unlistenStart = await listen("vad-speech-start", () =>
-        setIsMicActive(true)
-      );
-      unlistenEnd = await listen("vad-speech-end", () => {
-        setIsMicActive(false);
+      const uStart = await listen("vad-speech-start", () => {
+        if (!cancelled) {
+          setIsMicActive(true);
+        }
       });
-      unlistenAmp = await listen<number>("raw-mic-amplitude", (e) => {
-        setMicAmplitude(e.payload);
+      if (cancelled) {
+        uStart();
+        return;
+      }
+      cleanups.push(uStart);
+
+      const uEnd = await listen("vad-speech-end", () => {
+        if (!cancelled) {
+          setIsMicActive(false);
+        }
       });
+      if (cancelled) {
+        uEnd();
+        return;
+      }
+      cleanups.push(uEnd);
+
+      const uAmp = await listen<number>("raw-mic-amplitude", (e) => {
+        if (!cancelled) {
+          setMicAmplitude(e.payload);
+        }
+      });
+      if (cancelled) {
+        uAmp();
+        return;
+      }
+      cleanups.push(uAmp);
     }
     attach();
 
     return () => {
-      unlistenStart?.();
-      unlistenEnd?.();
-      unlistenAmp?.();
+      cancelled = true;
+      for (const fn of cleanups) {
+        fn();
+      }
     };
   }, []);
 
