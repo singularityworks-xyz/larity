@@ -65,7 +65,7 @@ function InProgressBanner({
   return (
     <div
       aria-live="polite"
-      className="relative overflow-hidden rounded-xl border border-info/20 bg-info/10 p-4 animate-in fade-in duration-200"
+      className="relative overflow-hidden rounded-xl border border-info/20 bg-info/10 p-4 backdrop-blur-sm animate-in fade-in duration-200"
     >
       <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-info/0 via-info/5 to-info/0" />
       <div className="relative z-10 flex items-center gap-3">
@@ -107,7 +107,7 @@ function FailedBanner({
   return (
     <div
       aria-live="assertive"
-      className="relative overflow-hidden rounded-xl border border-danger/30 bg-danger/10 p-4 animate-in fade-in duration-200"
+      className="relative overflow-hidden rounded-xl border border-danger/30 bg-danger/10 p-4 backdrop-blur-sm animate-in fade-in duration-200"
     >
       <div className="relative z-10 flex flex-col gap-3 md:flex-row md:items-center">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger/20 text-danger">
@@ -219,7 +219,7 @@ function DecisionStatusBadge({ status }: { status: Decision["status"] }) {
     );
   }
   return (
-    <span className="inline-flex items-center rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-bold text-[10px] text-success uppercase tracking-wider">
+    <span className="inline-flex items-center rounded-full border border-success/30 bg-success/10 px-2 py-0.5 font-bold text-[10px] text-success uppercase tracking-wider shadow-[0_0_10px_rgba(var(--color-success),0.1)]">
       Active
     </span>
   );
@@ -227,8 +227,9 @@ function DecisionStatusBadge({ status }: { status: Decision["status"] }) {
 
 function PriorityChip({ priority }: { priority: TaskPriority }) {
   const classMap: Record<TaskPriority, string> = {
-    CRITICAL: "border-danger/30 bg-danger/10 text-danger",
-    HIGH: "border-warning/30 bg-warning/10 text-warning",
+    CRITICAL:
+      "border-danger/30 bg-danger/10 text-danger shadow-[0_0_10px_rgba(var(--color-danger),0.1)]",
+    HIGH: "border-warning/30 bg-warning/10 text-warning shadow-[0_0_10px_rgba(var(--color-warning),0.1)]",
     MEDIUM: "border-accent/30 bg-accent/10 text-accent",
     LOW: "border-border bg-bg-subtle text-fg-muted",
   };
@@ -317,10 +318,10 @@ const TranscriptRow = memo(function TranscriptRow({
 }) {
   return (
     <div
-      className="group relative flex gap-4 overflow-hidden rounded-xl border border-border/50 bg-bg-elevated p-4 transition-colors hover:border-border"
+      className="group relative flex gap-4 overflow-hidden rounded-xl border border-border/50 bg-bg-elevated p-4 transition-all hover:border-border hover:shadow-md"
       key={utterance.id ?? `u-${index}`}
     >
-      <div className="absolute top-0 bottom-0 left-0 w-1 bg-border opacity-0 transition-opacity group-hover:opacity-100" />
+      <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-border to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
       <div className="flex w-24 shrink-0 flex-col gap-1 pt-0.5">
         <span className="truncate font-bold font-heading text-fg text-sm tracking-tight">
           {utterance.speaker}
@@ -378,7 +379,7 @@ function TranscriptTab({ meetingId }: { meetingId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 [contain:paint]">
+    <div className="flex flex-col gap-3">
       {utterances.map((u, i) => (
         <TranscriptRow index={i} key={u.id ?? `u-${i}`} utterance={u} />
       ))}
@@ -394,7 +395,7 @@ const DecisionCard = memo(function DecisionCard({
   return (
     <div
       className={cx(
-        "group relative flex flex-col gap-3 overflow-hidden rounded-xl border border-border/60 bg-bg-elevated p-4 transition-colors hover:border-accent/40",
+        "group relative flex flex-col gap-3 overflow-hidden rounded-xl border border-border/60 bg-bg-elevated p-4 transition-all hover:border-accent/40 hover:shadow-sm",
         d.status !== "ACTIVE" && "opacity-60"
       )}
     >
@@ -443,7 +444,7 @@ function DecisionsTab({ decisions }: { decisions: Decision[] }) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 [contain:paint]">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {safeDecisions.map((d) => (
         <DecisionCard decision={d} key={d.id} />
       ))}
@@ -453,7 +454,7 @@ function DecisionsTab({ decisions }: { decisions: Decision[] }) {
 
 const TaskCard = memo(function TaskCard({ task: t }: { task: Task }) {
   return (
-    <div className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-bg-elevated p-4 transition-colors hover:border-border md:flex-row md:items-center">
+    <div className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-bg-elevated p-4 transition-all hover:border-border hover:shadow-md md:flex-row md:items-center">
       <div className="flex flex-1 flex-col gap-1.5">
         <div className="flex flex-wrap items-center gap-2">
           <PriorityChip priority={t.priority} />
@@ -491,7 +492,7 @@ function TasksTab({ tasks }: { tasks: Task[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 [contain:paint]">
+    <div className="flex flex-col gap-3">
       {safeTasks.map((t) => (
         <TaskCard key={t.id} task={t} />
       ))}
@@ -505,7 +506,7 @@ const QuestionCard = memo(function QuestionCard({
   question: OpenQuestion;
 }) {
   return (
-    <div className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-bg-elevated p-4 transition-colors hover:border-info/40 hover:bg-info/5">
+    <div className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-bg-elevated p-4 transition-all hover:border-info/40 hover:bg-info/5 hover:shadow-sm">
       <div className="flex items-center gap-2">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-info/10 text-info">
           <HelpCircle className="h-4 w-4" />
@@ -546,7 +547,7 @@ function OpenQuestionsTab({ questions }: { questions: OpenQuestion[] }) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 [contain:paint]">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {safeQuestions.map((q) => (
         <QuestionCard key={q.id} question={q} />
       ))}
@@ -565,7 +566,7 @@ const IMPORTANT_POINT_ORDER: ImportantPointCategory[] = [
 
 const PointCard = memo(function PointCard({ point: p }: { point: ImportantPoint }) {
   return (
-    <div className="group relative flex flex-col gap-2 overflow-hidden rounded-xl border border-border/50 bg-bg-elevated p-4 transition-colors hover:border-border">
+    <div className="group relative flex flex-col gap-2 overflow-hidden rounded-xl border border-border/50 bg-bg-elevated p-4 transition-all hover:border-border hover:shadow-md">
       <p className="m-0 text-fg text-sm leading-relaxed">{p.content}</p>
       {p.transcriptEvidence && (
         <div className="mt-auto border-border/30 border-t pt-2">
@@ -602,7 +603,7 @@ function ImportantPointsTab({ points }: { points: ImportantPoint[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-8 [contain:paint]">
+    <div className="flex flex-col gap-8">
       {IMPORTANT_POINT_ORDER.map((cat) => {
         const items = grouped.get(cat) ?? [];
         if (items.length === 0) {
@@ -642,18 +643,25 @@ function BriefTab({
   }
 
   const TONE_CLASSES: Record<string, string> = {
-    POSITIVE: "border-success/30 bg-success/10 text-success",
+    POSITIVE:
+      "border-success/30 bg-success/10 text-success shadow-[0_0_10px_rgba(var(--color-success),0.05)]",
     NEUTRAL: "border-border bg-bg-subtle text-fg-muted",
-    MIXED: "border-warning/30 bg-warning/10 text-warning",
-    TENSE: "border-danger/30 bg-danger/10 text-danger",
+    MIXED:
+      "border-warning/30 bg-warning/10 text-warning shadow-[0_0_10px_rgba(var(--color-warning),0.05)]",
+    TENSE:
+      "border-danger/30 bg-danger/10 text-danger shadow-[0_0_10px_rgba(var(--color-danger),0.05)]",
   };
 
   const SENTIMENT_CLASSES: Record<string, string> = {
-    ENTHUSIASTIC: "border-success/50 bg-success/20 text-success",
-    INTERESTED: "border-info/30 bg-info/10 text-info",
+    ENTHUSIASTIC:
+      "border-success/50 bg-success/20 text-success shadow-[0_0_12px_rgba(var(--color-success),0.15)]",
+    INTERESTED:
+      "border-info/30 bg-info/10 text-info shadow-[0_0_10px_rgba(var(--color-info),0.05)]",
     NEUTRAL: "border-border bg-bg-subtle text-fg-muted",
-    SKEPTICAL: "border-warning/30 bg-warning/10 text-warning",
-    HOSTILE: "border-danger/50 bg-danger/20 text-danger",
+    SKEPTICAL:
+      "border-warning/30 bg-warning/10 text-warning shadow-[0_0_10px_rgba(var(--color-warning),0.05)]",
+    HOSTILE:
+      "border-danger/50 bg-danger/20 text-danger shadow-[0_0_12px_rgba(var(--color-danger),0.15)]",
   };
 
   const toneKey = (analysis.tone || "").toUpperCase();
@@ -666,9 +674,9 @@ function BriefTab({
     "border-border bg-bg-subtle text-fg-muted";
 
   return (
-    <div className="flex flex-col gap-4 [contain:paint]">
+    <div className="flex flex-col gap-4">
       <div className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
-        <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-accent/5" />
+        <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 transform-gpu rounded-full bg-accent/10 blur-[80px] will-change-transform" />
         <h3 className="mb-3 flex items-center gap-2 font-bold font-heading text-base text-fg">
           <BookOpen className="h-4 w-4 text-accent" />
           Executive Summary
@@ -680,7 +688,7 @@ function BriefTab({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {analysis.purpose && (
-          <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm transition-colors hover:border-border">
+          <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm transition-all hover:shadow-md">
             <h4 className="mb-2 flex items-center gap-2 font-bold font-heading text-fg text-sm">
               <Target className="h-4 w-4 text-info" /> Purpose
             </h4>
@@ -690,7 +698,7 @@ function BriefTab({
           </div>
         )}
         {analysis.outcome && (
-          <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm transition-colors hover:border-border">
+          <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm transition-all hover:shadow-md">
             <h4 className="mb-2 flex items-center gap-2 font-bold font-heading text-fg text-sm">
               <CheckCircle2 className="h-4 w-4 text-success" /> Outcome
             </h4>
@@ -704,7 +712,7 @@ function BriefTab({
       <div className="flex flex-wrap gap-2">
         <div
           className={cx(
-            "flex items-center gap-2 rounded-lg border px-3 py-1.5 transition-colors",
+            "flex items-center gap-2 rounded-lg border px-3 py-1.5 transition-all",
             toneClass
           )}
         >
@@ -716,7 +724,7 @@ function BriefTab({
         </div>
         <div
           className={cx(
-            "flex items-center gap-2 rounded-lg border px-3 py-1.5 transition-colors",
+            "flex items-center gap-2 rounded-lg border px-3 py-1.5 transition-all",
             sentimentClass
           )}
         >
@@ -755,7 +763,7 @@ function NotesTab({ meetingId }: { meetingId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-4 [contain:paint]">
+    <div className="flex flex-col gap-4">
       <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
         <h3 className="mb-3 flex items-center gap-2 font-bold font-heading text-base text-fg">
           <FileDigit className="h-4 w-4 text-accent" />
@@ -910,19 +918,19 @@ export function MeetingPostPage() {
         {/* Hero Header */}
         <div className="relative shrink-0 overflow-hidden rounded-2xl border border-border/40 px-6 py-8 md:flex-row md:items-end">
           <div
-            className="pointer-events-none absolute inset-0 bg-bottom bg-cover opacity-30 mix-blend-overlay"
+            className="pointer-events-none absolute inset-0 bg-bottom bg-cover opacity-50 mix-blend-overlay"
             style={{
               backgroundImage: "url(/images/larity-banner-full.png)",
             }}
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-bg-base/95 via-bg-base/70 to-bg-base/40" />
-          <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-accent/10" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-bg-base/90 via-bg-base/50 to-bg-base/20" />
+          <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 transform-gpu rounded-full bg-accent/20 blur-[120px] will-change-transform" />
 
           <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="flex flex-col gap-4">
               <button
                 aria-label="Go back"
-                className="group flex w-max items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 font-semibold text-white/70 text-xs transition-colors [-webkit-app-region:no-drag] [app-region:no-drag] hover:border-white/20 hover:bg-white/10 hover:text-white active:scale-95"
+                className="group flex w-max items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 font-semibold text-white/70 text-xs backdrop-blur-md transition-all [-webkit-app-region:no-drag] [app-region:no-drag] hover:border-white/20 hover:bg-white/10 hover:text-white active:scale-95"
                 onClick={() => navigate(-1)}
                 type="button"
               >
@@ -930,15 +938,15 @@ export function MeetingPostPage() {
                 Back to Home
               </button>
               <div>
-                <h1 className="font-bold font-heading text-3xl text-white tracking-tight sm:text-4xl">
+                <h1 className="font-bold font-heading text-3xl text-white tracking-tight drop-shadow-md sm:text-4xl">
                   Meeting Review
                 </h1>
                 <div className="mt-2 flex items-center gap-3">
-                  <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1 font-mono text-white/90 text-xs">
+                  <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1 font-mono text-white/90 text-xs backdrop-blur-sm">
                     ID: {meetingId}
                   </span>
                   {complete && (
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-success/20 px-2.5 py-1 font-bold text-[10px] text-success uppercase tracking-wider">
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-success/20 px-2.5 py-1 font-bold text-[10px] text-success uppercase tracking-wider shadow-[0_0_15px_rgba(var(--color-success),0.2)] backdrop-blur-sm">
                       <span className="h-1.5 w-1.5 rounded-full bg-success" />
                       Analysis Ready
                     </span>
@@ -956,7 +964,7 @@ export function MeetingPostPage() {
                     </span>
                   )}
                   <button
-                    className="group relative flex items-center gap-2 overflow-hidden rounded-xl border border-white/10 bg-white/10 px-4 py-2.5 transition-colors hover:border-white/20 hover:bg-white/20 active:scale-95 disabled:opacity-50"
+                    className="group relative flex items-center gap-2 overflow-hidden rounded-xl border border-white/10 bg-white/10 px-4 py-2.5 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/20 active:scale-95 disabled:opacity-50"
                     disabled={reprocess.isPending}
                     onClick={() =>
                       reprocess.mutate(undefined, {
@@ -984,7 +992,7 @@ export function MeetingPostPage() {
         {/* Main Content Area */}
         <main className="relative z-10 flex w-full flex-1 flex-col gap-4 overflow-hidden md:flex-row">
           {/* Sidebar / Tabs */}
-          <div className="scrollbar-thin scrollbar-thumb-border-strong flex w-full shrink-0 flex-col gap-2 overflow-y-auto pr-2 pb-4 md:w-64 [overscroll-behavior:contain]">
+          <div className="scrollbar-thin scrollbar-thumb-border-strong flex w-full shrink-0 flex-col gap-2 overflow-y-auto pr-2 pb-4 md:w-64">
             <ProcessingBanner
               onReprocessSuccess={handleReprocessSuccess}
               reprocess={reprocess}
@@ -998,7 +1006,7 @@ export function MeetingPostPage() {
                 return (
                   <button
                     className={cx(
-                      "relative flex w-full items-center justify-between rounded-lg px-3 py-2 font-semibold text-sm transition-colors duration-150",
+                      "relative flex w-full items-center justify-between rounded-lg px-3 py-2 font-semibold text-sm transition-all duration-200",
                       isActive
                         ? "border border-border bg-bg-subtle text-fg shadow-sm"
                         : "text-fg-muted hover:bg-bg-subtle/50 hover:text-fg"
@@ -1007,7 +1015,7 @@ export function MeetingPostPage() {
                     onClick={() => setActiveTab(tab.id)}
                     type="button"
                   >
-                    <span className="flex items-center gap-2">
+                    <span className="relative z-10 flex items-center gap-2">
                       <Icon
                         className={cx(
                           "h-4 w-4",
@@ -1019,7 +1027,7 @@ export function MeetingPostPage() {
                     {tab.count !== undefined && tab.count > 0 && (
                       <span
                         className={cx(
-                          "ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-md px-1.5 font-mono text-[10px] tabular-nums transition-colors",
+                          "relative z-10 ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-md px-1.5 font-mono text-[10px] tabular-nums transition-colors",
                           isActive
                             ? "border border-info/20 bg-info/10 text-info"
                             : "bg-bg-emphasis/50 text-fg-muted"
@@ -1036,12 +1044,12 @@ export function MeetingPostPage() {
 
           {/* Tab content */}
           <div className="flex flex-1 flex-col overflow-hidden rounded-[16px] border border-border bg-bg-elevated shadow-sm">
-            <div className="flex items-center justify-between border-border/40 border-b bg-bg-subtle/50 px-4 py-3">
+            <div className="flex items-center justify-between border-border/40 border-b bg-bg-subtle/50 px-4 py-3 backdrop-blur-sm">
               <h2 className="font-bold font-heading text-base text-fg tracking-tight">
                 {tabs.find((t) => t.id === activeTab)?.label}
               </h2>
             </div>
-            <div className="scrollbar-thin scrollbar-thumb-border-strong flex-1 overflow-y-auto p-4 [overscroll-behavior:contain] [contain:layout_paint] transform-gpu">
+            <div className="scrollbar-thin scrollbar-thumb-border-strong flex-1 overflow-y-auto p-4">
               <div className="animate-in fade-in duration-150" key={activeTab}>
                 <TabContent
                   activeTab={activeTab}
