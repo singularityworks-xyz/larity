@@ -55,10 +55,7 @@ interface VoiceDotMatrixProps {
  * A 5×5 dot matrix that idles at near-invisible opacity and shifts to
  * a rippling hue effect while the user is speaking.
  */
-export function VoiceDotMatrix({
-  isSpeaking,
-  label,
-}: VoiceDotMatrixProps) {
+export function VoiceDotMatrix({ isSpeaking, label }: VoiceDotMatrixProps) {
   const ariaLabel =
     label ?? (isSpeaking ? "You are speaking" : "Microphone silent");
 
@@ -69,8 +66,12 @@ export function VoiceDotMatrix({
   useEffect(() => {
     isSpeakingRef.current = isSpeaking;
     if (!isSpeaking) {
-      if (svgRef.current) svgRef.current.style.transform = "scale(1)";
-      if (activeLayerRef.current) activeLayerRef.current.style.opacity = "0";
+      if (svgRef.current) {
+        svgRef.current.style.transform = "scale(1)";
+      }
+      if (activeLayerRef.current) {
+        activeLayerRef.current.style.opacity = "0";
+      }
     }
   }, [isSpeaking]);
 
@@ -78,19 +79,23 @@ export function VoiceDotMatrix({
     let isMounted = true;
     let unlisten: (() => void) | undefined;
     listen<number>("raw-mic-amplitude", (e) => {
-      if (!isSpeakingRef.current) return;
+      if (!isSpeakingRef.current) {
+        return;
+      }
       const amplitude = e.payload;
       if (svgRef.current) {
         svgRef.current.style.transform = `scale(${1 + Math.min(0.2, amplitude * 0.5)})`;
       }
       if (activeLayerRef.current) {
-        activeLayerRef.current.style.opacity = String(Math.min(1, 0.3 + amplitude * 4));
+        activeLayerRef.current.style.opacity = String(
+          Math.min(1, 0.3 + amplitude * 4)
+        );
       }
     }).then((f) => {
-      if (!isMounted) {
-        f();
-      } else {
+      if (isMounted) {
         unlisten = f;
+      } else {
+        f();
       }
     });
     return () => {
@@ -127,14 +132,14 @@ export function VoiceDotMatrix({
           }}
         >
           {DOTS.map((dot) => (
-             <circle
-               cx={dot.cx}
-               cy={dot.cy}
-               fill="currentColor"
-               key={`base-${dot.id}`}
-               r={1.8}
-             />
-           ))}
+            <circle
+              cx={dot.cx}
+              cy={dot.cy}
+              fill="currentColor"
+              key={`base-${dot.id}`}
+              r={1.8}
+            />
+          ))}
         </g>
 
         {/* Active layer: continuously animating dots, revealed when speaking */}

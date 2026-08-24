@@ -151,9 +151,7 @@ export function AmbientStrip({
         <TeammateAvatars teammates={connectedTeammates} />
       </div>
       <div className="flex w-full min-w-0 items-center gap-2.5">
-        <VoiceDotMatrix
-          isSpeaking={isVisuallySpeaking}
-        />
+        <VoiceDotMatrix isSpeaking={isVisuallySpeaking} />
         <SpeakerIndicator speaker={currentSpeaker} />
       </div>
       {/* Bottom separator — gradient mask instead of border */}

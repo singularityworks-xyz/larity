@@ -348,7 +348,11 @@ const InvitePanel = memo(function InvitePanel({
 
 /* ── Primary Action Card ────────────────────────── */
 
-const ActionGrid = memo(function ActionGrid({ canManage }: { canManage: boolean }) {
+const ActionGrid = memo(function ActionGrid({
+  canManage,
+}: {
+  canManage: boolean;
+}) {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"host" | "join">("host");
   const { data: activeSessions } = useActiveSessions();
@@ -670,53 +674,55 @@ const TodayAgenda = memo(function TodayAgenda({
     null
   );
 
-  const handleStart = useCallback(async (e: React.MouseEvent, m: TodayMeeting) => {
-    e.stopPropagation();
-    try {
-      setStartingMeetingId(m.id);
-      const session = await startSession.mutateAsync({ meetingId: m.id });
-      navigate(`/meeting/${session.sessionId}/waiting-room`, {
-        state: {
-          role: "host",
-          websocketUrl: session.websocketUrl,
-          clientName: m.client.name,
-          meetingTitle: m.title,
-          startedAt: Date.now(),
-          allowNameCustomization: session.allowNameCustomization,
-          meetingId: m.id,
-        },
-      });
-    } catch (err) {
-      console.error("Failed to start session from schedule:", err);
-      setStartingMeetingId(null);
-    }
-  }, [navigate, startSession]);
+  const handleStart = useCallback(
+    async (e: React.MouseEvent, m: TodayMeeting) => {
+      e.stopPropagation();
+      try {
+        setStartingMeetingId(m.id);
+        const session = await startSession.mutateAsync({ meetingId: m.id });
+        navigate(`/meeting/${session.sessionId}/waiting-room`, {
+          state: {
+            role: "host",
+            websocketUrl: session.websocketUrl,
+            clientName: m.client.name,
+            meetingTitle: m.title,
+            startedAt: Date.now(),
+            allowNameCustomization: session.allowNameCustomization,
+            meetingId: m.id,
+          },
+        });
+      } catch (err) {
+        console.error("Failed to start session from schedule:", err);
+        setStartingMeetingId(null);
+      }
+    },
+    [navigate, startSession]
+  );
 
-  const handleRejoin = useCallback(async (
-    e: React.MouseEvent,
-    sessionId: string,
-    m: TodayMeeting
-  ) => {
-    e.stopPropagation();
-    try {
-      setRejoiningMeetingId(m.id);
-      const joined = await joinMeeting.mutateAsync({ sessionId });
-      navigate(`/meeting/${joined.sessionId}/waiting-room`, {
-        state: {
-          role: joined.role,
-          websocketUrl: joined.websocketUrl,
-          clientName: m.client.name,
-          meetingTitle: m.title,
-          startedAt: Date.now(),
-          allowNameCustomization: joined.allowNameCustomization,
-          meetingId: m.id,
-        },
-      });
-    } catch (err) {
-      console.error("Failed to rejoin session:", err);
-      setRejoiningMeetingId(null);
-    }
-  }, [joinMeeting, navigate]);
+  const handleRejoin = useCallback(
+    async (e: React.MouseEvent, sessionId: string, m: TodayMeeting) => {
+      e.stopPropagation();
+      try {
+        setRejoiningMeetingId(m.id);
+        const joined = await joinMeeting.mutateAsync({ sessionId });
+        navigate(`/meeting/${joined.sessionId}/waiting-room`, {
+          state: {
+            role: joined.role,
+            websocketUrl: joined.websocketUrl,
+            clientName: m.client.name,
+            meetingTitle: m.title,
+            startedAt: Date.now(),
+            allowNameCustomization: joined.allowNameCustomization,
+            meetingId: m.id,
+          },
+        });
+      } catch (err) {
+        console.error("Failed to rejoin session:", err);
+        setRejoiningMeetingId(null);
+      }
+    },
+    [joinMeeting, navigate]
+  );
 
   const isEmpty = !loading && meetings.length === 0;
   return (
@@ -1020,7 +1026,11 @@ const StatusDot = memo(function StatusDot({
   );
 });
 
-const HealthStrip = memo(function HealthStrip({ health }: { health: HealthState }) {
+const HealthStrip = memo(function HealthStrip({
+  health,
+}: {
+  health: HealthState;
+}) {
   const serverState = health.serverOnline ? "online" : "offline";
   const audioState = health.audioDeviceAvailable ? "online" : "warning";
   const audioLabel = health.audioDeviceAvailable
@@ -1083,17 +1093,20 @@ export function HomePage() {
     setCopyMessage("Invite code copied to clipboard!");
   }, []);
 
-  const handleRevokeInvite = useCallback(async (inviteId: string) => {
-    setInviteError("");
-    setCopyMessage("");
-    try {
-      await invites.revokeInvite.mutateAsync(inviteId);
-    } catch (err) {
-      setInviteError(
-        err instanceof Error ? err.message : "Could not revoke invite"
-      );
-    }
-  }, [invites.revokeInvite]);
+  const handleRevokeInvite = useCallback(
+    async (inviteId: string) => {
+      setInviteError("");
+      setCopyMessage("");
+      try {
+        await invites.revokeInvite.mutateAsync(inviteId);
+      } catch (err) {
+        setInviteError(
+          err instanceof Error ? err.message : "Could not revoke invite"
+        );
+      }
+    },
+    [invites.revokeInvite]
+  );
 
   if (error) {
     return (

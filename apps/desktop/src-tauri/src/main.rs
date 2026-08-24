@@ -30,7 +30,9 @@ fn main() {
             // with seamless fallback to X11 if the Wayland socket cannot be connected.
             // On pure X11 sessions (where WAYLAND_DISPLAY is unset), leave GDK_BACKEND
             // unset so GTK3 uses its standard auto-detection without aborting.
-            if std::env::var_os("GDK_BACKEND").is_none() && std::env::var_os("WAYLAND_DISPLAY").is_some() {
+            if std::env::var_os("GDK_BACKEND").is_none()
+                && std::env::var_os("WAYLAND_DISPLAY").is_some()
+            {
                 std::env::set_var("GDK_BACKEND", "wayland,x11");
             }
 

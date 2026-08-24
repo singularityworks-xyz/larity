@@ -407,10 +407,10 @@ export function MeetingPage() {
         /* meeting already ended */
       });
     }).then((fn) => {
-      if (!isMounted) {
-        fn();
-      } else {
+      if (isMounted) {
         unlisten = fn;
+      } else {
+        fn();
       }
     });
 
@@ -848,7 +848,9 @@ export function MeetingPage() {
     };
 
     const metricsSyncInterval = setInterval(() => {
-      if (!isMounted) return;
+      if (!isMounted) {
+        return;
+      }
       setFramesReceived(metricsBuffer.framesReceived);
       setFramesSent(metricsBuffer.framesSent);
       setFramesDropped(metricsBuffer.framesDropped);
@@ -872,13 +874,13 @@ export function MeetingPage() {
 
       if (result.dropped || result.sent) {
         const newWarning = streamingClient.getWarning();
-        setWarning((prev) => (prev !== newWarning ? newWarning : prev));
+        setWarning((prev) => (prev === newWarning ? prev : newWarning));
       }
     }).then((fn) => {
-      if (!isMounted) {
-        fn();
-      } else {
+      if (isMounted) {
         unlistenFn = fn;
+      } else {
+        fn();
       }
     });
 

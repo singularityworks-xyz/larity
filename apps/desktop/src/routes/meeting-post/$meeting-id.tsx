@@ -16,7 +16,8 @@ import {
   Target,
   Zap,
 } from "lucide-react";
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type {
   Decision,
@@ -65,7 +66,7 @@ function InProgressBanner({
   return (
     <div
       aria-live="polite"
-      className="relative overflow-hidden rounded-xl border border-info/20 bg-info/10 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fade-in relative animate-in overflow-hidden rounded-xl border border-info/20 bg-info/10 p-4 backdrop-blur-sm duration-200"
     >
       <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-info/0 via-info/5 to-info/0" />
       <div className="relative z-10 flex items-center gap-3">
@@ -107,7 +108,7 @@ function FailedBanner({
   return (
     <div
       aria-live="assertive"
-      className="relative overflow-hidden rounded-xl border border-danger/30 bg-danger/10 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fade-in relative animate-in overflow-hidden rounded-xl border border-danger/30 bg-danger/10 p-4 backdrop-blur-sm duration-200"
     >
       <div className="relative z-10 flex flex-col gap-3 md:flex-row md:items-center">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger/20 text-danger">
@@ -184,13 +185,23 @@ function ProcessingBanner({
 
 // ── Skeleton ────────────────────────────────────────────────────────────────
 
+const SKELETON_ROW_KEYS = [
+  "post-sk-row-1",
+  "post-sk-row-2",
+  "post-sk-row-3",
+  "post-sk-row-4",
+  "post-sk-row-5",
+  "post-sk-row-6",
+] as const;
+
 function SkeletonRows({ count = 4 }: { count?: number }) {
+  const rows = SKELETON_ROW_KEYS.slice(0, count);
   return (
-    <div className="flex flex-col gap-4 animate-in fade-in duration-200">
-      {Array.from({ length: count }, (_, i) => (
+    <div className="fade-in flex animate-in flex-col gap-4 duration-200">
+      {rows.map((rowKey) => (
         <div
           className="overflow-hidden rounded-xl border border-border/50 bg-bg-elevated p-5 shadow-sm"
-          key={`skeleton-row-${i}`}
+          key={rowKey}
         >
           <div className="mb-3 h-4 w-1/3 animate-pulse rounded bg-border" />
           <div className="h-3 w-3/4 animate-pulse rounded bg-border/50" />
@@ -351,7 +362,9 @@ function TranscriptTab({ meetingId }: { meetingId: string }) {
   } = useMeetingTranscript(meetingId);
 
   const utterances = useMemo(() => {
-    if (!transcript?.content) return [];
+    if (!transcript?.content) {
+      return [];
+    }
     try {
       return JSON.parse(transcript.content) as TranscriptUtterance[];
     } catch {
@@ -564,15 +577,19 @@ const IMPORTANT_POINT_ORDER: ImportantPointCategory[] = [
   "INSIGHT",
 ];
 
-const PointCard = memo(function PointCard({ point: p }: { point: ImportantPoint }) {
+const PointCard = memo(function PointCard({
+  point: p,
+}: {
+  point: ImportantPoint;
+}) {
   return (
     <div className="group relative flex flex-col gap-2 overflow-hidden rounded-xl border border-border/50 bg-bg-elevated p-4 transition-all hover:border-border hover:shadow-md">
       <p className="m-0 text-fg text-sm leading-relaxed">{p.content}</p>
       {p.transcriptEvidence && (
         <div className="mt-auto border-border/30 border-t pt-2">
           <p className="m-0 line-clamp-2 font-mono text-[11px] text-fg-subtle leading-snug transition-all group-hover:line-clamp-none">
-            <span className="mr-1 font-semibold text-fg-muted">Evidence:</span>
-            "{p.transcriptEvidence}"
+            <span className="mr-1 font-semibold text-fg-muted">Evidence:</span>"
+            {p.transcriptEvidence}"
           </p>
         </div>
       )}
@@ -1047,7 +1064,7 @@ export function MeetingPostPage() {
               </h2>
             </div>
             <div className="scrollbar-thin scrollbar-thumb-border-strong flex-1 overflow-y-auto p-4">
-              <div className="animate-in fade-in duration-150" key={activeTab}>
+              <div className="fade-in animate-in duration-150" key={activeTab}>
                 <TabContent
                   activeTab={activeTab}
                   insights={insights}

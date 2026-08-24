@@ -148,8 +148,10 @@ pub fn start_capture(
                 .sum();
             let rms = (sum_sq / chunk.len() as f32).sqrt();
             let display_amp = (rms * 2.5).min(1.0);
-            
-            if (display_amp - last_display_amp).abs() > 0.015 || (display_amp == 0.0 && last_display_amp != 0.0) {
+
+            if (display_amp - last_display_amp).abs() > 0.015
+                || (display_amp == 0.0 && last_display_amp != 0.0)
+            {
                 last_display_amp = display_amp;
                 let _ = app_vad.emit("raw-mic-amplitude", display_amp);
             }
@@ -196,8 +198,7 @@ pub fn start_capture(
         if cfg!(target_os = "linux") {
             #[cfg(target_os = "linux")]
             {
-                let task =
-                    crate::audio::linux_capture::start_linux_sys_capture(m.tx.clone());
+                let task = crate::audio::linux_capture::start_linux_sys_capture(m.tx.clone());
                 sys_task = Some(task);
             }
         } else {

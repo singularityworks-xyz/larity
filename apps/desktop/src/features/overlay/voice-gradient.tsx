@@ -36,10 +36,10 @@ export function VoiceGradient({
     listen<number>("raw-mic-amplitude", (e) => {
       propsRef.current.amplitude = e.payload;
     }).then((f) => {
-      if (!isMounted) {
-        f();
-      } else {
+      if (isMounted) {
         unlisten = f;
+      } else {
+        f();
       }
     });
     return () => {
@@ -106,7 +106,7 @@ export function VoiceGradient({
         amplitude: pAmplitude = 0,
       } = propsRef.current;
 
-      const isIdle = !pIsSpeaking && !pHasActiveAlert && state.amp < 0.02;
+      const isIdle = !(pIsSpeaking || pHasActiveAlert) && state.amp < 0.02;
       const targetInterval = isIdle ? 33 : 16; // 30fps when idle, 60fps when active
       const dt = time - lastTime;
 

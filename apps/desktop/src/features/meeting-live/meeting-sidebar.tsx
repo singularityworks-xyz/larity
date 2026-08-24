@@ -165,10 +165,10 @@ export function MeetingSidebar({
         setOverrides((prev) => ({ ...prev, [deepgramIndex]: member.name }));
       }
     }).then((fn) => {
-      if (!isMounted) {
-        fn();
-      } else {
+      if (isMounted) {
         unlisten = fn;
+      } else {
+        fn();
       }
     });
     return () => {

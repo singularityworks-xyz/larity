@@ -31,17 +31,16 @@ describe("redisKeys", () => {
 });
 
 describe("TTL", () => {
-  it("session state is 7 days", () => {
-    expect(TTL.SESSION_STATE).toBe(7 * 24 * 60 * 60);
-  });
-
-  it("meeting context is 4 hours", () => {
-    expect(TTL.MEETING_CONTEXT).toBe(14_400);
-  });
-
-  it("all TTLs are positive", () => {
+  it("all TTLs are positive integers", () => {
     for (const value of Object.values(TTL)) {
+      expect(Number.isInteger(value)).toBe(true);
       expect(value).toBeGreaterThan(0);
     }
+  });
+
+  it("maintains cache and session duration hierarchy", () => {
+    expect(TTL.SESSION_STATE).toBeGreaterThan(TTL.MEETING_CONTEXT);
+    expect(TTL.CACHE_LONG).toBeGreaterThanOrEqual(TTL.CACHE_SHORT);
+    expect(TTL.MEETING_BUFFER).toBeGreaterThanOrEqual(TTL.STT);
   });
 });

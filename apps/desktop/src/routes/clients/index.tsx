@@ -5,6 +5,15 @@ import { InitialsAvatar } from "../../components/avatar";
 import { useClients } from "../../features/clients/use-clients";
 import { buttonClass, cx, inputClass } from "../../lib/ui";
 
+const CLIENT_SKELETON_SLOTS = [
+  "client-sk-1",
+  "client-sk-2",
+  "client-sk-3",
+  "client-sk-4",
+  "client-sk-5",
+  "client-sk-6",
+] as const;
+
 export function ClientsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -146,10 +155,10 @@ export function ClientsPage() {
 
       {isLoading ? (
         <div className="flex flex-col overflow-hidden rounded-[var(--radius-1)] border border-border bg-bg-elevated">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {CLIENT_SKELETON_SLOTS.map((slotKey) => (
             <div
               className="flex w-full items-center justify-between border-border border-b p-3.5 last:border-b-0"
-              key={`sk-${i}`}
+              key={slotKey}
             >
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 animate-pulse rounded-full bg-bg-subtle" />

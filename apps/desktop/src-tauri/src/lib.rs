@@ -287,7 +287,9 @@ async fn audio_capture_stop(state: State<'_, audio::AudioState>) -> Result<(), S
 }
 
 #[tauri::command]
-async fn audio_capture_status(state: State<'_, audio::AudioState>) -> Result<AudioCaptureStatus, String> {
+async fn audio_capture_status(
+    state: State<'_, audio::AudioState>,
+) -> Result<AudioCaptureStatus, String> {
     let is_capturing = *state.is_capturing.lock().await;
 
     Ok(AudioCaptureStatus {
