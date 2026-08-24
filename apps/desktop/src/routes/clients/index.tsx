@@ -145,20 +145,30 @@ export function ClientsPage() {
       </div>
 
       {isLoading ? (
-        <div className="py-12 text-center text-[13px] text-fg-muted">
-          Loading...
+        <div className="flex flex-col overflow-hidden rounded-[var(--radius-1)] border border-border bg-bg-elevated">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              className="flex w-full items-center justify-between border-border border-b p-3.5 last:border-b-0"
+              key={`sk-${i}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 animate-pulse rounded-full bg-bg-subtle" />
+                <div className="flex flex-col gap-1.5">
+                  <div className="h-3 w-24 animate-pulse rounded bg-bg-subtle" />
+                  <div className="h-3 w-16 animate-pulse rounded bg-bg-subtle" />
+                </div>
+              </div>
+              <div className="h-3 w-20 animate-pulse rounded bg-bg-subtle" />
+            </div>
+          ))}
         </div>
       ) : (
         <div className="flex flex-col overflow-hidden rounded-[var(--radius-1)] border border-border bg-bg-elevated">
-          {processedClients.map((client, i) => (
+          {processedClients.map((client) => (
             <button
               className="group fade-in slide-in-from-bottom-1 flex w-full animate-in cursor-pointer items-center justify-between border-border border-b bg-transparent p-3.5 text-left outline-none transition-colors duration-150 last:border-b-0 hover:bg-bg-subtle focus-visible:bg-bg-subtle"
               key={client.id}
               onClick={() => navigate(`/clients/${client.id}`)}
-              style={{
-                animationDelay: `${i * 30}ms`,
-                animationFillMode: "both",
-              }}
               type="button"
             >
               <div className="flex items-center gap-3">

@@ -60,17 +60,16 @@ const containerVariants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+    transition: { staggerChildren: 0.03, delayChildren: 0.02 },
   },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20, filter: "blur(4px)" },
+  hidden: { opacity: 0, y: 10 },
   show: {
     opacity: 1,
     y: 0,
-    filter: "blur(0px)",
-    transition: { type: "spring" as const, stiffness: 300, damping: 24 },
+    transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] as const },
   },
 };
 
@@ -383,17 +382,11 @@ function TranscriptTab({ meetingId }: { meetingId: string }) {
   }
 
   return (
-    <motion.div
-      animate="show"
-      className="flex flex-col gap-4"
-      initial="hidden"
-      variants={containerVariants}
-    >
+    <div className="flex flex-col gap-3">
       {utterances.map((u, i) => (
-        <motion.div
+        <div
           className="group relative flex gap-4 overflow-hidden rounded-xl border border-border/50 bg-bg-elevated p-4 transition-all hover:border-border hover:shadow-md"
           key={u.id ?? `u-${i}`}
-          variants={itemVariants}
         >
           <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-border to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
           <div className="flex w-24 shrink-0 flex-col gap-1 pt-0.5">
@@ -413,9 +406,9 @@ function TranscriptTab({ meetingId }: { meetingId: string }) {
           <p className="m-0 flex-1 text-fg/90 text-sm leading-relaxed">
             {u.text}
           </p>
-        </motion.div>
+        </div>
       ))}
-    </motion.div>
+    </div>
   );
 }
 
@@ -723,7 +716,7 @@ function BriefTab({
         className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated p-4 shadow-sm"
         variants={itemVariants}
       >
-        <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-accent/10 blur-[80px]" />
+        <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 transform-gpu rounded-full bg-accent/10 blur-[80px] will-change-transform" />
         <h3 className="mb-3 flex items-center gap-2 font-bold font-heading text-base text-fg">
           <BookOpen className="h-4 w-4 text-accent" />
           Executive Summary
@@ -981,7 +974,7 @@ export function MeetingPostPage() {
             }}
           />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-bg-base/90 via-bg-base/50 to-bg-base/20" />
-          <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-accent/20 blur-[120px]" />
+          <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 transform-gpu rounded-full bg-accent/20 blur-[120px] will-change-transform" />
 
           <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="flex flex-col gap-4">
@@ -1119,11 +1112,11 @@ export function MeetingPostPage() {
             <div className="scrollbar-thin scrollbar-thumb-border-strong flex-1 overflow-y-auto p-4">
               <AnimatePresence mode="wait">
                 <motion.div
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
-                  initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  initial={{ opacity: 0, y: 6 }}
                   key={activeTab}
-                  transition={{ duration: 0.2 }}
+                  transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
                 >
                   <TabContent
                     activeTab={activeTab}
