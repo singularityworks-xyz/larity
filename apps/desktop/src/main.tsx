@@ -2,7 +2,7 @@ import "./styles/globals.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./app";
 import { AppErrorBoundary } from "./components/app-error-boundary";
 import { RouteErrorBoundary } from "./components/route-error-boundary";
@@ -33,7 +33,7 @@ import { SettingsPage } from "./routes/settings";
 import { AuthGuardSkeleton } from "./routes/shared";
 import { WelcomePage } from "./routes/welcome";
 
-export const router = createMemoryRouter([
+const router = createBrowserRouter([
   {
     path: "/overlay",
     element: <OverlayPage />,
