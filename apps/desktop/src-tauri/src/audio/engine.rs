@@ -65,11 +65,16 @@ pub fn start_capture(
 ) -> Result<CaptureHandles, String> {
     let host = cpal::default_host();
 
-    let mixer = Arc::new(AudioMixer::new(
-        app.clone(),
-        session_id.clone(),
-        role.clone(),
-    ));
+    let is_host = role == "host";
+    let mixer = if is_host {
+        Some(Arc::new(AudioMixer::new(
+            app.clone(),
+            session_id.clone(),
+            role.clone(),
+        )))
+    } else {
+        None
+    };
 
     // 1. Setup Microphone
     let mic_device = if let Some(id) = mic_device_id.clone() {
@@ -114,9 +119,9 @@ pub fn start_capture(
         eprintln!("an error occurred on stream: {}", err);
     };
 
-    let is_host = role == "host";
     let app_vad = app.clone();
     let mixer_clone = mixer.clone();
+    let mut last_display_amp: f32 = 0.0;
 
     let mut handle_samples = move |f32_slice: &[f32]| {
         let chunks = mic_processor.process(f32_slice);
@@ -143,10 +148,14 @@ pub fn start_capture(
                 .sum();
             let rms = (sum_sq / chunk.len() as f32).sqrt();
             let display_amp = (rms * 2.5).min(1.0);
-            let _ = app_vad.emit("raw-mic-amplitude", display_amp);
+            
+            if (display_amp - last_display_amp).abs() > 0.015 || (display_amp == 0.0 && last_display_amp != 0.0) {
+                last_display_amp = display_amp;
+                let _ = app_vad.emit("raw-mic-amplitude", display_amp);
+            }
 
-            if is_host {
-                mixer_clone.send(MixerMessage {
+            if let Some(m) = &mixer_clone {
+                m.send(MixerMessage {
                     source: SourceType::Mic,
                     timestamp_ms: ts,
                     samples: chunk,
@@ -184,12 +193,12 @@ pub fn start_capture(
 
     // 2. Setup System Audio (only if host)
     if role == "host" {
+        let m = mixer.as_ref().unwrap();
         if cfg!(target_os = "linux") {
             #[cfg(target_os = "linux")]
             {
-                let mixer_clone = mixer.clone();
                 let task =
-                    crate::audio::linux_capture::start_linux_sys_capture(mixer_clone.tx.clone());
+                    crate::audio::linux_capture::start_linux_sys_capture(m.tx.clone());
                 sys_task = Some(task);
             }
         } else {
@@ -214,7 +223,7 @@ pub fn start_capture(
                 sys_config.sample_rate as usize,
                 sys_config.channels as usize,
             );
-            let mixer_clone = mixer.clone();
+            let m_clone = m.clone();
 
             let stream = match sys_format {
                 cpal::SampleFormat::F32 => sys_device.build_input_stream(
@@ -226,7 +235,7 @@ pub fn start_capture(
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .unwrap()
                                 .as_millis() as u64;
-                            mixer_clone.send(MixerMessage {
+                            m_clone.send(MixerMessage {
                                 source: SourceType::Sys,
                                 timestamp_ms: ts,
                                 samples: chunk,
@@ -247,7 +256,7 @@ pub fn start_capture(
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .unwrap()
                                 .as_millis() as u64;
-                            mixer_clone.send(MixerMessage {
+                            m_clone.send(MixerMessage {
                                 source: SourceType::Sys,
                                 timestamp_ms: ts,
                                 samples: chunk,
@@ -270,6 +279,6 @@ pub fn start_capture(
         _mic_stream: Some(mic_stream),
         _sys_stream: sys_stream,
         sys_task,
-        _mixer: Some(mixer),
+        _mixer: mixer,
     })
 }

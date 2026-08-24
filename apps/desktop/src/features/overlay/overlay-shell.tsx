@@ -88,7 +88,7 @@ export function OverlayShell() {
       <VoiceGradient
         alertSeverity={data.visibleAlerts[0]?.severity ?? null}
         alertsMuted={data.alertsMuted}
-        amplitude={data.micAmplitude}
+        
         hasActiveAlert={data.visibleAlerts.length > 0}
         isSpeaking={isVisuallySpeaking}
       />
@@ -129,7 +129,7 @@ export function OverlayShell() {
           currentTopic={data.currentTopic}
           isMicActive={data.isMicActive}
           isVisuallySpeaking={isVisuallySpeaking}
-          micAmplitude={data.micAmplitude}
+          
         />
 
         <AlertRegion

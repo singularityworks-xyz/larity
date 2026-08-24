@@ -58,7 +58,7 @@ export function useOverlayData() {
   const [constraintCount, setConstraintCount] = useState(0);
   const [commitmentCount, setCommitmentCount] = useState(0);
   const [isMicActive, setIsMicActive] = useState(false);
-  const [micAmplitude, setMicAmplitude] = useState(0);
+  const micAmplitude = 0;
   const [alertsMuted, setAlertsMuted] = useState(false);
   // const [rememberFlash, setRememberFlash] = useState(false);
   const [identityGuesses, setIdentityGuesses] = useState<
@@ -265,17 +265,6 @@ export function useOverlayData() {
         return;
       }
       cleanups.push(uEnd);
-
-      const uAmp = await listen<number>("raw-mic-amplitude", (e) => {
-        if (!cancelled) {
-          setMicAmplitude(e.payload);
-        }
-      });
-      if (cancelled) {
-        uAmp();
-        return;
-      }
-      cleanups.push(uAmp);
     }
     attach();
 

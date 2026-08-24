@@ -95,15 +95,15 @@ export function initAuthDeepLink(): void {
       )
       .then((res) => {
         if (res.data) {
-          window.location.assign("/home");
+          import("../main").then(({ router }) => router.navigate("/home"));
         } else {
           clearStoredSessionToken();
-          window.location.assign("/login?error=oauth_verification_failed");
+          import("../main").then(({ router }) => router.navigate("/login?error=oauth_verification_failed"));
         }
       })
       .catch(() => {
         clearStoredSessionToken();
-        window.location.assign("/login?error=oauth_verification_failed");
+        import("../main").then(({ router }) => router.navigate("/login?error=oauth_verification_failed"));
       });
   }).catch(() => {
     // deep-link handling is best-effort; ignore registration failures

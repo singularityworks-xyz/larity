@@ -1,3 +1,6 @@
+import { listen } from "@tauri-apps/api/event";
+import { useEffect, useRef } from "react";
+
 // Deterministic animation delays for each dot position (row × 5 + col),
 // matching the SVG sparkle's pseudo-random stagger pattern. Values in ms.
 const DOT_DELAYS: number[] = [
@@ -56,11 +59,39 @@ interface VoiceDotMatrixProps {
  */
 export function VoiceDotMatrix({
   isSpeaking,
-  amplitude = 0,
   label,
 }: VoiceDotMatrixProps) {
   const ariaLabel =
     label ?? (isSpeaking ? "You are speaking" : "Microphone silent");
+
+  const svgRef = useRef<SVGSVGElement>(null);
+  const activeLayerRef = useRef<SVGGElement>(null);
+  const isSpeakingRef = useRef(isSpeaking);
+
+  useEffect(() => {
+    isSpeakingRef.current = isSpeaking;
+    if (!isSpeaking) {
+      if (svgRef.current) svgRef.current.style.transform = "scale(1)";
+      if (activeLayerRef.current) activeLayerRef.current.style.opacity = "0";
+    }
+  }, [isSpeaking]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<number>("raw-mic-amplitude", (e) => {
+      if (!isSpeakingRef.current) return;
+      const amplitude = e.payload;
+      if (svgRef.current) {
+        svgRef.current.style.transform = `scale(${1 + Math.min(0.2, amplitude * 0.5)})`;
+      }
+      if (activeLayerRef.current) {
+        activeLayerRef.current.style.opacity = String(Math.min(1, 0.3 + amplitude * 4));
+      }
+    }).then((f) => {
+      unlisten = f;
+    });
+    return () => unlisten?.();
+  }, []);
 
   return (
     <output
@@ -70,13 +101,12 @@ export function VoiceDotMatrix({
     >
       <svg
         aria-hidden="true"
+        ref={svgRef}
         style={{
           width: 28,
           height: 28,
           overflow: "visible",
-          transform: isSpeaking
-            ? `scale(${1 + Math.min(0.2, amplitude * 0.5)})`
-            : "scale(1)",
+          transform: "scale(1)",
           transition: "transform 75ms ease-out",
         }}
         viewBox="0 0 28 28"
@@ -91,21 +121,22 @@ export function VoiceDotMatrix({
           }}
         >
           {DOTS.map((dot) => (
-            <circle
-              cx={dot.cx}
-              cy={dot.cy}
-              fill="currentColor"
-              key={`base-${dot.id}`}
-              r={1.8}
-            />
-          ))}
+             <circle
+               cx={dot.cx}
+               cy={dot.cy}
+               fill="currentColor"
+               key={`base-${dot.id}`}
+               r={1.8}
+             />
+           ))}
         </g>
 
         {/* Active layer: continuously animating dots, revealed when speaking */}
         <g
+          ref={activeLayerRef}
           style={{
             color: "var(--accent)",
-            opacity: isSpeaking ? Math.min(1, 0.3 + amplitude * 4) : 0,
+            opacity: isSpeaking ? 0.3 : 0,
             transition: "opacity 75ms ease-out, color 300ms ease-out",
           }}
         >

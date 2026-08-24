@@ -1,3 +1,4 @@
+import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
 
 interface VoiceGradientProps {
@@ -13,7 +14,6 @@ export function VoiceGradient({
   hasActiveAlert,
   alertSeverity,
   alertsMuted = false,
-  amplitude = 0,
 }: VoiceGradientProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -21,12 +21,24 @@ export function VoiceGradient({
     isSpeaking,
     hasActiveAlert,
     alertSeverity,
-    amplitude,
+    amplitude: 0,
   });
 
   useEffect(() => {
-    propsRef.current = { isSpeaking, hasActiveAlert, alertSeverity, amplitude };
-  }, [isSpeaking, hasActiveAlert, alertSeverity, amplitude]);
+    propsRef.current.isSpeaking = isSpeaking;
+    propsRef.current.hasActiveAlert = hasActiveAlert;
+    propsRef.current.alertSeverity = alertSeverity;
+  }, [isSpeaking, hasActiveAlert, alertSeverity]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<number>("raw-mic-amplitude", (e) => {
+      propsRef.current.amplitude = e.payload;
+    }).then((f) => {
+      unlisten = f;
+    });
+    return () => unlisten?.();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -262,6 +274,7 @@ export function VoiceGradient({
       canvas.height = rect.height * dpr;
       const ctx = canvas.getContext("2d");
       if (ctx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.scale(dpr, dpr);
       }
     };
