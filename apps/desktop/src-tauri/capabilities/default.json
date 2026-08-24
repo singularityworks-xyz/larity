@@ -41,7 +41,19 @@
       "core:default",
       "opener:default",
       "core:window:allow-close",
-      "core:window:allow-start-dragging"
+      "core:window:allow-start-dragging",
+      "core:window:allow-set-focus",
+      "core:window:allow-set-position",
+      "core:window:allow-set-size",
+      "core:window:allow-is-focused",
+      {
+        "identifier": "http:default",
+        "allow": [
+          { "url": "https://larity-api.aamn.dev/*" },
+          { "url": "http://localhost:3000/*" },
+          { "url": "http://127.0.0.1:3000/*" }
+        ]
+      }
     ]
   }
 ]

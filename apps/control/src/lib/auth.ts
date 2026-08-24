@@ -5,6 +5,8 @@ import { bearer, organization } from "better-auth/plugins";
 import { env } from "../env";
 import { prisma } from "./prisma";
 
+const TOKEN_CHARS_REGEX = /^[A-Za-z0-9_.-]+$/;
+
 export const auth = betterAuth({
   basePath: "/auth",
   database: prismaAdapter(prisma, {
@@ -46,6 +48,7 @@ export const auth = betterAuth({
   plugins: [organization(), bearer()],
   trustedOrigins: env.FRONTEND_ORIGINS,
   hooks: {
+    // biome-ignore lint/suspicious/useAwait: better-auth createAuthMiddleware signature requires Promise return
     after: createAuthMiddleware(async (ctx) => {
       const headers = (
         ctx.context as unknown as {
@@ -102,7 +105,7 @@ export const auth = betterAuth({
       if (!token || token.length < 32 || token.length > 512) {
         return;
       }
-      if (!/^[A-Za-z0-9_.-]+$/.test(token)) {
+      if (!TOKEN_CHARS_REGEX.test(token)) {
         return;
       }
       // `URLSearchParams.set` handles encoding; token is bearer material — never log it.

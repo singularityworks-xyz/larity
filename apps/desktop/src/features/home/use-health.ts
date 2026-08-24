@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { CONTROL_URL } from "../../lib/env";
 
@@ -20,29 +21,40 @@ export function useHealth(): HealthState {
 
     async function checkServer() {
       try {
-        await fetch(`${CONTROL_URL}/health`, { method: "GET" });
+        const res = await fetch(`${CONTROL_URL}/health`, { method: "GET" });
+        if (!res.ok) {
+          throw new Error(`Server returned ${res.status}`);
+        }
+        const now = new Date();
         setState((prev) => ({
           ...prev,
           serverOnline: true,
-          lastSync: new Date(),
+          lastSync: now,
         }));
       } catch {
-        setState((prev) => ({ ...prev, serverOnline: false }));
+        setState((prev) =>
+          prev.serverOnline ? { ...prev, serverOnline: false } : prev
+        );
       }
     }
 
     async function checkAudio() {
       try {
-        const { invoke } = await import("@tauri-apps/api/core");
         const devices = await invoke<
           { name: string; deviceId: string; isLoopback: boolean }[]
         >("audio_capture_list_devices");
-        setState((prev) => ({
-          ...prev,
-          audioDeviceAvailable: devices.length > 0,
-        }));
+        const available = devices.length > 0;
+        setState((prev) =>
+          prev.audioDeviceAvailable === available
+            ? prev
+            : { ...prev, audioDeviceAvailable: available }
+        );
       } catch {
-        setState((prev) => ({ ...prev, audioDeviceAvailable: false }));
+        setState((prev) =>
+          prev.audioDeviceAvailable
+            ? { ...prev, audioDeviceAvailable: false }
+            : prev
+        );
       }
     }
 

@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ArrowLeft } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthSession } from "../features/auth/use-session";
 import { api } from "../lib/api";
@@ -56,36 +56,110 @@ export interface PolicyGuardrail {
   severity: GuardrailSeverity;
 }
 
-function GuardrailCard({
+function getSeverityLineClass(severity: GuardrailSeverity): string {
+  if (severity === "BLOCK") {
+    return "bg-danger-fg";
+  }
+  if (severity === "WARNING") {
+    return "bg-warning-fg";
+  }
+  return "bg-info-fg";
+}
+
+function getSeverityBadgeClass(severity: GuardrailSeverity): string {
+  if (severity === "BLOCK") {
+    return "border-danger-fg/30 bg-danger-bg/50 text-danger-fg";
+  }
+  if (severity === "WARNING") {
+    return "border-warning-fg/30 bg-warning-bg/50 text-warning-fg";
+  }
+  return "border-info-fg/30 bg-info-bg/50 text-info-fg";
+}
+
+function getGuardrailWrapperClass(isActive: boolean): string {
+  return `group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-bg-subtle transition-all duration-300 hover:border-border-strong hover:bg-bg-elevated hover:shadow-sm ${
+    isActive ? "" : "opacity-60 grayscale-[0.6]"
+  }`;
+}
+
+interface MicLevelController {
+  push: (rms: number) => void;
+  reset: () => void;
+}
+
+const MicLevelBar = memo(function MicLevelBar({
+  controllerRef,
+}: {
+  controllerRef: React.MutableRefObject<MicLevelController | null>;
+}) {
+  const [amplitude, setAmplitude] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  const pendingRef = useRef(0);
+
+  useEffect(() => {
+    const push = (rms: number) => {
+      pendingRef.current = rms;
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null;
+          setAmplitude(pendingRef.current);
+        });
+      }
+    };
+    const reset = () => {
+      pendingRef.current = 0;
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      setAmplitude(0);
+    };
+    controllerRef.current = { push, reset };
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      if (controllerRef.current?.push === push) {
+        controllerRef.current = null;
+      }
+    };
+  }, [controllerRef]);
+
+  const clamped = Math.min(amplitude, 1);
+  const percentLabel = (amplitude * 100).toFixed(0);
+
+  return (
+    <div className="mt-4">
+      <div className="mb-1 flex items-center justify-between">
+        <span className="font-semibold text-[10px] text-fg-subtle uppercase tracking-wider">
+          Mic Level
+        </span>
+        <span className="font-mono text-[10px] text-fg-muted">
+          {percentLabel}%
+        </span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-border-subtle">
+        <div
+          className="h-full rounded-full transition-all duration-75"
+          style={{
+            transform: `scaleX(${clamped})`,
+            transformOrigin: "left",
+            backgroundColor: getAmplitudeColor(amplitude),
+          }}
+        />
+      </div>
+    </div>
+  );
+});
+
+const GuardrailCard = memo(function GuardrailCard({
   g,
   toggleGuardrail,
 }: {
   g: PolicyGuardrail;
   toggleGuardrail: (id: string) => void;
 }) {
-  const getSeverityLineClass = (severity: GuardrailSeverity) => {
-    if (severity === "BLOCK") {
-      return "bg-danger-fg";
-    }
-    if (severity === "WARNING") {
-      return "bg-warning-fg";
-    }
-    return "bg-info-fg";
-  };
-
-  const getSeverityBadgeClass = (severity: GuardrailSeverity) => {
-    if (severity === "BLOCK") {
-      return "border-danger-fg/30 bg-danger-bg/50 text-danger-fg";
-    }
-    if (severity === "WARNING") {
-      return "border-warning-fg/30 bg-warning-bg/50 text-warning-fg";
-    }
-    return "border-info-fg/30 bg-info-bg/50 text-info-fg";
-  };
-
-  const wrapperClass = `group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-bg-subtle transition-all duration-300 hover:border-border-strong hover:bg-bg-elevated hover:shadow-sm ${
-    g.isActive ? "" : "opacity-60 grayscale-[0.6]"
-  }`;
+  const wrapperClass = getGuardrailWrapperClass(g.isActive);
 
   return (
     <div className={wrapperClass}>
@@ -135,7 +209,7 @@ function GuardrailCard({
       </div>
     </div>
   );
-}
+});
 
 export function SettingsPage() {
   const navigate = useNavigate();
@@ -155,7 +229,7 @@ export function SettingsPage() {
     null
   );
   const [lastSpeechEndTs, setLastSpeechEndTs] = useState<number | null>(null);
-  const [amplitude, setAmplitude] = useState(0);
+  const amplitudeControllerRef = useRef<MicLevelController | null>(null);
 
   const [events, setEvents] = useState<VadDebugEvent[]>([]);
   const [warning, setWarning] = useState("");
@@ -171,6 +245,16 @@ export function SettingsPage() {
   const [newDesc, setNewDesc] = useState("");
   const [newType, setNewType] = useState<GuardrailRuleType>("CUSTOM");
   const [newSeverity, setNewSeverity] = useState<GuardrailSeverity>("WARNING");
+
+  // Memoized formatted events - avoid per-render Date allocation
+  const formattedEvents = useMemo(
+    () =>
+      events.map((event) => ({
+        ...event,
+        timeLabel: new Date(event.ts).toLocaleTimeString(),
+      })),
+    [events]
+  );
 
   // Fetch guardrails
   const fetchGuardrails = useCallback(async () => {
@@ -264,7 +348,7 @@ export function SettingsPage() {
           setLastSpeechEndTs(now);
           setLastSpeechStartTs(null);
           setSpeechDetected(false);
-          setAmplitude(0);
+          amplitudeControllerRef.current?.reset();
           setEvents((prev) =>
             [
               { id: `speech_end_${now}`, type: "speech_end" as const, ts: now },
@@ -273,7 +357,7 @@ export function SettingsPage() {
           );
         },
         onAmplitude: (rms: number) => {
-          setAmplitude(rms);
+          amplitudeControllerRef.current?.push(rms);
         },
       });
       setIsRunning(true);
@@ -292,7 +376,7 @@ export function SettingsPage() {
     });
     setIsRunning(false);
     setSpeechDetected(false);
-    setAmplitude(0);
+    amplitudeControllerRef.current?.reset();
   }
 
   function clearDebugHistory() {
@@ -341,31 +425,36 @@ export function SettingsPage() {
     }
   }
 
-  async function toggleGuardrail(id: string) {
-    const target = guardrails.find((g) => g.id === id);
-    if (!target) {
-      return;
-    }
-
-    // Optimistic UI update
-    setGuardrails((prev) =>
-      prev.map((g) => (g.id === id ? { ...g, isActive: !g.isActive } : g))
-    );
-
-    try {
-      if (target.isActive) {
-        await api.post(`/policy-guardrails/${id}/deactivate`);
-      } else {
-        await api.post(`/policy-guardrails/${id}/activate`);
+  const toggleGuardrail = useCallback(
+    async (id: string) => {
+      const target = guardrails.find((g) => g.id === id);
+      if (!target) {
+        return;
       }
-    } catch (e) {
-      // Revert if API fails
+
+      // Optimistic UI update
       setGuardrails((prev) =>
-        prev.map((g) => (g.id === id ? { ...g, isActive: target.isActive } : g))
+        prev.map((g) => (g.id === id ? { ...g, isActive: !g.isActive } : g))
       );
-      setWarning(`Failed to toggle guardrail: ${String(e)}`);
-    }
-  }
+
+      try {
+        if (target.isActive) {
+          await api.post(`/policy-guardrails/${id}/deactivate`);
+        } else {
+          await api.post(`/policy-guardrails/${id}/activate`);
+        }
+      } catch (e) {
+        // Revert if API fails
+        setGuardrails((prev) =>
+          prev.map((g) =>
+            g.id === id ? { ...g, isActive: target.isActive } : g
+          )
+        );
+        setWarning(`Failed to toggle guardrail: ${String(e)}`);
+      }
+    },
+    [guardrails]
+  );
 
   async function seedDefaultGuardrails() {
     if (!orgId) {
@@ -432,27 +521,7 @@ export function SettingsPage() {
             </div>
           </div>
 
-          {isRunning && (
-            <div className="mt-4">
-              <div className="mb-1 flex items-center justify-between">
-                <span className="font-semibold text-[10px] text-fg-subtle uppercase tracking-wider">
-                  Mic Level
-                </span>
-                <span className="font-mono text-[10px] text-fg-muted">
-                  {(amplitude * 100).toFixed(0)}%
-                </span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-border-subtle">
-                <div
-                  className="h-full rounded-full transition-all duration-75"
-                  style={{
-                    width: `${Math.min(amplitude * 100, 100)}%`,
-                    backgroundColor: getAmplitudeColor(amplitude),
-                  }}
-                />
-              </div>
-            </div>
-          )}
+          {isRunning && <MicLevelBar controllerRef={amplitudeControllerRef} />}
 
           <div className="mt-5 flex items-center justify-between border-border-subtle border-t pt-5">
             <div className="flex flex-col gap-1">
@@ -517,7 +586,7 @@ export function SettingsPage() {
               </button>
             </div>
             <div className="min-h-[120px] bg-bg p-2">
-              {events.length === 0 ? (
+              {formattedEvents.length === 0 ? (
                 <div className="flex h-full items-center justify-center pt-8">
                   <p className="text-[11px] text-fg-muted italic">
                     No events recorded
@@ -525,7 +594,7 @@ export function SettingsPage() {
                 </div>
               ) : (
                 <ul className="max-h-[200px] space-y-1.5 overflow-y-auto pr-2">
-                  {events.map((event) => (
+                  {formattedEvents.map((event) => (
                     <li
                       className="flex items-center justify-between rounded px-2 py-1.5 text-[11px] transition-colors hover:bg-bg-subtle"
                       key={event.id}
@@ -536,7 +605,7 @@ export function SettingsPage() {
                         {event.type.replace("_", " ")}
                       </span>
                       <span className="font-mono text-fg-muted">
-                        {new Date(event.ts).toLocaleTimeString()}
+                        {event.timeLabel}
                       </span>
                     </li>
                   ))}

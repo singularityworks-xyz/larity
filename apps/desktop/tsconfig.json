@@ -8,7 +8,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@larity/*": ["../../*"]
-    }
+    },
+    "types": ["@types/bun"]
   },
   "include": ["src", "vite.config.ts"]
 }

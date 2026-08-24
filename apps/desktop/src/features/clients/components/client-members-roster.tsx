@@ -1,6 +1,6 @@
 import { Info, Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, memo, useCallback, useState } from "react";
 import {
   buttonClass,
   formErrorClass,
@@ -27,33 +27,44 @@ export function ClientMembersRoster({ clientId }: { clientId: string }) {
   const [newMemberImage, setNewMemberImage] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  async function handleAdd(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!newMemberName.trim()) {
-      return;
-    }
-    setError(null);
+  const handleAdd = useCallback(
+    async (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      if (!newMemberName.trim()) {
+        return;
+      }
+      setError(null);
 
-    try {
-      await createMember.mutateAsync({
-        clientId,
-        name: newMemberName.trim(),
-        email: newMemberEmail.trim() || undefined,
-        image: newMemberImage.trim() || undefined,
-        role: "CONTACT",
-      });
+      try {
+        await createMember.mutateAsync({
+          clientId,
+          name: newMemberName.trim(),
+          email: newMemberEmail.trim() || undefined,
+          image: newMemberImage.trim() || undefined,
+          role: "CONTACT",
+        });
 
-      setNewMemberName("");
-      setNewMemberEmail("");
-      setNewMemberImage("");
-      setIsAdding(false);
-    } catch (err) {
-      console.error("Failed to add member:", err);
-      const message =
-        err instanceof Error ? err.message : "Failed to add member";
-      setError(message);
-    }
-  }
+        setNewMemberName("");
+        setNewMemberEmail("");
+        setNewMemberImage("");
+        setIsAdding(false);
+      } catch (err) {
+        console.error("Failed to add member:", err);
+        const message =
+          err instanceof Error ? err.message : "Failed to add member";
+        setError(message);
+      }
+    },
+    [clientId, createMember, newMemberEmail, newMemberImage, newMemberName]
+  );
+
+  const handleToggleAdd = useCallback(() => {
+    setIsAdding((prev) => !prev);
+  }, []);
+
+  const handleCancelAdd = useCallback(() => {
+    setIsAdding(false);
+  }, []);
 
   if (isLoading) {
     return (
@@ -71,7 +82,7 @@ export function ClientMembersRoster({ clientId }: { clientId: string }) {
         {canManage && (
           <button
             className={buttonClass({ variant: "ghost", size: "sm" })}
-            onClick={() => setIsAdding(!isAdding)}
+            onClick={handleToggleAdd}
             type="button"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -136,7 +147,7 @@ export function ClientMembersRoster({ clientId }: { clientId: string }) {
               <div className="mt-2 flex justify-end gap-2 md:col-span-2">
                 <button
                   className={buttonClass({ variant: "ghost" })}
-                  onClick={() => setIsAdding(false)}
+                  onClick={handleCancelAdd}
                   type="button"
                 >
                   Cancel
@@ -177,7 +188,7 @@ export function ClientMembersRoster({ clientId }: { clientId: string }) {
   );
 }
 
-function EditableMemberCard({
+const EditableMemberCard = memo(function EditableMemberCard({
   member,
   index,
   clientId,
@@ -197,33 +208,36 @@ function EditableMemberCard({
   const updateMember = useUpdateClientMember();
   const deleteMember = useDeleteClientMember();
 
-  async function handleSave(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!editName.trim()) {
-      return;
-    }
-    setError(null);
+  const handleSave = useCallback(
+    async (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      if (!editName.trim()) {
+        return;
+      }
+      setError(null);
 
-    try {
-      await updateMember.mutateAsync({
-        clientId,
-        memberId: member.id,
-        data: {
-          name: editName.trim(),
-          email: editEmail.trim() || undefined,
-          image: editImage.trim() || undefined,
-        },
-      });
-      setIsEditing(false);
-    } catch (err) {
-      console.error("Failed to update member:", err);
-      const message =
-        err instanceof Error ? err.message : "Failed to update member";
-      setError(message);
-    }
-  }
+      try {
+        await updateMember.mutateAsync({
+          clientId,
+          memberId: member.id,
+          data: {
+            name: editName.trim(),
+            email: editEmail.trim() || undefined,
+            image: editImage.trim() || undefined,
+          },
+        });
+        setIsEditing(false);
+      } catch (err) {
+        console.error("Failed to update member:", err);
+        const message =
+          err instanceof Error ? err.message : "Failed to update member";
+        setError(message);
+      }
+    },
+    [clientId, editEmail, editImage, editName, member.id, updateMember]
+  );
 
-  async function handleDelete() {
+  const handleDelete = useCallback(async () => {
     // biome-ignore lint/suspicious/noAlert: MVP confirm
     if (!confirm(`Are you sure you want to remove ${member.name}?`)) {
       return;
@@ -237,7 +251,15 @@ function EditableMemberCard({
         err instanceof Error ? err.message : "Failed to delete member";
       setError(message);
     }
-  }
+  }, [clientId, deleteMember, member.id, member.name]);
+
+  const handleCancelEdit = useCallback(() => {
+    setIsEditing(false);
+  }, []);
+
+  const handleStartEdit = useCallback(() => {
+    setIsEditing(true);
+  }, []);
 
   if (isEditing) {
     return (
@@ -306,7 +328,7 @@ function EditableMemberCard({
           <div className="flex items-center gap-2">
             <button
               className={buttonClass({ variant: "ghost", size: "sm" })}
-              onClick={() => setIsEditing(false)}
+              onClick={handleCancelEdit}
               type="button"
             >
               Cancel
@@ -360,7 +382,7 @@ function EditableMemberCard({
         <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
           <button
             className="rounded bg-bg-subtle px-2 py-1 font-medium text-[10px] text-fg-muted hover:bg-bg-emphasis hover:text-fg"
-            onClick={() => setIsEditing(true)}
+            onClick={handleStartEdit}
             type="button"
           >
             Edit
@@ -430,4 +452,4 @@ function EditableMemberCard({
       )}
     </motion.div>
   );
-}
+});

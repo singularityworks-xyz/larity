@@ -1,3 +1,4 @@
+import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
 
 interface VoiceGradientProps {
@@ -13,7 +14,6 @@ export function VoiceGradient({
   hasActiveAlert,
   alertSeverity,
   alertsMuted = false,
-  amplitude = 0,
 }: VoiceGradientProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -21,12 +21,32 @@ export function VoiceGradient({
     isSpeaking,
     hasActiveAlert,
     alertSeverity,
-    amplitude,
+    amplitude: 0,
   });
 
   useEffect(() => {
-    propsRef.current = { isSpeaking, hasActiveAlert, alertSeverity, amplitude };
-  }, [isSpeaking, hasActiveAlert, alertSeverity, amplitude]);
+    propsRef.current.isSpeaking = isSpeaking;
+    propsRef.current.hasActiveAlert = hasActiveAlert;
+    propsRef.current.alertSeverity = alertSeverity;
+  }, [isSpeaking, hasActiveAlert, alertSeverity]);
+
+  useEffect(() => {
+    let isMounted = true;
+    let unlisten: (() => void) | undefined;
+    listen<number>("raw-mic-amplitude", (e) => {
+      propsRef.current.amplitude = e.payload;
+    }).then((f) => {
+      if (isMounted) {
+        unlisten = f;
+      } else {
+        f();
+      }
+    });
+    return () => {
+      isMounted = false;
+      unlisten?.();
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -79,15 +99,22 @@ export function VoiceGradient({
     };
 
     const drawFrame = (time: number) => {
-      const dt = time - lastTime;
-      lastTime = time;
-
       const {
         isSpeaking: pIsSpeaking,
         hasActiveAlert: pHasActiveAlert,
         alertSeverity: pAlertSeverity,
         amplitude: pAmplitude = 0,
       } = propsRef.current;
+
+      const isIdle = !(pIsSpeaking || pHasActiveAlert) && state.amp < 0.02;
+      const targetInterval = isIdle ? 33 : 16; // 30fps when idle, 60fps when active
+      const dt = time - lastTime;
+
+      if (dt < targetInterval) {
+        rafId = requestAnimationFrame(drawFrame);
+        return;
+      }
+      lastTime = time;
 
       const dpr = window.devicePixelRatio || 1;
       const W = canvas.width / dpr;
@@ -255,6 +282,7 @@ export function VoiceGradient({
       canvas.height = rect.height * dpr;
       const ctx = canvas.getContext("2d");
       if (ctx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.scale(dpr, dpr);
       }
     };
@@ -266,7 +294,7 @@ export function VoiceGradient({
 
   return (
     <div
-      className="voice-gradient-canvas"
+      className="voice-gradient-canvas pointer-events-none transform-gpu will-change-transform"
       style={{
         filter: alertsMuted ? "saturate(0) brightness(0.6)" : "none",
         transition: "filter 600ms ease-out",

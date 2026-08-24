@@ -1,5 +1,11 @@
+import { memo } from "react";
 import type { TodayMeeting } from "../../features/home/types";
 import { metricChipClass, panelClass } from "../../lib/ui";
+
+const timeFormatter = new Intl.DateTimeFormat([], {
+  hour: "numeric",
+  minute: "2-digit",
+});
 
 interface TodayPanelProps {
   loading: boolean;
@@ -10,10 +16,7 @@ function formatTime(iso: string | null): string {
   if (!iso) {
     return "--:--";
   }
-  return new Date(iso).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return timeFormatter.format(new Date(iso));
 }
 
 function renderContent(meetings: TodayMeeting[], loading: boolean) {
@@ -75,7 +78,10 @@ function renderContent(meetings: TodayMeeting[], loading: boolean) {
   );
 }
 
-export function TodayPanel({ meetings, loading }: TodayPanelProps) {
+export const TodayPanel = memo(function TodayPanel({
+  meetings,
+  loading,
+}: TodayPanelProps) {
   return (
     <div className={panelClass}>
       <div className="mb-2.5 flex items-center justify-between">
@@ -91,4 +97,4 @@ export function TodayPanel({ meetings, loading }: TodayPanelProps) {
       {renderContent(meetings, loading)}
     </div>
   );
-}
+});

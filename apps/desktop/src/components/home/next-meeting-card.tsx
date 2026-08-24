@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { NextMeeting } from "../../features/home/types";
 import { startMeetingModeClass } from "../../lib/ui";
 
@@ -6,7 +7,10 @@ interface NextMeetingCardProps {
   meeting: NextMeeting | null;
 }
 
-export function NextMeetingCard({ meeting, loading }: NextMeetingCardProps) {
+export const NextMeetingCard = memo(function NextMeetingCard({
+  meeting,
+  loading,
+}: NextMeetingCardProps) {
   if (loading) {
     return (
       <article className={startMeetingModeClass} style={{ minHeight: 112 }}>
@@ -107,4 +111,4 @@ export function NextMeetingCard({ meeting, loading }: NextMeetingCardProps) {
       </div>
     </article>
   );
-}
+});

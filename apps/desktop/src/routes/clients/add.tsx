@@ -1,7 +1,7 @@
 import { Plus, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useCreateClient } from "../../features/clients/use-create-client";
@@ -44,6 +44,41 @@ interface PendingMember {
   role: string;
 }
 
+const PendingMemberChip = memo(function PendingMemberChip({
+  member,
+  onRemove,
+}: {
+  member: PendingMember;
+  onRemove: (id: string) => void;
+}) {
+  return (
+    <motion.div
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      className="flex items-center gap-2 rounded-full border border-border bg-bg-emphasis px-3 py-1.5 shadow-[0_0_15px_rgba(255,255,255,0.03)] transition-shadow hover:shadow-[0_0_20px_rgba(255,255,255,0.06)]"
+      exit={{ opacity: 0, scale: 0.8, y: -10 }}
+      initial={{ opacity: 0, scale: 0.8, y: 10 }}
+      layout
+      transition={{
+        type: "spring",
+        stiffness: 400,
+        damping: 25,
+      }}
+    >
+      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 font-bold text-[9px] text-white uppercase">
+        {member.name.charAt(0)}
+      </div>
+      <span className="font-medium text-fg text-xs">{member.name}</span>
+      <button
+        className="ml-1 p-0.5 text-fg-subtle transition-colors hover:text-danger-fg"
+        onClick={() => onRemove(member.id)}
+        type="button"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </motion.div>
+  );
+});
+
 export function AddClientPage() {
   const navigate = useNavigate();
   const createClient = useCreateClient();
@@ -78,7 +113,7 @@ export function AddClientPage() {
     return parsed.error.issues[0]?.message ?? "Invalid input";
   }, [normalizedInput]);
 
-  function handleAddMember() {
+  const handleAddMember = useCallback(() => {
     if (!newMemberName.trim()) {
       return;
     }
@@ -87,58 +122,61 @@ export function AddClientPage() {
       { id: crypto.randomUUID(), name: newMemberName.trim(), role: "CONTACT" },
     ]);
     setNewMemberName("");
-  }
+  }, [newMemberName]);
 
-  function handleRemoveMember(id: string) {
+  const handleRemoveMember = useCallback((id: string) => {
     setPendingMembers((prev) => prev.filter((m) => m.id !== id));
-  }
+  }, []);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
+  const onSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setError(null);
 
-    const parsed = createClientSchema.safeParse(normalizedInput);
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Invalid input");
-      return;
-    }
-
-    let createdClient: { id: string } | null = null;
-    try {
-      setIsCreating(true);
-      const client = await createClient.mutateAsync(parsed.data);
-      createdClient = client;
-
-      // Create all pending members sequentially
-      for (const member of pendingMembers) {
-        await api.post(`/clients/${client.id}/members`, {
-          name: member.name,
-          role: "CONTACT",
-        });
+      const parsed = createClientSchema.safeParse(normalizedInput);
+      if (!parsed.success) {
+        setError(parsed.error.issues[0]?.message ?? "Invalid input");
+        return;
       }
 
-      navigate("/meetings/start");
-    } catch (requestError) {
-      if (createdClient) {
-        try {
-          await api.delete(`/clients/${createdClient.id}`);
-        } catch (rollbackError) {
-          console.error(
-            "Rollback failed for client:",
-            createdClient.id,
-            rollbackError
-          );
+      let createdClient: { id: string } | null = null;
+      try {
+        setIsCreating(true);
+        const client = await createClient.mutateAsync(parsed.data);
+        createdClient = client;
+
+        // Create all pending members sequentially
+        for (const member of pendingMembers) {
+          await api.post(`/clients/${client.id}/members`, {
+            name: member.name,
+            role: "CONTACT",
+          });
         }
+
+        navigate("/meetings/start");
+      } catch (requestError) {
+        if (createdClient) {
+          try {
+            await api.delete(`/clients/${createdClient.id}`);
+          } catch (rollbackError) {
+            console.error(
+              "Rollback failed for client:",
+              createdClient.id,
+              rollbackError
+            );
+          }
+        }
+        const message =
+          requestError instanceof Error
+            ? requestError.message
+            : "Could not create client";
+        setError(message);
+      } finally {
+        setIsCreating(false);
       }
-      const message =
-        requestError instanceof Error
-          ? requestError.message
-          : "Could not create client";
-      setError(message);
-    } finally {
-      setIsCreating(false);
-    }
-  }
+    },
+    [createClient, navigate, normalizedInput, pendingMembers]
+  );
 
   return (
     <AppShell
@@ -262,33 +300,11 @@ export function AddClientPage() {
                 <div className="flex flex-wrap gap-2">
                   <AnimatePresence>
                     {pendingMembers.map((member) => (
-                      <motion.div
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        className="flex items-center gap-2 rounded-full border border-border bg-bg-emphasis px-3 py-1.5 shadow-[0_0_15px_rgba(255,255,255,0.03)] transition-shadow hover:shadow-[0_0_20px_rgba(255,255,255,0.06)]"
-                        exit={{ opacity: 0, scale: 0.8, y: -10 }}
-                        initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                      <PendingMemberChip
                         key={member.id}
-                        layout
-                        transition={{
-                          type: "spring",
-                          stiffness: 400,
-                          damping: 25,
-                        }}
-                      >
-                        <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 font-bold text-[9px] text-white uppercase">
-                          {member.name.charAt(0)}
-                        </div>
-                        <span className="font-medium text-fg text-xs">
-                          {member.name}
-                        </span>
-                        <button
-                          className="ml-1 p-0.5 text-fg-subtle transition-colors hover:text-danger-fg"
-                          onClick={() => handleRemoveMember(member.id)}
-                          type="button"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </motion.div>
+                        member={member}
+                        onRemove={handleRemoveMember}
+                      />
                     ))}
                   </AnimatePresence>
                 </div>

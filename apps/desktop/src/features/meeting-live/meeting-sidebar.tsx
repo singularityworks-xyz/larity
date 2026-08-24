@@ -145,6 +145,7 @@ export function MeetingSidebar({
   }, [storageKey]);
 
   useEffect(() => {
+    let isMounted = true;
     let unlisten: (() => void) | null = null;
     listen<{
       sessionId: string;
@@ -164,9 +165,14 @@ export function MeetingSidebar({
         setOverrides((prev) => ({ ...prev, [deepgramIndex]: member.name }));
       }
     }).then((fn) => {
-      unlisten = fn;
+      if (isMounted) {
+        unlisten = fn;
+      } else {
+        fn();
+      }
     });
     return () => {
+      isMounted = false;
       unlisten?.();
     };
   }, [sessionId, members]);

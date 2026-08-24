@@ -1,5 +1,11 @@
+import { memo } from "react";
 import type { useHealth } from "../../features/home/use-health";
 import { cx, healthStripClass } from "../../lib/ui";
+
+const timeFormatter = new Intl.DateTimeFormat([], {
+  hour: "numeric",
+  minute: "2-digit",
+});
 
 type HealthState = ReturnType<typeof useHealth>;
 
@@ -7,7 +13,7 @@ interface HealthStripProps {
   health: HealthState;
 }
 
-function StatusDot({
+const StatusDot = memo(function StatusDot({
   label,
   state,
 }: {
@@ -44,7 +50,7 @@ function StatusDot({
       </span>
     </div>
   );
-}
+});
 
 export function HealthStrip({ health }: HealthStripProps) {
   const serverState = health.serverOnline ? "online" : "offline";
@@ -68,7 +74,7 @@ export function HealthStrip({ health }: HealthStripProps) {
       </span>
       <span className="font-medium text-[10.5px] text-fg-subtle tabular-nums leading-none">
         {health.lastSync
-          ? `Synced ${health.lastSync.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+          ? `Synced ${timeFormatter.format(health.lastSync)}`
           : "Not synced"}
       </span>
     </footer>

@@ -1,21 +1,19 @@
 pre-commit:
   jobs:
     - name: lint
-      run: bun run check
-      glob:
-        - "**/*.{js,jsx,ts,tsx,json,jsonc,css}"
-      stage_fixed: true
+      glob: "**/*.{js,jsx,ts,tsx,json,jsonc,css}"
+      run: bun x ultracite check {staged_files}
     - name: typecheck
+      glob: "**/*.{ts,tsx}"
       run: bun run check-types
-      glob:
-        - "**/*.{ts,tsx}"
     - name: version-bump
       run: bun scripts/version-manager.ts
+      stage_fixed: true
     - name: rust-fmt
       glob: "apps/desktop/src-tauri/**/*.rs"
-      run: make -C apps/desktop/src-tauri fmt
+      run: cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml
       stage_fixed: true
     - name: rust-clippy
       glob: "apps/desktop/src-tauri/**/*.rs"
-      run: make -C apps/desktop/src-tauri clippy
+      run: cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings
 

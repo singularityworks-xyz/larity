@@ -58,7 +58,6 @@ export function useOverlayData() {
   const [constraintCount, setConstraintCount] = useState(0);
   const [commitmentCount, setCommitmentCount] = useState(0);
   const [isMicActive, setIsMicActive] = useState(false);
-  const [micAmplitude, setMicAmplitude] = useState(0);
   const [alertsMuted, setAlertsMuted] = useState(false);
   // const [rememberFlash, setRememberFlash] = useState(false);
   const [identityGuesses, setIdentityGuesses] = useState<
@@ -240,27 +239,39 @@ export function useOverlayData() {
   }, [params.userId]);
 
   useEffect(() => {
-    let unlistenStart: (() => void) | null = null;
-    let unlistenEnd: (() => void) | null = null;
-    let unlistenAmp: (() => void) | null = null;
+    let cancelled = false;
+    const cleanups: Array<() => void> = [];
 
     async function attach() {
-      unlistenStart = await listen("vad-speech-start", () =>
-        setIsMicActive(true)
-      );
-      unlistenEnd = await listen("vad-speech-end", () => {
-        setIsMicActive(false);
+      const uStart = await listen("vad-speech-start", () => {
+        if (!cancelled) {
+          setIsMicActive(true);
+        }
       });
-      unlistenAmp = await listen<number>("raw-mic-amplitude", (e) => {
-        setMicAmplitude(e.payload);
+      if (cancelled) {
+        uStart();
+        return;
+      }
+      cleanups.push(uStart);
+
+      const uEnd = await listen("vad-speech-end", () => {
+        if (!cancelled) {
+          setIsMicActive(false);
+        }
       });
+      if (cancelled) {
+        uEnd();
+        return;
+      }
+      cleanups.push(uEnd);
     }
     attach();
 
     return () => {
-      unlistenStart?.();
-      unlistenEnd?.();
-      unlistenAmp?.();
+      cancelled = true;
+      for (const fn of cleanups) {
+        fn();
+      }
     };
   }, []);
 
@@ -284,7 +295,6 @@ export function useOverlayData() {
     dismissAlert,
     expandedAlertId,
     isMicActive,
-    micAmplitude,
     meetingTitle: params.meetingTitle,
     // rememberFlash,
     role: params.role,
