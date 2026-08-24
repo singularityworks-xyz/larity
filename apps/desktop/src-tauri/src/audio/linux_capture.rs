@@ -69,8 +69,8 @@ pub fn start_linux_sys_capture(
 
                     // Convert bytes to i16
                     let mut samples = Vec::with_capacity(800);
-                    for chunk in buffer.chunks_exact(2) {
-                        let sample = i16::from_le_bytes([chunk[0], chunk[1]]);
+                    for &[b0, b1] in buffer.as_chunks::<2>().0 {
+                        let sample = i16::from_le_bytes([b0, b1]);
                         samples.push(sample);
                     }
 
