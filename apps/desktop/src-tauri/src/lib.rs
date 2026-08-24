@@ -341,6 +341,8 @@ async fn create_overlay_window(app: AppHandle, url: String) -> Result<(), String
     .decorations(false)
     .always_on_top(true)
     .resizable(true)
+    // transparent(true) enables transparent webview compositing. On macOS, this is paired
+    // with the `macos-private-api` Cargo feature on the `tauri` dependency in Cargo.toml.
     .transparent(true)
     .visible(false)
     // Reveal only after the page finishes loading to avoid blank white flash.

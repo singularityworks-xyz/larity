@@ -132,7 +132,6 @@ interface AmbientStripProps {
   currentTopic: string | null;
   isMicActive: boolean;
   isVisuallySpeaking: boolean;
-  micAmplitude?: number;
 }
 
 export function AmbientStrip({
@@ -142,7 +141,6 @@ export function AmbientStrip({
   connectedTeammates,
   isMicActive: _isMicActive,
   isVisuallySpeaking,
-  micAmplitude = 0,
 }: AmbientStripProps) {
   return (
     <div className="relative flex w-full flex-col gap-2.5 px-3.5 pt-3 pb-2.5">
@@ -154,7 +152,6 @@ export function AmbientStrip({
       </div>
       <div className="flex w-full min-w-0 items-center gap-2.5">
         <VoiceDotMatrix
-          amplitude={micAmplitude}
           isSpeaking={isVisuallySpeaking}
         />
         <SpeakerIndicator speaker={currentSpeaker} />

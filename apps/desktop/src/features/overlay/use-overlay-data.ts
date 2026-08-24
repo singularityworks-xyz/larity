@@ -58,7 +58,6 @@ export function useOverlayData() {
   const [constraintCount, setConstraintCount] = useState(0);
   const [commitmentCount, setCommitmentCount] = useState(0);
   const [isMicActive, setIsMicActive] = useState(false);
-  const micAmplitude = 0;
   const [alertsMuted, setAlertsMuted] = useState(false);
   // const [rememberFlash, setRememberFlash] = useState(false);
   const [identityGuesses, setIdentityGuesses] = useState<
@@ -296,7 +295,6 @@ export function useOverlayData() {
     dismissAlert,
     expandedAlertId,
     isMicActive,
-    micAmplitude,
     meetingTitle: params.meetingTitle,
     // rememberFlash,
     role: params.role,

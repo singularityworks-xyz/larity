@@ -191,9 +191,8 @@ pub fn start_capture(
     let mut sys_stream = None;
     let mut sys_task = None;
 
-    // 2. Setup System Audio (only if host)
-    if role == "host" {
-        let m = mixer.as_ref().unwrap();
+    // 2. Setup System Audio (only if host / mixer initialized)
+    if let Some(m) = &mixer {
         if cfg!(target_os = "linux") {
             #[cfg(target_os = "linux")]
             {

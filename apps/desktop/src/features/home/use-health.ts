@@ -21,7 +21,10 @@ export function useHealth(): HealthState {
 
     async function checkServer() {
       try {
-        await fetch(`${CONTROL_URL}/health`, { method: "GET" });
+        const res = await fetch(`${CONTROL_URL}/health`, { method: "GET" });
+        if (!res.ok) {
+          throw new Error(`Server returned ${res.status}`);
+        }
         const now = new Date();
         setState((prev) => ({
           ...prev,

@@ -849,10 +849,7 @@ export function MeetingPostPage() {
   const reprocess = useReprocess(meetingId);
 
   // Single unified processing status query with smart polling pause once settled
-  const { data: status } = useProcessingStatus(
-    meetingId,
-    !isProcessingSettled(undefined)
-  );
+  const { data: status } = useProcessingStatus(meetingId);
 
   const settled = isProcessingSettled(status);
   const complete = isProcessingComplete(status);

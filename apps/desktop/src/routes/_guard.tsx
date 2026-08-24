@@ -1,10 +1,9 @@
 import { redirect } from "react-router-dom";
 import { authClient } from "../lib/auth-client";
-import { getStoredSessionToken } from "../lib/session-token";
-
-function isOnboardingPath(pathname: string): boolean {
-  return pathname.startsWith("/onboarding");
-}
+import {
+  clearStoredSessionToken,
+  getStoredSessionToken,
+} from "../lib/session-token";
 
 function isGuestPath(pathname: string): boolean {
   return (
@@ -41,6 +40,7 @@ export async function authGateLoader({
   // No stored token: could be a legacy cookie session — verify server-side.
   const { data } = await authClient.getSession();
   if (!data?.user) {
+    clearStoredSessionToken();
     if (isGuestPath(pathname)) {
       return null;
     }
@@ -59,6 +59,7 @@ export async function rootIndexLoader(): Promise<never> {
   // Legacy cookie session fallback.
   const { data } = await authClient.getSession();
   if (!data?.user) {
+    clearStoredSessionToken();
     throw redirect("/welcome");
   }
 
@@ -90,31 +91,21 @@ export async function guestOnlyLoader({
   return null;
 }
 
-export async function onboardingLoader({
-  request,
-}: {
-  request: Request;
-}): Promise<null> {
-  const pathname = new URL(request.url).pathname;
+export async function onboardingLoader(): Promise<null> {
   const token = getStoredSessionToken();
 
-  if (token) {
-    if (!isOnboardingPath(pathname)) {
-      throw redirect("/onboarding");
-    }
-    return null;
-  }
-
-  // Legacy cookie session fallback.
+  // Verify session server-side for onboarding flow.
   const { data } = await authClient.getSession();
   if (!data?.user) {
+    if (token) {
+      clearStoredSessionToken();
+    }
     throw redirect("/welcome");
   }
-  if ((data.user as { orgId?: string | null }).orgId) {
+
+  const user = data.user as { orgId?: string | null };
+  if (user.orgId) {
     throw redirect("/home");
-  }
-  if (!isOnboardingPath(pathname)) {
-    throw redirect("/onboarding");
   }
 
   return null;

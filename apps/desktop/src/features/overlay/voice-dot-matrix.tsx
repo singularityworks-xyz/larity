@@ -45,8 +45,6 @@ const DOTS: Dot[] = Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
 });
 
 interface VoiceDotMatrixProps {
-  /** Current voice intensity (0 to 1). */
-  amplitude?: number;
   /** Whether the user is currently speaking — drives the animation. */
   isSpeaking: boolean;
   /** Accessible label for the indicator. */

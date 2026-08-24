@@ -25,12 +25,13 @@ fn main() {
         // environment concurrently; this runs single-threaded at process
         // start, before any other threads or WebKitGTK initialisation.
         unsafe {
-            // Force native Wayland backend so KWin compositor effects apply.
-            // When $DISPLAY and $WAYLAND_DISPLAY are both set (Xwayland session),
-            // GTK3 defaults to X11 unless told otherwise, losing all Wayland
-            // compositor protocol support (wobbly windows, blur-behind, etc.).
-            if std::env::var_os("GDK_BACKEND").is_none() {
-                std::env::set_var("GDK_BACKEND", "wayland");
+            // Prefer native Wayland backend when running in a Wayland session so
+            // KWin/Wayland compositor effects apply (wobbly windows, blur-behind, etc.),
+            // with seamless fallback to X11 if the Wayland socket cannot be connected.
+            // On pure X11 sessions (where WAYLAND_DISPLAY is unset), leave GDK_BACKEND
+            // unset so GTK3 uses its standard auto-detection without aborting.
+            if std::env::var_os("GDK_BACKEND").is_none() && std::env::var_os("WAYLAND_DISPLAY").is_some() {
+                std::env::set_var("GDK_BACKEND", "wayland,x11");
             }
 
             // Probe for a DRM render node — present on AMD (radeonsi), Intel (iris),

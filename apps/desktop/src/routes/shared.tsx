@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import type { ReactNode } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuthSession } from "../features/auth/use-session";
+import { clearStoredSessionToken } from "../lib/session-token";
 import {
   cx,
   desktopShellClass,
@@ -75,6 +76,7 @@ export function AuthGuardSkeleton({
   }
 
   if (!session.data?.user) {
+    clearStoredSessionToken();
     return <Navigate replace to="/welcome" />;
   }
 

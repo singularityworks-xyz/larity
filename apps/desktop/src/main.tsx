@@ -143,12 +143,20 @@ const router = createBrowserRouter([
       {
         path: "meeting/:sessionId",
         loader: authGateLoader,
-        element: <MeetingPage />,
+        element: (
+          <AuthGuardSkeleton>
+            <MeetingPage />
+          </AuthGuardSkeleton>
+        ),
       },
       {
         path: "meeting-post/:meetingId",
         loader: authGateLoader,
-        element: <MeetingPostPage />,
+        element: (
+          <AuthGuardSkeleton>
+            <MeetingPostPage />
+          </AuthGuardSkeleton>
+        ),
       },
       {
         path: "settings",
