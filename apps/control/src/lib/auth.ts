@@ -48,7 +48,8 @@ export const auth = betterAuth({
   plugins: [organization(), bearer()],
   trustedOrigins: env.FRONTEND_ORIGINS,
   hooks: {
-    after: createAuthMiddleware((ctx) => {
+    // biome-ignore lint/suspicious/useAwait: better-auth createAuthMiddleware signature requires Promise return
+    after: createAuthMiddleware(async (ctx) => {
       const headers = (
         ctx.context as unknown as {
           responseHeaders?: Headers;

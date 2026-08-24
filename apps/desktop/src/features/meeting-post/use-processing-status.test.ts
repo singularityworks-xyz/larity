@@ -15,8 +15,7 @@ describe("useProcessingStatus state helpers", () => {
 
   it("detects in-progress status when steps are queued or processing", () => {
     const queuedStatus: ProcessingStatus = {
-      meetingId: "m-123",
-      pipelineStatus: "processing",
+      sessionId: "m-123",
       steps: {
         transcribe: "queued",
         summary: "queued",
@@ -27,8 +26,7 @@ describe("useProcessingStatus state helpers", () => {
     expect(isProcessingComplete(queuedStatus)).toBe(false);
 
     const activeTranscribe: ProcessingStatus = {
-      meetingId: "m-123",
-      pipelineStatus: "processing",
+      sessionId: "m-123",
       steps: {
         transcribe: "processing",
         summary: "queued",
@@ -40,8 +38,7 @@ describe("useProcessingStatus state helpers", () => {
 
   it("detects settled status when both steps are done, failed, or null", () => {
     const bothDone: ProcessingStatus = {
-      meetingId: "m-123",
-      pipelineStatus: "completed",
+      sessionId: "m-123",
       steps: {
         transcribe: "done",
         summary: "done",
@@ -52,8 +49,7 @@ describe("useProcessingStatus state helpers", () => {
     expect(isProcessingInProgress(bothDone)).toBe(false);
 
     const failedTranscribe: ProcessingStatus = {
-      meetingId: "m-123",
-      pipelineStatus: "failed",
+      sessionId: "m-123",
       steps: {
         transcribe: "failed",
         summary: null,
