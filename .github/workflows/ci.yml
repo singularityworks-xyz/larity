@@ -30,7 +30,7 @@ jobs:
         with:
           fail-on-error: true
 
-  lint-ts:
+  lint:
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 15
     steps:
@@ -134,7 +134,7 @@ jobs:
         run: bun test
 
   build:
-    needs: [lint-ts, lint-rust, unit-tests]
+    needs: [lint, lint-rust, unit-tests]
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 30
     env:
