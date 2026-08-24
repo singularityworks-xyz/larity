@@ -1,14 +1,28 @@
+import { useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useClients } from "../../features/clients/use-clients";
 import { cx, panelClass } from "../../lib/ui";
 import { InitialsAvatar } from "../avatar";
 
 const RECENT_CLIENTS_LIMIT = 5;
-const ANIMATION_DELAY_STEP_MS = 30;
 
 export function RecentClientsPanel() {
   const navigate = useNavigate();
   const { data: clients, isLoading } = useClients();
+  const topClients = useMemo(
+    () =>
+      [...(clients ?? [])]
+        .sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        )
+        .slice(0, RECENT_CLIENTS_LIMIT),
+    [clients]
+  );
+  const handleClientClick = useCallback(
+    (id: string) => navigate(`/clients/${id}`),
+    [navigate]
+  );
 
   if (isLoading) {
     return <div className={cx(panelClass, "h-24 animate-pulse")} />;
@@ -17,13 +31,6 @@ export function RecentClientsPanel() {
   if (!clients || clients.length === 0) {
     return null;
   }
-
-  const topClients = [...clients]
-    .sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    )
-    .slice(0, RECENT_CLIENTS_LIMIT);
 
   return (
     <div className={cx(panelClass, "flex flex-col gap-3")}>
@@ -40,15 +47,11 @@ export function RecentClientsPanel() {
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        {topClients.map((client, i) => (
+        {topClients.map((client) => (
           <button
             className="fade-in slide-in-from-bottom-1 flex animate-in cursor-pointer items-center gap-1.5 rounded-full border border-border bg-bg-elevated px-2 py-1 transition-colors duration-150 hover:border-border-strong hover:bg-bg-overlay"
             key={client.id}
-            onClick={() => navigate(`/clients/${client.id}`)}
-            style={{
-              animationDelay: `${i * ANIMATION_DELAY_STEP_MS}ms`,
-              animationFillMode: "both",
-            }}
+            onClick={() => handleClientClick(client.id)}
             type="button"
           >
             <InitialsAvatar
