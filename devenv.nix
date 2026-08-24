@@ -56,7 +56,6 @@
       gst_all_1.gst-libav
     ]);
 
-    WEBKIT_DISABLE_COMPOSITING_MODE = "1";
     GST_PLUGIN_SYSTEM_PATH_1_0 = lib.makeSearchPath "lib/gstreamer-1.0" (with pkgs; [
       gst_all_1.gstreamer
       gst_all_1.gst-plugins-base

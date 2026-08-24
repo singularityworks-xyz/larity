@@ -20,8 +20,11 @@ fn main() {
         // environment concurrently; this runs single-threaded at process
         // start, before any other threads or WebKitGTK initialization.
         unsafe {
-            if std::env::var_os("WEBKIT_DISABLE_COMPOSITING_MODE").is_none() {
-                std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+            // Disable DMABUF renderer on Linux to prevent EGL display allocation crashes
+            // while preserving GPU hardware compositing (unlike WEBKIT_DISABLE_COMPOSITING_MODE
+            // which disables hardware acceleration completely and forces CPU-only rendering).
+            if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+                std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
             }
             if std::env::var_os("WEBKIT_DMABUF_RENDERER_FORCE_SHM").is_none() {
                 std::env::set_var("WEBKIT_DMABUF_RENDERER_FORCE_SHM", "1");
