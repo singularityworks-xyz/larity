@@ -229,7 +229,7 @@ fn audio_capture_list_devices() -> Result<Vec<AudioDevice>, String> {
 }
 
 #[tauri::command]
-fn audio_capture_start(
+async fn audio_capture_start(
     app: AppHandle,
     state: State<'_, audio::AudioState>,
     session_id: String,
@@ -237,7 +237,7 @@ fn audio_capture_start(
     sys_device_id: Option<String>,
     role: String,
 ) -> Result<(), String> {
-    let mut is_capturing = state.is_capturing.blocking_lock();
+    let mut is_capturing = state.is_capturing.lock().await;
     if *is_capturing {
         return Err("Capture is already running".to_string());
     }
@@ -254,8 +254,8 @@ fn audio_capture_start(
     // Keep the stream alive by moving it to a background thread
     let (tx, mut rx) = tokio::sync::mpsc::channel(1);
 
-    *state.stop_tx.blocking_lock() = Some(tx);
-    *state.current_session.blocking_lock() = Some(session_id);
+    *state.stop_tx.lock().await = Some(tx);
+    *state.current_session.lock().await = Some(session_id);
     *is_capturing = true;
 
     // Stream must not drop before we stop
@@ -270,25 +270,25 @@ fn audio_capture_start(
 }
 
 #[tauri::command]
-fn audio_capture_stop(state: State<'_, audio::AudioState>) -> Result<(), String> {
-    let mut is_capturing = state.is_capturing.blocking_lock();
+async fn audio_capture_stop(state: State<'_, audio::AudioState>) -> Result<(), String> {
+    let mut is_capturing = state.is_capturing.lock().await;
     if !*is_capturing {
         return Err("Capture is not running".to_string());
     }
 
-    if let Some(tx) = state.stop_tx.blocking_lock().take() {
+    if let Some(tx) = state.stop_tx.lock().await.take() {
         let _ = tx.try_send(());
     }
 
-    *state.current_session.blocking_lock() = None;
+    *state.current_session.lock().await = None;
     *is_capturing = false;
 
     Ok(())
 }
 
 #[tauri::command]
-fn audio_capture_status(state: State<'_, audio::AudioState>) -> Result<AudioCaptureStatus, String> {
-    let is_capturing = *state.is_capturing.blocking_lock();
+async fn audio_capture_status(state: State<'_, audio::AudioState>) -> Result<AudioCaptureStatus, String> {
+    let is_capturing = *state.is_capturing.lock().await;
 
     Ok(AudioCaptureStatus {
         active: is_capturing,
@@ -304,7 +304,7 @@ fn audio_capture_status(state: State<'_, audio::AudioState>) -> Result<AudioCapt
 }
 
 #[tauri::command]
-fn meeting_detection_check_heuristic() -> Result<Option<MeetingDetectionHint>, String> {
+async fn meeting_detection_check_heuristic() -> Result<Option<MeetingDetectionHint>, String> {
     meeting_detection::check_process_or_audio_heuristic()
 }
 
@@ -369,15 +369,15 @@ async fn create_overlay_window(app: AppHandle, url: String) -> Result<(), String
 }
 
 #[tauri::command]
-fn vad_start(app: AppHandle, state: State<'_, VadState>) -> Result<(), String> {
+async fn vad_start(app: AppHandle, state: State<'_, VadState>) -> Result<(), String> {
     let vad_tx = audio::vad::spawn_vad_task(app).map_err(|e| e.to_string())?;
-    *state.vad_tx.blocking_lock() = Some(vad_tx);
+    *state.vad_tx.lock().await = Some(vad_tx);
     Ok(())
 }
 
 #[tauri::command]
-fn vad_stop(state: State<'_, VadState>) -> Result<(), String> {
-    *state.vad_tx.blocking_lock() = None;
+async fn vad_stop(state: State<'_, VadState>) -> Result<(), String> {
+    *state.vad_tx.lock().await = None;
     Ok(())
 }
 
