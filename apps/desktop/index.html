@@ -5,10 +5,93 @@
     <link rel="icon" type="image/svg+xml" href="/images/larity-logo-dark.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Larity</title>
+    <style>
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      margin: 0;
+      overflow: hidden;
+      color: #f4f4f5;
+      background-color: #0b0c0e;
+    }
+    #pre-bootstrap {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #0b0c0e;
+    }
+    .pre-logo {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 24px;
+      animation: preBreathe 2.4s ease-in-out infinite;
+    }
+    .pre-progress {
+      width: 160px;
+      height: 2px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+    }
+    .pre-bar {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        #818cf8,
+        #c084fc,
+        transparent
+      );
+      animation: preLaser 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+    }
+    .pre-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #71717a;
+    }
+    @keyframes preLaser {
+      0% {
+        transform: translateX(-100%);
+      }
+      100% {
+        transform: translateX(100%);
+      }
+    }
+    @keyframes preBreathe {
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 0.85;
+        filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.25));
+      }
+      50% {
+        transform: scale(1.04);
+        opacity: 1;
+        filter: drop-shadow(0 0 24px rgba(168, 85, 247, 0.5));
+      }
+    }
+    </style>
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="pre-bootstrap" data-tauri-drag-region>
+        <img src="/images/larity-logo-dark.svg" alt="Larity" class="pre-logo">
+        <div class="pre-progress">
+          <div class="pre-bar"></div>
+        </div>
+        <div class="pre-label">Initializing Larity...</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
