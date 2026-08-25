@@ -165,7 +165,7 @@ export function useBootSequence() {
     clearAllTimers();
 
     try {
-      // Step 1: Runtime
+      // Step 1: Runtime & Native Window Reveal
       setState((prev) => ({
         ...prev,
         step: 1,
@@ -181,9 +181,8 @@ export function useBootSequence() {
       } catch {
         // Non-Tauri fallback
       }
-      await new Promise((r) => setTimeout(r, 2000));
 
-      // Step 2: Audio Engine
+      // Step 2: Audio Engine Check
       setState((prev) => ({
         ...prev,
         step: 2,
@@ -196,9 +195,8 @@ export function useBootSequence() {
       if (!audioAvailable) {
         setState((prev) => ({ ...prev, audioWarning: true }));
       }
-      await new Promise((r) => setTimeout(r, 2000));
 
-      // Step 3: Workspace & Connectivity
+      // Step 3: Workspace & Connectivity Validation
       setState((prev) => ({
         ...prev,
         step: 3,
@@ -236,7 +234,6 @@ export function useBootSequence() {
           // Proceed
         }
       }
-      await new Promise((r) => setTimeout(r, 2000));
 
       // Step 4: Preparing Dashboard
       setState((prev) => ({
@@ -248,7 +245,6 @@ export function useBootSequence() {
       }));
 
       await prewarmDashboardQueries();
-      await new Promise((r) => setTimeout(r, 2000));
 
       setState((prev) => ({
         ...prev,
