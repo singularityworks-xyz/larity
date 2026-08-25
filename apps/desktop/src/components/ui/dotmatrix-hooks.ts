@@ -82,3 +82,53 @@ export function useDotMatrixPhases({
     [phase]
   );
 }
+
+export interface UseSteppedCycleOptions {
+  active: boolean;
+  cycleMsBase: number;
+  idleStep?: number;
+  speed?: number;
+  steps: number;
+}
+
+export function useSteppedCycle({
+  active,
+  cycleMsBase,
+  steps,
+  speed = 1,
+  idleStep = 0,
+}: UseSteppedCycleOptions): number {
+  const [step, setStep] = useState(idleStep);
+
+  useEffect(() => {
+    if (!active) {
+      setStep(idleStep);
+      return;
+    }
+
+    const safeSteps = Math.max(1, Math.floor(steps));
+    const safeSpeed = speed > 0 ? speed : 1;
+    const rawCycleMs = cycleMsBase / safeSpeed;
+    const rawStepMs = rawCycleMs / safeSteps;
+    const stepMs = rawStepMs > 0 && Number.isFinite(rawStepMs) ? rawStepMs : 1;
+    const cycleMs = stepMs * safeSteps;
+    const start = performance.now();
+    let currentStep = idleStep;
+    let rafId = 0;
+
+    const tick = (now: number) => {
+      const elapsed = (((now - start) % cycleMs) + cycleMs) % cycleMs;
+      const nextStep = Math.floor(elapsed / stepMs) % safeSteps;
+      if (nextStep !== currentStep) {
+        currentStep = nextStep;
+        setStep(nextStep);
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [active, cycleMsBase, steps, speed, idleStep]);
+
+  return active ? step : idleStep;
+}

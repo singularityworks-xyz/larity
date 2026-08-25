@@ -55,6 +55,10 @@ export const MATRIX_SIZE = 5;
 const CENTER = Math.floor(MATRIX_SIZE / 2);
 const MAX_RADIUS = Math.hypot(CENTER, CENTER);
 
+export function rowMajorIndex(row: number, col: number): number {
+  return row * MATRIX_SIZE + col;
+}
+
 export function indexToCoord(index: number): { row: number; col: number } {
   return {
     row: Math.floor(index / MATRIX_SIZE),
