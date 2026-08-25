@@ -80,7 +80,36 @@
       background-color: #f4f4f5;
       border-radius: 999px;
       opacity: 0.1;
-      animation: preDotEqualizer 1.5s ease-in-out infinite;
+      animation: preDotUpwardSurge 1.6s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+      will-change: opacity, filter;
+    }
+    @keyframes preDotUpwardSurge {
+      0%,
+      100% {
+        opacity: 0.1;
+        filter: none;
+      }
+      45% {
+        opacity: 1;
+        filter: drop-shadow(0 0 2.5px rgba(255, 255, 255, 0.6))
+          drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+      }
+    }
+    /* Upward Wave: Row 4 (Bottom) -> Row 0 (Top) */
+    .r4 {
+      animation-delay: 0s;
+    }
+    .r3 {
+      animation-delay: 0.22s;
+    }
+    .r2 {
+      animation-delay: 0.44s;
+    }
+    .r1 {
+      animation-delay: 0.66s;
+    }
+    .r0 {
+      animation-delay: 0.88s;
     }
     .pre-label {
       font-size: 13px;
@@ -117,30 +146,6 @@
         filter: drop-shadow(0 0 28px rgba(255, 255, 255, 0.14));
       }
     }
-    @keyframes preDotEqualizer {
-      0%,
-      100% {
-        opacity: 0.1;
-      }
-      50% {
-        opacity: 0.95;
-      }
-    }
-    .pre-dot:nth-child(5n + 1) {
-      animation-delay: 0s;
-    }
-    .pre-dot:nth-child(5n + 2) {
-      animation-delay: 0.25s;
-    }
-    .pre-dot:nth-child(5n + 3) {
-      animation-delay: 0.12s;
-    }
-    .pre-dot:nth-child(5n + 4) {
-      animation-delay: 0.38s;
-    }
-    .pre-dot:nth-child(5n + 5) {
-      animation-delay: 0.18s;
-    }
     </style>
   </head>
 
@@ -153,22 +158,27 @@
         <div class="pre-center">
           <img src="/images/larity-logo-dark.svg" alt="Larity" class="pre-logo">
           <div class="pre-step-row">
-            <div class="pre-matrix">
-              <span class="pre-dot"></span><span class="pre-dot"></span
-              ><span class="pre-dot"></span><span class="pre-dot"></span
-              ><span class="pre-dot"></span>
-              <span class="pre-dot"></span><span class="pre-dot"></span
-              ><span class="pre-dot"></span><span class="pre-dot"></span
-              ><span class="pre-dot"></span>
-              <span class="pre-dot"></span><span class="pre-dot"></span
-              ><span class="pre-dot"></span><span class="pre-dot"></span
-              ><span class="pre-dot"></span>
-              <span class="pre-dot"></span><span class="pre-dot"></span
-              ><span class="pre-dot"></span><span class="pre-dot"></span
-              ><span class="pre-dot"></span>
-              <span class="pre-dot"></span><span class="pre-dot"></span
-              ><span class="pre-dot"></span><span class="pre-dot"></span
-              ><span class="pre-dot"></span>
+            <div class="pre-matrix" aria-hidden="true">
+              <!-- Row 0 (Top) -->
+              <span class="pre-dot r0"></span><span class="pre-dot r0"></span
+              ><span class="pre-dot r0"></span><span class="pre-dot r0"></span
+              ><span class="pre-dot r0"></span>
+              <!-- Row 1 -->
+              <span class="pre-dot r1"></span><span class="pre-dot r1"></span
+              ><span class="pre-dot r1"></span><span class="pre-dot r1"></span
+              ><span class="pre-dot r1"></span>
+              <!-- Row 2 -->
+              <span class="pre-dot r2"></span><span class="pre-dot r2"></span
+              ><span class="pre-dot r2"></span><span class="pre-dot r2"></span
+              ><span class="pre-dot r2"></span>
+              <!-- Row 3 -->
+              <span class="pre-dot r3"></span><span class="pre-dot r3"></span
+              ><span class="pre-dot r3"></span><span class="pre-dot r3"></span
+              ><span class="pre-dot r3"></span>
+              <!-- Row 4 (Bottom) -->
+              <span class="pre-dot r4"></span><span class="pre-dot r4"></span
+              ><span class="pre-dot r4"></span><span class="pre-dot r4"></span
+              ><span class="pre-dot r4"></span>
             </div>
             <span class="pre-label">Initializing runtime...</span>
           </div>

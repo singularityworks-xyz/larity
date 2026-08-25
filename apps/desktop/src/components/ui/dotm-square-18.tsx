@@ -12,18 +12,11 @@ import {
 
 export type DotmSquare18Props = DotMatrixCommonProps;
 
-const BASE_OPACITY = 0.08;
-const LIT_OPACITY = 0.94;
-const CAP_OPACITY = 1;
-const STEP_COUNT = 24;
-const MAX_LEVEL = 5;
-
-function clampLevel(value: number): number {
-  return Math.max(1, Math.min(MAX_LEVEL, Math.round(value)));
-}
+const BASE_OPACITY = 0.1;
+const CAP_OPACITY = 1.0;
 
 export function DotmSquare18({
-  speed = 1.35,
+  speed = 1.4,
   pattern = "full",
   animated = true,
   hoverAnimated = false,
@@ -37,7 +30,7 @@ export function DotmSquare18({
   });
   const animPhase = useCyclePhase({
     active: !reducedMotion && matrixPhase !== "idle",
-    cycleMsBase: 1750,
+    cycleMsBase: 1600,
     speed,
   });
 
@@ -48,21 +41,26 @@ export function DotmSquare18({
           return { className: "dmx-inactive" };
         }
 
-        const t =
-          reducedMotion || phase === "idle" ? 0 : animPhase * STEP_COUNT;
-        const colPhase = t * 0.52 + col * 1.15;
-        const level = clampLevel(
-          1 + ((Math.sin(colPhase) + 1) / 2) * (MAX_LEVEL - 1)
-        );
-        const topLitRow = MAX_LEVEL - level;
+        if (reducedMotion || phase === "idle") {
+          return { style: { opacity: (4 - row) * 0.2 + 0.2 } };
+        }
 
-        if (row > topLitRow) {
-          return { style: { opacity: LIT_OPACITY } };
-        }
-        if (row === topLitRow) {
-          return { style: { opacity: CAP_OPACITY } };
-        }
-        return { style: { opacity: BASE_OPACITY } };
+        // Upward wave: row 4 (bottom) -> row 0 (top)
+        const t = animPhase * Math.PI * 2;
+        const rowOffset = (4 - row) * 0.85;
+        const colHarmonic = Math.abs(col - 2) * 0.15;
+        const phaseValue = t - rowOffset + colHarmonic;
+
+        // Sine envelope with sharp power curve for crisp DotMatrix bloom
+        const rawSine = Math.sin(phaseValue);
+        const wave = ((rawSine + 1) / 2) ** 2.2;
+        const opacity = BASE_OPACITY + wave * (CAP_OPACITY - BASE_OPACITY);
+
+        return {
+          style: {
+            opacity,
+          },
+        };
       },
     [reducedMotion, animPhase]
   );
@@ -72,11 +70,13 @@ export function DotmSquare18({
       {...rest}
       animated={animated}
       animationResolver={resolver}
-      dotSize={rest.dotSize ?? 4}
+      bloom={rest.bloom ?? true}
+      dotSize={rest.dotSize ?? 3.5}
+      halo={rest.halo ?? 0.2}
       pattern={pattern}
       phase={matrixPhase}
       reducedMotion={reducedMotion}
-      size={rest.size ?? 20}
+      size={rest.size ?? 22}
       speed={speed}
     />
   );
