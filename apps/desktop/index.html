@@ -68,48 +68,57 @@
       display: grid;
       grid-template-rows: repeat(5, 3.5px);
       grid-template-columns: repeat(5, 3.5px);
-      gap: 2px;
+      gap: 1.5px;
       align-items: center;
       justify-content: center;
       width: 22px;
       height: 22px;
     }
     .pre-dot {
+      display: block;
       width: 3.5px;
       height: 3.5px;
       background-color: #f4f4f5;
       border-radius: 999px;
-      opacity: 0.1;
-      animation: preDotUpwardSurge 1.6s cubic-bezier(0.42, 0, 0.58, 1) infinite;
-      will-change: opacity, filter;
+      opacity: 0.08;
+      transform: scale(0.92);
+      animation: preDotBottomUp 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      will-change: opacity, transform, filter;
     }
-    @keyframes preDotUpwardSurge {
+    @keyframes preDotBottomUp {
       0%,
       100% {
-        opacity: 0.1;
+        opacity: 0.08;
+        transform: scale(0.92);
         filter: none;
       }
-      45% {
+      32% {
         opacity: 1;
-        filter: drop-shadow(0 0 2.5px rgba(255, 255, 255, 0.6))
-          drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+        transform: scale(1.08);
+        filter: drop-shadow(0 0 2.5px rgba(244, 244, 245, 0.8))
+          drop-shadow(0 0 5px rgba(244, 244, 245, 0.35));
+      }
+      60% {
+        opacity: 0.32;
+        transform: scale(1);
+        filter: drop-shadow(0 0 1px rgba(244, 244, 245, 0.2));
       }
     }
-    /* Upward Wave: Row 4 (Bottom) -> Row 0 (Top) */
+    /* Surging Wave: Bottom Row 4 (0.0s) -> Top Row 0 (0.64s) */
     .r4 {
       animation-delay: 0s;
     }
     .r3 {
-      animation-delay: 0.22s;
+      animation-delay: 0.16s;
     }
     .r2 {
-      animation-delay: 0.44s;
+      animation-delay: 0.32s;
     }
     .r1 {
-      animation-delay: 0.66s;
+      animation-delay: 0.48s;
     }
     .r0 {
-      animation-delay: 0.88s;
+      animation-delay: 0.64s;
     }
     .pre-label {
       font-size: 13px;
