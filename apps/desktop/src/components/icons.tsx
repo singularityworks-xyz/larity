@@ -40,3 +40,35 @@ export function GitHubIcon() {
     </svg>
   );
 }
+
+export function LarityLogo({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      height="33"
+      viewBox="0 0 36 33"
+      width="36"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>Larity Logo</title>
+      <path
+        d="M13 7C13 8.10457 13.8954 9 15 9H25C26.1046 9 27 9.89543 27 11V15C27 16.1046 27.8954 17 29 17H34C35.1046 17 36 17.8954 36 19V30C36 31.6569 34.6569 33 33 33H3C1.34315 33 4.83199e-08 31.6569 0 30V3C0 1.34315 1.34315 4.83191e-08 3 0H11C12.1046 0 13 0.895431 13 2V7Z"
+        fill="white"
+      />
+      <rect fill="black" height="24" rx="1" width="5" x="4" y="5" />
+      <rect
+        fill="black"
+        height="26"
+        rx="1"
+        transform="rotate(-90 5 29)"
+        width="5"
+        x="5"
+        y="29"
+      />
+      <rect fill="black" height="5" rx="1" width="4" x="27" y="22" />
+      <rect fill="black" height="4" width="3" x="13" y="13" />
+      <rect fill="black" height="4" width="3" x="20" y="13" />
+    </svg>
+  );
+}

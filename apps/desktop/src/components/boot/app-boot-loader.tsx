@@ -1,6 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, X } from "lucide-react";
 import type React from "react";
+import { LarityLogo } from "../icons";
 import { DotmSquare17 } from "../ui/dotm-square-17";
 import { useBootSequence } from "./use-boot-sequence";
 
@@ -79,21 +80,24 @@ export function AppBootLoader({ children }: { children: React.ReactNode }) {
 
         {/* Center Minimal Cluster */}
         <main className="flex flex-col items-center justify-center px-6 text-center">
-          <DotmSquare17
-            animated
-            bloom
-            color="#ededed"
-            dotSize={4}
-            halo={0.25}
-            size={36}
-            speed={2.2}
-          />
+          <LarityLogo className="h-[37px] w-[40px] drop-shadow-[0_0_16px_rgba(255,255,255,0.12)] transition-transform duration-700" />
 
-          <p className="mt-6 font-medium text-[12px] text-neutral-300 tracking-tight">
-            {stepLabel}
-          </p>
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <DotmSquare17
+              animated
+              bloom
+              color="#ededed"
+              dotSize={2.5}
+              halo={0.2}
+              size={18}
+              speed={2.5}
+            />
+            <span className="font-medium text-[12px] text-neutral-300 tracking-tight">
+              {stepLabel}
+            </span>
+          </div>
 
-          <div className="mt-4 h-[1.5px] w-32 overflow-hidden rounded-full bg-neutral-800">
+          <div className="mt-4 h-[1.5px] w-36 overflow-hidden rounded-full bg-neutral-800">
             <div
               className="h-full bg-neutral-200 transition-all duration-500 ease-out"
               style={{ width: `${progressPercent}%` }}
