@@ -14,10 +14,16 @@ export const NextMeetingCard = memo(function NextMeetingCard({
   if (loading) {
     return (
       <article className={startMeetingModeClass} style={{ minHeight: 112 }}>
-        <div className="flex flex-col gap-2.5">
-          <div className="h-3 w-28 animate-pulse rounded-sm bg-bg-subtle" />
-          <div className="h-4 w-56 animate-pulse rounded-sm bg-bg-subtle" />
-          <div className="h-7 w-64 animate-pulse rounded-sm bg-bg-subtle" />
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 space-y-2.5">
+            <div className="skeleton-shimmer h-3 w-28 rounded-md" />
+            <div className="skeleton-shimmer h-4 w-56 rounded-md" />
+            <div className="skeleton-shimmer h-3.5 w-64 rounded-md" />
+          </div>
+          <div className="flex shrink-0 flex-col gap-1.5">
+            <div className="skeleton-shimmer h-7 w-24 rounded-lg" />
+            <div className="skeleton-shimmer h-7 w-24 rounded-lg" />
+          </div>
         </div>
       </article>
     );

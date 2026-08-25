@@ -25,7 +25,25 @@ export function RecentClientsPanel() {
   );
 
   if (isLoading) {
-    return <div className={cx(panelClass, "h-24 animate-pulse")} />;
+    return (
+      <div className={cx(panelClass, "flex flex-col gap-3")}>
+        <div className="flex items-center justify-between">
+          <div className="skeleton-shimmer h-4 w-24 rounded" />
+          <div className="skeleton-shimmer h-3 w-12 rounded" />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              className="flex items-center gap-1.5 rounded-full border border-border/50 bg-bg-elevated px-2 py-1"
+              key={`rc-sk-${i}`}
+            >
+              <div className="skeleton-shimmer h-3 w-3 rounded-full" />
+              <div className="skeleton-shimmer h-3 w-14 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (!clients || clients.length === 0) {

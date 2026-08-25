@@ -273,3 +273,42 @@
   app-region: drag;
   -webkit-app-region: drag;
 }
+
+/* ── Premium Pristine Skeleton Shimmer System ── */
+@keyframes skeleton-shimmer-wave {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.085) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer-wave 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: background-position;
+}
+
+:root:not(.dark) .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.035) 0%,
+    rgba(0, 0, 0, 0.085) 50%,
+    rgba(0, 0, 0, 0.035) 100%
+  );
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer {
+    background: rgba(255, 255, 255, 0.05);
+    animation: none !important;
+  }
+}

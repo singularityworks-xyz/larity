@@ -14,11 +14,11 @@ function renderContent(commitments: OpenCommitmentItem[], loading: boolean) {
       <div className="flex flex-col gap-2">
         {[1, 2, 3].map((i) => (
           <div
-            className="flex animate-pulse items-center gap-3 rounded-lg py-1.5"
+            className="flex items-center gap-3 rounded-lg py-1.5"
             key={`oc-sk-${i}`}
           >
-            <div className="h-3 w-16 rounded-sm bg-bg-subtle" />
-            <div className="h-3 flex-1 rounded-sm bg-bg-subtle" />
+            <div className="skeleton-shimmer h-3 w-16 rounded" />
+            <div className="skeleton-shimmer h-3.5 flex-1 rounded" />
           </div>
         ))}
       </div>

@@ -152,6 +152,7 @@ const Clock = memo(function Clock() {
 
 interface HeaderProps {
   canManage: boolean;
+  loading?: boolean;
   onToggleMemberPanel: () => void;
   openCommitmentsCount: number;
   orgName?: string;
@@ -168,6 +169,7 @@ const Header = memo(function Header({
   onToggleMemberPanel,
   openCommitmentsCount,
   todayMeetingsCount,
+  loading = false,
 }: HeaderProps) {
   const navigate = useNavigate();
   const { theme } = useTheme();
@@ -194,17 +196,31 @@ const Header = memo(function Header({
           <h1 className="font-medium text-2xl text-white/90 tracking-tight">
             Ready to focus, <span className="text-white">{firstName}</span>?
           </h1>
-          <div className="flex items-center gap-2 text-white/60 text-xs">
-            {orgName && (
-              <>
-                <span className="font-medium">{orgName}</span>
-                <span className="h-1 w-1 rounded-full bg-white/40" />
-              </>
-            )}
-            <span>{openCommitmentsCount} open commitments</span>
-            <span className="h-1 w-1 rounded-full bg-white/40" />
-            <span>{todayMeetingsCount} sessions today</span>
-          </div>
+          {loading ? (
+            <div className="flex items-center gap-2 text-xs">
+              {orgName && (
+                <>
+                  <span className="font-medium text-white/80">{orgName}</span>
+                  <span className="h-1 w-1 rounded-full bg-white/40" />
+                </>
+              )}
+              <div className="skeleton-shimmer h-3.5 w-28 rounded-md" />
+              <span className="h-1 w-1 rounded-full bg-white/40" />
+              <div className="skeleton-shimmer h-3.5 w-24 rounded-md" />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-white/60 text-xs">
+              {orgName && (
+                <>
+                  <span className="font-medium">{orgName}</span>
+                  <span className="h-1 w-1 rounded-full bg-white/40" />
+                </>
+              )}
+              <span>{openCommitmentsCount} open commitments</span>
+              <span className="h-1 w-1 rounded-full bg-white/40" />
+              <span>{todayMeetingsCount} sessions today</span>
+            </div>
+          )}
         </div>
 
         {canManage && (
@@ -478,9 +494,30 @@ const NextMeetingHero = memo(function NextMeetingHero({
   if (loading) {
     return (
       <motion.div
-        className="h-32 animate-pulse rounded-[16px] border border-border bg-bg-elevated"
+        className="relative overflow-hidden rounded-xl border border-border/80 bg-bg-elevated/70 p-4 lg:p-6"
         variants={itemVariants}
-      />
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="skeleton-shimmer h-5 w-20 rounded-md" />
+              <div className="skeleton-shimmer h-4 w-28 rounded-md" />
+            </div>
+            <div className="skeleton-shimmer mb-3 h-7 w-3/4 max-w-md rounded-lg" />
+            <div className="flex items-center gap-3">
+              <div className="skeleton-shimmer h-3.5 w-24 rounded-md" />
+              <div className="h-1 w-1 rounded-full bg-border-strong" />
+              <div className="skeleton-shimmer h-3.5 w-20 rounded-md" />
+              <div className="h-1 w-1 rounded-full bg-border-strong" />
+              <div className="skeleton-shimmer h-3.5 w-16 rounded-md" />
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-col gap-2">
+            <div className="skeleton-shimmer h-9 w-28 rounded-lg" />
+            <div className="skeleton-shimmer h-9 w-28 rounded-lg" />
+          </div>
+        </div>
+      </motion.div>
     );
   }
 
@@ -742,12 +779,22 @@ const TodayAgenda = memo(function TodayAgenda({
       </div>
 
       {loading ? (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {[1, 2, 3].map((i) => (
             <div
-              className="h-10 animate-pulse rounded-lg bg-bg-subtle"
-              key={i}
-            />
+              className="flex items-center justify-between gap-3 rounded-xl border border-border/30 bg-bg-subtle/30 px-3 py-2.5"
+              key={`today-sk-${i}`}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="skeleton-shimmer h-3.5 w-10 shrink-0 rounded" />
+                <div className="h-6 w-1 rounded-full bg-border/50" />
+                <div className="min-w-0 space-y-1.5">
+                  <div className="skeleton-shimmer h-3.5 w-32 rounded" />
+                  <div className="skeleton-shimmer h-2.5 w-20 rounded" />
+                </div>
+              </div>
+              <div className="skeleton-shimmer h-7 w-16 shrink-0 rounded-lg" />
+            </div>
           ))}
         </div>
       ) : null}
@@ -824,12 +871,24 @@ const RecentActivityList = memo(function RecentActivityList({
       </div>
 
       {loading ? (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {[1, 2, 3].map((i) => (
             <div
-              className="h-9 animate-pulse rounded-lg bg-bg-subtle"
-              key={i}
-            />
+              className="flex flex-col gap-1.5 rounded-lg border border-border/30 bg-bg-subtle/25 px-2.5 py-2"
+              key={`act-sk-${i}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 space-y-1">
+                  <div className="skeleton-shimmer h-3.5 w-36 rounded" />
+                  <div className="skeleton-shimmer h-2.5 w-24 rounded" />
+                </div>
+                <div className="skeleton-shimmer h-4 w-12 shrink-0 rounded" />
+              </div>
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <div className="skeleton-shimmer h-3.5 w-14 rounded" />
+                <div className="skeleton-shimmer h-3.5 w-16 rounded" />
+              </div>
+            </div>
           ))}
         </div>
       ) : null}
@@ -916,12 +975,18 @@ const ActiveCommitments = memo(function ActiveCommitments({
       </div>
 
       {loading ? (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {[1, 2].map((i) => (
             <div
-              className="h-8 animate-pulse rounded-lg bg-bg-subtle"
-              key={i}
-            />
+              className="flex items-start gap-2.5 rounded-lg border border-border/40 bg-bg-elevated px-2.5 py-2.5 shadow-sm"
+              key={`com-sk-${i}`}
+            >
+              <div className="skeleton-shimmer mt-0.5 h-4 w-4 shrink-0 rounded-full" />
+              <div className="flex-1 space-y-1.5">
+                <div className="skeleton-shimmer h-3.5 w-4/5 rounded" />
+                <div className="skeleton-shimmer h-2.5 w-20 rounded" />
+              </div>
+            </div>
           ))}
         </div>
       ) : null}
@@ -968,7 +1033,31 @@ const ClientShortcuts = memo(function ClientShortcuts() {
         .slice(0, 6),
     [clients]
   );
-  if (isLoading || !clients || clients.length === 0) {
+  if (isLoading) {
+    return (
+      <motion.div
+        className="col-span-1 pt-2 md:col-span-8 lg:col-span-9"
+        variants={itemVariants}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="mr-2 py-2 font-semibold text-fg-muted text-xs">
+            Active Clients:
+          </span>
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              className="flex items-center gap-2 rounded-full border border-border/50 bg-bg-elevated py-1 pr-4 pl-1 shadow-sm"
+              key={`client-sk-${i}`}
+            >
+              <div className="skeleton-shimmer h-6 w-6 rounded-full" />
+              <div className="skeleton-shimmer h-3 w-16 rounded" />
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (!clients || clients.length === 0) {
     return null;
   }
 
@@ -1138,6 +1227,7 @@ export function HomePage() {
     >
       <Header
         canManage={canManage}
+        loading={isLoading}
         onToggleMemberPanel={toggleMemberPanel}
         openCommitmentsCount={data?.openCommitments?.length ?? 0}
         orgName={orgName}

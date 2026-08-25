@@ -54,12 +54,12 @@ function renderContent(
       <div className="flex flex-col gap-2">
         {[1, 2, 3, 4, 5].map((i) => (
           <div
-            className="flex animate-pulse items-center gap-3 rounded-lg py-1.5"
+            className="flex items-center gap-3 rounded-lg py-1.5"
             key={`ra-sk-${i}`}
           >
-            <div className="h-3 w-14 rounded-sm bg-bg-subtle" />
-            <div className="h-3 w-32 rounded-sm bg-bg-subtle" />
-            <div className="h-3 w-10 rounded-sm bg-bg-subtle" />
+            <div className="skeleton-shimmer h-3 w-14 rounded" />
+            <div className="skeleton-shimmer h-3.5 w-32 rounded" />
+            <div className="skeleton-shimmer ml-auto h-3 w-10 rounded" />
           </div>
         ))}
       </div>
