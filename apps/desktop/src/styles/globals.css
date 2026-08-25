@@ -11,6 +11,7 @@
 @import "@fontsource/geist-mono/latin-500.css";
 @import "@fontsource/share-tech-mono/latin-400.css";
 @import "./meeting-mode.css";
+@import "../components/dotmatrix-loader.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
