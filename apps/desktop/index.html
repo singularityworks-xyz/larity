@@ -81,45 +81,120 @@
       background-color: #f4f4f5;
       border-radius: 999px;
       opacity: 0.08;
-      transform: scale(0.92);
-      animation: preDotBottomUp 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-      will-change: opacity, transform, filter;
+      will-change: opacity, filter;
     }
-    @keyframes preDotBottomUp {
+
+    /* Sound Bars Equalizer Row Levels */
+    .eq-r4 {
+      animation: eqR4 1.75s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+    }
+    .eq-r3 {
+      animation: eqR3 1.75s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+    }
+    .eq-r2 {
+      animation: eqR2 1.75s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+    }
+    .eq-r1 {
+      animation: eqR1 1.75s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+    }
+    .eq-r0 {
+      animation: eqR0 1.75s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+    }
+
+    /* Column Phase Shifts (matching DotmSquare18 col * 1.15) */
+    .eq-c0 {
+      animation-delay: 0s;
+    }
+    .eq-c1 {
+      animation-delay: -0.35s;
+    }
+    .eq-c2 {
+      animation-delay: -0.7s;
+    }
+    .eq-c3 {
+      animation-delay: -1.05s;
+    }
+    .eq-c4 {
+      animation-delay: -1.4s;
+    }
+
+    @keyframes eqR4 {
+      0%,
+      100% {
+        opacity: 0.85;
+        filter: drop-shadow(0 0 2px rgba(244, 244, 245, 0.6));
+      }
+      50% {
+        opacity: 1;
+        filter: drop-shadow(0 0 3px rgba(244, 244, 245, 0.8));
+      }
+    }
+    @keyframes eqR3 {
       0%,
       100% {
         opacity: 0.08;
-        transform: scale(0.92);
         filter: none;
       }
-      32% {
+      15%,
+      85% {
+        opacity: 0.94;
+        filter: drop-shadow(0 0 2px rgba(244, 244, 245, 0.6));
+      }
+      50% {
         opacity: 1;
-        transform: scale(1.08);
-        filter: drop-shadow(0 0 2.5px rgba(244, 244, 245, 0.8))
-          drop-shadow(0 0 5px rgba(244, 244, 245, 0.35));
+        filter: drop-shadow(0 0 3px rgba(244, 244, 245, 0.8));
       }
+    }
+    @keyframes eqR2 {
+      0%,
+      20%,
+      80%,
+      100% {
+        opacity: 0.08;
+        filter: none;
+      }
+      30%,
+      70% {
+        opacity: 0.94;
+        filter: drop-shadow(0 0 2px rgba(244, 244, 245, 0.6));
+      }
+      50% {
+        opacity: 1;
+        filter: drop-shadow(0 0 3px rgba(244, 244, 245, 0.8));
+      }
+    }
+    @keyframes eqR1 {
+      0%,
+      32%,
+      68%,
+      100% {
+        opacity: 0.08;
+        filter: none;
+      }
+      40%,
       60% {
-        opacity: 0.32;
-        transform: scale(1);
-        filter: drop-shadow(0 0 1px rgba(244, 244, 245, 0.2));
+        opacity: 0.94;
+        filter: drop-shadow(0 0 2px rgba(244, 244, 245, 0.6));
+      }
+      50% {
+        opacity: 1;
+        filter: drop-shadow(0 0 3px rgba(244, 244, 245, 0.8));
       }
     }
-    /* Surging Wave: Bottom Row 4 (0.0s) -> Top Row 0 (0.64s) */
-    .r4 {
-      animation-delay: 0s;
+    @keyframes eqR0 {
+      0%,
+      42%,
+      58%,
+      100% {
+        opacity: 0.08;
+        filter: none;
+      }
+      50% {
+        opacity: 1;
+        filter: drop-shadow(0 0 3px rgba(244, 244, 245, 0.9));
+      }
     }
-    .r3 {
-      animation-delay: 0.16s;
-    }
-    .r2 {
-      animation-delay: 0.32s;
-    }
-    .r1 {
-      animation-delay: 0.48s;
-    }
-    .r0 {
-      animation-delay: 0.64s;
-    }
+
     .pre-label {
       font-size: 13px;
       font-weight: 500;
@@ -146,13 +221,13 @@
     @keyframes preLogoBreathe {
       0%,
       100% {
-        transform: scale(1);
         opacity: 0.95;
+        transform: scale(1);
       }
       50% {
-        transform: scale(1.02);
         opacity: 1;
         filter: drop-shadow(0 0 28px rgba(255, 255, 255, 0.14));
+        transform: scale(1.02);
       }
     }
     </style>
@@ -169,25 +244,35 @@
           <div class="pre-step-row">
             <div class="pre-matrix" aria-hidden="true">
               <!-- Row 0 (Top) -->
-              <span class="pre-dot r0"></span><span class="pre-dot r0"></span
-              ><span class="pre-dot r0"></span><span class="pre-dot r0"></span
-              ><span class="pre-dot r0"></span>
+              <span class="pre-dot eq-r0 eq-c0"></span
+              ><span class="pre-dot eq-r0 eq-c1"></span
+              ><span class="pre-dot eq-r0 eq-c2"></span
+              ><span class="pre-dot eq-r0 eq-c3"></span
+              ><span class="pre-dot eq-r0 eq-c4"></span>
               <!-- Row 1 -->
-              <span class="pre-dot r1"></span><span class="pre-dot r1"></span
-              ><span class="pre-dot r1"></span><span class="pre-dot r1"></span
-              ><span class="pre-dot r1"></span>
+              <span class="pre-dot eq-r1 eq-c0"></span
+              ><span class="pre-dot eq-r1 eq-c1"></span
+              ><span class="pre-dot eq-r1 eq-c2"></span
+              ><span class="pre-dot eq-r1 eq-c3"></span
+              ><span class="pre-dot eq-r1 eq-c4"></span>
               <!-- Row 2 -->
-              <span class="pre-dot r2"></span><span class="pre-dot r2"></span
-              ><span class="pre-dot r2"></span><span class="pre-dot r2"></span
-              ><span class="pre-dot r2"></span>
+              <span class="pre-dot eq-r2 eq-c0"></span
+              ><span class="pre-dot eq-r2 eq-c1"></span
+              ><span class="pre-dot eq-r2 eq-c2"></span
+              ><span class="pre-dot eq-r2 eq-c3"></span
+              ><span class="pre-dot eq-r2 eq-c4"></span>
               <!-- Row 3 -->
-              <span class="pre-dot r3"></span><span class="pre-dot r3"></span
-              ><span class="pre-dot r3"></span><span class="pre-dot r3"></span
-              ><span class="pre-dot r3"></span>
+              <span class="pre-dot eq-r3 eq-c0"></span
+              ><span class="pre-dot eq-r3 eq-c1"></span
+              ><span class="pre-dot eq-r3 eq-c2"></span
+              ><span class="pre-dot eq-r3 eq-c3"></span
+              ><span class="pre-dot eq-r3 eq-c4"></span>
               <!-- Row 4 (Bottom) -->
-              <span class="pre-dot r4"></span><span class="pre-dot r4"></span
-              ><span class="pre-dot r4"></span><span class="pre-dot r4"></span
-              ><span class="pre-dot r4"></span>
+              <span class="pre-dot eq-r4 eq-c0"></span
+              ><span class="pre-dot eq-r4 eq-c1"></span
+              ><span class="pre-dot eq-r4 eq-c2"></span
+              ><span class="pre-dot eq-r4 eq-c3"></span
+              ><span class="pre-dot eq-r4 eq-c4"></span>
             </div>
             <span class="pre-label">Initializing runtime...</span>
           </div>
