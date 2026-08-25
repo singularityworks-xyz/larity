@@ -52,6 +52,7 @@ export function AppBootLoader({ children }: { children: React.ReactNode }) {
           <div className="loader-ambient-base" />
           <div className="loader-ambient-orb-1" />
           <div className="loader-ambient-orb-2" />
+          <div className="loader-ambient-orb-center" />
           <div className="loader-ambient-vignette" />
         </div>
 
