@@ -123,6 +123,8 @@
   }
 
   html {
+    overflow-x: hidden;
+    overflow-y: auto;
     font-family: var(--font-sans);
     font-feature-settings:
       "tnum" 1,
@@ -136,6 +138,8 @@
   body {
     min-height: 100vh;
     margin: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
     font-family: inherit;
     color: var(--text-primary);
     background: var(--bg);
