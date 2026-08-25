@@ -46,9 +46,7 @@ export function LarityLogo({ className }: { className?: string }) {
     <svg
       className={className}
       fill="none"
-      height="33"
       viewBox="0 0 36 33"
-      width="36"
       xmlns="http://www.w3.org/2000/svg"
     >
       <title>Larity Logo</title>
