@@ -142,3 +142,129 @@
     animation: none !important;
   }
 }
+
+/* ── Minimal Monochrome Ambient Loader Gradient ── */
+.loader-ambient-layer {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 52%;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.loader-ambient-base {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 85% 75% at 50% 120%,
+    rgba(255, 255, 255, 0.055) 0%,
+    rgba(255, 255, 255, 0.018) 42%,
+    transparent 78%
+  );
+  animation: loader-ambient-appear 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+.loader-ambient-orb-1 {
+  position: absolute;
+  bottom: -40px;
+  left: 28%;
+  width: 520px;
+  height: 320px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.045) 0%,
+    rgba(255, 255, 255, 0.012) 46%,
+    transparent 72%
+  );
+  border-radius: 9999px;
+  filter: blur(72px);
+  animation:
+    loader-ambient-appear 1s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+    loader-ambient-drift-1 15s ease-in-out 1s infinite alternate;
+  will-change: transform, opacity;
+}
+
+.loader-ambient-orb-2 {
+  position: absolute;
+  right: 28%;
+  bottom: -40px;
+  width: 480px;
+  height: 300px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.038) 0%,
+    rgba(255, 255, 255, 0.009) 50%,
+    transparent 70%
+  );
+  border-radius: 9999px;
+  filter: blur(84px);
+  animation:
+    loader-ambient-appear 1s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+    loader-ambient-drift-2 19s ease-in-out 1s infinite alternate;
+  will-change: transform, opacity;
+}
+
+.loader-ambient-vignette {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    transparent 0%,
+    rgba(11, 12, 14, 0.4) 65%,
+    #0b0c0e 100%
+  );
+}
+
+@keyframes loader-ambient-appear {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes loader-ambient-drift-1 {
+  0% {
+    transform: translate3d(-50%, 0, 0) scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translate3d(-36%, -18px, 0) scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(-62%, 14px, 0) scale(0.94);
+    opacity: 0.7;
+  }
+}
+
+@keyframes loader-ambient-drift-2 {
+  0% {
+    transform: translate3d(50%, 0, 0) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate3d(36%, 16px, 0) scale(0.95);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate3d(64%, -20px, 0) scale(1.07);
+    opacity: 0.65;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-ambient-base,
+  .loader-ambient-orb-1,
+  .loader-ambient-orb-2 {
+    opacity: 0.8 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}

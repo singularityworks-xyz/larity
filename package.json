@@ -46,5 +46,5 @@
   "patchedDependencies": {
     "@deepgram/sdk@5.4.0": "patches/@deepgram%2Fsdk@5.4.0.patch"
   },
-  "version": "0.1.6"
+  "version": "0.1.7"
 }

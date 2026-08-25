@@ -40,16 +40,24 @@ export function AppBootLoader({ children }: { children: React.ReactNode }) {
 
       {/* ── Minimal Monochrome Stage-Driven Boot Loader ── */}
       <div
-        className={`fixed inset-0 z-[99999] flex select-none flex-col items-center justify-between bg-[#0b0c0e] font-sans text-[#ededed] antialiased transition-all duration-300 ease-out ${
+        className={`fixed inset-0 z-[99999] flex select-none flex-col items-center justify-between overflow-hidden bg-[#0b0c0e] font-sans text-[#ededed] antialiased transition-all duration-300 ease-out ${
           isBootComplete
             ? "pointer-events-none scale-[0.99] opacity-0 blur-[2px]"
             : "opacity-100"
         }`}
         style={{ willChange: "opacity, transform" }}
       >
+        {/* Soft Animated Monochrome Ambient Gradient (Bottom Half) */}
+        <div aria-hidden="true" className="loader-ambient-layer">
+          <div className="loader-ambient-base" />
+          <div className="loader-ambient-orb-1" />
+          <div className="loader-ambient-orb-2" />
+          <div className="loader-ambient-vignette" />
+        </div>
+
         {/* Top Window Titlebar */}
         <header
-          className="flex h-11 w-full select-none items-center justify-between px-5"
+          className="relative z-10 flex h-11 w-full select-none items-center justify-between px-5"
           data-tauri-drag-region
         >
           <div className="flex items-center gap-2.5" data-tauri-drag-region>
@@ -80,7 +88,7 @@ export function AppBootLoader({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Center Stage Cluster with Generous Proportions & Optical Centering */}
-        <main className="flex flex-col items-center justify-center px-6 pb-12 text-center">
+        <main className="relative z-10 flex flex-col items-center justify-center px-6 pb-12 text-center">
           {/* Confident, Scaled Geometric Logo */}
           <div className="flex items-center justify-center">
             <LarityLogo className="h-[52px] w-[58px] text-white drop-shadow-[0_0_24px_rgba(255,255,255,0.09)] transition-transform duration-700 hover:scale-[1.02]" />
@@ -146,7 +154,7 @@ export function AppBootLoader({ children }: { children: React.ReactNode }) {
         </main>
 
         {/* Bottom Spacer (Balances the 44px titlebar) */}
-        <footer className="h-11 w-full" />
+        <footer className="relative z-10 h-11 w-full" />
       </div>
     </>
   );
