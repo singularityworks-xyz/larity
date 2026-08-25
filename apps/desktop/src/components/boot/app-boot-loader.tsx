@@ -2,7 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, X } from "lucide-react";
 import type React from "react";
 import { LarityLogo } from "../icons";
-import { DotmSquare13 } from "../ui/dotm-square-13";
+import { DotmSquare18 } from "../ui/dotm-square-18";
 import { useBootSequence } from "./use-boot-sequence";
 
 async function minimizeWindow() {
@@ -86,17 +86,17 @@ export function AppBootLoader({ children }: { children: React.ReactNode }) {
             <LarityLogo className="h-[52px] w-[58px] text-white drop-shadow-[0_0_24px_rgba(255,255,255,0.09)] transition-transform duration-700 hover:scale-[1.02]" />
           </div>
 
-          {/* DotMatrix Rotor (DotmSquare13) & Status Label */}
+          {/* DotMatrix Sound Bars (DotmSquare18) & Status Label */}
           <div className="mt-8 flex h-7 items-center justify-center gap-3">
             <div className="flex items-center justify-center">
-              <DotmSquare13
+              <DotmSquare18
                 animated
                 bloom
                 color="#f4f4f5"
                 dotSize={3.5}
                 halo={0.15}
                 size={22}
-                speed={1.85}
+                speed={1.5}
               />
             </div>
             <span className="font-medium text-[13px] text-neutral-200 tracking-tight subpixel-antialiased">
