@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from "react";
+import { Link } from "../lib/router.tsx";
 
 export function CtaBand() {
   const [email, setEmail] = useState("");
@@ -56,7 +57,7 @@ export function CtaBand() {
             {/* Left side: Huge Typography */}
             <div className="flex flex-col justify-between">
               <span className="mb-8 font-mono text-[10px] text-accent uppercase tracking-[0.25em]">
-                05 / Early Access
+                05 / Get Started
               </span>
               <h2 className="font-display leading-[0.85] tracking-tight">
                 <span className="block text-[14vw] sm:text-[12vw] lg:text-[7rem]">
@@ -71,18 +72,49 @@ export function CtaBand() {
               </h2>
             </div>
 
-            {/* Right side: Form & Details */}
+            {/* Right side: Direct Download + Form & Details */}
             <div className="flex flex-col justify-end lg:border-zinc-900/30 lg:border-l lg:pl-12">
               <p className="max-w-md font-light text-xl text-zinc-600 leading-relaxed">
-                Larity is currently in private beta for client-facing teams of
-                3–15 people. Join the waitlist to get early access.
+                Download the desktop application now for Windows and Linux. Get
+                immediate access to live co-pilot, silent transcription, and
+                organisational memory.
               </p>
 
-              <div className="mt-10 max-w-md">
+              {/* Primary Try Larity CTA */}
+              <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
+                <Link
+                  className="group inline-flex items-center justify-center gap-2.5 rounded-full bg-zinc-950 px-8 py-4 font-semibold text-[#f7f4ea] text-sm shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-accent hover:shadow-accent/25 hover:shadow-lg active:translate-y-0 active:scale-95"
+                  href="/downloads"
+                >
+                  <span>Try Larity</span>
+                  <svg
+                    aria-hidden="true"
+                    className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </Link>
+                <span className="font-mono text-xs text-zinc-600">
+                  v0.1.19 · Free for founding teams
+                </span>
+              </div>
+
+              {/* Team Access Form */}
+              <div className="mt-10 border-zinc-900/15 border-t pt-8">
+                <p className="mb-3 font-mono text-[10px] text-zinc-600 uppercase tracking-widest">
+                  Or request team onboarding & dedicated deployment:
+                </p>
                 {status === "success" ? (
                   <div className="rounded-2xl border border-emerald-900/20 bg-emerald-50/50 p-4 font-mono text-emerald-800 text-sm">
-                    ✓ Success! You have been added to the waitlist. We'll be in
-                    touch soon.
+                    ✓ Success! We&apos;ll be in touch with your team soon.
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit}>
@@ -103,7 +135,7 @@ export function CtaBand() {
                       >
                         {status === "loading"
                           ? "Requesting..."
-                          : "Request Access"}
+                          : "Contact Team"}
                       </button>
                     </div>
                     {status === "error" && (
@@ -115,17 +147,17 @@ export function CtaBand() {
                 )}
               </div>
 
-              <div className="mt-12 grid grid-cols-2 gap-4 border-zinc-900/30 border-t pt-6">
+              <div className="mt-10 grid grid-cols-2 gap-4 border-zinc-900/30 border-t pt-6">
                 <div>
-                  <span className="block font-mono text-[10px] text-zinc-400 uppercase tracking-widest">
+                  <span className="block font-mono text-[10px] text-zinc-500 uppercase tracking-widest">
                     Platform
                   </span>
                   <span className="mt-1 block font-medium text-sm text-zinc-900">
-                    Windows & Linux
+                    Windows & Linux (macOS soon)
                   </span>
                 </div>
                 <div>
-                  <span className="block font-mono text-[10px] text-zinc-400 uppercase tracking-widest">
+                  <span className="block font-mono text-[10px] text-zinc-500 uppercase tracking-widest">
                     Pricing
                   </span>
                   <span className="mt-1 block font-medium text-sm text-zinc-900">

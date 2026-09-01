@@ -1,3 +1,5 @@
+import { Link } from "../lib/router.tsx";
+
 interface FooterProps {
   onOpenPrivacy: () => void;
   onOpenTerms: () => void;
@@ -23,27 +25,32 @@ export function Footer({ onOpenPrivacy, onOpenTerms }: FooterProps) {
         <div className="flex flex-col justify-between gap-12 sm:flex-row sm:items-end">
           {/* Brand & Tagline */}
           <div className="flex flex-col items-start">
-            {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
-            <img
-              alt="Larity Logo"
-              className="mb-8 h-8 w-auto"
-              height={33}
-              src="/larity-logo-light.svg"
-              width={36}
-            />
+            <Link className="group mb-8 flex items-center gap-2.5" href="/">
+              {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
+              <img
+                alt="Larity Logo"
+                className="h-8 w-auto"
+                height={33}
+                src="/larity-logo-light.svg"
+                width={36}
+              />
+              <span className="font-bold font-display text-xl text-zinc-950 tracking-tight">
+                Larity
+              </span>
+            </Link>
             <p className="font-display text-2xl text-zinc-900 tracking-tight">
               Work, with memory.
             </p>
           </div>
 
           {/* Minimalist Navigation */}
-          <div className="flex flex-wrap gap-x-8 gap-y-4 font-medium text-sm text-zinc-600 sm:justify-end">
-            {/* <a
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-4 font-medium text-sm text-zinc-600 sm:justify-end">
+            <Link
               className="transition-colors hover:text-zinc-900"
-              href="#product"
+              href="/downloads"
             >
-              Product
-            </a> */}
+              Downloads
+            </Link>
             <button
               className="cursor-pointer transition-colors hover:text-zinc-900 focus-visible:outline-none"
               onClick={onOpenPrivacy}
@@ -83,7 +90,7 @@ export function Footer({ onOpenPrivacy, onOpenTerms }: FooterProps) {
             &copy; {new Date().getFullYear()} Larity. All rights reserved.
           </p>
           <p className="font-light text-xs text-zinc-500">
-            Designed for Windows & Linux
+            Engineered for Windows & Linux · macOS coming soon
           </p>
         </div>
       </div>

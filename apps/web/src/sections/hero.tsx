@@ -1,3 +1,5 @@
+import { Link } from "../lib/router.tsx";
+
 export function Hero() {
   return (
     <section
@@ -28,11 +30,11 @@ export function Hero() {
 
         {/* Polished Button CTA */}
         <div className="mt-8">
-          <a
+          <Link
             className="group relative inline-flex cursor-pointer items-center gap-2.5 rounded-full bg-accent px-6 py-3.5 font-semibold text-[#f7f4ea] text-xs shadow-accent/20 shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-accent/95 hover:shadow-accent/30 hover:shadow-lg active:translate-y-0 active:scale-95 sm:text-sm"
-            href="#early-access"
+            href="/downloads"
           >
-            <span>Get Early Access</span>
+            <span>Try Larity</span>
             <svg
               aria-hidden="true"
               className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1.5"
@@ -47,7 +49,7 @@ export function Hero() {
                 strokeLinejoin="round"
               />
             </svg>
-          </a>
+          </Link>
         </div>
       </div>
 
