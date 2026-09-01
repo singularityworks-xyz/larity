@@ -4,16 +4,12 @@ import { useState } from "react";
 import { Footer } from "./components/footer.tsx";
 import { LegalModal } from "./components/legal-modal.tsx";
 import { Navbar } from "./components/navbar.tsx";
-import { ContextStrip } from "./sections/context-strip.tsx";
-import { CtaBand } from "./sections/cta-band.tsx";
-import { Faq } from "./sections/faq.tsx";
-import { Hero } from "./sections/hero.tsx";
-import { HowItWorks } from "./sections/how-it-works.tsx";
-import { MeetingMode } from "./sections/meeting-mode.tsx";
-import { MemoryDeepDive } from "./sections/memory-deep-dive.tsx";
-import { Supports } from "./sections/supports.tsx";
+import { RouterProvider, useRouter } from "./lib/router.tsx";
+import { DownloadsPage } from "./pages/downloads-page.tsx";
+import { HomePage } from "./pages/home-page.tsx";
 
-export default function App() {
+function AppContent() {
+  const { pathname } = useRouter();
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [legalModalTab, setLegalModalTab] = useState<"privacy" | "terms">(
     "privacy"
@@ -29,21 +25,18 @@ export default function App() {
     setIsLegalModalOpen(true);
   };
 
+  const isDownloadsRoute =
+    pathname === "/downloads" ||
+    pathname === "/download" ||
+    pathname.startsWith("/downloads/") ||
+    pathname.startsWith("/download/");
+
   return (
     <ReactLenis root>
       <div className="flex min-h-screen select-none flex-col overflow-x-hidden bg-bg font-body text-zinc-900">
         <Navbar />
         <main className="flex-1">
-          <Hero />
-          {/* Spacer to show the overflowed bottom 12% of the video on scroll */}
-          <div className="h-24 bg-bg sm:h-48 md:h-96" />
-          <ContextStrip />
-          <HowItWorks />
-          <MeetingMode />
-          <Supports />
-          <MemoryDeepDive />
-          <CtaBand />
-          <Faq />
+          {isDownloadsRoute ? <DownloadsPage /> : <HomePage />}
         </main>
 
         <Footer onOpenPrivacy={openPrivacy} onOpenTerms={openTerms} />
@@ -56,5 +49,13 @@ export default function App() {
         <Analytics />
       </div>
     </ReactLenis>
+  );
+}
+
+export default function App() {
+  return (
+    <RouterProvider>
+      <AppContent />
+    </RouterProvider>
   );
 }
