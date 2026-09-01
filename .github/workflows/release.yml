@@ -348,7 +348,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Larity ${{ github.ref_name }}
           body_path: release_body.md
-          draft: true
+          draft: false
           prerelease: false
           files: |
             artifacts-linux/**/*.deb
