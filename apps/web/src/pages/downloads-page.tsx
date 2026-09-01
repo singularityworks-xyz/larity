@@ -46,11 +46,11 @@ const LINUX_RPM: DownloadAsset = {
 
 const LINUX_ARCH: DownloadAsset = {
   name: "Arch Linux Package",
-  filename: `larity-${LATEST_VERSION}-1-x86_64.pkg.tar.zst`,
+  filename: `larity-bin-${LATEST_VERSION}-1-x86_64.pkg.tar.zst`,
   ext: ".pkg.tar.zst",
   desc: "Pre-compiled package for Arch Linux, Manjaro, and CachyOS.",
   arch: "x86_64",
-  url: `${RELEASE_BASE_URL}/larity-${LATEST_VERSION}-1-x86_64.pkg.tar.zst`,
+  url: `${RELEASE_BASE_URL}/larity-bin-${LATEST_VERSION}-1-x86_64.pkg.tar.zst`,
 };
 
 const LINUX_ALT_ASSETS: DownloadAsset[] = [LINUX_DEB, LINUX_RPM, LINUX_ARCH];
@@ -626,7 +626,7 @@ export function DownloadsPage() {
                   } else if (linuxFormatTab === "nix") {
                     cmd = `nix run github:${GITHUB_REPO}`;
                   } else if (linuxFormatTab === "arch") {
-                    cmd = `curl -LO ${LINUX_ARCH.url} && sudo pacman -U larity-${LATEST_VERSION}-1-x86_64.pkg.tar.zst`;
+                    cmd = `curl -LO ${LINUX_ARCH.url} && sudo pacman -U larity-bin-${LATEST_VERSION}-1-x86_64.pkg.tar.zst`;
                   }
                   copyToClipboard(cmd, "terminal-main");
                 }}
@@ -681,7 +681,8 @@ export function DownloadsPage() {
                   </p>
                   <p className="text-accent">curl -LO {LINUX_ARCH.url}</p>
                   <p className="text-zinc-100">
-                    sudo pacman -U larity-{LATEST_VERSION}-1-x86_64.pkg.tar.zst
+                    sudo pacman -U larity-bin-{LATEST_VERSION}
+                    -1-x86_64.pkg.tar.zst
                   </p>
                 </div>
               )}
