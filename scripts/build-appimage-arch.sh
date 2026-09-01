@@ -15,6 +15,7 @@ export PATH="$HOME/.cargo/bin:$PATH"
 # build) which clobbers the binary as root.
 sed -i '/"packageManager":/d' package.json
 
+git config --global --add safe.directory /app
 bun install --frozen-lockfile
 cd apps/desktop
 
