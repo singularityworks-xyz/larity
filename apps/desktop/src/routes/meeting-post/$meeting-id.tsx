@@ -16,8 +16,8 @@ import {
   Target,
   Zap,
 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type React from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type {
   Decision,
@@ -56,24 +56,6 @@ function formatTimestamp(seconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20, filter: "blur(4px)" },
-  show: {
-    opacity: 1,
-    y: 0,
-    filter: "blur(0px)",
-    transition: { type: "spring" as const, stiffness: 300, damping: 24 },
-  },
-};
-
 // ── Processing Status Banner ─────────────────────────────────────────────────
 
 function InProgressBanner({
@@ -82,12 +64,9 @@ function InProgressBanner({
   status: ProcessingStatus | undefined;
 }) {
   return (
-    <motion.div
-      animate="show"
+    <div
       aria-live="polite"
-      className="relative overflow-hidden rounded-xl border border-info/20 bg-info/10 p-4 backdrop-blur-sm"
-      initial="hidden"
-      variants={itemVariants}
+      className="fade-in relative animate-in overflow-hidden rounded-xl border border-info/20 bg-info/10 p-4 backdrop-blur-sm duration-200"
     >
       <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-info/0 via-info/5 to-info/0" />
       <div className="relative z-10 flex items-center gap-3">
@@ -112,7 +91,7 @@ function InProgressBanner({
           </span>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -127,12 +106,9 @@ function FailedBanner({
 }) {
   const isNoTranscript = status?.errorReason === "NO_TRANSCRIPT";
   return (
-    <motion.div
-      animate="show"
+    <div
       aria-live="assertive"
-      className="relative overflow-hidden rounded-xl border border-danger/30 bg-danger/10 p-4 backdrop-blur-sm"
-      initial="hidden"
-      variants={itemVariants}
+      className="fade-in relative animate-in overflow-hidden rounded-xl border border-danger/30 bg-danger/10 p-4 backdrop-blur-sm duration-200"
     >
       <div className="relative z-10 flex flex-col gap-3 md:flex-row md:items-center">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger/20 text-danger">
@@ -152,7 +128,7 @@ function FailedBanner({
           )}
         </div>
         <button
-          className="shrink-0 rounded-lg bg-danger px-4 py-2 font-semibold text-white text-xs transition-all hover:bg-danger/90 active:scale-95 disabled:opacity-50"
+          className="shrink-0 rounded-lg bg-danger px-4 py-2 font-semibold text-white text-xs transition-colors hover:bg-danger/90 active:scale-95 disabled:opacity-50"
           disabled={reprocess.isPending || isNoTranscript}
           onClick={() =>
             reprocess.mutate(undefined, { onSuccess: onReprocessSuccess })
@@ -167,20 +143,19 @@ function FailedBanner({
           Error: {reprocess.error.message}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }
 
 function ProcessingBanner({
-  meetingId,
+  status,
+  reprocess,
   onReprocessSuccess,
 }: {
-  meetingId: string;
+  status: ProcessingStatus | undefined;
+  reprocess: ReturnType<typeof useReprocess>;
   onReprocessSuccess: () => void;
 }) {
-  const { data: status, isLoading } = useProcessingStatus(meetingId, true);
-  const reprocess = useReprocess(meetingId);
-
   const inProgress = isProcessingInProgress(status);
   const settled = isProcessingSettled(status);
   const complete = isProcessingComplete(status);
@@ -190,7 +165,7 @@ function ProcessingBanner({
     (status?.steps.transcribe === "failed" ||
       status?.steps.summary === "failed");
 
-  if (isLoading || !(inProgress || settled)) {
+  if (!(inProgress || settled)) {
     return null;
   }
   if (inProgress) {
@@ -210,30 +185,30 @@ function ProcessingBanner({
 
 // ── Skeleton ────────────────────────────────────────────────────────────────
 
+const SKELETON_ROW_KEYS = [
+  "post-sk-row-1",
+  "post-sk-row-2",
+  "post-sk-row-3",
+  "post-sk-row-4",
+  "post-sk-row-5",
+  "post-sk-row-6",
+] as const;
+
 function SkeletonRows({ count = 4 }: { count?: number }) {
-  const ids = useMemo(
-    () => Array.from({ length: count }, (_, i) => `skeleton-row-${i}`),
-    [count]
-  );
+  const rows = SKELETON_ROW_KEYS.slice(0, count);
   return (
-    <motion.div
-      animate="show"
-      className="flex flex-col gap-4"
-      initial="hidden"
-      variants={containerVariants}
-    >
-      {ids.map((id) => (
-        <motion.div
+    <div className="fade-in flex animate-in flex-col gap-4 duration-200">
+      {rows.map((rowKey) => (
+        <div
           className="overflow-hidden rounded-xl border border-border/50 bg-bg-elevated p-5 shadow-sm"
-          key={id}
-          variants={itemVariants}
+          key={rowKey}
         >
           <div className="mb-3 h-4 w-1/3 animate-pulse rounded bg-border" />
           <div className="h-3 w-3/4 animate-pulse rounded bg-border/50" />
           <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-border/30" />
-        </motion.div>
+        </div>
       ))}
-    </motion.div>
+    </div>
   );
 }
 
@@ -343,7 +318,41 @@ function CategoryChip({ category }: { category: ImportantPointCategory }) {
   );
 }
 
-// ── Tabs Components ─────────────────────────────────────────────────────────
+// ── Memoized Tab Components ──────────────────────────────────────────────────
+
+const TranscriptRow = memo(function TranscriptRow({
+  utterance,
+  index,
+}: {
+  utterance: TranscriptUtterance;
+  index: number;
+}) {
+  return (
+    <div
+      className="group relative flex gap-4 overflow-hidden rounded-xl border border-border/50 bg-bg-elevated p-4 transition-all hover:border-border hover:shadow-md"
+      key={utterance.id ?? `u-${index}`}
+    >
+      <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-border to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+      <div className="flex w-24 shrink-0 flex-col gap-1 pt-0.5">
+        <span className="truncate font-bold font-heading text-fg text-sm tracking-tight">
+          {utterance.speaker}
+        </span>
+        {utterance.type && (
+          <span className="font-semibold text-[10px] text-accent uppercase tracking-wider">
+            {utterance.type === "TEAM" ? "Team" : "External"}
+          </span>
+        )}
+        <span className="flex items-center gap-1 font-mono text-fg-subtle text-xs">
+          <Clock className="h-3 w-3" />
+          {formatTimestamp(utterance.timestamp)}
+        </span>
+      </div>
+      <p className="m-0 flex-1 text-fg/90 text-sm leading-relaxed">
+        {utterance.text}
+      </p>
+    </div>
+  );
+});
 
 function TranscriptTab({ meetingId }: { meetingId: string }) {
   const {
@@ -351,6 +360,17 @@ function TranscriptTab({ meetingId }: { meetingId: string }) {
     isLoading,
     error,
   } = useMeetingTranscript(meetingId);
+
+  const utterances = useMemo(() => {
+    if (!transcript?.content) {
+      return [];
+    }
+    try {
+      return JSON.parse(transcript.content) as TranscriptUtterance[];
+    } catch {
+      return [];
+    }
+  }, [transcript?.content]);
 
   if (isLoading) {
     return <SkeletonRows count={6} />;
@@ -363,61 +383,68 @@ function TranscriptTab({ meetingId }: { meetingId: string }) {
     );
   }
 
-  let utterances: TranscriptUtterance[] = [];
-  try {
-    utterances = JSON.parse(transcript.content) as TranscriptUtterance[];
-  } catch {
-    return (
-      <p className="py-8 text-center font-medium text-fg-muted text-sm">
-        Transcript content could not be parsed.
-      </p>
-    );
-  }
-
   if (utterances.length === 0) {
     return (
       <p className="py-8 text-center font-medium text-fg-muted text-sm">
-        Transcript is empty.
+        Transcript is empty or could not be parsed.
       </p>
     );
   }
 
   return (
-    <motion.div
-      animate="show"
-      className="flex flex-col gap-4"
-      initial="hidden"
-      variants={containerVariants}
-    >
+    <div className="flex flex-col gap-3">
       {utterances.map((u, i) => (
-        <motion.div
-          className="group relative flex gap-4 overflow-hidden rounded-xl border border-border/50 bg-bg-elevated p-4 transition-all hover:border-border hover:shadow-md"
-          key={u.id ?? `u-${i}`}
-          variants={itemVariants}
-        >
-          <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-border to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-          <div className="flex w-24 shrink-0 flex-col gap-1 pt-0.5">
-            <span className="truncate font-bold font-heading text-fg text-sm tracking-tight">
-              {u.speaker}
-            </span>
-            {u.type && (
-              <span className="font-semibold text-[10px] text-accent uppercase tracking-wider">
-                {u.type === "TEAM" ? "Team" : "External"}
-              </span>
-            )}
-            <span className="flex items-center gap-1 font-mono text-fg-subtle text-xs">
-              <Clock className="h-3 w-3" />
-              {formatTimestamp(u.timestamp)}
-            </span>
-          </div>
-          <p className="m-0 flex-1 text-fg/90 text-sm leading-relaxed">
-            {u.text}
-          </p>
-        </motion.div>
+        <TranscriptRow index={i} key={u.id ?? `u-${i}`} utterance={u} />
       ))}
-    </motion.div>
+    </div>
   );
 }
+
+const DecisionCard = memo(function DecisionCard({
+  decision: d,
+}: {
+  decision: Decision;
+}) {
+  return (
+    <div
+      className={cx(
+        "group relative flex flex-col gap-3 overflow-hidden rounded-xl border border-border/60 bg-bg-elevated p-4 transition-all hover:border-accent/40 hover:shadow-sm",
+        d.status !== "ACTIVE" && "opacity-60"
+      )}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <DecisionStatusBadge status={d.status} />
+        <span className="font-mono text-fg-subtle text-xs">v{d.version}</span>
+      </div>
+      <h3 className="m-0 font-bold font-heading text-base text-fg tracking-tight transition-colors group-hover:text-accent">
+        {d.title}
+      </h3>
+      <p className="m-0 text-fg/80 text-sm leading-relaxed">{d.content}</p>
+      {d.rationale && (
+        <div className="mt-auto border-border/50 border-t pt-3">
+          <p className="m-0 text-fg-subtle text-xs italic leading-relaxed">
+            <span className="mr-1 font-semibold text-fg-muted not-italic">
+              Rationale:
+            </span>
+            {d.rationale}
+          </p>
+        </div>
+      )}
+      {d.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-2">
+          {d.tags.map((tag) => (
+            <span
+              className="rounded-md bg-bg-subtle px-2 py-0.5 font-medium text-[10px] text-fg-muted transition-colors hover:bg-border/50 hover:text-fg"
+              key={tag}
+            >
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
 
 function DecisionsTab({ decisions }: { decisions: Decision[] }) {
   const safeDecisions = Array.isArray(decisions) ? decisions : [];
@@ -430,58 +457,42 @@ function DecisionsTab({ decisions }: { decisions: Decision[] }) {
   }
 
   return (
-    <motion.div
-      animate="show"
-      className="grid grid-cols-1 gap-4 md:grid-cols-2"
-      initial="hidden"
-      variants={containerVariants}
-    >
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {safeDecisions.map((d) => (
-        <motion.div
-          className={cx(
-            "group relative flex flex-col gap-3 overflow-hidden rounded-xl border border-border/60 bg-bg-elevated p-4 transition-all hover:border-accent/40 hover:shadow-sm",
-            d.status !== "ACTIVE" && "opacity-60"
-          )}
-          key={d.id}
-          variants={itemVariants}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <DecisionStatusBadge status={d.status} />
-            <span className="font-mono text-fg-subtle text-xs">
-              v{d.version}
-            </span>
-          </div>
-          <h3 className="m-0 font-bold font-heading text-base text-fg tracking-tight transition-colors group-hover:text-accent">
-            {d.title}
-          </h3>
-          <p className="m-0 text-fg/80 text-sm leading-relaxed">{d.content}</p>
-          {d.rationale && (
-            <div className="mt-auto border-border/50 border-t pt-3">
-              <p className="m-0 text-fg-subtle text-xs italic leading-relaxed">
-                <span className="mr-1 font-semibold text-fg-muted not-italic">
-                  Rationale:
-                </span>
-                {d.rationale}
-              </p>
-            </div>
-          )}
-          {d.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-2">
-              {d.tags.map((tag) => (
-                <span
-                  className="rounded-md bg-bg-subtle px-2 py-0.5 font-medium text-[10px] text-fg-muted transition-colors hover:bg-border/50 hover:text-fg"
-                  key={tag}
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          )}
-        </motion.div>
+        <DecisionCard decision={d} key={d.id} />
       ))}
-    </motion.div>
+    </div>
   );
 }
+
+const TaskCard = memo(function TaskCard({ task: t }: { task: Task }) {
+  return (
+    <div className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-bg-elevated p-4 transition-all hover:border-border hover:shadow-md md:flex-row md:items-center">
+      <div className="flex flex-1 flex-col gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <PriorityChip priority={t.priority} />
+          <TaskStatusChip status={t.status} />
+        </div>
+        <h3 className="m-0 font-bold font-heading text-base text-fg">
+          {t.title}
+        </h3>
+        {t.description && (
+          <p className="m-0 text-fg/80 text-sm leading-relaxed">
+            {t.description}
+          </p>
+        )}
+      </div>
+      {t.dueAt && (
+        <div className="flex shrink-0 items-center gap-1.5 rounded-lg bg-bg-subtle px-3 py-2 text-xs">
+          <Clock className="h-3.5 w-3.5 text-fg-muted" />
+          <span className="font-semibold text-fg-subtle">
+            Due {formatDate(t.dueAt)}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+});
 
 function TasksTab({ tasks }: { tasks: Task[] }) {
   const safeTasks = Array.isArray(tasks) ? tasks : [];
@@ -494,45 +505,49 @@ function TasksTab({ tasks }: { tasks: Task[] }) {
   }
 
   return (
-    <motion.div
-      animate="show"
-      className="flex flex-col gap-3"
-      initial="hidden"
-      variants={containerVariants}
-    >
+    <div className="flex flex-col gap-3">
       {safeTasks.map((t) => (
-        <motion.div
-          className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-bg-elevated p-4 transition-all hover:border-border hover:shadow-md md:flex-row md:items-center"
-          key={t.id}
-          variants={itemVariants}
-        >
-          <div className="flex flex-1 flex-col gap-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <PriorityChip priority={t.priority} />
-              <TaskStatusChip status={t.status} />
-            </div>
-            <h3 className="m-0 font-bold font-heading text-base text-fg">
-              {t.title}
-            </h3>
-            {t.description && (
-              <p className="m-0 text-fg/80 text-sm leading-relaxed">
-                {t.description}
-              </p>
-            )}
-          </div>
-          {t.dueAt && (
-            <div className="flex shrink-0 items-center gap-1.5 rounded-lg bg-bg-subtle px-3 py-2 text-xs">
-              <Clock className="h-3.5 w-3.5 text-fg-muted" />
-              <span className="font-semibold text-fg-subtle">
-                Due {formatDate(t.dueAt)}
-              </span>
-            </div>
-          )}
-        </motion.div>
+        <TaskCard key={t.id} task={t} />
       ))}
-    </motion.div>
+    </div>
   );
 }
+
+const QuestionCard = memo(function QuestionCard({
+  question: q,
+}: {
+  question: OpenQuestion;
+}) {
+  return (
+    <div className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-bg-elevated p-4 transition-all hover:border-info/40 hover:bg-info/5 hover:shadow-sm">
+      <div className="flex items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-info/10 text-info">
+          <HelpCircle className="h-4 w-4" />
+        </div>
+        <span
+          className={cx(
+            "inline-flex items-center rounded-full border px-2 py-0.5 font-bold text-[10px] uppercase tracking-wider",
+            {
+              RESOLVED: "border-success/30 bg-success/10 text-success",
+              DEFERRED: "border-warning/30 bg-warning/10 text-warning",
+              OPEN: "border-border bg-bg-subtle text-fg-muted",
+            }[q.status] ?? "border-border bg-bg-subtle text-fg-muted"
+          )}
+        >
+          {q.status}
+        </span>
+      </div>
+      <h3 className="m-0 font-semibold text-base text-fg leading-snug">
+        {q.question}
+      </h3>
+      {q.context && (
+        <p className="m-0 mt-auto border-border/40 border-t pt-3 text-fg-subtle text-sm leading-relaxed">
+          {q.context}
+        </p>
+      )}
+    </div>
+  );
+});
 
 function OpenQuestionsTab({ questions }: { questions: OpenQuestion[] }) {
   const safeQuestions = Array.isArray(questions) ? questions : [];
@@ -545,46 +560,11 @@ function OpenQuestionsTab({ questions }: { questions: OpenQuestion[] }) {
   }
 
   return (
-    <motion.div
-      animate="show"
-      className="grid grid-cols-1 gap-4 md:grid-cols-2"
-      initial="hidden"
-      variants={containerVariants}
-    >
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {safeQuestions.map((q) => (
-        <motion.div
-          className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-bg-elevated p-4 transition-all hover:border-info/40 hover:bg-info/5 hover:shadow-sm"
-          key={q.id}
-          variants={itemVariants}
-        >
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-info/10 text-info">
-              <HelpCircle className="h-4 w-4" />
-            </div>
-            <span
-              className={cx(
-                "inline-flex items-center rounded-full border px-2 py-0.5 font-bold text-[10px] uppercase tracking-wider",
-                {
-                  RESOLVED: "border-success/30 bg-success/10 text-success",
-                  DEFERRED: "border-warning/30 bg-warning/10 text-warning",
-                  OPEN: "border-border bg-bg-subtle text-fg-muted",
-                }[q.status] ?? "border-border bg-bg-subtle text-fg-muted"
-              )}
-            >
-              {q.status}
-            </span>
-          </div>
-          <h3 className="m-0 font-semibold text-base text-fg leading-snug">
-            {q.question}
-          </h3>
-          {q.context && (
-            <p className="m-0 mt-auto border-border/40 border-t pt-3 text-fg-subtle text-sm leading-relaxed">
-              {q.context}
-            </p>
-          )}
-        </motion.div>
+        <QuestionCard key={q.id} question={q} />
       ))}
-    </motion.div>
+    </div>
   );
 }
 
@@ -596,6 +576,26 @@ const IMPORTANT_POINT_ORDER: ImportantPointCategory[] = [
   "OPPORTUNITY",
   "INSIGHT",
 ];
+
+const PointCard = memo(function PointCard({
+  point: p,
+}: {
+  point: ImportantPoint;
+}) {
+  return (
+    <div className="group relative flex flex-col gap-2 overflow-hidden rounded-xl border border-border/50 bg-bg-elevated p-4 transition-all hover:border-border hover:shadow-md">
+      <p className="m-0 text-fg text-sm leading-relaxed">{p.content}</p>
+      {p.transcriptEvidence && (
+        <div className="mt-auto border-border/30 border-t pt-2">
+          <p className="m-0 line-clamp-2 font-mono text-[11px] text-fg-subtle leading-snug transition-all group-hover:line-clamp-none">
+            <span className="mr-1 font-semibold text-fg-muted">Evidence:</span>"
+            {p.transcriptEvidence}"
+          </p>
+        </div>
+      )}
+    </div>
+  );
+});
 
 function ImportantPointsTab({ points }: { points: ImportantPoint[] }) {
   const safePoints = Array.isArray(points) ? points : [];
@@ -620,19 +620,14 @@ function ImportantPointsTab({ points }: { points: ImportantPoint[] }) {
   }
 
   return (
-    <motion.div
-      animate="show"
-      className="flex flex-col gap-8"
-      initial="hidden"
-      variants={containerVariants}
-    >
+    <div className="flex flex-col gap-8">
       {IMPORTANT_POINT_ORDER.map((cat) => {
         const items = grouped.get(cat) ?? [];
         if (items.length === 0) {
           return null;
         }
         return (
-          <motion.section key={cat} variants={itemVariants}>
+          <section key={cat}>
             <div className="mb-4 flex items-center gap-3 border-border/50 border-b pb-2">
               <CategoryChip category={cat} />
               <span className="rounded-full bg-bg-subtle px-2 py-0.5 font-mono text-[10px] text-fg-muted">
@@ -641,30 +636,13 @@ function ImportantPointsTab({ points }: { points: ImportantPoint[] }) {
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {items.map((p) => (
-                <div
-                  className="group relative flex flex-col gap-2 overflow-hidden rounded-xl border border-border/50 bg-bg-elevated p-4 transition-all hover:border-border hover:shadow-md"
-                  key={p.id}
-                >
-                  <p className="m-0 text-fg text-sm leading-relaxed">
-                    {p.content}
-                  </p>
-                  {p.transcriptEvidence && (
-                    <div className="mt-auto border-border/30 border-t pt-2">
-                      <p className="m-0 line-clamp-2 font-mono text-[11px] text-fg-subtle leading-snug transition-all group-hover:line-clamp-none">
-                        <span className="mr-1 font-semibold text-fg-muted">
-                          Evidence:
-                        </span>
-                        "{p.transcriptEvidence}"
-                      </p>
-                    </div>
-                  )}
-                </div>
+                <PointCard key={p.id} point={p} />
               ))}
             </div>
-          </motion.section>
+          </section>
         );
       })}
-    </motion.div>
+    </div>
   );
 }
 
@@ -713,17 +691,9 @@ function BriefTab({
     "border-border bg-bg-subtle text-fg-muted";
 
   return (
-    <motion.div
-      animate="show"
-      className="flex flex-col gap-4"
-      initial="hidden"
-      variants={containerVariants}
-    >
-      <motion.div
-        className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated p-4 shadow-sm"
-        variants={itemVariants}
-      >
-        <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-accent/10 blur-[80px]" />
+    <div className="flex flex-col gap-4">
+      <div className="relative overflow-hidden rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
+        <div className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 transform-gpu rounded-full bg-accent/10 blur-[80px] will-change-transform" />
         <h3 className="mb-3 flex items-center gap-2 font-bold font-heading text-base text-fg">
           <BookOpen className="h-4 w-4 text-accent" />
           Executive Summary
@@ -731,38 +701,32 @@ function BriefTab({
         <p className="whitespace-pre-wrap text-fg/90 text-sm leading-relaxed">
           {analysis.prose}
         </p>
-      </motion.div>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {analysis.purpose && (
-          <motion.div
-            className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm transition-all hover:shadow-md"
-            variants={itemVariants}
-          >
+          <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm transition-all hover:shadow-md">
             <h4 className="mb-2 flex items-center gap-2 font-bold font-heading text-fg text-sm">
               <Target className="h-4 w-4 text-info" /> Purpose
             </h4>
             <p className="text-fg/80 text-sm leading-relaxed">
               {analysis.purpose}
             </p>
-          </motion.div>
+          </div>
         )}
         {analysis.outcome && (
-          <motion.div
-            className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm transition-all hover:shadow-md"
-            variants={itemVariants}
-          >
+          <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm transition-all hover:shadow-md">
             <h4 className="mb-2 flex items-center gap-2 font-bold font-heading text-fg text-sm">
               <CheckCircle2 className="h-4 w-4 text-success" /> Outcome
             </h4>
             <p className="text-fg/80 text-sm leading-relaxed">
               {analysis.outcome}
             </p>
-          </motion.div>
+          </div>
         )}
       </div>
 
-      <motion.div className="flex flex-wrap gap-2" variants={itemVariants}>
+      <div className="flex flex-wrap gap-2">
         <div
           className={cx(
             "flex items-center gap-2 rounded-lg border px-3 py-1.5 transition-all",
@@ -787,8 +751,8 @@ function BriefTab({
           <span className="h-3 w-px bg-current/20" />
           <span className="font-bold text-xs">{analysis.clientSentiment}</span>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
 
@@ -816,16 +780,8 @@ function NotesTab({ meetingId }: { meetingId: string }) {
   }
 
   return (
-    <motion.div
-      animate="show"
-      className="flex flex-col gap-4"
-      initial="hidden"
-      variants={containerVariants}
-    >
-      <motion.div
-        className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm"
-        variants={itemVariants}
-      >
+    <div className="flex flex-col gap-4">
+      <div className="rounded-xl border border-border bg-bg-elevated p-4 shadow-sm">
         <h3 className="mb-3 flex items-center gap-2 font-bold font-heading text-base text-fg">
           <FileDigit className="h-4 w-4 text-accent" />
           Personal Notes
@@ -835,8 +791,8 @@ function NotesTab({ meetingId }: { meetingId: string }) {
             {notes}
           </p>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
 
@@ -907,19 +863,18 @@ export function MeetingPostPage() {
 
   const { data: insights, isLoading: insightsLoading } =
     useMeetingInsights(meetingId);
-  const { data: status } = useProcessingStatus(
-    meetingId,
-    !isProcessingSettled(undefined)
-  );
-
   const reprocess = useReprocess(meetingId);
-  const settled = isProcessingSettled(status);
 
-  const { data: polledStatus } = useProcessingStatus(meetingId, !settled);
-  const complete = isProcessingComplete(polledStatus);
+  // Single unified processing status query with smart polling pause once settled
+  const { data: status } = useProcessingStatus(meetingId);
+
+  const settled = isProcessingSettled(status);
+  const complete = isProcessingComplete(status);
+  const hasInvalidatedRef = useRef(false);
 
   useEffect(() => {
-    if (complete) {
+    if (complete && !hasInvalidatedRef.current) {
+      hasInvalidatedRef.current = true;
       queryClient.invalidateQueries({
         queryKey: ["meeting-insights", meetingId],
       });
@@ -929,51 +884,53 @@ export function MeetingPostPage() {
     }
   }, [complete, meetingId, queryClient]);
 
-  const tabs: Tab[] = [
-    { id: "brief", label: "Brief", icon: FileText },
-    { id: "transcript", label: "Transcript", icon: MessageSquare },
-    { id: "notes", label: "Notes", icon: FileDigit },
-    {
-      id: "decisions",
-      label: "Decisions",
-      icon: Target,
-      count: insights?.decisions.length,
-    },
-    {
-      id: "tasks",
-      label: "Tasks",
-      icon: ListTodo,
-      count: insights?.tasks.length,
-    },
-    {
-      id: "questions",
-      label: "Questions",
-      icon: HelpCircle,
-      count: insights?.openQuestions.length,
-    },
-    {
-      id: "points",
-      label: "Highlights",
-      icon: Zap,
-      count: insights?.importantPoints.length,
-    },
-  ];
+  const tabs: Tab[] = useMemo(
+    () => [
+      { id: "brief", label: "Brief", icon: FileText },
+      { id: "transcript", label: "Transcript", icon: MessageSquare },
+      { id: "notes", label: "Notes", icon: FileDigit },
+      {
+        id: "decisions",
+        label: "Decisions",
+        icon: Target,
+        count: insights?.decisions?.length,
+      },
+      {
+        id: "tasks",
+        label: "Tasks",
+        icon: ListTodo,
+        count: insights?.tasks?.length,
+      },
+      {
+        id: "questions",
+        label: "Questions",
+        icon: HelpCircle,
+        count: insights?.openQuestions?.length,
+      },
+      {
+        id: "points",
+        label: "Highlights",
+        icon: Zap,
+        count: insights?.importantPoints?.length,
+      },
+    ],
+    [
+      insights?.decisions?.length,
+      insights?.tasks?.length,
+      insights?.openQuestions?.length,
+      insights?.importantPoints?.length,
+    ]
+  );
 
   const handleReprocessSuccess = useCallback(() => {
-    // Triggered by the ProcessingBanner; no additional action needed here
-    // because query invalidation is already handled by the `complete` effect.
+    hasInvalidatedRef.current = false;
   }, []);
 
   return (
     <div className="absolute inset-0 flex flex-col overflow-hidden bg-bg text-fg">
       <div className="mx-auto flex h-full w-full max-w-[1200px] flex-col gap-4 overflow-hidden px-4 pt-12 pb-4 sm:px-6 sm:pt-14 sm:pb-6 md:px-8 md:pt-16 md:pb-6">
         {/* Hero Header */}
-        <motion.div
-          animate="show"
-          className="relative shrink-0 overflow-hidden rounded-2xl border border-border/40 px-6 py-8 md:flex-row md:items-end"
-          initial="hidden"
-          variants={itemVariants}
-        >
+        <div className="relative shrink-0 overflow-hidden rounded-2xl border border-border/40 px-6 py-8 md:flex-row md:items-end">
           <div
             className="pointer-events-none absolute inset-0 bg-bottom bg-cover opacity-50 mix-blend-overlay"
             style={{
@@ -981,7 +938,7 @@ export function MeetingPostPage() {
             }}
           />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-bg-base/90 via-bg-base/50 to-bg-base/20" />
-          <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-accent/20 blur-[120px]" />
+          <div className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 transform-gpu rounded-full bg-accent/20 blur-[120px] will-change-transform" />
 
           <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="flex flex-col gap-4">
@@ -1002,7 +959,7 @@ export function MeetingPostPage() {
                   <span className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1 font-mono text-white/90 text-xs backdrop-blur-sm">
                     ID: {meetingId}
                   </span>
-                  {isProcessingComplete(polledStatus) && (
+                  {complete && (
                     <span className="inline-flex items-center gap-1.5 rounded-md bg-success/20 px-2.5 py-1 font-bold text-[10px] text-success uppercase tracking-wider shadow-[0_0_15px_rgba(var(--color-success),0.2)] backdrop-blur-sm">
                       <span className="h-1.5 w-1.5 rounded-full bg-success" />
                       Analysis Ready
@@ -1013,7 +970,7 @@ export function MeetingPostPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {isProcessingSettled(polledStatus) && (
+              {settled && (
                 <div className="flex items-center gap-3">
                   {reprocess.error && (
                     <span className="font-medium text-danger text-xs">
@@ -1044,15 +1001,16 @@ export function MeetingPostPage() {
               )}
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Main Content Area */}
         <main className="relative z-10 flex w-full flex-1 flex-col gap-4 overflow-hidden md:flex-row">
           {/* Sidebar / Tabs */}
           <div className="scrollbar-thin scrollbar-thumb-border-strong flex w-full shrink-0 flex-col gap-2 overflow-y-auto pr-2 pb-4 md:w-64">
             <ProcessingBanner
-              meetingId={meetingId}
               onReprocessSuccess={handleReprocessSuccess}
+              reprocess={reprocess}
+              status={status}
             />
 
             <div className="flex flex-col gap-1 rounded-xl border border-border bg-bg-elevated p-2 shadow-sm">
@@ -1062,26 +1020,15 @@ export function MeetingPostPage() {
                 return (
                   <button
                     className={cx(
-                      "relative flex w-full items-center justify-between rounded-lg px-3 py-2 font-semibold text-sm transition-colors duration-300",
+                      "relative flex w-full items-center justify-between rounded-lg px-3 py-2 font-semibold text-sm transition-all duration-200",
                       isActive
-                        ? "text-fg"
+                        ? "border border-border bg-bg-subtle text-fg shadow-sm"
                         : "text-fg-muted hover:bg-bg-subtle/50 hover:text-fg"
                     )}
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     type="button"
                   >
-                    {isActive && (
-                      <motion.div
-                        className="absolute inset-0 z-0 rounded-lg border border-border bg-bg-subtle shadow-sm"
-                        layoutId="activeTab"
-                        transition={{
-                          type: "spring",
-                          stiffness: 300,
-                          damping: 25,
-                        }}
-                      />
-                    )}
                     <span className="relative z-10 flex items-center gap-2">
                       <Icon
                         className={cx(
@@ -1117,22 +1064,14 @@ export function MeetingPostPage() {
               </h2>
             </div>
             <div className="scrollbar-thin scrollbar-thumb-border-strong flex-1 overflow-y-auto p-4">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
-                  initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
-                  key={activeTab}
-                  transition={{ duration: 0.2 }}
-                >
-                  <TabContent
-                    activeTab={activeTab}
-                    insights={insights}
-                    insightsLoading={insightsLoading}
-                    meetingId={meetingId}
-                  />
-                </motion.div>
-              </AnimatePresence>
+              <div className="fade-in animate-in duration-150" key={activeTab}>
+                <TabContent
+                  activeTab={activeTab}
+                  insights={insights}
+                  insightsLoading={insightsLoading}
+                  meetingId={meetingId}
+                />
+              </div>
             </div>
           </div>
         </main>

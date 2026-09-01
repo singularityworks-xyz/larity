@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../../lib/api";
 import type {
@@ -8,36 +8,40 @@ import type {
 } from "../../../routes/settings";
 import { useAuthSession } from "../../auth/use-session";
 
-function GuardrailCard({
+function getSeverityLineClass(severity: GuardrailSeverity): string {
+  if (severity === "BLOCK") {
+    return "bg-danger-fg";
+  }
+  if (severity === "WARNING") {
+    return "bg-warning-fg";
+  }
+  return "bg-info-fg";
+}
+
+function getSeverityBadgeClass(severity: GuardrailSeverity): string {
+  if (severity === "BLOCK") {
+    return "border-danger-fg/30 bg-danger-bg/50 text-danger-fg";
+  }
+  if (severity === "WARNING") {
+    return "border-warning-fg/30 bg-warning-bg/50 text-warning-fg";
+  }
+  return "border-info-fg/30 bg-info-bg/50 text-info-fg";
+}
+
+function getGuardrailWrapperClass(isActive: boolean): string {
+  return `group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-bg-subtle transition-all duration-300 hover:border-border-strong hover:bg-bg-elevated hover:shadow-sm ${
+    isActive ? "" : "opacity-60 grayscale-[0.6]"
+  }`;
+}
+
+const GuardrailCard = memo(function GuardrailCard({
   g,
   toggleGuardrail,
 }: {
   g: PolicyGuardrail;
   toggleGuardrail: (id: string) => void;
 }) {
-  const getSeverityLineClass = (severity: GuardrailSeverity) => {
-    if (severity === "BLOCK") {
-      return "bg-danger-fg";
-    }
-    if (severity === "WARNING") {
-      return "bg-warning-fg";
-    }
-    return "bg-info-fg";
-  };
-
-  const getSeverityBadgeClass = (severity: GuardrailSeverity) => {
-    if (severity === "BLOCK") {
-      return "border-danger-fg/30 bg-danger-bg/50 text-danger-fg";
-    }
-    if (severity === "WARNING") {
-      return "border-warning-fg/30 bg-warning-bg/50 text-warning-fg";
-    }
-    return "border-info-fg/30 bg-info-bg/50 text-info-fg";
-  };
-
-  const wrapperClass = `group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-bg-subtle transition-all duration-300 hover:border-border-strong hover:bg-bg-elevated hover:shadow-sm ${
-    g.isActive ? "" : "opacity-60 grayscale-[0.6]"
-  }`;
+  const wrapperClass = getGuardrailWrapperClass(g.isActive);
 
   return (
     <div className={wrapperClass}>
@@ -87,7 +91,7 @@ function GuardrailCard({
       </div>
     </div>
   );
-}
+});
 
 export function ClientGuardrails({ clientId }: { clientId: string }) {
   const { user } = useAuthSession();
@@ -126,58 +130,66 @@ export function ClientGuardrails({ clientId }: { clientId: string }) {
     fetchClientGuardrails();
   }, [orgId, clientId]);
 
-  async function handleAddGuardrail(e: React.FormEvent) {
-    e.preventDefault();
-    if (!(newName.trim() && newDesc.trim() && orgId)) {
-      return;
-    }
-    try {
-      const newGuardrail = await api.post<PolicyGuardrail>(
-        "/policy-guardrails/",
-        {
-          orgId,
-          clientId,
-          name: newName.trim(),
-          description: newDesc.trim(),
-          ruleType: newType,
-          severity: newSeverity,
-        }
-      );
-      setGuardrails([newGuardrail, ...guardrails]);
-      setIsAdding(false);
-      setNewName("");
-      setNewDesc("");
-      setNewType("CUSTOM");
-      setNewSeverity("WARNING");
-      setWarning("");
-    } catch (e) {
-      setWarning(`Failed to add guardrail: ${String(e)}`);
-    }
-  }
-
-  async function toggleGuardrail(id: string) {
-    const target = guardrails.find((g) => g.id === id);
-    if (!target) {
-      return;
-    }
-
-    setGuardrails((prev) =>
-      prev.map((g) => (g.id === id ? { ...g, isActive: !g.isActive } : g))
-    );
-
-    try {
-      if (target.isActive) {
-        await api.post(`/policy-guardrails/${id}/deactivate`);
-      } else {
-        await api.post(`/policy-guardrails/${id}/activate`);
+  const handleAddGuardrail = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!(newName.trim() && newDesc.trim() && orgId)) {
+        return;
       }
-    } catch (e) {
+      try {
+        const newGuardrail = await api.post<PolicyGuardrail>(
+          "/policy-guardrails/",
+          {
+            orgId,
+            clientId,
+            name: newName.trim(),
+            description: newDesc.trim(),
+            ruleType: newType,
+            severity: newSeverity,
+          }
+        );
+        setGuardrails((prev) => [newGuardrail, ...prev]);
+        setIsAdding(false);
+        setNewName("");
+        setNewDesc("");
+        setNewType("CUSTOM");
+        setNewSeverity("WARNING");
+        setWarning("");
+      } catch (e) {
+        setWarning(`Failed to add guardrail: ${String(e)}`);
+      }
+    },
+    [clientId, newDesc, newName, newSeverity, newType, orgId]
+  );
+
+  const toggleGuardrail = useCallback(
+    async (id: string) => {
+      const target = guardrails.find((g) => g.id === id);
+      if (!target) {
+        return;
+      }
+
       setGuardrails((prev) =>
-        prev.map((g) => (g.id === id ? { ...g, isActive: target.isActive } : g))
+        prev.map((g) => (g.id === id ? { ...g, isActive: !g.isActive } : g))
       );
-      setWarning(`Failed to toggle guardrail: ${String(e)}`);
-    }
-  }
+
+      try {
+        if (target.isActive) {
+          await api.post(`/policy-guardrails/${id}/deactivate`);
+        } else {
+          await api.post(`/policy-guardrails/${id}/activate`);
+        }
+      } catch (e) {
+        setGuardrails((prev) =>
+          prev.map((g) =>
+            g.id === id ? { ...g, isActive: target.isActive } : g
+          )
+        );
+        setWarning(`Failed to toggle guardrail: ${String(e)}`);
+      }
+    },
+    [guardrails]
+  );
 
   return (
     <section className="mt-8 flex flex-col gap-4">

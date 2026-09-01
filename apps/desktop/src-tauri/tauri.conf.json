@@ -10,7 +10,6 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "Larity",
@@ -20,7 +19,8 @@
         "minHeight": 480,
         "center": true,
         "resizable": true,
-        "decorations": false
+        "decorations": false,
+        "backgroundColor": "#0b0c0e"
       }
     ],
     "security": {

@@ -3,17 +3,17 @@ import { api } from "../../lib/api";
 import type { ProcessingStatus } from "./types";
 
 /**
- * Polls the processing status for a given meeting.
+ * Polls the processing status for a given meeting until pipeline steps are settled.
  *
  * @param meetingId - The meeting ID to poll status for.
- * @param enabled - Set to false to pause polling (e.g., once both steps are "done").
  */
-export function useProcessingStatus(meetingId: string, enabled = true) {
+export function useProcessingStatus(meetingId: string) {
   return useQuery({
     queryKey: ["processing-status", meetingId],
     queryFn: () =>
       api.get<ProcessingStatus>(`/meetings/${meetingId}/processing-status`),
-    refetchInterval: enabled ? 3000 : false,
+    refetchInterval: (query) =>
+      isProcessingSettled(query.state.data) ? false : 3000,
     enabled: Boolean(meetingId),
   });
 }

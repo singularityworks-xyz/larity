@@ -65,11 +65,16 @@ pub fn start_capture(
 ) -> Result<CaptureHandles, String> {
     let host = cpal::default_host();
 
-    let mixer = Arc::new(AudioMixer::new(
-        app.clone(),
-        session_id.clone(),
-        role.clone(),
-    ));
+    let is_host = role == "host";
+    let mixer = if is_host {
+        Some(Arc::new(AudioMixer::new(
+            app.clone(),
+            session_id.clone(),
+            role.clone(),
+        )))
+    } else {
+        None
+    };
 
     // 1. Setup Microphone
     let mic_device = if let Some(id) = mic_device_id.clone() {
@@ -109,92 +114,76 @@ pub fn start_capture(
         mic_config.sample_rate as usize,
         mic_config.channels as usize,
     );
-    let mixer_clone = mixer.clone();
 
     let err_fn = move |err| {
         eprintln!("an error occurred on stream: {}", err);
     };
 
+    let app_vad = app.clone();
+    let mixer_clone = mixer.clone();
+    let mut last_display_amp: f32 = 0.0;
+
+    let mut handle_samples = move |f32_slice: &[f32]| {
+        let chunks = mic_processor.process(f32_slice);
+        for chunk in chunks {
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64;
+
+            if let Some(vad_state) = app_vad.try_state::<VadState>()
+                && let Ok(guard) = vad_state.vad_tx.try_lock()
+                && let Some(vad_tx) = &*guard
+            {
+                vad_tx.send(chunk.clone());
+            }
+
+            // Calculate true RMS over normalised [-1.0, 1.0] i16 samples
+            let sum_sq: f32 = chunk
+                .iter()
+                .map(|&x| {
+                    let f = x as f32 / i16::MAX as f32;
+                    f * f
+                })
+                .sum();
+            let rms = (sum_sq / chunk.len() as f32).sqrt();
+            let display_amp = (rms * 2.5).min(1.0);
+
+            if (display_amp - last_display_amp).abs() > 0.015
+                || (display_amp == 0.0 && last_display_amp != 0.0)
+            {
+                last_display_amp = display_amp;
+                let _ = app_vad.emit("raw-mic-amplitude", display_amp);
+            }
+
+            if let Some(m) = &mixer_clone {
+                m.send(MixerMessage {
+                    source: SourceType::Mic,
+                    timestamp_ms: ts,
+                    samples: chunk,
+                });
+            }
+        }
+    };
+
     let mic_stream = match mic_format {
-        cpal::SampleFormat::F32 => {
-            let app_vad = app.clone();
-            mic_device.build_input_stream(
-                &mic_config,
-                move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                    let chunks = mic_processor.process(data);
-                    for chunk in chunks {
-                        let ts = std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap()
-                            .as_millis() as u64;
-                        if let Some(vad_state) = app_vad.try_state::<VadState>()
-                            && let Ok(guard) = vad_state.vad_tx.try_lock()
-                            && let Some(vad_tx) = &*guard
-                        {
-                            vad_tx.send(chunk.clone());
-                        }
-
-                        // Emit raw amplitude bypassing VAD
-                        let sum_sq: f32 = chunk
-                            .iter()
-                            .map(|&x| {
-                                let f = (x as f32 / i16::MAX as f32 * 5.0).clamp(-1.0, 1.0);
-                                f * f
-                            })
-                            .sum();
-                        let rms = (sum_sq / chunk.len() as f32).sqrt();
-                        let _ = app_vad.emit("raw-mic-amplitude", rms);
-                        mixer_clone.send(MixerMessage {
-                            source: SourceType::Mic,
-                            timestamp_ms: ts,
-                            samples: chunk,
-                        });
-                    }
-                },
-                err_fn,
-                None,
-            )
-        }
-        cpal::SampleFormat::I16 => {
-            let app_vad = app.clone();
-            mic_device.build_input_stream(
-                &mic_config,
-                move |data: &[i16], _: &cpal::InputCallbackInfo| {
-                    let f32_data: Vec<f32> = data.iter().map(|&s| s.to_sample::<f32>()).collect();
-                    let chunks = mic_processor.process(&f32_data);
-                    for chunk in chunks {
-                        let ts = std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap()
-                            .as_millis() as u64;
-                        if let Some(vad_state) = app_vad.try_state::<VadState>()
-                            && let Ok(guard) = vad_state.vad_tx.try_lock()
-                            && let Some(vad_tx) = &*guard
-                        {
-                            vad_tx.send(chunk.clone());
-                        }
-
-                        // Emit raw amplitude bypassing VAD
-                        let sum_sq: f32 = chunk
-                            .iter()
-                            .map(|&x| {
-                                let f = (x as f32 / i16::MAX as f32 * 5.0).clamp(-1.0, 1.0);
-                                f * f
-                            })
-                            .sum();
-                        let rms = (sum_sq / chunk.len() as f32).sqrt();
-                        let _ = app_vad.emit("raw-mic-amplitude", rms);
-                        mixer_clone.send(MixerMessage {
-                            source: SourceType::Mic,
-                            timestamp_ms: ts,
-                            samples: chunk,
-                        });
-                    }
-                },
-                err_fn,
-                None,
-            )
-        }
+        cpal::SampleFormat::F32 => mic_device.build_input_stream(
+            &mic_config,
+            move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                handle_samples(data);
+            },
+            err_fn,
+            None,
+        ),
+        cpal::SampleFormat::I16 => mic_device.build_input_stream(
+            &mic_config,
+            move |data: &[i16], _: &cpal::InputCallbackInfo| {
+                let f32_data: Vec<f32> = data.iter().map(|&s| s.to_sample::<f32>()).collect();
+                handle_samples(&f32_data);
+            },
+            err_fn,
+            None,
+        ),
         _ => return Err("Unsupported sample format".into()),
     }
     .map_err(|e| e.to_string())?;
@@ -204,14 +193,12 @@ pub fn start_capture(
     let mut sys_stream = None;
     let mut sys_task = None;
 
-    // 2. Setup System Audio (only if host)
-    if role == "host" {
+    // 2. Setup System Audio (only if host / mixer initialized)
+    if let Some(m) = &mixer {
         if cfg!(target_os = "linux") {
             #[cfg(target_os = "linux")]
             {
-                let mixer_clone = mixer.clone();
-                let task =
-                    crate::audio::linux_capture::start_linux_sys_capture(mixer_clone.tx.clone());
+                let task = crate::audio::linux_capture::start_linux_sys_capture(m.tx.clone());
                 sys_task = Some(task);
             }
         } else {
@@ -236,7 +223,7 @@ pub fn start_capture(
                 sys_config.sample_rate as usize,
                 sys_config.channels as usize,
             );
-            let mixer_clone = mixer.clone();
+            let m_clone = m.clone();
 
             let stream = match sys_format {
                 cpal::SampleFormat::F32 => sys_device.build_input_stream(
@@ -248,7 +235,7 @@ pub fn start_capture(
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .unwrap()
                                 .as_millis() as u64;
-                            mixer_clone.send(MixerMessage {
+                            m_clone.send(MixerMessage {
                                 source: SourceType::Sys,
                                 timestamp_ms: ts,
                                 samples: chunk,
@@ -269,7 +256,7 @@ pub fn start_capture(
                                 .duration_since(std::time::UNIX_EPOCH)
                                 .unwrap()
                                 .as_millis() as u64;
-                            mixer_clone.send(MixerMessage {
+                            m_clone.send(MixerMessage {
                                 source: SourceType::Sys,
                                 timestamp_ms: ts,
                                 samples: chunk,
@@ -292,6 +279,6 @@ pub fn start_capture(
         _mic_stream: Some(mic_stream),
         _sys_stream: sys_stream,
         sys_task,
-        _mixer: Some(mixer),
+        _mixer: mixer,
     })
 }

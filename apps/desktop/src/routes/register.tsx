@@ -8,6 +8,7 @@ import { TitleBar } from "../components/title-bar";
 import { api } from "../lib/api";
 import { signIn, signUp } from "../lib/auth-client";
 import { prepareOAuthDeepLink } from "../lib/auth-deeplink";
+import { storeSessionToken } from "../lib/session-token";
 import {
   authBackClass,
   authBrandBgClass,
@@ -182,6 +183,9 @@ export function RegisterPage() {
       }
 
       const token = signUpResult.data?.token;
+      if (token) {
+        storeSessionToken(token);
+      }
       await createOrgOrJoin(orgMode, orgName, inviteCode, token ?? undefined);
       navigate("/onboarding");
     } catch (requestError) {

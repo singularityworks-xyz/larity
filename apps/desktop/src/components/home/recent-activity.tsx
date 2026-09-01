@@ -1,6 +1,12 @@
+import { memo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import type { RecentActivityItem } from "../../features/home/types";
 import { panelClass } from "../../lib/ui";
+
+const shortDateFormatter = new Intl.DateTimeFormat([], {
+  month: "short",
+  day: "numeric",
+});
 
 interface RecentActivityProps {
   activity: RecentActivityItem[];
@@ -35,13 +41,13 @@ function formatDate(iso: string | null): string {
   if (diffDays === 1) {
     return "Yesterday";
   }
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  return shortDateFormatter.format(d);
 }
 
 function renderContent(
   activity: RecentActivityItem[],
   loading: boolean,
-  navigate: ReturnType<typeof useNavigate>
+  onNavigate: (id: string) => void
 ) {
   if (loading) {
     return (
@@ -74,7 +80,7 @@ function renderContent(
         <li key={item.id}>
           <button
             className="flex w-full items-center gap-3 rounded-lg px-1.5 py-1.5 text-left transition-colors duration-150 ease-out hover:bg-bg-subtle"
-            onClick={() => navigate(`/meeting-post/${item.id}`)}
+            onClick={() => onNavigate(item.id)}
             type="button"
           >
             <span className="w-14 shrink-0 font-medium text-[10.5px] text-fg-subtle tabular-nums leading-none">
@@ -115,8 +121,15 @@ function renderContent(
   );
 }
 
-export function RecentActivity({ activity, loading }: RecentActivityProps) {
+export const RecentActivity = memo(function RecentActivity({
+  activity,
+  loading,
+}: RecentActivityProps) {
   const navigate = useNavigate();
+  const handleNavigate = useCallback(
+    (id: string) => navigate(`/meeting-post/${id}`),
+    [navigate]
+  );
 
   return (
     <div className={panelClass}>
@@ -125,7 +138,7 @@ export function RecentActivity({ activity, loading }: RecentActivityProps) {
           Recent Activity
         </p>
       </div>
-      {renderContent(activity, loading, navigate)}
+      {renderContent(activity, loading, handleNavigate)}
     </div>
   );
-}
+});

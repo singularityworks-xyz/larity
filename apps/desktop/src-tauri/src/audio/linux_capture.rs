@@ -26,9 +26,31 @@ pub fn start_linux_sys_capture(
             .spawn()
         {
             Ok(child) => child,
-            Err(e) => {
-                eprintln!("Failed to start parec: {}", e);
-                return;
+            Err(_) => {
+                // Fallback to pw-record on systems without parec
+                match Command::new("pw-record")
+                    .args([
+                        "--target",
+                        "@DEFAULT_MONITOR@",
+                        "--rate",
+                        "16000",
+                        "--channels",
+                        "1",
+                        "--format",
+                        "s16",
+                        "-",
+                    ])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::null())
+                    .kill_on_drop(true)
+                    .spawn()
+                {
+                    Ok(child) => child,
+                    Err(e) => {
+                        eprintln!("Failed to start parec or pw-record for system audio: {}", e);
+                        return;
+                    }
+                }
             }
         };
 
@@ -47,8 +69,8 @@ pub fn start_linux_sys_capture(
 
                     // Convert bytes to i16
                     let mut samples = Vec::with_capacity(800);
-                    for chunk in buffer.chunks_exact(2) {
-                        let sample = i16::from_le_bytes([chunk[0], chunk[1]]);
+                    for &[b0, b1] in buffer.as_chunks::<2>().0 {
+                        let sample = i16::from_le_bytes([b0, b1]);
                         samples.push(sample);
                     }
 

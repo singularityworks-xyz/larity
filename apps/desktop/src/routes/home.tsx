@@ -4,7 +4,7 @@ import {
   Calendar,
   CalendarClock,
   CheckCircle2,
-  Clock,
+  Clock as ClockIcon,
   Copy,
   Play,
   Plus,
@@ -16,7 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { InitialsAvatar } from "../components/avatar";
 import { useTheme } from "../components/theme-provider";
@@ -39,16 +39,32 @@ import { useOrg } from "../features/orgs/use-org";
 import { CONTROL_URL } from "../lib/env";
 import { cx } from "../lib/ui";
 
+const timeFormatter = new Intl.DateTimeFormat([], {
+  hour: "numeric",
+  minute: "2-digit",
+});
+const shortDateFormatter = new Intl.DateTimeFormat([], {
+  month: "short",
+  day: "numeric",
+});
+const clockTimeFormatter = new Intl.DateTimeFormat([], {
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+const clockDateFormatter = new Intl.DateTimeFormat([], {
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+});
+
 /* ── Utilities ──────────────────────────────────── */
 
 function formatTime(iso: string | null): string {
   if (!iso) {
     return "--:--";
   }
-  return new Date(iso).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return timeFormatter.format(new Date(iso));
 }
 
 function formatDuration(ms: number | null): string {
@@ -79,7 +95,7 @@ function formatDateActivity(iso: string | null): string {
   if (diffDays === 1) {
     return "Yesterday";
   }
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  return shortDateFormatter.format(d);
 }
 
 /* ── Animation Variants ─────────────────────────── */
@@ -96,14 +112,41 @@ const containerVariants = {
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20, filter: "blur(4px)" },
+  hidden: { opacity: 0, y: 20 },
   show: {
     opacity: 1,
     y: 0,
-    filter: "blur(0px)",
-    transition: { type: "spring" as const, stiffness: 300, damping: 24 },
+    transition: {
+      type: "tween" as const,
+      duration: 0.22,
+      ease: "easeOut" as const,
+    },
   },
 };
+
+const Clock = memo(function Clock() {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const timeStr = clockTimeFormatter.format(time);
+  const dateStr = clockDateFormatter.format(time);
+
+  return (
+    <div className="flex items-center gap-3">
+      <span className="font-bold font-heading text-lg text-white leading-none tracking-tight drop-shadow-sm dark:text-white/80">
+        {timeStr}
+      </span>
+      <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
+      <span className="font-bold font-heading text-lg text-white leading-none tracking-tight drop-shadow-sm dark:text-white/80">
+        {dateStr}
+      </span>
+    </div>
+  );
+});
 
 /* ── Header ─────────────────────────────────────── */
 
@@ -117,7 +160,7 @@ interface HeaderProps {
   userName?: string;
 }
 
-function Header({
+const Header = memo(function Header({
   userName,
   orgName,
   canManage,
@@ -129,24 +172,6 @@ function Header({
   const navigate = useNavigate();
   const { theme } = useTheme();
   const firstName = userName?.split(" ")[0] ?? "Agent";
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const timeStr = time.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-
-  const dateStr = time.toLocaleDateString([], {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-  });
 
   return (
     <motion.header
@@ -165,15 +190,7 @@ function Header({
 
       <div className="relative z-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <span className="font-bold font-heading text-lg text-white leading-none tracking-tight drop-shadow-sm dark:text-white/80">
-              {timeStr}
-            </span>
-            <span className="h-1.5 w-1.5 rounded-full bg-white/50" />
-            <span className="font-bold font-heading text-lg text-white leading-none tracking-tight drop-shadow-sm dark:text-white/80">
-              {dateStr}
-            </span>
-          </div>
+          <Clock />
           <h1 className="font-medium text-2xl text-white/90 tracking-tight">
             Ready to focus, <span className="text-white">{firstName}</span>?
           </h1>
@@ -223,7 +240,7 @@ function Header({
       </div>
     </motion.header>
   );
-}
+});
 
 /* ── Invites ────────────────────────────────────── */
 
@@ -236,7 +253,7 @@ interface InvitePanelProps {
   onRevokeInvite: (id: string) => void;
 }
 
-function InvitePanel({
+const InvitePanel = memo(function InvitePanel({
   invites,
   copyMessage,
   inviteError,
@@ -248,86 +265,94 @@ function InvitePanel({
 
   return (
     <motion.div
-      animate={{ opacity: 1, height: "auto" }}
-      className="overflow-hidden"
-      exit={{ opacity: 0, height: 0 }}
-      initial={{ opacity: 0, height: 0 }}
+      animate={{ gridTemplateRows: "1fr", opacity: 1 }}
+      className="grid"
+      exit={{ gridTemplateRows: "0fr", opacity: 0 }}
+      initial={{ gridTemplateRows: "0fr", opacity: 0 }}
     >
-      <div className="relative mt-3 overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated p-4">
-        <div className="pointer-events-none absolute top-0 right-0 rounded-full bg-accent/5 p-32 blur-[100px]" />
+      <div className="overflow-hidden">
+        <div className="relative mt-3 overflow-hidden rounded-xl border border-border-subtle bg-bg-elevated p-4">
+          <div className="pointer-events-none absolute top-0 right-0 rounded-full bg-accent/5 p-32 blur-[100px]" />
 
-        <div className="relative z-10 mb-3 flex items-center justify-between">
-          <h3 className="flex items-center gap-2 font-semibold text-fg text-sm">
-            <Users className="h-4 w-4 text-accent" /> Team Invites
-          </h3>
-          <button
-            className="rounded-lg bg-accent px-3 py-1.5 font-semibold text-accent-fg text-xs transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
-            disabled={invites.createInvite.isPending}
-            onClick={onCreateInvite}
-            type="button"
-          >
-            {invites.createInvite.isPending ? "Generating..." : "Generate Link"}
-          </button>
-        </div>
+          <div className="relative z-10 mb-3 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 font-semibold text-fg text-sm">
+              <Users className="h-4 w-4 text-accent" /> Team Invites
+            </h3>
+            <button
+              className="rounded-lg bg-accent px-3 py-1.5 font-semibold text-accent-fg text-xs transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
+              disabled={invites.createInvite.isPending}
+              onClick={onCreateInvite}
+              type="button"
+            >
+              {invites.createInvite.isPending
+                ? "Generating..."
+                : "Generate Link"}
+            </button>
+          </div>
 
-        {copyMessage ? (
-          <p className="relative z-10 mb-3 text-success-fg text-xs">
-            {copyMessage}
-          </p>
-        ) : null}
-        {inviteError ? (
-          <p className="relative z-10 mb-3 text-danger-fg text-xs">
-            {inviteError}
-          </p>
-        ) : null}
-
-        <div className="relative z-10 grid gap-2">
-          {hasInvites ? (
-            invites.invitesQuery.data?.map((invite) => (
-              <div
-                className="flex items-center justify-between rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2 transition-colors hover:border-border"
-                key={invite.id}
-              >
-                <div>
-                  <div className="font-mono font-semibold text-fg text-xs">
-                    {invite.code}
-                  </div>
-                  <div className="mt-0.5 text-[10px] text-fg-muted">
-                    Expires {new Date(invite.expiresAt).toLocaleDateString()}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    className="rounded-md p-1.5 text-fg-muted transition-colors hover:bg-bg-overlay hover:text-fg"
-                    onClick={() => onCopyInvite(invite.code)}
-                    type="button"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    className="rounded-md p-1.5 text-danger/70 transition-colors hover:bg-danger/10 hover:text-danger"
-                    onClick={() => onRevokeInvite(invite.id)}
-                    type="button"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-fg-muted text-xs italic">
-              No active invite links.
+          {copyMessage ? (
+            <p className="relative z-10 mb-3 text-success-fg text-xs">
+              {copyMessage}
             </p>
-          )}
+          ) : null}
+          {inviteError ? (
+            <p className="relative z-10 mb-3 text-danger-fg text-xs">
+              {inviteError}
+            </p>
+          ) : null}
+
+          <div className="relative z-10 grid gap-2">
+            {hasInvites ? (
+              invites.invitesQuery.data?.map((invite) => (
+                <div
+                  className="flex items-center justify-between rounded-lg border border-border-subtle bg-bg-subtle px-3 py-2 transition-colors hover:border-border"
+                  key={invite.id}
+                >
+                  <div>
+                    <div className="font-mono font-semibold text-fg text-xs">
+                      {invite.code}
+                    </div>
+                    <div className="mt-0.5 text-[10px] text-fg-muted">
+                      Expires {new Date(invite.expiresAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="rounded-md p-1.5 text-fg-muted transition-colors hover:bg-bg-overlay hover:text-fg"
+                      onClick={() => onCopyInvite(invite.code)}
+                      type="button"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      className="rounded-md p-1.5 text-danger/70 transition-colors hover:bg-danger/10 hover:text-danger"
+                      onClick={() => onRevokeInvite(invite.id)}
+                      type="button"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-fg-muted text-xs italic">
+                No active invite links.
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
   );
-}
+});
 
 /* ── Primary Action Card ────────────────────────── */
 
-function ActionGrid({ canManage }: { canManage: boolean }) {
+const ActionGrid = memo(function ActionGrid({
+  canManage,
+}: {
+  canManage: boolean;
+}) {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"host" | "join">("host");
   const { data: activeSessions } = useActiveSessions();
@@ -437,11 +462,11 @@ function ActionGrid({ canManage }: { canManage: boolean }) {
       </div>
     </motion.div>
   );
-}
+});
 
 /* ── Next Meeting (Hero) ────────────────────────── */
 
-function NextMeetingHero({
+const NextMeetingHero = memo(function NextMeetingHero({
   meeting,
   loading,
 }: {
@@ -550,11 +575,11 @@ function NextMeetingHero({
       </div>
     </motion.div>
   );
-}
+});
 
 /* ── Bento Grid Sections ────────────────────────── */
 
-function TodayMeetingAction({
+const TodayMeetingAction = memo(function TodayMeetingAction({
   m,
   activeSessionInfo,
   startingMeetingId,
@@ -625,9 +650,9 @@ function TodayMeetingAction({
       {m.status}
     </span>
   );
-}
+});
 
-function TodayAgenda({
+const TodayAgenda = memo(function TodayAgenda({
   meetings,
   loading,
 }: {
@@ -638,6 +663,10 @@ function TodayAgenda({
   const startSession = useStartSession();
   const joinMeeting = useJoinMeeting();
   const activeSessions = useActiveSessions();
+  const activeByMeeting = useMemo(
+    () => new Map((activeSessions.data ?? []).map((s) => [s.meetingId, s])),
+    [activeSessions.data]
+  );
   const [startingMeetingId, setStartingMeetingId] = useState<string | null>(
     null
   );
@@ -645,53 +674,55 @@ function TodayAgenda({
     null
   );
 
-  const handleStart = async (e: React.MouseEvent, m: TodayMeeting) => {
-    e.stopPropagation();
-    try {
-      setStartingMeetingId(m.id);
-      const session = await startSession.mutateAsync({ meetingId: m.id });
-      navigate(`/meeting/${session.sessionId}/waiting-room`, {
-        state: {
-          role: "host",
-          websocketUrl: session.websocketUrl,
-          clientName: m.client.name,
-          meetingTitle: m.title,
-          startedAt: Date.now(),
-          allowNameCustomization: session.allowNameCustomization,
-          meetingId: m.id,
-        },
-      });
-    } catch (err) {
-      console.error("Failed to start session from schedule:", err);
-      setStartingMeetingId(null);
-    }
-  };
+  const handleStart = useCallback(
+    async (e: React.MouseEvent, m: TodayMeeting) => {
+      e.stopPropagation();
+      try {
+        setStartingMeetingId(m.id);
+        const session = await startSession.mutateAsync({ meetingId: m.id });
+        navigate(`/meeting/${session.sessionId}/waiting-room`, {
+          state: {
+            role: "host",
+            websocketUrl: session.websocketUrl,
+            clientName: m.client.name,
+            meetingTitle: m.title,
+            startedAt: Date.now(),
+            allowNameCustomization: session.allowNameCustomization,
+            meetingId: m.id,
+          },
+        });
+      } catch (err) {
+        console.error("Failed to start session from schedule:", err);
+        setStartingMeetingId(null);
+      }
+    },
+    [navigate, startSession]
+  );
 
-  const handleRejoin = async (
-    e: React.MouseEvent,
-    sessionId: string,
-    m: TodayMeeting
-  ) => {
-    e.stopPropagation();
-    try {
-      setRejoiningMeetingId(m.id);
-      const joined = await joinMeeting.mutateAsync({ sessionId });
-      navigate(`/meeting/${joined.sessionId}/waiting-room`, {
-        state: {
-          role: joined.role,
-          websocketUrl: joined.websocketUrl,
-          clientName: m.client.name,
-          meetingTitle: m.title,
-          startedAt: Date.now(),
-          allowNameCustomization: joined.allowNameCustomization,
-          meetingId: m.id,
-        },
-      });
-    } catch (err) {
-      console.error("Failed to rejoin session:", err);
-      setRejoiningMeetingId(null);
-    }
-  };
+  const handleRejoin = useCallback(
+    async (e: React.MouseEvent, sessionId: string, m: TodayMeeting) => {
+      e.stopPropagation();
+      try {
+        setRejoiningMeetingId(m.id);
+        const joined = await joinMeeting.mutateAsync({ sessionId });
+        navigate(`/meeting/${joined.sessionId}/waiting-room`, {
+          state: {
+            role: joined.role,
+            websocketUrl: joined.websocketUrl,
+            clientName: m.client.name,
+            meetingTitle: m.title,
+            startedAt: Date.now(),
+            allowNameCustomization: joined.allowNameCustomization,
+            meetingId: m.id,
+          },
+        });
+      } catch (err) {
+        console.error("Failed to rejoin session:", err);
+        setRejoiningMeetingId(null);
+      }
+    },
+    [joinMeeting, navigate]
+  );
 
   const isEmpty = !loading && meetings.length === 0;
   return (
@@ -732,9 +763,7 @@ function TodayAgenda({
           style={{ maxHeight: "300px" }}
         >
           {meetings.map((m) => {
-            const activeSessionInfo = activeSessions.data?.find(
-              (s) => s.meetingId === m.id
-            );
+            const activeSessionInfo = activeByMeeting.get(m.id);
             return (
               <div
                 className="group flex items-center justify-between gap-3 rounded-xl border border-transparent px-3 py-2.5 transition-all hover:border-border hover:bg-bg-subtle hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)]"
@@ -772,9 +801,9 @@ function TodayAgenda({
       )}
     </motion.div>
   );
-}
+});
 
-function RecentActivityList({
+const RecentActivityList = memo(function RecentActivityList({
   activity,
   loading,
 }: {
@@ -790,7 +819,7 @@ function RecentActivityList({
     >
       <div className="mb-3 flex items-center justify-between">
         <h3 className="flex items-center gap-1.5 font-semibold text-fg text-xs">
-          <Clock className="h-3.5 w-3.5 text-fg-muted" /> Recent Activity
+          <ClockIcon className="h-3.5 w-3.5 text-fg-muted" /> Recent Activity
         </h3>
       </div>
 
@@ -855,9 +884,9 @@ function RecentActivityList({
       )}
     </motion.div>
   );
-}
+});
 
-function ActiveCommitments({
+const ActiveCommitments = memo(function ActiveCommitments({
   commitments,
   loading,
 }: {
@@ -924,21 +953,24 @@ function ActiveCommitments({
       )}
     </motion.div>
   );
-}
+});
 
-function ClientShortcuts() {
+const ClientShortcuts = memo(function ClientShortcuts() {
   const navigate = useNavigate();
   const { data: clients, isLoading } = useClients();
+  const top = useMemo(
+    () =>
+      [...(clients ?? [])]
+        .sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        )
+        .slice(0, 6),
+    [clients]
+  );
   if (isLoading || !clients || clients.length === 0) {
     return null;
   }
-
-  const top = [...clients]
-    .sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    )
-    .slice(0, 6);
 
   return (
     <motion.div
@@ -966,11 +998,11 @@ function ClientShortcuts() {
       </div>
     </motion.div>
   );
-}
+});
 
 /* ── Health Strip ───────────────────────────────── */
 
-function StatusDot({
+const StatusDot = memo(function StatusDot({
   label,
   state,
 }: {
@@ -992,16 +1024,20 @@ function StatusDot({
       </span>
     </div>
   );
-}
+});
 
-function HealthStrip({ health }: { health: HealthState }) {
+const HealthStrip = memo(function HealthStrip({
+  health,
+}: {
+  health: HealthState;
+}) {
   const serverState = health.serverOnline ? "online" : "offline";
   const audioState = health.audioDeviceAvailable ? "online" : "warning";
   const audioLabel = health.audioDeviceAvailable
     ? "Audio Ready"
     : "No Audio Device";
   const syncLabel = health.lastSync
-    ? `Synced ${health.lastSync.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+    ? `Synced ${timeFormatter.format(health.lastSync)}`
     : "Not Synced";
 
   return (
@@ -1015,7 +1051,7 @@ function HealthStrip({ health }: { health: HealthState }) {
       </span>
     </div>
   );
-}
+});
 
 /* ── Main Page ──────────────────────────────────── */
 
@@ -1031,10 +1067,14 @@ export function HomePage() {
   const health = useHealth();
 
   const [showMemberPanel, setShowMemberPanel] = useState(false);
+  const toggleMemberPanel = useCallback(
+    () => setShowMemberPanel((v) => !v),
+    []
+  );
   const [copyMessage, setCopyMessage] = useState("");
   const [inviteError, setInviteError] = useState("");
 
-  async function handleCreateInvite() {
+  const handleCreateInvite = useCallback(async () => {
     setInviteError("");
     setCopyMessage("");
     try {
@@ -1046,24 +1086,27 @@ export function HomePage() {
         err instanceof Error ? err.message : "Could not create invite"
       );
     }
-  }
+  }, [invites.createInvite]);
 
-  async function handleCopyInvite(code: string) {
+  const handleCopyInvite = useCallback(async (code: string) => {
     await navigator.clipboard.writeText(code);
     setCopyMessage("Invite code copied to clipboard!");
-  }
+  }, []);
 
-  async function handleRevokeInvite(inviteId: string) {
-    setInviteError("");
-    setCopyMessage("");
-    try {
-      await invites.revokeInvite.mutateAsync(inviteId);
-    } catch (err) {
-      setInviteError(
-        err instanceof Error ? err.message : "Could not revoke invite"
-      );
-    }
-  }
+  const handleRevokeInvite = useCallback(
+    async (inviteId: string) => {
+      setInviteError("");
+      setCopyMessage("");
+      try {
+        await invites.revokeInvite.mutateAsync(inviteId);
+      } catch (err) {
+        setInviteError(
+          err instanceof Error ? err.message : "Could not revoke invite"
+        );
+      }
+    },
+    [invites.revokeInvite]
+  );
 
   if (error) {
     return (
@@ -1095,7 +1138,7 @@ export function HomePage() {
     >
       <Header
         canManage={canManage}
-        onToggleMemberPanel={() => setShowMemberPanel(!showMemberPanel)}
+        onToggleMemberPanel={toggleMemberPanel}
         openCommitmentsCount={data?.openCommitments?.length ?? 0}
         orgName={orgName}
         showMemberPanel={showMemberPanel}

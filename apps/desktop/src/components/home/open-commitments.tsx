@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { OpenCommitmentItem } from "../../features/home/types";
 import { CONTROL_URL } from "../../lib/env";
 import { panelClass } from "../../lib/ui";
@@ -51,7 +52,7 @@ function renderContent(commitments: OpenCommitmentItem[], loading: boolean) {
   );
 }
 
-export function OpenCommitments({
+export const OpenCommitments = memo(function OpenCommitments({
   commitments,
   loading,
 }: OpenCommitmentsProps) {
@@ -77,4 +78,4 @@ export function OpenCommitments({
       {renderContent(commitments, loading)}
     </div>
   );
-}
+});

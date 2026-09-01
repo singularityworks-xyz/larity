@@ -27,8 +27,6 @@ const STATUS_INDICATORS = {
   },
 } as const;
 
-const ANIMATION_DELAY_MS = 40;
-
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: keep as is
 export function ClientDetailPage() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -348,7 +346,7 @@ export function ClientDetailPage() {
         )}
         {!meetingsLoading && meetings && meetings.length > 0 && (
           <div className="flex flex-col overflow-hidden rounded-[var(--radius-1)] border border-border bg-bg-elevated">
-            {meetings.map((meeting, i) => (
+            {meetings.map((meeting) => (
               <button
                 className="group fade-in slide-in-from-bottom-1 flex w-full animate-in items-center justify-between border-0 border-border border-b border-solid bg-transparent p-3.5 text-left transition-colors duration-150 last:border-b-0 hover:bg-bg-subtle"
                 key={meeting.id}
@@ -359,10 +357,6 @@ export function ClientDetailPage() {
                       : `/meeting/${meeting.id}`
                   )
                 }
-                style={{
-                  animationDelay: `${i * ANIMATION_DELAY_MS}ms`,
-                  animationFillMode: "both",
-                }}
                 type="button"
               >
                 <div className="flex items-center gap-3">
