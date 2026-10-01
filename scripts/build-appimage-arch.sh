@@ -15,6 +15,10 @@ export PATH="$HOME/.cargo/bin:$PATH"
 # build) which clobbers the binary as root.
 sed -i '/"packageManager":/d' package.json
 
+# The mounted workspace is owned by the host uid; mark it safe so the
+# `prepare` hook's git calls do not abort install inside the container.
+git config --global --add safe.directory /app
+
 bun install --frozen-lockfile
 cd apps/desktop
 
