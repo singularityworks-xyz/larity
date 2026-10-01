@@ -47,7 +47,12 @@ export class AlertPublisher {
     const channel = redisKeys.meetingAlertShared(this.sessionId);
 
     try {
-      await this.redis.publish(channel, JSON.stringify(alert));
+      // P5.1: envelope type travels with the payload so the realtime
+      // subscriber forwards it verbatim (no re-stringify per alert).
+      await this.redis.publish(
+        channel,
+        JSON.stringify({ ...alert, type: "alert" })
+      );
       log.debug(
         { alertId: alert.id, category: alert.category, channel },
         "Published shared alert"
@@ -75,7 +80,11 @@ export class AlertPublisher {
     );
 
     try {
-      await this.redis.publish(channel, JSON.stringify(alert));
+      // P5.1: see publishToShared above.
+      await this.redis.publish(
+        channel,
+        JSON.stringify({ ...alert, type: "alert" })
+      );
       log.debug(
         {
           alertId: alert.id,

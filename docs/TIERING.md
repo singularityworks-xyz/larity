@@ -19,7 +19,7 @@ Utterance arrives
   ├─ Tier 1 — Structural Detection   (<50ms, zero network)
   │  Regex + fuzzy match: dates, numbers, API keys, blocklist keywords, client names
   │
-  ├─ Tier 2 — Small LLM Classification   (~200ms, Gemini flash-lite)
+  ├─ Tier 2 — Small LLM Classification   (~200ms, General Compute gpt-oss-120b)
   │  Intent, tone, risk signals, commitment type, extracted data
   │
   ├─ Tier 3 — Embedding Search   (~100ms, pgvector)
@@ -153,6 +153,8 @@ When assembling the Tier 4 prompt context, we include recent utterances and comm
 
 Tier 3 memory searches hit pgvector, but only for IDs and similarity scores. The actual content (decisions, policy guardrails, important points) is hydrated once during session startup into a preloaded context payload. Tier 4 references this payload rather than querying the database per utterance. This eliminates 3-6 database round-trips from the per-utterance critical path.
 
+Tier 2's client-member candidates (for speaker identity guesses) follow the same rule since P2.6: loaded once at session hydration into pipeline state and refreshed on participant join — no per-utterance Postgres query. Tier 3 still issues pgvector queries by design when preload context exists (short-circuiting to zero I/O otherwise).
+
 ### 5. Levenshtein Over Semantic Similarity for Cache Validation
 
 When validating whether a cached speculative result matches the final utterance, we use raw Levenshtein distance — not embedding similarity. This is deliberate: embeddings can be close (0.95 cosine similarity) for utterances that mean entirely different things (e.g. "we can offer a 20% discount" vs "we can offer nothing"). Levenshtein catches when the speaker *literally changed their words* at the last moment, which is the actual failure mode for speculation.
@@ -264,13 +266,14 @@ Without these optimizations, the same meeting would cost roughly $3-5.
 | `SPECULATIVE_MAX_ENTRIES_PER_SESSION` | 100 | LRU cap per session (env: `SPECULATIVE_CACHE_SIZE`) |
 | `SESSION_COST_LIMIT` | $2.00 | Hard cap — Tier 4 disabled |
 | `WARNING_THRESHOLD` | $1.60 | Warning mode — Tier 4 only for high-signal |
-| `SAMBANOVA_TIER2_TIMEOUT_MS` | 3,000 | OpenAI SDK request timeout for Tier 2 (env: `SAMBANOVA_TIER2_TIMEOUT_MS`) |
+| `GENERALCOMPUTE_TIER2_TIMEOUT_MS` | 3,000 | OpenAI SDK request timeout for Tier 2 (env: `GENERALCOMPUTE_TIER2_TIMEOUT_MS`) |
 | `TIER4_TIMEOUT_MS` | 1,500 | Gemini timeout for Tier 4 |
 | `HOT_CACHE_MAX_PER_SESSION` | 30 | Max topics in predictive preloader hot cache |
 | `MIN_WORDS_REQUIRED` | 3 | Pre-filter drop threshold |
 | `TIER2_CACHE_MAX_SIZE` | 200 | Max entries in Tier 2 semantic cache |
-| `SAMBANOVA_TIER2_MODEL` | `gpt-oss-120b` | Model for Tier 2 on SambaNova (env-overridable) |
-| `GEMINI_TIER4_MODEL` | `gemini-3.1-flash-lite` | Model for Tier 4 (env-overridable) |
+| `GENERALCOMPUTE_TIER2_MODEL` | `gpt-oss-120b` | Model for Tier 2 on General Compute (env-overridable) |
+| `TIER2_REASONING_EFFORT` | `low` | Test-time compute for the Tier 2 reasoning model (env-overridable) |
+| `GEMINI_TIER4_MODEL` | `gemini-3.5-flash-lite` | Model for Tier 4 (env-overridable) |
 
 ---
 
@@ -288,7 +291,11 @@ packages/meeting-mode/src/
 │   ├── tier4.ts               Deep reasoning prompt + invoke
 │   ├── tier4-context.ts       Context assembly for Tier 4
 │   ├── tier4-alert.ts         Alert creation + per-category thresholds
-│   └── metrics.ts             Prometheus instrumentation
+│   ├── metrics.ts             In-process latency histograms + counters
+│   │                          (`getMetricsSnapshot()`; aggregate-only, no
+│   │                          per-session labels; no Prometheus exporter yet)
+│   ├── finalizer-metrics.test.ts  Finalizer publish-path metric tests
+│   └── engine-metrics.test.ts     Pipeline metric tests (fake LLM invokes)
 ├── speculative/
 │   ├── cache.ts               Speculative cache (Levenshtein + TTL + LRU)
 │   ├── processor.ts           Partial utterance evaluator

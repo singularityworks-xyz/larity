@@ -149,6 +149,11 @@ Utterance
   - [packages/meeting-mode/src/pipeline/pre-filter.ts](file:///home/haze/repos/larity/packages/meeting-mode/src/pipeline/pre-filter.ts)
 
 ### 3.2 Speculative Processing
+
+> Flag-gated and **OFF by default** (`SPECULATIVE_ENABLED`). The mechanism below
+> only runs when explicitly enabled after the P3.6 hit-rate rule is measured on
+> dogfood data; see `SPECULATIVE_PROCESSING.md` (current decision: NO-GO).
+
 - **Pre-Computing the Future**: Analyzes partial (in-flight) utterances with a confidence rating above `0.70` before the speaker finishes their sentence.
 - **Speculative Cache**: Stores pre-computed classifications. When a final utterance lands, its text is compared to cached partials using **normalized Levenshtein distance**. If the mismatch ratio is under `0.30` (30%), the cached result is used, saving 200–300ms of critical path latency.
 - **Structural Bypass**: Regex matches on high-risk keywords (e.g. "password", "NDA") bypass the LLM and instantly cache a synthetic "concern" classification.
@@ -164,7 +169,7 @@ Utterance
   - [packages/meeting-mode/src/pipeline/tier1.ts](file:///home/haze/repos/larity/packages/meeting-mode/src/pipeline/tier1.ts)
 
 ### 3.4 Tier 2: Small LLM Classifier
-- Runs a fast model (e.g., Gemini Flash-Lite / SambaNova) to categorize:
+- Runs a fast model (e.g., Gemini Flash-Lite / General Compute gpt-oss-120b) to categorize:
   - **Intent**: Question, agreement, concern, statement, commitment.
   - **Tone**: Aggressive, defensive, hesitant, standard.
   - **Topic Shift**: Updates topic states on the meeting fly.

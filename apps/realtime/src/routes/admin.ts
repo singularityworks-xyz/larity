@@ -1,4 +1,5 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getMetricsSnapshot } from "@larity/stt/metrics";
 import { type Elysia, t } from "elysia";
 import { defaultAudioStreamerConfig } from "../audio/streamer";
 import { createRealtimeLogger } from "../logger";
@@ -240,9 +241,27 @@ export function addAdminRoutes(app: Elysia): void {
   const adminKey = ADMIN_API_KEY;
   if (!adminKey) {
     log.warn(
-      "ADMIN_API_KEY not set — admin routes will reject all requests. Set ADMIN_API_KEY env var to enable."
+      "ADMIN_API_KEY not set — audio admin routes reject all requests and /admin/metrics is unauthenticated. Set ADMIN_API_KEY to require it everywhere."
     );
   }
+
+  // Aggregate-only latency snapshot (no session ids, no PII). Unauthenticated
+  // only when no ADMIN_API_KEY is configured (local dev/measurement); a
+  // configured key is required so a public origin cannot scrape it.
+  app.get("/admin/metrics", ({ headers, set }) => {
+    const requiredKey = process.env.ADMIN_API_KEY ?? "";
+    if (requiredKey) {
+      const authHeader = headers.authorization;
+      const apiKey = authHeader?.startsWith("Bearer ")
+        ? authHeader.slice(7)
+        : "";
+      if (apiKey !== requiredKey) {
+        set.status = 401;
+        return { error: "Unauthorized" };
+      }
+    }
+    return getMetricsSnapshot();
+  });
 
   const s3Client = new S3Client({
     endpoint: config.endpoint,

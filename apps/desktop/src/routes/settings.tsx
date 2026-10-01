@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { ArrowLeft } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -315,11 +315,16 @@ export function SettingsPage() {
       setAudioDeviceCount(audioInputs.length);
 
       try {
+        // P4.1: capture streams through a Channel. This VAD-only test does
+        // not consume audio frames, so pass a no-op channel.
+        const audioChannel = new Channel<ArrayBuffer>();
+        audioChannel.onmessage = () => undefined;
         await invoke("audio_capture_start", {
           sessionId: "vad-test",
           micDeviceId: null,
           sysDeviceId: null,
           role: "participant",
+          onAudio: audioChannel,
         });
       } catch (captureError) {
         if (!String(captureError).includes("already running")) {

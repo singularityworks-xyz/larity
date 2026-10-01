@@ -11,10 +11,15 @@ import type { Alert } from "./alerts/types";
 import { CommitmentManager } from "./commitment/manager";
 import { ConstraintManager } from "./constraint/manager";
 import type { PreloadedContextPayload } from "./constraint/types";
-import { CostManager } from "./cost/manager";
-import { validateEnv } from "./env";
+import { CostManager, hasPricingForModel } from "./cost/manager";
+import {
+  GEMINI_TIER4_MODEL,
+  GENERALCOMPUTE_TIER2_MODEL,
+  validateEnv,
+} from "./env";
 import { rootLogger } from "./logger";
 import { MeetingPipelineEngine } from "./pipeline/engine";
+import { getMetricsSnapshot } from "./pipeline/metrics";
 import { publishPipelineEvaluationTrace } from "./pipeline/pipeline-trace";
 import { PreFilter } from "./pipeline/pre-filter";
 import { Tier1StructuralDetector } from "./pipeline/tier1";
@@ -25,6 +30,25 @@ import { startSubscriber, stopSubscriber } from "./subscriber";
 import { UtteranceFinalizer } from "./utterance/finalizer";
 
 const UTTERANCE_CACHE_TTL = 7 * 24 * 60 * 60;
+
+/** Cadence for the aggregate latency snapshot log (Phase 0 observability). */
+const METRICS_DUMP_INTERVAL_MS = 30_000;
+
+/**
+ * Fail fast when a configured LLM has no cost-table entry: without pricing,
+ * spend is recorded at flash-lite fallback rates and the $1.60/$2.00 gates
+ * trigger late (P1.9).
+ */
+function assertModelPricing(): void {
+  const models = [GENERALCOMPUTE_TIER2_MODEL, GEMINI_TIER4_MODEL];
+  for (const model of models) {
+    if (!hasPricingForModel(model)) {
+      throw new Error(
+        `No cost pricing for configured model "${model}" — add it to MODEL_PRICING in cost/manager.ts`
+      );
+    }
+  }
+}
 
 // biome-ignore lint/performance/noBarrelFile: structure convention
 export { AlertPublisher, createAlertChannelKeys } from "./alerts/publisher";
@@ -37,6 +61,7 @@ export * from "./channels";
 export * from "./commitment";
 export * from "./constraint";
 export * from "./pipeline/engine";
+export * from "./pipeline/metrics";
 export * from "./pipeline/pre-filter";
 export * from "./pipeline/tier1";
 export * from "./pipeline/tier2";
@@ -102,6 +127,7 @@ async function main(): Promise<void> {
 
   try {
     validateEnv();
+    assertModelPricing();
     rootLogger.info("Environment variables validated");
   } catch (error) {
     rootLogger.fatal({ err: error }, "Environment validation failed");
@@ -267,7 +293,7 @@ async function main(): Promise<void> {
     },
   });
 
-  finalizer.onUtterancePublished(async (utterance) => {
+  finalizer.onUtterancePublished(async (utterance, options) => {
     if (!pipelineEngine) {
       return;
     }
@@ -277,9 +303,45 @@ async function main(): Promise<void> {
     const payload = JSON.stringify(utterance, (k, val) =>
       k === "embeddingPromise" ? undefined : val
     );
+
+    // P2.4: speaker corrections for an already-published utterance replace
+    // the cached entry in place and must NOT re-queue the pipeline (which
+    // would re-run Tier 2/3/4 and duplicate the list entry).
+    if (options?.republish) {
+      try {
+        const list = await redisClient.lrange(key, 0, -1);
+        const index = list.findIndex((item) => {
+          try {
+            return (
+              (JSON.parse(item) as { utteranceId?: string }).utteranceId ===
+              utterance.utteranceId
+            );
+          } catch {
+            return false;
+          }
+        });
+        if (index >= 0) {
+          await redisClient.lset(key, index, payload);
+        } else {
+          await redisClient.rpush(key, payload);
+        }
+      } catch (err) {
+        rootLogger.error(
+          { err, sessionId: utterance.sessionId },
+          "Failed to replace re-identified utterance in Redis"
+        );
+      }
+      return;
+    }
+
+    // P2.10: single round trip (MULTI) instead of serial RPUSH + EXPIRE.
+    // EXPIRE stays per-utterance so the 7-day TTL always counts from the
+    // latest line rather than hydration time.
     try {
-      await redisClient.rpush(key, payload);
-      await redisClient.expire(key, UTTERANCE_CACHE_TTL);
+      const multi = redisClient.multi();
+      multi.rpush(key, payload);
+      multi.expire(key, UTTERANCE_CACHE_TTL);
+      await multi.exec();
     } catch (err) {
       rootLogger.error(
         { err, sessionId: utterance.sessionId },
@@ -289,8 +351,18 @@ async function main(): Promise<void> {
 
     pipelineEngine.evaluateUtteranceQueued(
       utterance,
-      async (utt, evaluation) => {
-        await publishPipelineEvaluationTrace(redisClient, utt, evaluation);
+      // P2.9: telemetry must not hold the per-session FIFO chain — the next
+      // utterance's Tier 2 start no longer waits for this trace publish.
+      (utt, evaluation) => {
+        publishPipelineEvaluationTrace(redisClient, utt, evaluation).catch(
+          (err: unknown) => {
+            rootLogger.error(
+              { err, utteranceId: utt.utteranceId },
+              "Pipeline trace publish failed"
+            );
+          }
+        );
+        return Promise.resolve();
       }
     );
   });
@@ -304,6 +376,16 @@ async function main(): Promise<void> {
     pipelineEngine
   );
   rootLogger.info("Utterance Finalizer is running");
+
+  // Aggregate-only latency snapshot (no per-session labels). Lets operators
+  // verify pipeline latency without a metrics backend.
+  const metricsTimer = setInterval(() => {
+    rootLogger.info(
+      { metrics: getMetricsSnapshot() },
+      "Latency metrics snapshot"
+    );
+  }, METRICS_DUMP_INTERVAL_MS);
+  metricsTimer.unref();
 
   process.on("SIGINT", () => shutdown("SIGINT"));
   process.on("SIGTERM", () => shutdown("SIGTERM"));

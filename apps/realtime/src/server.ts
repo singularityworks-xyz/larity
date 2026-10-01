@@ -25,7 +25,16 @@ const WEBSOCKET_IDLE_TIMEOUT_SECONDS = 600;
 export function startServer(): Promise<any> {
   return new Promise((resolve, reject) => {
     try {
-      const app = new Elysia().derive(async ({ query }) => {
+      // NOTE: Bun/Elysia only applies `maxPayloadLength`/`idleTimeout` from
+      // the constructor-level `websocket` options — the same keys on the
+      // `app.ws()` route are silently ignored (verified by probe: a 100 KB
+      // frame stays open with route-level options, closes with these).
+      const app = new Elysia({
+        websocket: {
+          maxPayloadLength: WEBSOCKET_MAX_PAYLOAD_BYTES,
+          idleTimeout: WEBSOCKET_IDLE_TIMEOUT_SECONDS,
+        },
+      }).derive(async ({ query }) => {
         const sessionId = query?.sessionId;
         if (sessionId) {
           const validation = await validateSession(
@@ -52,9 +61,8 @@ export function startServer(): Promise<any> {
           name: t.Optional(t.String()),
         }),
 
-        // Payload and timeout configurations
-        maxPayloadLength: WEBSOCKET_MAX_PAYLOAD_BYTES,
-        idleTimeout: WEBSOCKET_IDLE_TIMEOUT_SECONDS,
+        // NOTE: `maxPayloadLength`/`idleTimeout` intentionally absent here —
+        // they are only honored via the constructor `websocket` options above.
 
         /**
          * Runs before the WebSocket connection is established.

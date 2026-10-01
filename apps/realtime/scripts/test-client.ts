@@ -25,7 +25,7 @@ const role = "host";
 
 const wsUrl = `ws://localhost:9001/?sessionId=${sessionId}&userId=${userId}&role=${role}`;
 const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
-const transcriptChannel = `meeting.stt.${sessionId}`;
+const transcriptChannel = `meeting.stt.final.${sessionId}`;
 
 console.log("========================================");
 console.log("  Realtime Integration Test Client");

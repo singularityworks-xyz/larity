@@ -7,7 +7,8 @@
     "check-types": "tsc --noEmit"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./metrics": "./src/metrics.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",

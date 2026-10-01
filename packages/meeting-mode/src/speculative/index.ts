@@ -2,6 +2,13 @@
 export { SpeculativeCache } from "./cache";
 export { PredictivePreloader } from "./predictive-preloader";
 export { hasHighSignalKeywords, SpeculativeProcessor } from "./processor";
+export {
+  countNewWords,
+  countWords,
+  SPECULATIVE_THROTTLE_MIN_INTERVAL_MS,
+  SPECULATIVE_THROTTLE_MIN_NEW_WORDS,
+  SpeculationThrottle,
+} from "./throttle";
 export type {
   PartialUtterance,
   SpeakerProcessingPriority,

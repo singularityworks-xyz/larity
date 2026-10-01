@@ -16,9 +16,38 @@ function stripEmbedding(commitment: Commitment): Omit<Commitment, "embedding"> {
   return rest;
 }
 
-function utteranceForPrompt(u: Utterance): Omit<Utterance, "embedding"> {
-  const { embedding: _, ...rest } = u;
-  return rest;
+/** Budget for recent-transcript history in Tier 4 prompts (~1200 tokens). */
+const RECENT_UTTERANCE_CHAR_BUDGET = 4800;
+/** Hard item cap preserved from the previous slice(-48) behavior. */
+const RECENT_UTTERANCE_MAX_ITEMS = 48;
+
+/**
+ * Compact one-line history for the Tier 4 prompt (P2.11): speaker name/role
+ * plus text only, newest-first budget fill. Full Utterance objects cost
+ * ~60-80 tokens each (confidence, offsets, indices) with no reasoning value.
+ */
+function recentUtteranceLines(utterances: Utterance[]): string[] {
+  const lines: string[] = [];
+  let chars = 0;
+  for (let index = utterances.length - 1; index >= 0; index--) {
+    const utterance = utterances[index];
+    if (!utterance) {
+      continue;
+    }
+    const line = `${utterance.speaker.name} (${utterance.speaker.type}): ${utterance.text}`;
+    if (
+      lines.length > 0 &&
+      chars + line.length > RECENT_UTTERANCE_CHAR_BUDGET
+    ) {
+      break;
+    }
+    lines.unshift(line);
+    chars += line.length;
+    if (lines.length >= RECENT_UTTERANCE_MAX_ITEMS) {
+      break;
+    }
+  }
+  return lines;
 }
 
 function historicalWithoutPayloadRow(
@@ -264,9 +293,7 @@ export function tierContextForPromptPayload(
         commitment: stripEmbedding(c),
       })
     ),
-    recentUtterances: ctx.recentUtterances
-      .map(utteranceForPrompt)
-      .slice(Math.max(0, ctx.recentUtterances.length - 48)),
+    recentUtterances: recentUtteranceLines(ctx.recentUtterances),
     relevantConstraints: ctx.relevantConstraints.map((constraint) => ({
       id: constraint.id,
       type: constraint.type,

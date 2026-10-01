@@ -8,23 +8,134 @@ const pipelineTraceLog = createRealtimeLogger("pipeline-trace");
 const DEBUG_INGEST_ENDPOINT =
   "http://127.0.0.1:7268/ingest/d02c4985-7539-46d4-bc45-33f990c9f9a8";
 
-/** Same semantics as `packages/meeting-mode` `PIPELINE_TRACE_PRETTY_JSON` */
+/** Same semantics as `packages/meeting-mode` `PIPELINE_TRACE_PRETTY_JSON` (default off, opt-in). */
 function pipelineTracePrettyLogsEnabled(): boolean {
   const raw = process.env.PIPELINE_TRACE_PRETTY_JSON;
-  if (raw === "false" || raw === "0") {
-    return false;
-  }
-  if (raw === "true" || raw === "1") {
-    return true;
-  }
-  return process.env.NODE_ENV !== "production";
+  return raw === "true" || raw === "1";
 }
 
 let subscriber: Redis | null = null;
 
 /**
- * Start the Redis subscriber to listen for meeting events
- * Connects to Redis and subscribes to relevant channels
+ * Fallback wildcard for `realtime.*` control events (P5.2). Nothing
+ * publishes those for this subscriber today (meeting-mode consumes them);
+ * the pattern stays so future control traffic needs no code change.
+ */
+const REALTIME_CONTROL_PATTERN = "realtime.*";
+
+/**
+ * Exact per-session channels (P5.2) — the session-scoped equivalents of the
+ * nine former global patterns, plus the legacy STT shape. Personal alerts
+ * stay a session-scoped pattern (see `sessionPatterns`).
+ */
+export function sessionChannels(sessionId: string): string[] {
+  return [
+    `meeting.utterance.${sessionId}`,
+    `meeting.topic.${sessionId}`,
+    `meeting.alert.${sessionId}.shared`,
+    `meeting.ledger.${sessionId}`,
+    `meeting.pipeline.${sessionId}`,
+    `meeting.stt.final.${sessionId}`,
+    `meeting.stt.partial.${sessionId}`,
+    `meeting.stt.${sessionId}`,
+    `meeting.processed.${sessionId}`,
+    `meeting.speaker_identity_guessed.${sessionId}`,
+    `meeting.system_event.${sessionId}`,
+  ];
+}
+
+/** Session-scoped patterns: personal alert fan-out for one session. */
+export function sessionPatterns(sessionId: string): string[] {
+  return [`meeting.alert.${sessionId}.user.*`];
+}
+
+const subscribedSessions = new Set<string>();
+/** Desired state incl. in-flight ops (true = should be subscribed). */
+const desiredSubscriptions = new Set<string>();
+/** Serializes subscribe/unsubscribe per session so a fast close cannot leak. */
+const subscriptionOps = new Map<string, Promise<void>>();
+
+/**
+ * Bring one session's subscription to its desired state, serialized behind
+ * any in-flight op for that session. A close that arrives while the initial
+ * subscribe is still awaiting Redis is queued here and unsubscribes after —
+ * so a replaced/closed session can never leave a dangling subscription.
+ */
+function reconcileSession(sessionId: string): Promise<void> {
+  const previous = subscriptionOps.get(sessionId) ?? Promise.resolve();
+  const next = previous
+    .then(async () => {
+      const shouldSubscribe = desiredSubscriptions.has(sessionId);
+      if (shouldSubscribe === subscribedSessions.has(sessionId)) {
+        return;
+      }
+      if (!subscriber) {
+        return;
+      }
+      if (shouldSubscribe) {
+        await subscriber.subscribe(...sessionChannels(sessionId));
+        try {
+          await subscriber.psubscribe(...sessionPatterns(sessionId));
+        } catch (error) {
+          // Roll back the channel subscribe so a partial failure cannot
+          // leave an untracked subscription behind.
+          await subscriber
+            .unsubscribe(...sessionChannels(sessionId))
+            .catch(() => undefined);
+          throw error;
+        }
+        subscribedSessions.add(sessionId);
+        log.info({ sessionId }, "Subscribed to session channels");
+      } else {
+        try {
+          await subscriber.unsubscribe(...sessionChannels(sessionId));
+          await subscriber.punsubscribe(...sessionPatterns(sessionId));
+        } finally {
+          // Desired state is "off"; clear tracking even on a failed Redis
+          // call so the next reconcile converges instead of desyncing.
+          subscribedSessions.delete(sessionId);
+        }
+        log.info({ sessionId }, "Unsubscribed from session channels");
+      }
+    })
+    .catch((err) => {
+      log.error({ err, sessionId }, "Failed to reconcile session subscription");
+    });
+
+  subscriptionOps.set(sessionId, next);
+  next.finally(() => {
+    if (subscriptionOps.get(sessionId) === next) {
+      subscriptionOps.delete(sessionId);
+    }
+  });
+  return next;
+}
+
+/**
+ * Subscribe to one session's channels. Idempotent; called on the session's
+ * first connection (any role — participants need the streams too). No-op
+ * when the subscriber isn't running.
+ */
+export async function subscribeSession(sessionId: string): Promise<void> {
+  desiredSubscriptions.add(sessionId);
+  await reconcileSession(sessionId);
+}
+
+/**
+ * Leave one session's channels. Called when its last connection closes.
+ */
+export async function unsubscribeSession(sessionId: string): Promise<void> {
+  desiredSubscriptions.delete(sessionId);
+  await reconcileSession(sessionId);
+}
+
+/**
+ * Start the Redis subscriber to listen for meeting events.
+ *
+ * P5.2: only the `realtime.*` control wildcard is global. Every `meeting.*`
+ * stream is subscribed per session on first connection (see
+ * `subscribeSession`), so an instance never receives — and never warns
+ * about — another instance's sessions.
  */
 export async function startSubscriber(): Promise<void> {
   if (subscriber) {
@@ -42,25 +153,15 @@ export async function startSubscriber(): Promise<void> {
     log.info("Redis subscriber connected");
   });
 
-  // Subscribe to patterns
-  // Pattern: meeting.utterance.{sessionId}
-  // Pattern: meeting.topic.{sessionId}
-  // Pattern: meeting.alert.{sessionId}.shared
-  // Pattern: meeting.alert.{sessionId}.user.{userId}
-  // Pattern: meeting.pipeline.{sessionId} — tier / gate trace (logged only, no WS relay)
-  // Pattern: meeting.stt.* — raw Deepgram partials + finals (forwarded to WS for live transcript)
-  await subscriber.psubscribe(
-    "meeting.utterance.*",
-    "meeting.topic.*",
-    "meeting.alert.*",
-    "meeting.ledger.*",
-    "meeting.pipeline.*",
-    "meeting.stt.*",
-    "meeting.processed.*",
-    "meeting.speaker_identity_guessed.*",
-    "meeting.system_event.*"
+  await subscriber.psubscribe(REALTIME_CONTROL_PATTERN);
+  log.info(
+    { pattern: REALTIME_CONTROL_PATTERN },
+    "Pattern subscribed to realtime control events"
   );
 
+  subscriber.on("message", (channel, message) => {
+    handleMessage(channel, channel, message);
+  });
   subscriber.on("pmessage", (pattern, channel, message) => {
     handleMessage(pattern, channel, message);
   });
@@ -101,7 +202,8 @@ function handleMessage(
     }
 
     if (channel.startsWith("meeting.alert.")) {
-      log.info({ channel }, "handleMessage: routing to handleAlertChannel");
+      // P5.3: single alert log lives in handleAlertChannel (routing
+      // outcome); no entry log here.
       handleAlertChannel(channel, message);
     }
   } catch (error) {
@@ -111,39 +213,34 @@ function handleMessage(
 
 /**
  * Forward raw STT (Deepgram) partials/finals to WebSocket clients before meeting-mode enrichment.
- * Channel shapes: `meeting.stt.{sessionId}` (final), `meeting.stt.partial.{sessionId}` (partial).
+ * Channel shapes: `meeting.stt.final.{sessionId}` (final),
+ * `meeting.stt.partial.{sessionId}` (partial), plus legacy `meeting.stt.{sessionId}` (final).
+ *
+ * P5.1: publishers include the envelope `type`, so new-shape payloads are
+ * forwarded byte-verbatim (no parse+spread+stringify per partial). Only the
+ * legacy shape still parses to inject the type.
  */
 function handleSttChannel(channel: string, message: string): boolean {
-  if (!channel.startsWith("meeting.stt.")) {
-    return false;
+  const envelope = parseSttEnvelope(channel);
+  if (!envelope) {
+    return channel.startsWith("meeting.stt.");
   }
 
-  const parts = channel.split(".");
-  if (parts[0] !== "meeting" || parts[1] !== "stt") {
-    return true;
-  }
-
-  let sessionId: string;
-  let envelopeType: "stt_partial" | "stt_final";
-
-  if (parts[2] === "partial" && parts.length >= 4) {
-    envelopeType = "stt_partial";
-    sessionId = parts.slice(3).join(".");
-  } else if (parts.length >= 3) {
-    envelopeType = "stt_final";
-    sessionId = parts.slice(2).join(".");
-  } else {
-    return true;
-  }
-
-  if (!sessionId) {
+  const segments = channel.split(".");
+  if (segments[2] === "final" || segments[2] === "partial") {
+    // P5.5: partials are sheddable per socket; finals never shed.
+    broadcast(
+      envelope.sessionId,
+      message,
+      envelope.type === "stt_partial" ? "partial" : "other"
+    );
     return true;
   }
 
   try {
     const payload = JSON.parse(message) as Record<string, unknown>;
-    const wrapped = JSON.stringify({ ...payload, type: envelopeType });
-    broadcast(sessionId, wrapped);
+    const wrapped = JSON.stringify({ ...payload, type: envelope.type });
+    broadcast(envelope.sessionId, wrapped);
   } catch (error) {
     log.warn({ err: error, channel }, "Invalid STT JSON from Redis");
   }
@@ -152,8 +249,51 @@ function handleSttChannel(channel: string, message: string): boolean {
 }
 
 /**
+ * Parse an STT Redis channel into its envelope type + session id.
+ * Returns null when the channel is not an STT channel at all.
+ */
+export function parseSttEnvelope(channel: string): {
+  sessionId: string;
+  type: "stt_partial" | "stt_final";
+} | null {
+  if (!channel.startsWith("meeting.stt.")) {
+    return null;
+  }
+
+  const parts = channel.split(".");
+  if (parts[0] !== "meeting" || parts[1] !== "stt") {
+    return null;
+  }
+
+  if (parts[2] === "partial" && parts.length >= 4) {
+    const sessionId = parts.slice(3).join(".");
+    return sessionId ? { sessionId, type: "stt_partial" } : null;
+  }
+
+  if (parts[2] === "final" && parts.length >= 4) {
+    const sessionId = parts.slice(3).join(".");
+    return sessionId ? { sessionId, type: "stt_final" } : null;
+  }
+
+  // Legacy pre-P1.1 final shape `meeting.stt.<sessionId>`. A bare `final`
+  // or `partial` third segment is a malformed channel, not a session id.
+  if (parts.length >= 3) {
+    const sessionId = parts.slice(2).join(".");
+    if (sessionId && sessionId !== "final" && sessionId !== "partial") {
+      return { sessionId, type: "stt_final" };
+    }
+    return null;
+  }
+
+  return null;
+}
+
+/**
  * Forward meeting processed events to WebSocket clients.
  * Channel shape: `meeting.processed.{sessionId}`.
+ *
+ * P5.1: the publisher includes `type: "meeting_processed"`, so the payload
+ * is forwarded verbatim.
  */
 function handleProcessedChannel(channel: string, message: string): boolean {
   if (!channel.startsWith("meeting.processed.")) {
@@ -166,17 +306,7 @@ function handleProcessedChannel(channel: string, message: string): boolean {
     return true;
   }
 
-  try {
-    const payload = JSON.parse(message) as Record<string, unknown>;
-    const wrapped = JSON.stringify({ ...payload, type: "meeting_processed" });
-    broadcast(sessionId, wrapped);
-  } catch (error) {
-    log.warn(
-      { err: error, channel },
-      "Invalid meeting processed JSON from Redis"
-    );
-  }
-
+  broadcast(sessionId, message);
   return true;
 }
 
@@ -215,14 +345,9 @@ function handleSystemEventChannel(channel: string, message: string): boolean {
     return true;
   }
 
-  try {
-    const payload = JSON.parse(message) as Record<string, unknown>;
-    const wrapped = JSON.stringify({ ...payload, type: "system_event" });
-    broadcast(sessionId, wrapped);
-  } catch (error) {
-    log.warn({ err: error, channel }, "Invalid system event JSON from Redis");
-  }
-
+  // P5.1: `publishSystemEvent` already includes `type: "system_event"` —
+  // forward verbatim.
+  broadcast(sessionId, message);
   return true;
 }
 
@@ -281,7 +406,10 @@ function handleAlertChannel(channel: string, message: string): void {
 
   let wrapped: string;
   try {
-    wrapped = JSON.stringify({ ...JSON.parse(message), type: "alert" });
+    // P5.1: publishers include `type: "alert"`; forward verbatim. Validate
+    // only (no spread/re-stringify) so corrupt payloads still drop here.
+    JSON.parse(message) as unknown;
+    wrapped = message;
   } catch {
     return;
   }
@@ -344,10 +472,34 @@ export const __test_only_handleAlertChannel = handleAlertChannel;
 export const __test_only_handleSttChannel = handleSttChannel;
 export const __test_only_handleProcessedChannel = handleProcessedChannel;
 
+/** Minimal Redis surface used by session subscriptions (test seam). */
+export interface SubscriptionClient {
+  psubscribe(...patterns: string[]): Promise<unknown>;
+  punsubscribe(...patterns: unknown[]): Promise<unknown>;
+  subscribe(...channels: string[]): Promise<unknown>;
+  unsubscribe(...channels: unknown[]): Promise<unknown>;
+}
+
+export const __test_only_setSubscriptionClient = (
+  client: SubscriptionClient | null
+): void => {
+  subscriber = client as unknown as Redis;
+};
+
+export const __test_only_resetSubscriptions = (): void => {
+  subscribedSessions.clear();
+  desiredSubscriptions.clear();
+  subscriptionOps.clear();
+  subscriber = null;
+};
+
 /**
  * Stop the Redis subscriber
  */
 export async function stopSubscriber(): Promise<void> {
+  subscribedSessions.clear();
+  desiredSubscriptions.clear();
+  subscriptionOps.clear();
   if (subscriber) {
     await subscriber.quit();
     subscriber = null;

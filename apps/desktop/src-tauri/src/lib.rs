@@ -1,6 +1,9 @@
 use audio::{AudioCaptureStatus, AudioDevice, VadState};
 use meeting_detection::MeetingDetectionHint;
-use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{
+    AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder,
+    ipc::{Channel, Response},
+};
 
 pub mod audio;
 pub mod meeting_detection;
@@ -236,6 +239,9 @@ async fn audio_capture_start(
     mic_device_id: Option<String>,
     sys_device_id: Option<String>,
     role: String,
+    // P4.1: JS creates `new Channel<ArrayBuffer>()` and passes it here;
+    // raw audio frames arrive in the webview with no base64/atob.
+    on_audio: Channel<Response>,
 ) -> Result<(), String> {
     let mut is_capturing = state.is_capturing.lock().await;
     if *is_capturing {
@@ -249,6 +255,7 @@ async fn audio_capture_start(
         mic_device_id,
         sys_device_id,
         role,
+        on_audio,
     )?;
 
     // Keep the stream alive by moving it to a background thread
@@ -256,6 +263,11 @@ async fn audio_capture_start(
 
     *state.stop_tx.lock().await = Some(tx);
     *state.current_session.lock().await = Some(session_id);
+    *state.sys_active.lock().await = handles._sys_stream.is_some() || handles.sys_task.is_some();
+    *state.sys_error.lock().await = handles.sys_error.clone();
+    // P4.3: retain only the drop counter, never the mixer (holding the
+    // queue sender would keep the forward loop alive past stop).
+    *state.mixer_drops.lock().await = handles._mixer.as_ref().map(|m| m.dropped_handle());
     *is_capturing = true;
 
     // Stream must not drop before we stop
@@ -281,6 +293,8 @@ async fn audio_capture_stop(state: State<'_, audio::AudioState>) -> Result<(), S
     }
 
     *state.current_session.lock().await = None;
+    *state.sys_active.lock().await = false;
+    *state.sys_error.lock().await = None;
     *is_capturing = false;
 
     Ok(())
@@ -291,17 +305,36 @@ async fn audio_capture_status(
     state: State<'_, audio::AudioState>,
 ) -> Result<AudioCaptureStatus, String> {
     let is_capturing = *state.is_capturing.lock().await;
+    let sys_active = *state.sys_active.lock().await;
+    let sys_error = state.sys_error.lock().await.clone();
+
+    let base_backend = if cfg!(target_os = "windows") {
+        "wasapi"
+    } else if cfg!(target_os = "macos") {
+        "screencapturekit-fallback"
+    } else {
+        "alsa-monitor"
+    };
+    // Honest backend: the hard-coded name is only accurate when loopback is
+    // actually running; mic-only capture is labeled as such with the reason
+    // in `error` (P1.13).
+    let backend = if sys_active || sys_error.is_none() {
+        base_backend.to_string()
+    } else {
+        format!("{base_backend}-mic-only")
+    };
 
     Ok(AudioCaptureStatus {
         active: is_capturing,
-        backend: if cfg!(target_os = "windows") {
-            "wasapi".to_string()
-        } else if cfg!(target_os = "macos") {
-            "screencapturekit-fallback".to_string()
-        } else {
-            "alsa-monitor".to_string()
-        },
-        error: None,
+        backend,
+        error: sys_error,
+        mixer_drops: state
+            .mixer_drops
+            .lock()
+            .await
+            .as_ref()
+            .map(|drops| drops.load(std::sync::atomic::Ordering::Relaxed))
+            .unwrap_or(0),
     })
 }
 
@@ -374,7 +407,8 @@ async fn create_overlay_window(app: AppHandle, url: String) -> Result<(), String
 
 #[tauri::command]
 async fn vad_start(app: AppHandle, state: State<'_, VadState>) -> Result<(), String> {
-    let vad_tx = audio::vad::spawn_vad_task(app).map_err(|e| e.to_string())?;
+    let amplitude = state.amplitude_listeners.clone();
+    let vad_tx = audio::vad::spawn_vad_task(app, amplitude).map_err(|e| e.to_string())?;
     *state.vad_tx.lock().await = Some(vad_tx);
     Ok(())
 }
@@ -383,6 +417,19 @@ async fn vad_start(app: AppHandle, state: State<'_, VadState>) -> Result<(), Str
 async fn vad_stop(state: State<'_, VadState>) -> Result<(), String> {
     *state.vad_tx.lock().await = None;
     Ok(())
+}
+
+/// Register or release one amplitude listener (P4.4). Overlay visualizers
+/// call with `true` on mount / `false` on unmount; `VadManager` pairs the
+/// same calls around its `onAmplitude` subscription. Refcounted server-side
+/// so the two consumers cannot disable each other. Returns the live count.
+#[tauri::command]
+fn vad_set_amplitude_listener(state: State<'_, VadState>, enabled: bool) -> Result<usize, String> {
+    Ok(if enabled {
+        state.amplitude_listeners.acquire()
+    } else {
+        state.amplitude_listeners.release()
+    })
 }
 
 #[cfg(target_os = "linux")]
@@ -456,6 +503,7 @@ pub fn run() {
             meeting_detection_check_heuristic,
             vad_start,
             vad_stop,
+            vad_set_amplitude_listener,
             linux_media_permission_get_decision,
             linux_media_permission_reset,
             linux_media_permission_ensure_prompt,

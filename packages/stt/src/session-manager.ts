@@ -13,7 +13,9 @@ const log = createSttLogger("session-manager");
 
 interface SessionConnection {
   close(): void;
-  sendAudio(audioBuffer: Buffer): Promise<void>;
+  /** Optional eager dial; sessions without it fall back to lazy connect. */
+  preconnect?(): void;
+  sendAudio(audioBuffer: Buffer): void;
   setAudioStreamStart(serverAudioStartTs: number): void;
 }
 
@@ -55,7 +57,8 @@ export class SessionManager {
       return false;
     }
 
-    // Create connection (will connect lazily on first audio)
+    // Create connection (dialed eagerly via connectSession; lazy on first
+    // audio remains as the fallback path)
     const connection = this.createConnection(sessionId);
     this.connections.set(sessionId, connection);
 
@@ -64,6 +67,26 @@ export class SessionManager {
     );
 
     return true;
+  }
+
+  /**
+   * Eagerly dial a session's Deepgram sockets (fire-and-forget). Overlaps
+   * the TLS+WebSocket handshake with the client's first audio so stream
+   * start doesn't pay the full handshake serially.
+   */
+  connectSession(sessionId: string): void {
+    const connection = this.connections.get(sessionId);
+    if (!connection) {
+      return;
+    }
+    try {
+      connection.preconnect?.();
+    } catch (error) {
+      log.error(
+        error as Error,
+        `Eager connect failed for ${sessionId} — lazy connect remains`
+      );
+    }
   }
 
   /**
@@ -85,19 +108,19 @@ export class SessionManager {
   }
 
   /**
-   * Send audio to a session.
+   * Send audio to a session. Synchronous (P4.10): enqueue + flush attempt.
    *
    * Buffer layout: `[tag: u8][pcm mono linear16 LE]`.
-   * See `@larity/stt/dual-channel-session` for tag constants.
+   * See `deepgram/dual-channel-session.ts` for tag constants.
    */
-  async sendAudio(sessionId: string, audioBuffer: Buffer): Promise<void> {
+  sendAudio(sessionId: string, audioBuffer: Buffer): void {
     const connection = this.connections.get(sessionId);
     if (!connection) {
       // Silently drop - session may have ended
       return;
     }
 
-    await connection.sendAudio(audioBuffer);
+    connection.sendAudio(audioBuffer);
   }
 
   /**

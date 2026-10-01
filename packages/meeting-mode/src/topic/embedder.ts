@@ -4,6 +4,28 @@ import { createMeetingModeLogger } from "../logger";
 
 const log = createMeetingModeLogger("topic-embedder");
 
+/**
+ * Embedding request budget (P2.2). The finalizer publishes before topic
+ * assignment, so a hung embedding must fail fast rather than stall the
+ * per-session finalize chain.
+ */
+const EMBEDDING_TIMEOUT_MS = 1500;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Embedding timed out after ${timeoutMs}ms`)),
+      timeoutMs
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  });
+}
+
 export class GoogleGenAIEmbedder {
   private readonly ai: GoogleGenAI;
   private readonly model = "gemini-embedding-2-preview";
@@ -13,15 +35,21 @@ export class GoogleGenAIEmbedder {
     this.ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
   }
 
-  async embed(text: string): Promise<number[]> {
+  async embed(
+    text: string,
+    timeoutMs = EMBEDDING_TIMEOUT_MS
+  ): Promise<number[]> {
     try {
-      const response = await this.ai.models.embedContent({
-        model: this.model,
-        contents: text,
-        config: {
-          outputDimensionality: this.outputDimensionality,
-        },
-      });
+      const response = await withTimeout(
+        this.ai.models.embedContent({
+          model: this.model,
+          contents: text,
+          config: {
+            outputDimensionality: this.outputDimensionality,
+          },
+        }),
+        timeoutMs
+      );
 
       if (
         !response.embeddings ||

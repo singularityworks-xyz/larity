@@ -13,6 +13,10 @@ export const redis = new Redis(REDIS_URL, {
   maxRetriesPerRequest: 2,
   enableReadyCheck: true,
   showFriendlyErrorStack: true,
+  // P2.10: batch same-tick commands into fewer round trips automatically.
+  // Safe here: this client carries only non-blocking commands (no BLPOP /
+  // SUBSCRIBE — subscribers use dedicated connections) and no MULTI scripts.
+  enableAutoPipelining: true,
 });
 
 redis.on("error", (error: Error) => {

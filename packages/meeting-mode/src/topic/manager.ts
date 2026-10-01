@@ -85,8 +85,12 @@ export class TopicManager {
           return resolved;
         }
       } catch {
-        // Fall through
+        // Fall through to empty below.
       }
+      // P2.2: a failed in-flight embedding resolves to "no embedding" —
+      // never a second attempt. Tier 2/3 tolerate missing embeddings, and
+      // assignTopic falls back to recency below.
+      return [];
     }
     return this.embedder.embed(utterance.text).catch(() => []);
   }
@@ -405,11 +409,15 @@ export class TopicManager {
       const topicJson = JSON.stringify(topic);
       const redisKey = `meeting.topics.${sessionId}`;
 
-      // Save full topic state to HASH
-      await this.publisher.hset(redisKey, topic.topicId, topicJson);
-
-      // Broadcast update to clients
-      await this.publisher.publish(topicChannel(sessionId), topicJson);
+      // P2.10: issue concurrently instead of serially — wall time drops from
+      // the sum to the max, and the shared client's auto-pipelining batches
+      // same-tick commands into fewer round trips.
+      await Promise.all([
+        // Save full topic state to HASH
+        this.publisher.hset(redisKey, topic.topicId, topicJson),
+        // Broadcast update to clients
+        this.publisher.publish(topicChannel(sessionId), topicJson),
+      ]);
 
       log.info(
         { sessionId, topicId: topic.topicId },

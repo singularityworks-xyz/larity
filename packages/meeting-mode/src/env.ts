@@ -24,11 +24,13 @@ export const MERGE_GROUPING_MS = parsePositiveInt(
 
 /**
  * After pending audio end, flush publish if no sibling arrives (`UtteranceFinalizer` timer).
- * Defaults ~700ms so transcript/alerts are not held for the full grouping window.
+ * Defaults ~250ms so transcript/alerts are not held for the full grouping window.
+ * (Reduced from 700ms in P2.3: Deepgram's own 450ms endpointing already pads
+ * silence, so the merger gap only needs to catch rapid same-speaker siblings.)
  */
 export const MERGE_PUBLISH_GAP_MS = parsePositiveInt(
   process.env.MERGE_PUBLISH_GAP_MS,
-  700
+  250
 );
 
 /** @deprecated Prefer `MERGE_GROUPING_MS`; kept for docs/tests expecting one knob */
@@ -46,44 +48,48 @@ export const COST_CAP_CACHE_TTL_MS = parsePositiveInt(
   500
 );
 
-export const MAX_BUFFER_SIZE = Number.parseInt(
-  process.env.MAX_BUFFER_SIZE || "20",
-  10
-);
-
 export const LOG_LEVEL = process.env.LOG_LEVEL || "info";
 
 /**
  * Indent JSON on `meeting.pipeline.*` and use multiline trace logs (meeting-mode + realtime).
- * On by default when NODE_ENV !== "production". Disable with PIPELINE_TRACE_PRETTY_JSON=false.
+ * Off by default (P2.14: the double-stringify costs per-utterance CPU even in
+ * dev). Opt in with PIPELINE_TRACE_PRETTY_JSON=true (or 1).
  */
 export const PIPELINE_TRACE_PRETTY_JSON =
-  process.env.PIPELINE_TRACE_PRETTY_JSON !== "false" &&
-  process.env.PIPELINE_TRACE_PRETTY_JSON !== "0" &&
-  (process.env.PIPELINE_TRACE_PRETTY_JSON === "true" ||
-    process.env.PIPELINE_TRACE_PRETTY_JSON === "1" ||
-    process.env.NODE_ENV !== "production");
+  process.env.PIPELINE_TRACE_PRETTY_JSON === "true" ||
+  process.env.PIPELINE_TRACE_PRETTY_JSON === "1";
 
 export const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 export const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
-export const SAMBANOVA_API_KEY = process.env.SAMBANOVA_API_KEY || "";
-export const SAMBANOVA_TIER2_MODEL =
-  process.env.SAMBANOVA_TIER2_MODEL || "gpt-oss-120b";
+/** General Compute (Tier 2 provider) — OpenAI-compatible endpoint. */
+export const GENERALCOMPUTE_API_KEY = process.env.GENERALCOMPUTE_API_KEY || "";
+export const GENERALCOMPUTE_BASE_URL =
+  process.env.GENERALCOMPUTE_BASE_URL || "https://api.generalcompute.com/v1";
+export const GENERALCOMPUTE_TIER2_MODEL =
+  process.env.GENERALCOMPUTE_TIER2_MODEL || "gpt-oss-120b";
 
 const tier2TimeoutParsed = Number.parseInt(
-  process.env.SAMBANOVA_TIER2_TIMEOUT_MS || "8000",
+  process.env.GENERALCOMPUTE_TIER2_TIMEOUT_MS || "3000",
   10
 );
 
-/** SambaNova Tier 2 request timeout (`tier2.ts`). Override via `SAMBANOVA_TIER2_TIMEOUT_MS`. Default 8000ms. */
-export const SAMBANOVA_TIER2_TIMEOUT_MS =
+/** General Compute Tier 2 request timeout (`tier2.ts`). Override via `GENERALCOMPUTE_TIER2_TIMEOUT_MS`. Default 3000ms (P2.7: caps per-session FIFO head-of-line blocking; matches docs/TIERING.md). */
+export const GENERALCOMPUTE_TIER2_TIMEOUT_MS =
   Number.isFinite(tier2TimeoutParsed) && tier2TimeoutParsed > 0
     ? tier2TimeoutParsed
-    : 8000;
+    : 3000;
+
+/**
+ * Test-time compute for the Tier 2 reasoning model (`reasoning_effort`).
+ * Tier 2 is classification, not deep reasoning — "low" keeps it fast and
+ * cheap. Override via `TIER2_REASONING_EFFORT` (low|medium|high).
+ */
+export const TIER2_REASONING_EFFORT =
+  process.env.TIER2_REASONING_EFFORT || "low";
 
 export const GEMINI_TIER4_MODEL =
-  process.env.GEMINI_TIER4_MODEL || "gemini-3.1-flash-lite";
+  process.env.GEMINI_TIER4_MODEL || "gemini-3.5-flash-lite";
 
 const tier4TimeoutParsed = Number.parseInt(
   process.env.GEMINI_TIER4_TIMEOUT_MS || "1500",
@@ -95,6 +101,16 @@ export const GEMINI_TIER4_TIMEOUT_MS =
   Number.isFinite(tier4TimeoutParsed) && tier4TimeoutParsed > 0
     ? tier4TimeoutParsed
     : 1500;
+
+/**
+ * Speculative partial processing (P3.2): feed STT partials to
+ * `pipelineEngine.evaluatePartial` for throttled speculative Tier 2.
+ * Default OFF — the P3.6 go/no-go rule requires measured hit-rate data
+ * before enabling. Opt in with SPECULATIVE_ENABLED=true (or 1).
+ */
+export const SPECULATIVE_ENABLED =
+  process.env.SPECULATIVE_ENABLED === "true" ||
+  process.env.SPECULATIVE_ENABLED === "1";
 
 export function validateEnv(): void {
   if (!REDIS_URL) {
@@ -112,14 +128,14 @@ export function validateEnv(): void {
       );
     }
   }
-  if (!SAMBANOVA_API_KEY) {
+  if (!GENERALCOMPUTE_API_KEY) {
     if (isDev) {
       console.warn(
-        "[meeting-mode] SAMBANOVA_API_KEY not set — Tier 2 classification disabled"
+        "[meeting-mode] GENERALCOMPUTE_API_KEY not set — Tier 2 classification disabled"
       );
     } else {
       throw new Error(
-        "SAMBANOVA_API_KEY is required for Tier 2 classification (meeting-mode)"
+        "GENERALCOMPUTE_API_KEY is required for Tier 2 classification (meeting-mode)"
       );
     }
   }

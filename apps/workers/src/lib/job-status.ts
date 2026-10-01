@@ -30,6 +30,9 @@ export async function publishMeetingProcessed(
     meetingId,
     sessionId,
     status: "complete",
+    // P5.1: envelope type travels with the payload so the realtime
+    // subscriber forwards it verbatim (no re-stringify).
+    type: "meeting_processed",
   });
   await redis.publish(channel, payload);
 }

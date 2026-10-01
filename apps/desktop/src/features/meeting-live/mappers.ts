@@ -45,6 +45,31 @@ interface BackendTopicState {
   utteranceCount: number;
 }
 
+/**
+ * Late topic assignment for an already-published utterance (P2.1: utterances
+ * publish before their embedding round trip finishes). Carries no label or
+ * topic state — only the linkage to patch.
+ */
+export interface BackendUtteranceTopicDelta {
+  topicId: string;
+  type: "utterance_topic";
+  utteranceId: string;
+}
+
+export function isUtteranceTopicDelta(
+  data: unknown
+): data is BackendUtteranceTopicDelta {
+  if (data === null || typeof data !== "object") {
+    return false;
+  }
+  const record = data as Record<string, unknown>;
+  return (
+    record.type === "utterance_topic" &&
+    typeof record.utteranceId === "string" &&
+    typeof record.topicId === "string"
+  );
+}
+
 interface BackendCommitment {
   contradicts?: string;
   extractedData?: Record<string, unknown>;
@@ -121,6 +146,7 @@ export function mapBackendUtteranceToLive(
     confidence: utterance.speaker.confidence,
     text: utterance.text,
     timestamp: utterance.timestamp,
+    topicId: utterance.topicId,
     isCommitment: false,
     hasAlert: false,
     hasMemory: false,
@@ -190,5 +216,7 @@ export function isBackendTopicState(data: unknown): data is BackendTopicState {
   if (data === null || typeof data !== "object") {
     return false;
   }
-  return typeof (data as Record<string, unknown>).topicId === "string";
+  const record = data as Record<string, unknown>;
+  // Deltas share `topicId` but carry no label — check the delta first.
+  return typeof record.topicId === "string" && typeof record.label === "string";
 }

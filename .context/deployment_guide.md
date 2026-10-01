@@ -40,7 +40,7 @@ Before touching a server, understand what you're running.
 └─────────────────────────────────────────────────────────────────────┘
          │                         │
    Cloudflare R2             External APIs
-   (audio files)             Deepgram, Gemini, SambaNova
+   (audio files)             Deepgram, Gemini, General Compute
 ```
 
 **Data flow for a meeting:**
@@ -49,7 +49,7 @@ Before touching a server, understand what you're running.
 3. `realtime` validates the session with `control` via `CONTROL_API_URL` (`POST /internal/meeting-session/:id/validate`)
 4. When meeting ends, `control` enqueues a job in Redis
 5. `workers` picks it up: fetches audio from R2, transcribes via Deepgram, runs LLM extraction (Gemini), saves to Postgres
-6. `meeting-mode` runs the live meeting pipeline (topics, commitment/constraint detection, SambaNova Tier 2 classification)
+6. `meeting-mode` runs the live meeting pipeline (topics, commitment/constraint detection, General Compute Tier 2 classification)
 
 **Deployment is managed through Dokploy's web UI.** There is no manual SSH editing of Nginx configs or Certbot — Traefik handles TLS. Everything is declared in `docker-compose.dokploy.yml` and the Dokploy project settings.
 
@@ -71,7 +71,7 @@ Required secrets and where they come from:
 | `REDIS_PASSWORD` | `openssl rand -base64 24 | tr -d '/+='` |
 | `DEEPGRAM_API_KEY` | console.deepgram.com |
 | `GEMINI_API_KEY` | aistudio.google.com/apikey |
-| `SAMBANOVA_API_KEY` | cloud.sambanova.ai |
+| `GENERALCOMPUTE_API_KEY` | generalcompute.com |
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | Cloudflare R2 API token (Object Read & Write for `larity-audio`) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | console.cloud.google.com (OAuth client) |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | github.com/settings/developers (OAuth app) |
@@ -274,7 +274,7 @@ S3_AUDIO_BUCKET=larity-audio
 DEEPGRAM_API_KEY=...
 MAX_CONNECTIONS=50
 GEMINI_API_KEY=...
-SAMBANOVA_API_KEY=...
+GENERALCOMPUTE_API_KEY=...
 
 # ADMIN
 ADMIN_API_KEY=...
@@ -282,10 +282,9 @@ ADMIN_API_KEY=...
 # MEETING MODE PIPELINE TUNING
 MERGE_GAP_MS=5000
 MERGE_GROUPING_MS=5000
-MERGE_PUBLISH_GAP_MS=700
+MERGE_PUBLISH_GAP_MS=250
 LEDGER_SNAPSHOT_DEBOUNCE_MS=400
 COST_CAP_CACHE_TTL_MS=500
-MAX_BUFFER_SIZE=20
 
 # INTER-SERVICE
 # realtime → control session validation
@@ -575,7 +574,7 @@ To revert to a previous image, pin `CONTROL_TAG` / `REALTIME_TAG` / `WORKERS_TAG
 
 ```
 SECRETS
-  ✅ All API keys configured (Deepgram, Gemini, SambaNova, R2)
+  ✅ All API keys configured (Deepgram, Gemini, General Compute, R2)
   ✅ BETTER_AUTH_SECRET is a 64-char random value
   ✅ Postgres and Redis use strong passwords
 

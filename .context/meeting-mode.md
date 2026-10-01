@@ -365,21 +365,31 @@ Only **final utterances** trigger alerts. Speculative work accelerates response.
 
 ### 5.2 Speculative Processing (Latency Optimization)
 
-**Do not wait for `isFinal`.** On partial hypotheses:
+**Flag-gated and OFF by default (`SPECULATIVE_ENABLED`).** The go/no-go rule
+requires a measured hit rate from dogfooding before it is enabled; see
+[../docs/SPECULATIVE_PROCESSING.md](../docs/SPECULATIVE_PROCESSING.md).
+
+When enabled, on partial hypotheses the server may start a Tier 2
+classification speculatively (fire-and-forget) so a matching final can reuse
+it. Partials are **throttled per session+speaker** (≤1 in flight; ≥500 ms
+since the last; ≥4 new words; no in-flight prefix) and **never speculated for
+EXTERNAL speakers**. Speculation is also skipped once the session reaches the
+cost-warning threshold ($1.60).
 
 ```
-Partial utterance arrives (confidence > 0.7)
-  → Start intent classification speculatively
-  → Identify likely topic from partial text
-  → Pre-fetch relevant constraints for that topic
-  → Pre-warm LLM connection if high-signal keywords detected
+Partial utterance arrives (confidence > 0.7, TEAM speaker, throttle passes)
+  → Tier 1 structural hit? cache a synthetic "concern" (no LLM)
+  → Otherwise fire async Tier 2, cache under the speculative track
 
-When isFinal arrives:
-  → If text matches speculation: use pre-computed results (200-300ms saved)
-  → If text differs significantly: discard speculative work, process fresh
+When final arrives:
+  → If a cached speculation fuzzy-matches: reuse it (Tier 2 LLM skipped)
+  → Otherwise: run Tier 2 normally
 ```
 
-**Success rate:** ~85% of speculative work is usable. 15% discard rate is acceptable.
+Speculation never blocks the pipeline: if the result is not ready (or does not
+match) the final processes normally. Measured hit rate is a P3.6 deliverable —
+until it meets the rule (hits/(hits+misses) ≥ 0.4 and speculative spend ≤ 1.5×
+baseline), the feature stays off by default.
 
 ---
 
@@ -563,14 +573,14 @@ interface Constraint {
 
 ### 5.5.1 Utterance merger and publish timing
 
-After a **STT final**, meeting-mode builds one `Utterance`, **starts** a Gemini **`embeddingPromise`** (embed runs concurrently with work ahead of publish), **`TopicManager.assignTopic`** awaits that promise so topic centroids always see a vector, then **`UtteranceMerger`** decides what to publish to **`meeting.utterance.*`** before the tiered pipeline runs.
+After a **STT final**, meeting-mode builds one `Utterance`, **starts** a Gemini **`embeddingPromise`** (embed runs concurrently, off the publish path), and **`UtteranceMerger`** decides what to publish to **`meeting.utterance.*`** with `topicId: null` — publish never waits for the embedding. **`TopicManager.assignTopic`** then resolves the topic (awaiting the in-flight embedding so centroids always see a vector) and emits a **`meeting.topic.{sid}`** delta that the client patches onto the published row. The tiered pipeline runs from the published utterance.
 
 **Two independent knobs** (`packages/meeting-mode/src/env.ts`; tests may override `mergerGroupingMs` / `mergerPublishGapMs` / legacy `mergerGapMs` on **`UtteranceFinalizer`**):
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
 | **`MERGE_GROUPING_MS`** | Maximum silence between same-speaker finals for **in-memory text merge** (same `speakerId`, gap measured from previous segment **audio end**). Legacy alias: **`MERGE_GAP_MS`** when `MERGE_GROUPING_MS` is unset. | 5000 ms |
-| **`MERGE_PUBLISH_GAP_MS`** | After the pending segment’s **audio end**, if no merge sibling arrives, **flush Redis publish** after this delay so transcripts/alerts are **not** held for the full grouping window. | ~700 ms |
+| **`MERGE_PUBLISH_GAP_MS`** | After the pending segment’s **audio end**, if no merge sibling arrives, **flush Redis publish** after this delay so transcripts/alerts are **not** held for the full grouping window. | ~250 ms (P2.3; Deepgram endpointing already pads silence) |
 
 - **Same-speaker merge:** Next final same **`speakerId`** within **`MERGE_GROUPING_MS`** after prior audio end → **single merged** utterance (one publish).
 - **Diarization fallback:** When `speakerId` differs (e.g., `"spk_1"` → `"user123"` because speaker identification resolved mid-stream), the merger checks if both utterances share a common Deepgram `diarizationIndex`. If they do, they're treated as the same speaker and merged — preventing fragments like "So they have sent the" + "base" from staying separate due to timing of identification.
@@ -589,7 +599,7 @@ This is the core intelligence pipeline. For each finalized utterance, it runs th
 
 **Key design points:**
 - Tier 1 is purely structural/language-agnostic.
-- Tier 2 uses **SambaNova** (`SAMBANOVA_TIER2_MODEL`) with **`response_format: json_schema`** (`strict: true`) — **not** Gemini on the hot path (Gemini remains embeddings + Tier 4). Provider rules require **every property key** in **`extractedData`** and in a non-null **`topicDelta`** object to be present; unused slots are **`null`** (Zod strips nulls after parse).
+- Tier 2 uses **General Compute** (`GENERALCOMPUTE_TIER2_MODEL`) with **`response_format: json_schema`** (`strict: true`) — **not** Gemini on the hot path (Gemini remains embeddings + Tier 4). Provider rules require **every property key** in **`extractedData`** and in a non-null **`topicDelta`** object to be present; unused slots are **`null`** (Zod strips nulls after parse).
 - Tier 2 is the **single per-utterance semantic source of truth** (alerts + topic deltas).
 - Tier 3 runs on every post-filter utterance as a safety net (short-circuits pgvector when preload context is absent **and** the commitment ledger search is empty).
 - Tier 4 is deep reasoning, gated by Tier 2/Tier 3 output.
@@ -639,7 +649,7 @@ All semantic understanding is now in Tier 2 (small LLM).
 
 #### Tier 2: Semantic Classification via Small LLM (~$0.002/call, <200ms)
 
-**Single call via SambaNova** (`SAMBANOVA_TIER2_MODEL`, default `gpt-oss-120b`) per utterance that passes the pre-filter, using **`json_schema`** structured outputs (`Tier2Classification`, **`strict: true`**). This is the primary classification layer that replaces ALL the old regex pattern libraries.
+**Single call via General Compute** (`GENERALCOMPUTE_TIER2_MODEL`, default `gpt-oss-120b`) per utterance that passes the pre-filter, using **`json_schema`** structured outputs (`Tier2Classification`, **`strict: true`**). This is the primary classification layer that replaces ALL the old regex pattern libraries.
 
 **Schema constraint:** OpenAI API specs reject schemas where an `object` lists `properties` without a `required` array covering **every** key — hence **`extractedData`** and non-null **`topicDelta`** are modeled as **all keys required** with **`string | null`** / **`number | null`**; the app strips **`null`** after validation so downstream code keeps optional-field ergonomics.
 
@@ -834,7 +844,7 @@ Deepgram STT (1 channel):    60 min × ~$0.0077/min        = ~$0.46
 Dual-channel STT delta:      +60 channel-min × ~$0.0077   = +~$0.46
 Pre-filter kills:            ~48 of 120 utterances (40%)
 Tier 1 (structural):         ~72 utterances × $0          = FREE
-Tier 2 (SambaNova Tier 2):        ~72 utterances × $0.002      = ~$0.14
+Tier 2 (General Compute Tier 2):        ~72 utterances × $0.002      = ~$0.14
 Tier 3 (embeddings):         ~72 utterances × $0.00002    = ~$0.002
 Tier 4 (large LLM):          ~8 utterances × $0.02        = ~$0.16
 
@@ -851,7 +861,7 @@ const constraintTask = constraintManager.processUtterance(utterance)
 
 const [tier1, tier2, tier3, _constraints] = await Promise.all([
   runTier1Structural(utterance),       // <50ms,  free
-  runTier2Classification(utterance),   // SambaNova + schema, ~$0.002
+  runTier2Classification(utterance),   // General Compute + schema, ~$0.002
   runTier3EmbeddingSearch(utterance),    // novelty ∥ ledger ∥ memory (memory queries parallel)
   constraintTask,
 ])
@@ -929,7 +939,7 @@ Prometheus/session rollups in B.11 remain roadmap; **this channel is the current
 | Model | Purpose | Cost per call | Example |
 |-------|---------|---------------|---------|
 | **Embedding model** | Search, similarity, novelty | ~$0.00002 | Gemini embed (`@google/genai`) |
-| **Small LLM** | Classification, extraction | ~$0.002 | SambaNova chat completions + JSON schema (`SAMBANOVA_TIER2_MODEL`) |
+| **Small LLM** | Classification, extraction | ~$0.002 | General Compute chat completions + JSON schema (`GENERALCOMPUTE_TIER2_MODEL`) |
 | **Large LLM** | Deep reasoning, contradiction analysis | ~$0.02 | Gemini Tier 4 (`GEMINI_TIER4_MODEL`) |
 
 **Embedding reuse rule (no duplicate work):**

@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
 
@@ -33,6 +34,11 @@ export function VoiceGradient({
   useEffect(() => {
     let isMounted = true;
     let unlisten: (() => void) | undefined;
+    // P4.4: register as an amplitude listener so raw-mic-amplitude emits
+    // flow (≤15 Hz); release on unmount. Best-effort — visuals only.
+    invoke("vad_set_amplitude_listener", { enabled: true }).catch(
+      () => undefined
+    );
     listen<number>("raw-mic-amplitude", (e) => {
       propsRef.current.amplitude = e.payload;
     }).then((f) => {
@@ -45,6 +51,9 @@ export function VoiceGradient({
     return () => {
       isMounted = false;
       unlisten?.();
+      invoke("vad_set_amplitude_listener", { enabled: false }).catch(
+        () => undefined
+      );
     };
   }, []);
 

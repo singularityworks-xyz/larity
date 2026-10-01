@@ -6,16 +6,20 @@ import Redis from "ioredis";
 import type { SessionEndEvent, SttResult } from "../../stt/src/types";
 import {
   extractSessionId,
+  isFinalSttChannel,
+  isLegacyFinalSttChannel,
+  isPartialSttChannel,
   PARTICIPANT_JOIN,
   PARTICIPANT_ROLE_CHANGE_PATTERN,
   SESSION_END,
   STT_FINAL_PATTERN,
+  STT_LEGACY_PATTERN,
   STT_PARTIAL_PATTERN,
   VAD_PATTERN,
 } from "./channels";
 import type { CommitmentManager } from "./commitment/manager";
 import type { ConstraintManager } from "./constraint/manager";
-import { REDIS_URL } from "./env";
+import { REDIS_URL, SPECULATIVE_ENABLED } from "./env";
 import { createMeetingModeLogger } from "./logger";
 import type { MeetingPipelineEngine } from "./pipeline/engine";
 import type { SpeakerIdentifier } from "./speaker/identifier";
@@ -72,12 +76,10 @@ async function getHydratedIdentifier(
   if (!speakerManagerRef) {
     return null;
   }
-  const all = speakerManagerRef.getAllIdentifiers();
-  if (all.has(sessionId)) {
-    const existing = all.get(sessionId);
-    if (existing) {
-      return existing;
-    }
+  // Fast path without copying the identifier map per STT message (P2.5).
+  const existing = speakerManagerRef.getIdentifierIfExists(sessionId);
+  if (existing) {
+    return existing;
   }
 
   const identifier = speakerManagerRef.getIdentifier(sessionId);
@@ -113,6 +115,78 @@ async function getHydratedIdentifier(
   return identifier;
 }
 
+/**
+ * Decide whether a Redis `pmessage` delivery should invoke `handleSttResult`,
+ * and in which mode. Redis `*` spans `.` separators, so overlapping patterns
+ * can deliver the same message more than once — the concrete channel shape
+ * (not the matched pattern alone) determines handling. Exactly one of the
+ * two pattern deliveries resolves non-null per message.
+ */
+export function resolveSttDispatch(
+  pattern: string,
+  channel: string
+): "final" | "partial" | null {
+  if (pattern === STT_LEGACY_PATTERN) {
+    // `meeting.stt.*` also matches the new shapes; only the true legacy shape
+    // (`meeting.stt.<sid>`) is handled here. New shapes resolve via their own
+    // patterns, so a new final is never handled twice.
+    return isLegacyFinalSttChannel(channel) ? "final" : null;
+  }
+  if (pattern === STT_FINAL_PATTERN && isFinalSttChannel(channel)) {
+    return "final";
+  }
+  if (pattern === STT_PARTIAL_PATTERN && isPartialSttChannel(channel)) {
+    return "partial";
+  }
+  return null;
+}
+
+/**
+ * Speculative partial dispatch (P3.2). Resolves the partial's speaker with
+ * the same call the final will perform moments later (existing mapping, host
+ * short-circuit, or provisional VAD candidate) and feeds the partial to the
+ * pipeline engine fire-and-forget — partial handling never waits on the
+ * hydration/cost reads inside `evaluatePartial`.
+ *
+ * Early resolution converges to identical identifier state: mapping `source`
+ * is write-only, and the provisional path exists precisely for this
+ * partial-then-final sequence. Returns true when a speculation was
+ * dispatched. The `enabled` parameter defaults to SPECULATIVE_ENABLED and
+ * exists as a test seam.
+ */
+export function dispatchSpeculativePartial(
+  result: SttResult,
+  identifier: SpeakerIdentifier,
+  pipelineEngine: MeetingPipelineEngine | null,
+  enabled: boolean = SPECULATIVE_ENABLED
+): boolean {
+  if (!(enabled && pipelineEngine)) {
+    return false;
+  }
+  const text = result.transcript?.trim();
+  if (!text) {
+    return false;
+  }
+  const speechTimestamp = Number(result.speechTimestamp);
+  const speechTs = Number.isFinite(speechTimestamp) ? speechTimestamp : 0;
+  const speaker = identifier.identifySpeaker(result.diarizationIndex, speechTs);
+  pipelineEngine
+    .evaluatePartial({
+      confidence: result.confidence,
+      sessionId: result.sessionId,
+      speaker,
+      text,
+      timestamp: speechTs,
+    })
+    .catch((error) => {
+      log.warn(
+        { err: error, sessionId: result.sessionId },
+        "Speculative partial evaluation failed"
+      );
+    });
+  return true;
+}
+
 async function handleSttResult(
   channel: string,
   message: string,
@@ -136,6 +210,10 @@ async function handleSttResult(
       const speechTimestamp = Number(result.speechTimestamp);
       const safeTs = Number.isFinite(speechTimestamp) ? speechTimestamp : 0;
       identifier.processSttPartial(result.diarizationIndex, safeTs);
+    }
+    if (isPartial) {
+      // P3.2: speculative path — fire-and-forget behind SPECULATIVE_ENABLED.
+      dispatchSpeculativePartial(result, identifier, pipelineEngineRef);
     }
 
     await finalizerRef.process(result);
@@ -225,6 +303,10 @@ async function handleParticipantJoin(message: string): Promise<void> {
         event.role
       );
     }
+    // A new member changes Tier 2 identity-guess candidates: refresh the
+    // pipeline's session cache (P2.6). Not awaited — join handling stays
+    // fast. refreshSessionMembers never rejects (failures keep the cache).
+    pipelineEngineRef?.refreshSessionMembers(event.sessionId);
   } catch (error) {
     log.error({ err: error }, "Error handling participant join");
   }
@@ -258,10 +340,8 @@ async function handleVadSignal(message: string): Promise<void> {
         }));
 
       if (pendingUtterances.length > 0) {
-        const newlyIdentified = identifier.tryLateIdentification(
-          signal,
-          pendingUtterances
-        );
+        const newlyIdentified =
+          identifier.tryLateIdentification(pendingUtterances);
 
         for (const { diarizationIndex, speaker } of newlyIdentified) {
           await finalizerRef.processRetroactiveIdentification(
@@ -388,6 +468,13 @@ export async function startSubscriber(
     { pattern: STT_PARTIAL_PATTERN },
     "Pattern subscribed to STT partial results"
   );
+  // Mixed-version safety: keep accepting the legacy `meeting.stt.<sid>`
+  // finals while older STT/realtime instances may still publish them.
+  await subscriber.psubscribe(STT_LEGACY_PATTERN);
+  log.info(
+    { pattern: STT_LEGACY_PATTERN },
+    "Pattern subscribed to legacy STT finals"
+  );
 
   await subscriber.psubscribe(VAD_PATTERN);
   log.info({ pattern: VAD_PATTERN }, "Pattern subscribed to VAD signals");
@@ -408,11 +495,12 @@ export async function startSubscriber(
 
   subscriber.on("pmessage", async (_pattern, channel, message) => {
     try {
-      if (_pattern === STT_FINAL_PATTERN) {
-        await handleSttResult(channel, message, false);
-      }
-      if (_pattern === STT_PARTIAL_PATTERN) {
-        await handleSttResult(channel, message, true);
+      // Guard on the concrete channel, not just the matched pattern: Redis
+      // `*` also spans `.` separators, so overlapping patterns can deliver
+      // the same message twice. Only the matching shape is processed.
+      const sttRoute = resolveSttDispatch(_pattern, channel);
+      if (sttRoute) {
+        await handleSttResult(channel, message, sttRoute === "partial");
       }
       if (_pattern === VAD_PATTERN) {
         await handleVadSignal(message);

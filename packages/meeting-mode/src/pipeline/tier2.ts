@@ -1,11 +1,16 @@
 import { publishSystemEvent } from "@larity/db/redis";
 import OpenAI from "openai";
+import type { ChatCompletionCreateParamsNonStreaming } from "openai/resources/chat/completions";
+import type { ReasoningEffort } from "openai/resources/shared";
 import {
-  SAMBANOVA_API_KEY,
-  SAMBANOVA_TIER2_MODEL,
-  SAMBANOVA_TIER2_TIMEOUT_MS,
+  GENERALCOMPUTE_API_KEY,
+  GENERALCOMPUTE_BASE_URL,
+  GENERALCOMPUTE_TIER2_MODEL,
+  GENERALCOMPUTE_TIER2_TIMEOUT_MS,
+  TIER2_REASONING_EFFORT,
 } from "../env";
 import { createMeetingModeLogger } from "../logger";
+import { incrementCounter } from "./metrics";
 import type { Tier2Classification, Tier2Input, Tier2Outcome } from "./types";
 import { tier2ClassificationSchema } from "./types";
 
@@ -18,6 +23,30 @@ export interface Tier2InvokeResult {
   completionTokens: number;
   promptTokens: number;
   text: string;
+}
+
+/**
+ * Tier 2 request: base chat params. A named interface — not `as any` — so
+ * `tsc` still checks every documented key (`reasoning_effort` is typed
+ * upstream). Reconnection is an SDK client option (`maxRetries: 0`), never a
+ * body field — strict providers reject unknown JSON body keys.
+ */
+type Tier2ChatRequest = ChatCompletionCreateParamsNonStreaming;
+
+/** Validated reasoning control; unknown values fall back to "low". */
+function reasoningEffort(): ReasoningEffort {
+  const raw = TIER2_REASONING_EFFORT;
+  if (
+    raw === "none" ||
+    raw === "minimal" ||
+    raw === "low" ||
+    raw === "medium" ||
+    raw === "high" ||
+    raw === "xhigh"
+  ) {
+    return raw;
+  }
+  return "low";
 }
 
 export interface Tier2ClassifierOptions {
@@ -34,18 +63,18 @@ export class Tier2Classifier {
   ) => Promise<Tier2InvokeResult>;
 
   constructor(options: Tier2ClassifierOptions = {}) {
-    this.timeoutMs = options.timeoutMs ?? SAMBANOVA_TIER2_TIMEOUT_MS;
+    this.timeoutMs = options.timeoutMs ?? GENERALCOMPUTE_TIER2_TIMEOUT_MS;
     if (options.invoke) {
       this.openai = undefined;
       this.invoke = options.invoke;
-    } else if (SAMBANOVA_API_KEY) {
+    } else if (GENERALCOMPUTE_API_KEY) {
       this.openai = new OpenAI({
-        apiKey: SAMBANOVA_API_KEY,
-        baseURL: "https://api.sambanova.ai/v1",
+        apiKey: GENERALCOMPUTE_API_KEY,
+        baseURL: GENERALCOMPUTE_BASE_URL,
         maxRetries: 0,
       });
       this.invoke = (input, timeoutMs) =>
-        this.invokeSambaNovaTier2(input, timeoutMs);
+        this.invokeGeneralComputeTier2(input, timeoutMs);
     } else {
       this.openai = undefined;
       this.invoke = async () => ({
@@ -54,13 +83,14 @@ export class Tier2Classifier {
         text: JSON.stringify({
           action: "none",
           confidence: 0,
-          reasoning: "SAMBANOVA_API_KEY not set",
+          reasoning: "GENERALCOMPUTE_API_KEY not set",
         }),
       });
     }
   }
 
   async classify(input: Tier2Input, sessionId?: string): Promise<Tier2Outcome> {
+    const invokeStart = performance.now();
     try {
       const { text, promptTokens, completionTokens } = await this.invoke(
         input,
@@ -75,16 +105,21 @@ export class Tier2Classifier {
         );
         if (sessionId) {
           publishSystemEvent(sessionId, {
-            source: "sambanova",
+            source: "generalcompute",
             severity: "warning",
-            code: "SAMBANOVA_SCHEMA_ERROR",
+            code: "GENERALCOMPUTE_SCHEMA_ERROR",
             message:
               "Fast classification returned an invalid response schema. Fallback rules applied.",
           }).catch(() => undefined);
         }
         return {
           classification: fallbackClassification(),
-          shouldStopForDeepReasoning: false,
+          // Unknown input: stop deep reasoning unless Tier 1 (structural)
+          // or Tier 3 (contradiction) evidence re-opens it in the engine.
+          // The old `false` loosened the Tier 4 gate on every provider
+          // outage instead of tightening it.
+          isFallback: true,
+          shouldStopForDeepReasoning: true,
           promptTokens: promptTokens || 0,
           completionTokens: completionTokens || 0,
         };
@@ -93,62 +128,54 @@ export class Tier2Classifier {
       const classification = validation.data;
       return {
         classification,
+        isFallback: false,
         shouldStopForDeepReasoning: shouldStopAtTier2(classification),
         promptTokens: promptTokens || 0,
         completionTokens: completionTokens || 0,
       };
     } catch (error) {
       log.warn({ err: error }, "Tier2 classification failed silently");
+      // Any failure after (nearly) the full request budget is effectively a
+      // timeout: the per-session FIFO stays blocked for the whole window.
+      if (performance.now() - invokeStart >= this.timeoutMs * 0.9) {
+        incrementCounter("pipeline.tier2_timeouts_total");
+      }
       if (sessionId) {
         publishSystemEvent(sessionId, {
-          source: "sambanova",
+          source: "generalcompute",
           severity: "warning",
-          code: "SAMBANOVA_ERROR",
+          code: "GENERALCOMPUTE_ERROR",
           message:
             "Fast classification engine is offline or timed out. Fallback rules applied.",
         }).catch(() => undefined);
       }
       return {
         classification: fallbackClassification(),
-        shouldStopForDeepReasoning: false,
+        // See above: an unreachable classifier must not widen Tier 4.
+        isFallback: true,
+        shouldStopForDeepReasoning: true,
         promptTokens: 0,
         completionTokens: 0,
       };
     }
   }
 
-  private async invokeSambaNovaTier2(
+  private async invokeGeneralComputeTier2(
     input: Tier2Input,
     timeoutMs: number
   ): Promise<Tier2InvokeResult> {
     if (!this.openai) {
-      throw new Error("Tier2 SambaNova client not initialized");
+      throw new Error("Tier2 General Compute client not initialized");
     }
 
-    const completion = await this.openai.chat.completions.create(
-      {
-        model: SAMBANOVA_TIER2_MODEL,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: buildUserMessage(input) },
-        ],
-        temperature: 0,
-        max_tokens: TIER2_MAX_COMPLETION_TOKENS,
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "Tier2Classification",
-            strict: true,
-            schema: getTier2JsonSchema(),
-          },
-        },
-      },
-      { timeout: timeoutMs }
-    );
+    const request = buildTier2Request(input);
+    const completion = await this.openai.chat.completions.create(request, {
+      timeout: timeoutMs,
+    });
 
     const text = completion.choices[0]?.message?.content;
     if (!text?.trim()) {
-      throw new Error("SambaNova tier2 returned empty content");
+      throw new Error("General Compute tier2 returned empty content");
     }
 
     return {
@@ -157,6 +184,35 @@ export class Tier2Classifier {
       completionTokens: completion.usage?.completion_tokens ?? 0,
     };
   }
+}
+
+/**
+ * Build the exact Tier 2 chat request (pure; no client needed).
+ *
+ * Exported so tests can lock the provider contract — model, `reasoning_effort`,
+ * and strict `json_schema` — without mocking the SDK. Reconnection is a client
+ * option (`maxRetries: 0`), not part of this body.
+ */
+export function buildTier2Request(input: Tier2Input): Tier2ChatRequest {
+  return {
+    model: GENERALCOMPUTE_TIER2_MODEL,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: buildUserMessage(input) },
+    ],
+    temperature: 0,
+    max_tokens: TIER2_MAX_COMPLETION_TOKENS,
+    // Classification, not deep reasoning: keep test-time compute low.
+    reasoning_effort: reasoningEffort(),
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "Tier2Classification",
+        strict: true,
+        schema: getTier2JsonSchema(),
+      },
+    },
+  };
 }
 
 /** Built once — rubric + compact calibration (system role). */
@@ -296,7 +352,7 @@ function parseTier2Response(raw: string): unknown {
     throw new Error("Tier2 returned empty response");
   }
 
-  // Strip markdown formatting if SambaNova wraps the JSON
+  // Strip markdown formatting if the provider wraps the JSON
   if (trimmed.startsWith("```json")) {
     trimmed = trimmed.slice(7);
   } else if (trimmed.startsWith("```")) {

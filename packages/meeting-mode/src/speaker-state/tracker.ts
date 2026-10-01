@@ -95,25 +95,32 @@ export class SpeakerStateTracker {
 
     const state = sessionStates.get(utterance.speaker.speakerId);
     if (state) {
-      this.collectSpeakerAlerts(state, alerts);
+      this.collectSpeakerAlerts(sessionId, state, alerts);
     }
 
-    this.collectClarityAlert(tier2Classification, topics, utterance, alerts);
+    this.collectClarityAlert(
+      sessionId,
+      tier2Classification,
+      topics,
+      utterance,
+      alerts
+    );
 
     if (isMeetingEnd) {
-      this.collectAgendaAlert(topics, agendaItems, alerts);
+      this.collectAgendaAlert(sessionId, topics, agendaItems, alerts);
     }
 
     return alerts;
   }
 
   private collectSpeakerAlerts(
+    sessionId: string,
     state: SpeakerState,
     alerts: SpeakerStateAlert[]
   ): void {
     const toneResult = analyzeToneTrajectory(state, this.config);
     if (toneResult.alert) {
-      const dedupeKey = `tone_warning:${state.speakerId}`;
+      const dedupeKey = `${sessionId}:tone_warning:${state.speakerId}`;
       if (!this.firedAlerts.has(dedupeKey)) {
         alerts.push(toneResult.alert);
         this.firedAlerts.add(dedupeKey);
@@ -122,7 +129,7 @@ export class SpeakerStateTracker {
 
     const engagementResult = detectDisengagement(state, this.config);
     if (engagementResult.alert) {
-      const dedupeKey = `client_disengagement:${state.speakerId}:${engagementResult.level}`;
+      const dedupeKey = `${sessionId}:client_disengagement:${state.speakerId}:${engagementResult.level}`;
       if (!this.firedAlerts.has(dedupeKey)) {
         alerts.push(engagementResult.alert);
         this.firedAlerts.add(dedupeKey);
@@ -131,6 +138,7 @@ export class SpeakerStateTracker {
   }
 
   private collectClarityAlert(
+    sessionId: string,
     tier2Classification: Tier2Classification,
     topics: TopicState[],
     utterance: Utterance,
@@ -155,7 +163,7 @@ export class SpeakerStateTracker {
     };
     const clarityAlert = checkMissingClarity(clarityInput, this.config);
     if (clarityAlert) {
-      const dedupeKey = `missing_clarity:${prevTopic.topicId}`;
+      const dedupeKey = `${sessionId}:missing_clarity:${prevTopic.topicId}`;
       if (!this.firedAlerts.has(dedupeKey)) {
         alerts.push(clarityAlert);
         this.firedAlerts.add(dedupeKey);
@@ -164,6 +172,7 @@ export class SpeakerStateTracker {
   }
 
   private collectAgendaAlert(
+    sessionId: string,
     topics: TopicState[],
     agendaItems: string[],
     alerts: SpeakerStateAlert[]
@@ -179,7 +188,7 @@ export class SpeakerStateTracker {
     };
     const agendaAlert = checkUndiscussedAgenda(agendaInput, this.config);
     if (agendaAlert) {
-      const dedupeKey = "undiscussed_agenda:meeting_end";
+      const dedupeKey = `${sessionId}:undiscussed_agenda:meeting_end`;
       if (!this.firedAlerts.has(dedupeKey)) {
         alerts.push(agendaAlert);
         this.firedAlerts.add(dedupeKey);
@@ -220,6 +229,11 @@ export class SpeakerStateTracker {
 
   closeSession(sessionId: string): void {
     this.sessions.delete(sessionId);
+    for (const key of this.firedAlerts) {
+      if (key === sessionId || key.startsWith(`${sessionId}:`)) {
+        this.firedAlerts.delete(key);
+      }
+    }
   }
 
   closeAll(): void {

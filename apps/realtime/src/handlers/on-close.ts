@@ -4,7 +4,8 @@ import { sessionManager } from "@larity/stt";
 import { closeStreamer } from "../audio/registry";
 import { createRealtimeLogger } from "../logger";
 import { publishParticipantLeave, publishSessionEnd } from "../redis/publisher";
-import { getSession, removeConnection } from "../session";
+import { unsubscribeSession } from "../redis/subscriber";
+import { getSession, isActiveConnection, removeConnection } from "../session";
 import type { RealtimeSocket } from "../types";
 
 const log = createRealtimeLogger("on-close");
@@ -24,14 +25,37 @@ export function onClose(
   const data = ws.data;
   const { sessionId, userId, role, connectedAt } = data;
 
+  // P5.2: a replaced socket's close must not run teardown against the live
+  // session. Capture identity before removal, since removal deletes it.
+  const wasActive = isActiveConnection(sessionId, userId, ws);
+
   // Remove connection from memory
   // returns session if it was the last connection and session is removed
   const sessionRemoved = removeConnection(sessionId, userId, ws);
+
+  // P5.2: leave the session's Redis channels when its last connection
+  // closes, so this instance stops receiving its traffic.
+  if (sessionRemoved) {
+    unsubscribeSession(sessionId).catch((err) => {
+      log.error({ err, sessionId }, "Failed to unsubscribe session");
+    });
+  }
 
   const now = Date.now();
   const duration = now - connectedAt;
 
   log.info({ sessionId, userId, role, code, duration }, "Connection closed");
+
+  if (!(wasActive || sessionRemoved)) {
+    // A stale socket (replaced by a newer one for this user) closed. The
+    // session, Deepgram connection, and streamer all belong to the live
+    // socket — leave them running.
+    log.info(
+      { sessionId, userId },
+      "Ignoring stale socket close — active session untouched"
+    );
+    return;
+  }
 
   // Publish participant leave event
   publishParticipantLeave({

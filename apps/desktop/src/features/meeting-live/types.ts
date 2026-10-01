@@ -41,6 +41,8 @@ export interface LiveUtterance {
   speakerType: SpeakerSide;
   text: string;
   timestamp: number;
+  /** Assigned asynchronously after publish (P2.1 topic delta); absent until then. */
+  topicId?: string;
 }
 
 export interface LiveParticipant {

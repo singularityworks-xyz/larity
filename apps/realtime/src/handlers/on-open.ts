@@ -5,6 +5,7 @@ import {
   publishParticipantJoin,
   publishSessionStart,
 } from "../redis/publisher";
+import { subscribeSession } from "../redis/subscriber";
 import { addConnection, getSession, removeConnection } from "../session";
 import type { RealtimeSocket } from "../types";
 
@@ -54,7 +55,19 @@ export function onOpen(ws: RealtimeSocket): void {
         "Failed to create audio persistence streamer — continuing without persistence"
       );
     }
+
+    // Dial Deepgram now so the handshake overlaps the client's first audio
+    // instead of serializing after it (lazy connect stays as the fallback).
+    sessionManager.connectSession(sessionId);
   }
+
+  // P5.2: subscribe to this session's Redis channels on first connection.
+  // After the capacity check so a rejected connection cannot leak a
+  // subscription. Fire-and-forget — subscription completes in ms; audio
+  // finals take ≥1s. Late-join state comes from the join API, not the stream.
+  subscribeSession(sessionId).catch((error) => {
+    log.error({ err: error, sessionId }, "Failed to subscribe session");
+  });
 
   log.info({ sessionId, userId, role }, "Connection established");
 

@@ -14,7 +14,10 @@ export const WS_AUDIO_TAG_SYS = 1;
 
 export interface DualChannelSession {
   close: () => void;
-  sendAudio: (audioBuffer: Buffer) => Promise<void>;
+  /** Fire-and-forget eager dial of both sockets (see DeepgramConnection.preconnect). */
+  preconnect: () => void;
+  /** Synchronous enqueue + flush attempt per tagged frame (P4.10). */
+  sendAudio: (audioBuffer: Buffer) => void;
   setAudioStreamStart: (serverAudioStartTs: number) => void;
 }
 
@@ -25,7 +28,12 @@ export function createDualChannelSession(
   const sys = new DeepgramConnection(sessionId, WS_AUDIO_TAG_SYS);
 
   return {
-    async sendAudio(audioBuffer: Buffer): Promise<void> {
+    preconnect(): void {
+      mic.preconnect();
+      sys.preconnect();
+    },
+
+    sendAudio(audioBuffer: Buffer): void {
       if (audioBuffer.length < 2) {
         return;
       }
@@ -33,9 +41,9 @@ export function createDualChannelSession(
       const pcm = audioBuffer.subarray(1);
 
       if (tag === WS_AUDIO_TAG_MIC) {
-        await mic.sendAudio(pcm);
+        mic.sendAudio(pcm);
       } else if (tag === WS_AUDIO_TAG_SYS) {
-        await sys.sendAudio(pcm);
+        sys.sendAudio(pcm);
       }
     },
 

@@ -19,6 +19,7 @@
     "dev": "turbo run dev",
     "deps": "bunx taze -wr && bunx sherif@latest --fix",
     "mock": "cd apps/mock && bun run mock",
+    "mock:latency": "cd apps/mock && bun run latency",
     "build": "turbo run build",
     "check-types": "turbo run check-types && make rust-clippy",
     "check": "ultracite fix --unsafe && make rust-fix",
