@@ -52,7 +52,6 @@ export interface PendingUtterance {
 
 export interface SpeakerIdentifierConfig {
   correlationWindowMs: number;
-  lateCorrelationWindowMs: number;
   maxVadIntervalsPerUser: number;
   minConfirmationSignals: number;
   provisionalTtlMs: number;
@@ -61,7 +60,6 @@ export interface SpeakerIdentifierConfig {
 
 export const DEFAULT_SPEAKER_CONFIG: SpeakerIdentifierConfig = {
   correlationWindowMs: 1500,
-  lateCorrelationWindowMs: 2000,
   minConfirmationSignals: 1,
   provisionalTtlMs: 8000,
   maxVadIntervalsPerUser: 8,

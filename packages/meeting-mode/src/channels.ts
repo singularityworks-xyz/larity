@@ -1,5 +1,52 @@
-export const STT_FINAL_PATTERN = "meeting.stt.*";
+export const STT_FINAL_PATTERN = "meeting.stt.final.*";
 export const STT_PARTIAL_PATTERN = "meeting.stt.partial.*";
+/**
+ * Legacy pre-P1.1 final shape `meeting.stt.<sessionId>`. Kept subscribed so
+ * a mixed-version deploy (old STT/realtime still publishing the legacy shape)
+ * does not silently drop finals during a rolling upgrade.
+ */
+export const STT_LEGACY_PATTERN = "meeting.stt.*";
+
+const STT_FINAL_PREFIX = "meeting.stt.final.";
+const STT_PARTIAL_PREFIX = "meeting.stt.partial.";
+
+/**
+ * True only for the legacy `meeting.stt.<sessionId>` shape (3 segments, with
+ * a session id that is not the literal `final`/`partial`). New-shape channels
+ * also match `STT_LEGACY_PATTERN` (Redis `*` spans dots), so this guard is
+ * what prevents legacy-pattern deliveries of new finals from double-handling.
+ */
+export function isLegacyFinalSttChannel(channel: string): boolean {
+  const parts = channel.split(".");
+  const legacySessionId = parts[2] ?? "";
+  return (
+    parts.length === 3 &&
+    parts[0] === "meeting" &&
+    parts[1] === "stt" &&
+    legacySessionId.length > 0 &&
+    legacySessionId !== "final" &&
+    legacySessionId !== "partial"
+  );
+}
+
+/** True for `meeting.stt.final.<sessionId>` plus the legacy shape. */
+export function isFinalSttChannel(channel: string): boolean {
+  if (
+    channel.startsWith(STT_FINAL_PREFIX) &&
+    channel.length > STT_FINAL_PREFIX.length
+  ) {
+    return true;
+  }
+  return isLegacyFinalSttChannel(channel);
+}
+
+/** True for `meeting.stt.partial.<sessionId>` channels. */
+export function isPartialSttChannel(channel: string): boolean {
+  return (
+    channel.startsWith(STT_PARTIAL_PREFIX) &&
+    channel.length > STT_PARTIAL_PREFIX.length
+  );
+}
 export const SESSION_END = "realtime.session.end";
 export const PARTICIPANT_JOIN = "realtime.participant.join";
 

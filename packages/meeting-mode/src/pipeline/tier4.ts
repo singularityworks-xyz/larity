@@ -6,6 +6,7 @@ import {
   GEMINI_TIER4_TIMEOUT_MS,
 } from "../env";
 import { createMeetingModeLogger } from "../logger";
+import { incrementCounter } from "./metrics";
 import { tierContextForPromptPayload } from "./tier4-context";
 import type { Tier4Context, Tier4Response } from "./types";
 import { tier4ResponseSchema } from "./types";
@@ -291,6 +292,9 @@ export class Tier4DeepReasoner {
       if (sessionId) {
         const errMsg = error instanceof Error ? error.message : String(error);
         const isTimeout = errMsg.toLowerCase().includes("timeout");
+        if (isTimeout) {
+          incrementCounter("pipeline.tier4_aborts_total");
+        }
         publishSystemEvent(sessionId, {
           source: "gemini",
           severity: "warning",

@@ -3,7 +3,7 @@ import { createAlert } from "../alerts/types";
 import type { Commitment } from "../commitment/types";
 import type { Constraint, PreloadedContextPayload } from "../constraint/types";
 import { CostManager } from "../cost/manager";
-import { GEMINI_TIER4_MODEL, SAMBANOVA_TIER2_MODEL } from "../env";
+import { GEMINI_TIER4_MODEL, GENERALCOMPUTE_TIER2_MODEL } from "../env";
 import { createMeetingModeLogger } from "../logger";
 import { SpeakerStateTracker } from "../speaker-state/tracker";
 import type { SpeakerStateAlert } from "../speaker-state/types";
@@ -16,6 +16,7 @@ import {
 } from "../speculative/types";
 import type { TopicState } from "../topic/types";
 import type { Utterance } from "../utterance/types";
+import { incrementCounter, recordHistogram } from "./metrics";
 import { PreFilter, type PreFilterDecision } from "./pre-filter";
 import { Tier1StructuralDetector, textMatchesTier1PricingPath } from "./tier1";
 import { Tier2Classifier } from "./tier2";
@@ -37,6 +38,14 @@ const log = createMeetingModeLogger("pipeline-engine");
 const PERF = {
   now: () => performance.now(),
 };
+
+/**
+ * Backlog shed threshold (P2.8): when an utterance is dequeued with more
+ * than this many evaluations still queued behind it, Tier 4 is skipped for
+ * it (Tier 1–3 still run). Bounds per-session alert latency under bursts
+ * instead of cascading one slow Tier 4 after another.
+ */
+const TIER4_BACKLOG_SKIP_DEPTH = 2;
 
 export interface Tier4AlertsPublisher {
   publish(sessionId: string, alert: Alert): Promise<void>;
@@ -62,7 +71,10 @@ interface PipelineFinalizerAdapter {
 }
 
 interface ConstraintManagerAdapter {
-  ensureHydrated(sessionId: string): Promise<void>;
+  ensureHydrated(
+    sessionId: string,
+    contextPayload?: PreloadedContextPayload | null
+  ): Promise<void>;
   getAll(sessionId: string): Constraint[];
   processUtterance(utterance: Utterance): Promise<unknown>;
 }
@@ -176,6 +188,8 @@ export interface PipelineEvaluationResult {
 interface SessionPipelineState {
   contextPayload: PreloadedContextPayload | null;
   hydrated: boolean;
+  /** Client members fetched once at hydration (P2.6); refreshed on joins. */
+  knownClientMembers: Array<{ id: string; name: string }>;
 }
 
 export class MeetingPipelineEngine {
@@ -212,6 +226,7 @@ export class MeetingPipelineEngine {
   private readonly predictivePreloader: PredictivePreloader;
   private readonly onPipelineSessionClosed?: (sessionId: string) => void;
   private readonly evaluationChains = new Map<string, Promise<unknown>>();
+  private readonly evaluationDepth = new Map<string, number>();
 
   constructor(deps: PipelineEngineDependencies) {
     this.preFilter = deps.preFilter ?? new PreFilter();
@@ -241,6 +256,11 @@ export class MeetingPipelineEngine {
         tier1: this.tier1,
         tier2: this.tier2,
         costManager: this.costManager,
+        // P3.3: speculative Tier 2 reads the Phase 2 session cache filled by
+        // ensureSessionHydrated (evaluatePartial hydrates first) — never its
+        // own HGET + Postgres fetch.
+        getKnownClientMembers: (sid) =>
+          this.sessions.get(sid)?.knownClientMembers ?? [],
         getRecentSameSpeakerText: (sid, spkId, limit) =>
           this.finalizer.getRecentSameSpeakerText(sid, spkId, undefined, limit),
         getCurrentTopicLabel: (sid, topicId) =>
@@ -263,8 +283,22 @@ export class MeetingPipelineEngine {
     ) => Promise<void>
   ): void {
     const sessionId = utterance.sessionId;
+    const enqueuePerf = PERF.now();
+    const queuedAtMs = Date.now();
+    this.evaluationDepth.set(
+      sessionId,
+      (this.evaluationDepth.get(sessionId) ?? 0) + 1
+    );
     const previous = this.evaluationChains.get(sessionId) ?? Promise.resolve();
-    const evaluated = previous.then(() => this.evaluateUtterance(utterance));
+    const evaluated = previous.then(() => {
+      recordHistogram("pipeline.queue_wait_ms", PERF.now() - enqueuePerf);
+      const remaining = (this.evaluationDepth.get(sessionId) ?? 1) - 1;
+      this.evaluationDepth.set(sessionId, remaining);
+      return this.evaluateUtterance(utterance, {
+        queuedAtMs,
+        backlogDepth: remaining,
+      });
+    });
     const next = afterEvaluate
       ? evaluated.then((result) => afterEvaluate(utterance, result))
       : evaluated;
@@ -300,9 +334,12 @@ export class MeetingPipelineEngine {
   }
 
   async evaluateUtterance(
-    utterance: Utterance
+    utterance: Utterance,
+    options: { backlogDepth?: number; queuedAtMs?: number } = {}
   ): Promise<PipelineEvaluationResult> {
     const start = PERF.now();
+    const queuedAtMs = options.queuedAtMs;
+    const backlogDepth = options.backlogDepth ?? 0;
     await this.ensureSessionHydrated(utterance.sessionId);
     await this.ensureUtteranceEmbedding(utterance);
 
@@ -331,12 +368,15 @@ export class MeetingPipelineEngine {
     // --- Speculative cache lookup ---
     const speculativeMatch = this.speculativeProcessor.matchSpeculation(
       utterance.sessionId,
-      utterance.text
+      utterance.text,
+      // P3.4: scan the speaker's trigram bucket, not all cached partials.
+      utterance.speaker.speakerId
     );
     const speculativeHit = speculativeMatch.matched;
     const speculativeMismatchRatio = speculativeMatch.mismatchRatio;
 
     if (speculativeHit) {
+      incrementCounter("pipeline.speculative_hits_total");
       log.info(
         {
           sessionId: utterance.sessionId,
@@ -345,15 +385,15 @@ export class MeetingPipelineEngine {
         },
         "Speculative cache hit — using pre-computed Tier 2 classification"
       );
+    } else {
+      incrementCounter("pipeline.speculative_misses_total");
     }
 
-    // --- Predictive constraint preloading ---
-    const predictedTopics = this.predictivePreloader.predictTopics(
-      utterance.text
-    );
-    if (predictedTopics.length > 0) {
-      this.predictivePreloader.prefetch(utterance.sessionId, predictedTopics);
-    }
+    // P2.12: the predictive-preloader call lived here with its result
+    // discarded (Tier 4 reads constraintManager.getAll, not the hot cache),
+    // costing ~45 string scans per utterance for nothing. Removed; the
+    // preloader class stays for Phase 3 speculative wiring (evaluatePartial
+    // already drives it), as does once-per-session seedFromContext.
 
     // --- Run Tier 1 always (structural detection is free) ---
     const tier1Start = PERF.now();
@@ -365,26 +405,35 @@ export class MeetingPipelineEngine {
       speculativeHit && speculativeMatch.result
         ? Promise.resolve({
             classification: speculativeMatch.result.classification,
+            isFallback: false,
             shouldStopForDeepReasoning: false,
             tier2CacheHit: false,
             speculativeHit: true,
           })
-        : this.runTier2(utterance).then((r) => ({
-            ...r,
-            speculativeHit: false,
-          }));
+        : this.runTier2(utterance).then((r) => {
+            recordHistogram("pipeline.tier2_ms", PERF.now() - tier2Start);
+            return {
+              ...r,
+              speculativeHit: false,
+            };
+          });
 
     const recentEmbeddings = this.finalizer.getRecentEmbeddings(
       utterance.sessionId,
       10
     );
     const _tier3Start = PERF.now();
-    const tier3Task = this.tier3.evaluate(
-      utterance,
-      payload,
-      this.commitmentManager,
-      recentEmbeddings
-    );
+    const tier3Task = Promise.resolve(
+      this.tier3.evaluate(
+        utterance,
+        payload,
+        this.commitmentManager,
+        recentEmbeddings
+      )
+    ).then((result) => {
+      recordHistogram("pipeline.tier3_ms", PERF.now() - _tier3Start);
+      return result;
+    });
 
     const constraintTask = this.constraintManager
       .processUtterance(utterance)
@@ -420,7 +469,16 @@ export class MeetingPipelineEngine {
       tier2.classification
     );
 
-    await this.publishSpeakerStateAlerts(utterance, tier2.classification);
+    const speakerAlertsPublished = await this.publishSpeakerStateAlerts(
+      utterance,
+      tier2.classification
+    );
+    if (speakerAlertsPublished > 0 && queuedAtMs !== undefined) {
+      recordHistogram(
+        "pipeline.utterance_to_alert_ms",
+        Date.now() - queuedAtMs
+      );
+    }
 
     const _gateStart = PERF.now();
     const highSignal = this.isHighSignal(tier1, tier2.classification);
@@ -430,11 +488,14 @@ export class MeetingPipelineEngine {
     // loosely match hydrated commitments — wasteful and breaks the tiered design.
     // Structural Tier 1 hits (API keys, passwords, pricing, blocklist) override the
     // stop — they always need Tier 4 reasoning regardless of Tier 2 classification.
+    // A Tier 2 *fallback* (provider unreachable) stops deep reasoning too, but a
+    // Tier 3 contradiction re-opens it: unknown input plus a ledger/memory hit
+    // is worth one deep look, while unknown input alone is not.
+    const tier2Stop =
+      tier2.shouldStopForDeepReasoning &&
+      !(tier2.isFallback === true && tier3.forceTier4);
     let runTier4 =
-      this.tier4PassesStructuralOverride(
-        tier1,
-        tier2.shouldStopForDeepReasoning
-      ) &&
+      this.tier4PassesStructuralOverride(tier1, tier2Stop) &&
       (highSignal || tier3.forceTier4);
 
     // --- Speaker-aware Tier 4 gate ---
@@ -459,6 +520,7 @@ export class MeetingPipelineEngine {
         tier2.classification
       );
     runTier4 = gatedTier4;
+    runTier4 = this.applyBacklogShed(runTier4, backlogDepth, utterance);
 
     const { tier4Response, tier4Outcome, tier4Ms } =
       await this.evaluateTier4AfterGate({
@@ -469,6 +531,20 @@ export class MeetingPipelineEngine {
         tier3,
         payload,
       });
+
+    if (tier4Outcome.invoked && tier4Ms !== undefined) {
+      recordHistogram("pipeline.tier4_ms", tier4Ms);
+    }
+    if (
+      tier4Outcome.surfaced &&
+      queuedAtMs !== undefined &&
+      speakerAlertsPublished === 0
+    ) {
+      recordHistogram(
+        "pipeline.utterance_to_alert_ms",
+        Date.now() - queuedAtMs
+      );
+    }
 
     const gateMs = PERF.now() - _gateStart;
     const totalMs = PERF.now() - start;
@@ -595,6 +671,20 @@ export class MeetingPipelineEngine {
   async evaluatePartial(partial: PartialUtterance): Promise<void> {
     await this.ensureSessionHydrated(partial.sessionId);
 
+    // P3.5: speculation is speculative spend — stop it as soon as the session
+    // enters cost-warning mode so the budget goes to real Tier 4 work.
+    const sessionCost = await this.costManager.getSessionCost(
+      partial.sessionId
+    );
+    if (this.costManager.isWarningMode(sessionCost)) {
+      incrementCounter("pipeline.speculative_cost_gated_total");
+      log.info(
+        { sessionId: partial.sessionId, sessionCost },
+        "Speculation disabled — session cost warning mode reached"
+      );
+      return;
+    }
+
     this.speculativeProcessor.processPartial(partial);
 
     const topics = this.predictivePreloader.predictTopics(partial.text);
@@ -606,7 +696,7 @@ export class MeetingPipelineEngine {
   private async publishSpeakerStateAlerts(
     utterance: Utterance,
     tier2Classification: Tier2Classification
-  ): Promise<void> {
+  ): Promise<number> {
     const alerts = this.speakerStateTracker.checkAlerts(
       utterance.sessionId,
       utterance,
@@ -617,11 +707,12 @@ export class MeetingPipelineEngine {
     );
 
     if (alerts.length === 0 || !this.tier4Alerts) {
-      return;
+      return 0;
     }
 
     const publisher = this.tier4Alerts;
 
+    let published = 0;
     await Promise.all(
       alerts.map(async (ssAlert) => {
         try {
@@ -629,6 +720,7 @@ export class MeetingPipelineEngine {
             utterance.sessionId,
             speakerStateAlertToAlert(ssAlert, utterance)
           );
+          published += 1;
         } catch (error) {
           log.warn(
             { err: error, utteranceId: utterance.utteranceId },
@@ -637,6 +729,31 @@ export class MeetingPipelineEngine {
         }
       })
     );
+    return published;
+  }
+
+  /**
+   * Backlog shed (P2.8): when the queue behind this utterance is deep, skip
+   * its Tier 4 and let the chain drain instead of cascading slowness.
+   */
+  private applyBacklogShed(
+    runTier4: boolean,
+    backlogDepth: number,
+    utterance: Utterance
+  ): boolean {
+    if (runTier4 && backlogDepth > TIER4_BACKLOG_SKIP_DEPTH) {
+      incrementCounter("pipeline.tier4_skipped_backlog_total");
+      log.info(
+        {
+          utteranceId: utterance.utteranceId,
+          sessionId: utterance.sessionId,
+          backlogDepth,
+        },
+        "Tier 4 skipped: evaluation backlog too deep"
+      );
+      return false;
+    }
+    return runTier4;
   }
 
   private async evaluateTier4AfterGate(params: {
@@ -777,6 +894,7 @@ export class MeetingPipelineEngine {
     this.tier2Cache.closeSession(sessionId);
     this.speakerStateTracker.closeSession(sessionId);
     this.evaluationChains.delete(sessionId);
+    this.evaluationDepth.delete(sessionId);
     this.speculativeProcessor.closeSession(sessionId);
     this.predictivePreloader.closeSession(sessionId);
     this.sessions.delete(sessionId);
@@ -789,6 +907,7 @@ export class MeetingPipelineEngine {
     this.tier2Cache.closeAll();
     this.speakerStateTracker.closeAll();
     this.evaluationChains.clear();
+    this.evaluationDepth.clear();
     this.speculativeProcessor.closeAll();
     this.predictivePreloader.closeAll();
     this.sessions.clear();
@@ -817,6 +936,7 @@ export class MeetingPipelineEngine {
 
   private async runTier2(utterance: Utterance): Promise<{
     classification: Tier2Classification;
+    isFallback?: boolean;
     shouldStopForDeepReasoning: boolean;
     tier2CacheHit?: boolean;
   }> {
@@ -857,15 +977,9 @@ export class MeetingPipelineEngine {
       utterance.topicId
     );
 
-    let knownClientMembers: Array<{ id: string; name: string }> = [];
-    try {
-      knownClientMembers = await this.getKnownClientMembers(sessionId);
-    } catch (error) {
-      log.warn(
-        { err: error, sessionId, utteranceId: utterance.utteranceId },
-        "Known client members lookup failed; proceeding without candidates"
-      );
-    }
+    // P2.6: session-cached at hydration; no per-utterance DB round trip.
+    const knownClientMembers =
+      this.sessions.get(sessionId)?.knownClientMembers ?? [];
 
     const input: Tier2Input = {
       utterance: text,
@@ -888,7 +1002,7 @@ export class MeetingPipelineEngine {
           sessionId,
           tier2.promptTokens || 0,
           tier2.completionTokens || 0,
-          SAMBANOVA_TIER2_MODEL
+          GENERALCOMPUTE_TIER2_MODEL
         )
         .catch((err) =>
           log.warn(
@@ -982,23 +1096,58 @@ export class MeetingPipelineEngine {
       return;
     }
 
-    await this.constraintManager.ensureHydrated(sessionId);
+    // Fetch once and share: the constraint manager reuses the payload
+    // instead of issuing its own Redis GET (P2.10).
+    const contextPayload = await this.getContextPayload(sessionId);
+    await this.constraintManager.ensureHydrated(sessionId, contextPayload);
     await this.commitmentManager.hydrateSession(sessionId);
 
-    const payload = await this.getContextPayload(sessionId);
-    this.tier1.seedContext(sessionId, payload);
+    this.tier1.seedContext(sessionId, contextPayload);
 
     await this.costManager.primeSessionCost(sessionId);
 
-    if (payload) {
-      this.predictivePreloader.seedFromContext(sessionId, payload);
+    // P2.6: client membership is meeting-scoped, not per-utterance — fetch
+    // once here instead of a Redis HGET + Postgres query ahead of every
+    // Tier 2 call. Refreshed on participant join (refreshSessionMembers).
+    let knownClientMembers: Array<{ id: string; name: string }> = [];
+    try {
+      knownClientMembers = await this.getKnownClientMembers(sessionId);
+    } catch (error) {
+      log.warn(
+        { err: error, sessionId },
+        "Known client members lookup failed; proceeding without candidates"
+      );
+    }
+
+    if (contextPayload) {
+      this.predictivePreloader.seedFromContext(sessionId, contextPayload);
     }
 
     this.sessions.set(sessionId, {
       hydrated: true,
-      contextPayload: payload,
+      contextPayload,
+      knownClientMembers,
     });
     log.info({ sessionId }, "Pipeline session hydrated");
+  }
+
+  /**
+   * Re-fetch cached client members after a mid-meeting join. Fire-and-forget
+   * safe: failures keep the previous cache.
+   */
+  async refreshSessionMembers(sessionId: string): Promise<void> {
+    try {
+      const members = await this.getKnownClientMembers(sessionId);
+      const state = this.sessions.get(sessionId);
+      if (state) {
+        state.knownClientMembers = members;
+      }
+    } catch (error) {
+      log.warn(
+        { err: error, sessionId },
+        "Client members refresh failed; keeping cached list"
+      );
+    }
   }
 
   private async ensureUtteranceEmbedding(utterance: Utterance): Promise<void> {

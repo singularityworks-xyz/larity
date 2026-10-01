@@ -10,7 +10,7 @@ export interface SystemEventPayload {
   eventId: string;
   message: string;
   severity: "info" | "warning" | "error";
-  source: "deepgram" | "sambanova" | "gemini";
+  source: "deepgram" | "generalcompute" | "gemini";
   timestamp: number;
   type: "system_event";
 }

@@ -55,14 +55,6 @@ export interface Utterance {
   wordCount: number;
 }
 
-export interface FinalizeResult {
-  confidence: number;
-  duration: number;
-  startOffset: number;
-  text: string;
-  timestamp: number;
-}
-
 /**
  * Create an unidentified external speaker identity.
  *

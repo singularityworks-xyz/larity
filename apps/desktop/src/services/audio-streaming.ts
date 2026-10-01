@@ -5,16 +5,20 @@ export interface AudioStatusSnapshot {
   active: boolean;
   backend: string;
   error?: string | null;
+  /** Mixer frames shed by the bounded drop-oldest queue (P4.3). */
+  mixer_drops?: number;
 }
 
-export interface AudioFramePayload {
-  data: string;
-  sessionId: string;
+/**
+ * Raw audio frame as delivered by the Rust mixer over a Tauri `Channel`
+ * (P4.1): `[tag: u8][ts: u64 LE][linear16 LE samples…]`, arriving in JS as
+ * an `ArrayBuffer`. No base64, no `atob`, no per-frame JSON envelope — and
+ * no `sessionId` per frame (the client already knows it).
+ */
+export interface RawAudioFrame {
+  samples: Uint8Array;
+  tag: number;
   ts: number;
-}
-
-export interface AudioFrameEvent {
-  payload: AudioFramePayload;
 }
 
 export interface AudioStreamingMetrics {
@@ -80,13 +84,21 @@ export function buildRealtimeSocketUrl(
   return url.toString();
 }
 
-function decodeBase64ToBytes(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
+/**
+ * Parse one mixer frame. Returns `null` for truncated buffers or unknown
+ * tags so a corrupt frame can never poison the upload queue.
+ */
+export function parseRawAudioFrame(buffer: ArrayBuffer): RawAudioFrame | null {
+  if (buffer.byteLength < 9) {
+    return null;
   }
-  return bytes;
+  const view = new DataView(buffer);
+  const tag = view.getUint8(0);
+  if (tag !== WS_AUDIO_TAG_MIC && tag !== WS_AUDIO_TAG_SYS) {
+    return null;
+  }
+  const ts = Number(view.getBigUint64(1, true));
+  return { samples: new Uint8Array(buffer, 9), tag, ts };
 }
 
 export function ensureTaggedAudioFrame(frameBytes: Uint8Array): Uint8Array {
@@ -191,12 +203,26 @@ export class AudioStreamingClient {
   private readonly maxReconnectAttempts = 10;
   private readonly baseReconnectDelayMs = 1000;
   private readonly maxReconnectDelayMs = 30_000;
+  /**
+   * 50 ms flush pump (P4.9). Runs only while frames are queued but the
+   * socket isn't draining them, so queued audio doesn't wait for the next
+   * incoming frame. Stopped as soon as the queue drains.
+   */
+  private flushTimer: ReturnType<typeof setInterval> | null = null;
+  private static readonly FLUSH_INTERVAL_MS = 50;
 
   private readonly metrics: AudioStreamingMetrics = {
     framesSent: 0,
     framesDropped: 0,
     lastFrameTs: 0,
   };
+
+  /**
+   * `performance.now()` captured at the top of the last WS text-message
+   * dispatch. Lets subscribers measure ws_recv → setState latency
+   * synchronously during dispatch (Phase 0 observability, dev only).
+   */
+  private lastWsRecvPerf = 0;
 
   private warning = "";
 
@@ -212,9 +238,31 @@ export class AudioStreamingClient {
   }
 
   connect(sessionId: string): void {
+    const previousSessionId = this.currentSessionId;
+    const socketLive =
+      this.socket?.readyState === WebSocket.OPEN ||
+      this.socket?.readyState === WebSocket.CONNECTING;
+
+    // A different session must never inherit the previous socket (P4.1):
+    // close it without triggering reconnect and drop its queued frames so
+    // audio from meeting A cannot be attributed to meeting B.
+    if (socketLive && previousSessionId && previousSessionId !== sessionId) {
+      this.isExplicitlyDisconnected = true;
+      const oldSocket = this.socket;
+      this.socket = null;
+      try {
+        oldSocket?.close(1000, "session changed");
+      } catch {
+        // Already closed.
+      }
+      this.pendingFrames.length = 0;
+      this.streamStarted = false;
+    }
+
     this.currentSessionId = sessionId;
     this.isExplicitlyDisconnected = false;
     this.clearReconnectTimer();
+    this.clearFlushTimer();
 
     if (
       this.socket?.readyState === WebSocket.OPEN ||
@@ -249,6 +297,11 @@ export class AudioStreamingClient {
         this.warning = "";
         this.streamStarted = false; // Reset stream state on new connection
         this.reconnectAttempts = 0; // Reset reconnection attempts on successful connect
+        // P4.9: drain anything queued while connecting (sends stream start).
+        if (this.currentSessionId) {
+          this.flushPending(this.currentSessionId);
+          this.ensureFlushTimer();
+        }
       }
     };
 
@@ -283,6 +336,8 @@ export class AudioStreamingClient {
       if (typeof event.data !== "string") {
         return;
       }
+
+      this.lastWsRecvPerf = performance.now();
 
       let data: Record<string, unknown>;
       try {
@@ -364,6 +419,8 @@ export class AudioStreamingClient {
     this.isExplicitlyDisconnected = true;
     this.currentSessionId = null;
     this.clearReconnectTimer();
+    this.clearFlushTimer();
+    this.pendingFrames.length = 0;
 
     if (this.socket) {
       this.log.info("Disconnecting WebSocket");
@@ -375,6 +432,11 @@ export class AudioStreamingClient {
 
   getMetrics(): AudioStreamingMetrics {
     return { ...this.metrics };
+  }
+
+  /** See `lastWsRecvPerf`. Returns 0 if no text message received yet. */
+  getLastWsRecvPerf(): number {
+    return this.lastWsRecvPerf;
   }
 
   getWarning(): string {
@@ -400,9 +462,19 @@ export class AudioStreamingClient {
     };
   }
 
-  handleAudioFrame(event: AudioFrameEvent): SendResult {
-    const payload = event.payload;
-    this.metrics.lastFrameTs = payload.ts;
+  /**
+   * Upload path for Channel-delivered frames (P4.1). The tag prefix is
+   * guaranteed by the Rust mixer; `ensureTaggedAudioFrame` stays as a
+   * cheap defensive check.
+   */
+  handleRawAudioFrame(frame: RawAudioFrame, sessionId: string): SendResult {
+    // Frames from a stale Tauri Channel (previous meeting) must never reach
+    // the current session's socket. Before any connect, there is no current
+    // session and the normal unavailable-socket path applies.
+    if (this.currentSessionId !== null && sessionId !== this.currentSessionId) {
+      return { sent: false, dropped: false };
+    }
+    this.metrics.lastFrameTs = frame.ts;
 
     if (!this.isSocketAvailable()) {
       this.metrics.framesDropped += 1;
@@ -411,17 +483,47 @@ export class AudioStreamingClient {
       return { sent: false, dropped: true };
     }
 
-    const frameBytes = ensureTaggedAudioFrame(
-      decodeBase64ToBytes(payload.data)
-    );
-    this.pendingFrames.push({ data: frameBytes, ts: payload.ts });
+    // Rebuild the tagged wire frame: [tag][samples…].
+    const tagged = new Uint8Array(frame.samples.length + 1);
+    tagged[0] = frame.tag;
+    tagged.set(frame.samples, 1);
+    const frameBytes = ensureTaggedAudioFrame(tagged);
+    this.pendingFrames.push({ data: frameBytes, ts: frame.ts });
 
     const dropped = this.manageBackpressure();
-    const sent = this.flushPending(payload.sessionId);
+    const sent = this.flushPending(sessionId);
+    this.ensureFlushTimer();
 
     this.updateWarning(sent, dropped);
 
     return { sent, dropped };
+  }
+
+  /**
+   * Start the 50 ms flush pump when frames are waiting (P4.9). No-op when
+   * the queue is empty or the pump already runs. The pump stops itself on
+   * drain; `connect`/`disconnect` stop it unconditionally. Uses global
+   * timers (not `window.*`) so the client stays testable outside a browser.
+   */
+  private ensureFlushTimer(): void {
+    if (this.flushTimer !== null || this.pendingFrames.length === 0) {
+      return;
+    }
+    this.flushTimer = setInterval(() => {
+      if (this.currentSessionId) {
+        this.flushPending(this.currentSessionId);
+      }
+      if (this.pendingFrames.length === 0) {
+        this.clearFlushTimer();
+      }
+    }, AudioStreamingClient.FLUSH_INTERVAL_MS);
+  }
+
+  private clearFlushTimer(): void {
+    if (this.flushTimer !== null) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = null;
+    }
   }
 
   private isSocketAvailable(): boolean {
@@ -587,6 +689,11 @@ function detectIncomingMessageType(
     (dataType === "insert" || dataType === "status_change")
   ) {
     return "ledger";
+  }
+  // Topic deltas patch an already-rendered utterance; they carry utteranceId
+  // too, so they must classify as "topic" before the generic utterance branch.
+  if (dataType === "utterance_topic") {
+    return "topic";
   }
   if (typeof data.utteranceId === "string") {
     return "utterance";

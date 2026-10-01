@@ -9,7 +9,13 @@ export class ClockOffsetTracker {
     clientSendTs: number,
     serverReceiveTs: number
   ): void {
-    const halfRTT = 50; // Approximated
+    // Measured one-way delay: half the observed client→server transit,
+    // clamped like the audio_stream_start estimate in realtime on-message.
+    // (Previously a hard-coded 50 ms, which biased offsets on slow links.)
+    const halfRTT = Math.max(
+      0,
+      Math.min(500, (serverReceiveTs - clientSendTs) / 2)
+    );
     const offset = serverReceiveTs - clientSendTs - halfRTT;
 
     let userSamples = this.samples.get(userId);

@@ -1,11 +1,12 @@
 {
   "name": "@larity/mock-overlay",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "mock": "WEBKIT_DISABLE_COMPOSITING_MODE=1 tauri dev"
+    "mock": "WEBKIT_DISABLE_COMPOSITING_MODE=1 tauri dev",
+    "latency": "bun scripts/latency.ts"
   },
   "dependencies": {
     "@larity/stt": "workspace:*",

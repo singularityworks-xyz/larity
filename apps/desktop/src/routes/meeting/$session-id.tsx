@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -8,6 +8,7 @@ import { useAlertQueue } from "../../features/alerts/use-alert-queue";
 import { useAuthSession } from "../../features/auth/use-session";
 import { AmbientStatusBar } from "../../features/meeting-live/ambient-status-bar";
 import {
+  isUtteranceTopicDelta,
   mapBackendCommitmentToLive,
   mapBackendTopicToLive,
   mapBackendUtteranceToLive,
@@ -47,9 +48,9 @@ import {
   warningBannerClass,
 } from "../../lib/ui";
 import {
-  type AudioFramePayload,
   type AudioStatusSnapshot,
   AudioStreamingClient,
+  parseRawAudioFrame,
 } from "../../services/audio-streaming";
 import { VadManager } from "../../services/vad";
 
@@ -117,15 +118,43 @@ function getSystemEventBannerClass(
 }
 
 function getSystemEventSourceLabel(
-  source: "deepgram" | "sambanova" | "gemini"
+  source: "deepgram" | "generalcompute" | "gemini"
 ): string {
   if (source === "deepgram") {
     return "STT";
   }
-  if (source === "sambanova") {
+  if (source === "generalcompute") {
     return "AI Classifier";
   }
   return "AI Reasoner";
+}
+
+/** Max ws_recv → setState samples retained per message type (dev diagnostics). */
+const WS_TIMING_RING_SIZE = 30;
+
+function pushWsTimingSample(ring: number[], valueMs: number): void {
+  ring.push(valueMs);
+  if (ring.length > WS_TIMING_RING_SIZE) {
+    ring.splice(0, ring.length - WS_TIMING_RING_SIZE);
+  }
+}
+
+function avgWsTimingMs(ring: number[]): number | null {
+  if (ring.length === 0) {
+    return null;
+  }
+  return ring.reduce((acc, value) => acc + value, 0) / ring.length;
+}
+
+/** Dev-only: record ws_recv → handler latency into a ring buffer. */
+function sampleWsRecvTiming(ring: number[], getRecvPerf: () => number): void {
+  if (!import.meta.env.DEV) {
+    return;
+  }
+  const recvPerf = getRecvPerf();
+  if (recvPerf > 0) {
+    pushWsTimingSample(ring, performance.now() - recvPerf);
+  }
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: pre-existing, refactor deferred
@@ -160,15 +189,21 @@ export function MeetingPage() {
   );
   const displayName = configuredName ?? accountName;
 
+  // Initial name only: renames sync into the client via the setIdentity
+  // effect below, so the memoized client must not rebuild when the name
+  // changes (that tore down WS/capture/VAD/overlay mid-meeting, P1.12).
+  // initialDisplayName never changes, keeping this memo stable.
+  const [initialDisplayName] = useState(displayName);
+
   const streamingClient = useMemo(
     () =>
       new AudioStreamingClient({
         wsBaseUrl,
         userId,
-        userName: displayName,
+        userName: initialDisplayName,
         role,
       }),
-    [role, userId, displayName, wsBaseUrl]
+    [role, userId, wsBaseUrl, initialDisplayName]
   );
 
   const vadManager = useMemo(() => new VadManager(), []);
@@ -199,11 +234,29 @@ export function MeetingPage() {
   const [framesSent, setFramesSent] = useState(0);
   const [framesDropped, setFramesDropped] = useState(0);
   const [lastTs, setLastTs] = useState<number>(0);
+  // Dev-only ws_recv → setState latency (ms, avg of last 30) per STT type.
+  const [wsPartialMs, setWsPartialMs] = useState<number | null>(null);
+  const [wsFinalMs, setWsFinalMs] = useState<number | null>(null);
+  const wsTimingRef = useRef<{ final: number[]; partial: number[] }>({
+    final: [],
+    partial: [],
+  });
+  // Active raw-audio Channel (P4.1). Created per startCapture; cleared on
+  // stop/unmount so a stale channel can never feed a new session.
+  const audioChannelRef = useRef<Channel<ArrayBuffer> | null>(null);
+  // Frame counters shared between the channel handler and the 1 Hz metrics
+  // sync below — the handler never calls setState per frame (P6 territory).
+  const audioFrameCountsRef = useRef({
+    dropped: 0,
+    lastTs: 0,
+    received: 0,
+    sent: 0,
+  });
   const [warning, setWarning] = useState("");
   const [systemEvents, setSystemEvents] = useState<
     Array<{
       eventId: string;
-      source: "deepgram" | "sambanova" | "gemini";
+      source: "deepgram" | "generalcompute" | "gemini";
       severity: "info" | "warning" | "error";
       code: string;
       message: string;
@@ -272,11 +325,28 @@ export function MeetingPage() {
 
     try {
       streamingClient.connect(sessionId);
+      // P4.1: raw frames arrive as ArrayBuffer over this Channel — no
+      // base64/atob, no per-frame JSON envelope, no sessionId per frame.
+      const audioChannel = new Channel<ArrayBuffer>();
+      audioChannel.onmessage = (buffer) => {
+        const frame = parseRawAudioFrame(buffer);
+        if (!frame) {
+          return;
+        }
+        // P4.9: no setState, no getMetrics per frame — the 1 Hz sync below
+        // picks up counters and warning changes.
+        const counts = audioFrameCountsRef.current;
+        counts.received += 1;
+        counts.lastTs = frame.ts;
+        streamingClient.handleRawAudioFrame(frame, sessionId);
+      };
+      audioChannelRef.current = audioChannel;
       await invoke("audio_capture_start", {
         sessionId,
         micDeviceId: micDeviceId || null,
         sysDeviceId: sysDeviceId || null,
         role,
+        onAudio: audioChannel,
       });
       await refreshStatus();
     } catch (error) {
@@ -303,6 +373,8 @@ export function MeetingPage() {
       if (!message.includes("not running")) {
         setWarning(`Failed to stop capture: ${message}`);
       }
+    } finally {
+      audioChannelRef.current = null;
     }
   }, [refreshStatus]);
 
@@ -524,8 +596,23 @@ export function MeetingPage() {
         data as unknown as Parameters<typeof mapBackendUtteranceToLive>[0]
       );
       setUtterances((prev) => {
-        if (prev.some((u) => u.id === utterance.id)) {
-          return prev;
+        const idx = prev.findIndex((u) => u.id === utterance.id);
+        if (idx >= 0) {
+          // P2.4: same-id republish (retroactive re-identification / role
+          // change) updates speaker/role but must preserve client-derived
+          // enrichment (commitment/alert/memory badges, late topicId) that a
+          // fresh backend mapping resets.
+          const previous = prev[idx] as LiveUtterance;
+          const next = [...prev];
+          next[idx] = {
+            ...previous,
+            ...utterance,
+            isCommitment: previous.isCommitment,
+            hasAlert: previous.hasAlert,
+            hasMemory: previous.hasMemory,
+            topicId: utterance.topicId ?? previous.topicId,
+          };
+          return next;
         }
         return [...prev, utterance];
       });
@@ -563,6 +650,15 @@ export function MeetingPage() {
     });
 
     const unsubTopic = streamingClient.subscribe("topic", (data) => {
+      // Late topic assignment for an already-rendered utterance (P2.1):
+      // patch the row in place; unknown ids (merged-away segments) are ignored.
+      if (isUtteranceTopicDelta(data)) {
+        const { utteranceId, topicId } = data;
+        setUtterances((prev) =>
+          prev.map((u) => (u.id === utteranceId ? { ...u, topicId } : u))
+        );
+        return;
+      }
       const topic = mapBackendTopicToLive(
         data as unknown as Parameters<typeof mapBackendTopicToLive>[0]
       );
@@ -631,6 +727,9 @@ export function MeetingPage() {
     });
 
     const unsubSttPartial = streamingClient.subscribe("stt_partial", (data) => {
+      sampleWsRecvTiming(wsTimingRef.current.partial, () =>
+        streamingClient.getLastWsRecvPerf()
+      );
       const transcript =
         typeof data.transcript === "string" ? data.transcript.trim() : "";
       if (!transcript) {
@@ -642,6 +741,9 @@ export function MeetingPage() {
     });
 
     const unsubSttFinal = streamingClient.subscribe("stt_final", (data) => {
+      sampleWsRecvTiming(wsTimingRef.current.final, () =>
+        streamingClient.getLastWsRecvPerf()
+      );
       setLivePartial(null);
       const transcript =
         typeof data.transcript === "string" ? data.transcript.trim() : "";
@@ -759,7 +861,7 @@ export function MeetingPage() {
 
         const newEvent = {
           eventId,
-          source: source as "deepgram" | "sambanova" | "gemini",
+          source: source as "deepgram" | "generalcompute" | "gemini",
           severity: severity as "info" | "warning" | "error",
           code,
           message,
@@ -839,55 +941,42 @@ export function MeetingPage() {
     });
 
     let isMounted = true;
-    let unlistenFn: (() => void) | null = null;
-    const metricsBuffer = {
-      framesReceived: 0,
-      framesSent: 0,
-      framesDropped: 0,
-      lastTs: 0,
-    };
-
+    // Last client warning synced to state (P4.9: sync change-driven at
+    // 1 Hz so unrelated UI warnings are never clobbered by an empty echo).
+    let lastSyncedWarning = streamingClient.getWarning();
     const metricsSyncInterval = setInterval(() => {
       if (!isMounted) {
         return;
       }
-      setFramesReceived(metricsBuffer.framesReceived);
-      setFramesSent(metricsBuffer.framesSent);
-      setFramesDropped(metricsBuffer.framesDropped);
-      setLastTs(metricsBuffer.lastTs);
-    }, 1000);
-
-    listen<AudioFramePayload>("audio-frame", (event) => {
-      if (!isHost) {
-        return;
-      }
-
-      metricsBuffer.framesReceived += 1;
-      metricsBuffer.lastTs = event.payload.ts;
-
-      const result = streamingClient.handleAudioFrame({
-        payload: event.payload,
-      });
+      const counts = audioFrameCountsRef.current;
       const metrics = streamingClient.getMetrics();
-      metricsBuffer.framesSent = metrics.framesSent;
-      metricsBuffer.framesDropped = metrics.framesDropped;
-
-      if (result.dropped || result.sent) {
-        const newWarning = streamingClient.getWarning();
-        setWarning((prev) => (prev === newWarning ? prev : newWarning));
+      counts.sent = metrics.framesSent;
+      counts.dropped = metrics.framesDropped;
+      setFramesReceived(counts.received);
+      setFramesSent(counts.sent);
+      setFramesDropped(counts.dropped);
+      setLastTs(counts.lastTs);
+      const clientWarning = streamingClient.getWarning();
+      if (clientWarning !== lastSyncedWarning) {
+        lastSyncedWarning = clientWarning;
+        setWarning(clientWarning);
       }
-    }).then((fn) => {
-      if (isMounted) {
-        unlistenFn = fn;
-      } else {
-        fn();
+      if (import.meta.env.DEV) {
+        setWsPartialMs((prev) => {
+          const next = avgWsTimingMs(wsTimingRef.current.partial);
+          return next === prev ? prev : next;
+        });
+        setWsFinalMs((prev) => {
+          const next = avgWsTimingMs(wsTimingRef.current.final);
+          return next === prev ? prev : next;
+        });
       }
-    });
+    }, 1000);
 
     return () => {
       isMounted = false;
       clearInterval(metricsSyncInterval);
-      unlistenFn?.();
+      audioChannelRef.current = null;
 
       closeOverlayWindow().catch(() => {
         /* overlay may already be closed */
@@ -904,7 +993,6 @@ export function MeetingPage() {
     startCapture,
     stopCapture,
     streamingClient,
-    isHost,
     allowNameCustomization,
     configuredName,
     role,
@@ -1268,6 +1356,18 @@ export function MeetingPage() {
                 <p className="text-xs">
                   Last frame timestamp: {lastTs || "none"}
                 </p>
+                {import.meta.env.DEV ? (
+                  <>
+                    <p className="text-xs">
+                      WS recv → render (partial, avg ms):{" "}
+                      {wsPartialMs === null ? "—" : wsPartialMs.toFixed(1)}
+                    </p>
+                    <p className="text-xs">
+                      WS recv → render (final, avg ms):{" "}
+                      {wsFinalMs === null ? "—" : wsFinalMs.toFixed(1)}
+                    </p>
+                  </>
+                ) : null}
               </div>
             </section>
           </div>

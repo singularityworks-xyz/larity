@@ -1,7 +1,8 @@
 import type { SttResult } from "../../../stt/src/types";
-import { utteranceChannel } from "../channels";
+import { topicChannel, utteranceChannel } from "../channels";
 import { MERGE_GROUPING_MS, MERGE_PUBLISH_GAP_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
+import { recordHistogram } from "../pipeline/metrics";
 import type { Tier2TopicDelta } from "../pipeline/types";
 import type { SpeakerIdentifier } from "../speaker/identifier";
 import { calculateTextSimilarity } from "../speaker/offline-correlation";
@@ -11,7 +12,6 @@ import {
   type TopicManagerOptions,
   type TopicPublisher,
 } from "../topic/manager";
-import { PartialBuffer } from "./buffer";
 import { UtteranceMerger } from "./merger";
 import { RingBuffer } from "./ring-buffer";
 import { createUnidentifiedSpeaker, type Utterance } from "./types";
@@ -44,17 +44,30 @@ export interface UtterancePublisher extends TopicPublisher {
   publish(channel: string, message: string): Promise<number>;
 }
 
+type UtteranceEmbedder = Pick<GoogleGenAIEmbedder, "embed">;
+type UtteranceTopicManager = Pick<
+  TopicManager,
+  "applyTier2TopicDelta" | "assignTopic" | "closeSession" | "getTopics"
+>;
+
 export type RetroactiveUpdateHandler = (
   utterance: Utterance,
   oldSpeakerType: string
 ) => Promise<void>;
 
-export type UtterancePublishedHandler = (utterance: Utterance) => Promise<void>;
+/** Why an utterance is (re)published. Absent for first-time publishes. */
+export interface UtterancePublishOptions {
+  republish?: "reidentified" | "role_change";
+}
+
+export type UtterancePublishedHandler = (
+  utterance: Utterance,
+  options?: UtterancePublishOptions
+) => Promise<void>;
 
 export class UtteranceFinalizer {
   private readonly mergerGroupingMs: number;
   private readonly mergerPublishGapMs: number;
-  private readonly buffer = new Map<string, PartialBuffer>();
   private readonly mergers = new Map<string, UtteranceMerger>();
   private readonly sequences = new Map<string, number>();
   private readonly publisher: UtterancePublisher;
@@ -62,8 +75,8 @@ export class UtteranceFinalizer {
   private readonly speakerIdentifiers = new Map<string, SpeakerIdentifier>();
   private readonly retroactiveHandlers: RetroactiveUpdateHandler[] = [];
   private readonly publishedHandlers: UtterancePublishedHandler[] = [];
-  private readonly topicManager: TopicManager;
-  private readonly embedder: GoogleGenAIEmbedder;
+  private readonly topicManager: UtteranceTopicManager;
+  private readonly embedder: UtteranceEmbedder;
   private readonly mergerFlushTimers = new Map<
     string,
     ReturnType<typeof setTimeout>
@@ -73,6 +86,25 @@ export class UtteranceFinalizer {
   private readonly publishedHandlerInflight = new Map<
     string,
     Set<Promise<unknown>>
+  >();
+
+  /**
+   * Per-session FIFO around `processFinal` (same pattern as the pipeline
+   * engine's `evaluationChains`). `processFinal` awaits the embedding +
+   * topic assignment, so without serialization two rapid finals can
+   * interleave at the await and hit `merger.push` / publish out of order.
+   */
+  private readonly processChains = new Map<string, Promise<unknown>>();
+
+  /**
+   * Publish-path timing anchors per utteranceId (`${sessionId}:${seq}`).
+   * Set in `processFinal`, consumed (and deleted) in `publishUtterance`.
+   * Entries for ids consumed by a same-speaker merge are deleted at push
+   * time since the merged utterance retains the previous id.
+   */
+  private readonly publishTrack = new Map<
+    string,
+    { finalizeStartPerf: number; sttTs: number }
   >();
 
   constructor(
@@ -87,6 +119,10 @@ export class UtteranceFinalizer {
        * @deprecated Sets both grouping and publish gap when the split env vars are unused.
        */
       mergerGapMs?: number;
+      dependencies?: {
+        embedder?: UtteranceEmbedder;
+        topicManager?: UtteranceTopicManager;
+      };
     } = {}
   ) {
     this.publisher = publisher;
@@ -95,8 +131,10 @@ export class UtteranceFinalizer {
       options.mergerGroupingMs ?? legacyBoth ?? MERGE_GROUPING_MS;
     this.mergerPublishGapMs =
       options.mergerPublishGapMs ?? legacyBoth ?? MERGE_PUBLISH_GAP_MS;
-    this.topicManager = new TopicManager(publisher, options.topicManager);
-    this.embedder = new GoogleGenAIEmbedder();
+    this.topicManager =
+      options.dependencies?.topicManager ??
+      new TopicManager(publisher, options.topicManager);
+    this.embedder = options.dependencies?.embedder ?? new GoogleGenAIEmbedder();
   }
 
   registerSpeakerIdentifier(
@@ -137,7 +175,7 @@ export class UtteranceFinalizer {
 
       utterance.speaker = newSpeaker;
 
-      await this.publishUtterance(utterance);
+      await this.publishUtterance(utterance, { republish: "reidentified" });
 
       for (const handler of this.retroactiveHandlers) {
         await handler(utterance, oldType);
@@ -179,7 +217,7 @@ export class UtteranceFinalizer {
 
       utterance.speaker = { ...newSpeaker };
 
-      await this.publishUtterance(utterance);
+      await this.publishUtterance(utterance, { republish: "role_change" });
 
       for (const handler of this.retroactiveHandlers) {
         await handler(utterance, oldType);
@@ -201,24 +239,41 @@ export class UtteranceFinalizer {
   async process(result: SttResult): Promise<void> {
     const { sessionId, isFinal } = result;
 
-    const buffer = this.getOrCreateBuffer(sessionId);
-
+    // P2.12: partials are intentionally not accumulated. The old
+    // PartialBuffer only ever fed getStats() (no callers) while costing an
+    // append + overflow splice per interim; provisional speaker mapping
+    // happens in the identifier, not here.
     if (!isFinal) {
-      buffer.append(result);
       return;
     }
 
-    await this.processFinal(sessionId, result, buffer);
+    const previous = this.processChains.get(sessionId) ?? Promise.resolve();
+    const next = previous.then(() => this.processFinal(sessionId, result));
+    const recovered = next.catch((error: unknown) => {
+      log.error(
+        { err: error, sessionId },
+        "Queued finalize failed — chain continues"
+      );
+    });
+    this.processChains.set(sessionId, recovered);
+    await recovered;
   }
 
   private async processFinal(
     sessionId: string,
-    result: SttResult,
-    buffer: PartialBuffer
+    result: SttResult
   ): Promise<void> {
     this.clearMergerFlushTimer(sessionId);
 
-    const finalized = buffer.finalize(result);
+    // P2.12: finalized fields come straight from the STT final — the removed
+    // PartialBuffer never contributed anything beyond this mapping.
+    const finalized = {
+      text: result.transcript,
+      confidence: result.confidence,
+      duration: result.duration,
+      startOffset: result.start,
+      timestamp: result.ts,
+    };
     if (!finalized.text.trim()) {
       return;
     }
@@ -295,27 +350,51 @@ export class UtteranceFinalizer {
     };
 
     const _embedWallStart = PERF.now();
-    utterance.embeddingPromise = this.embedder
-      .embed(utterance.text)
-      .catch((error): undefined => {
-        log.warn(
-          { err: error, utteranceId: utterance.utteranceId },
-          "Failed to generate embedding for utterance"
-        );
-        return;
-      });
+    const embedOutcome = this.embedder.embed(utterance.text);
+    // Tap (don't alter) the in-flight embedding to time it. Both branches
+    // handle the outcome, so no unhandled rejection is introduced.
+    embedOutcome.then(
+      () =>
+        recordHistogram(
+          "finalizer.embed_wait_ms",
+          PERF.now() - _embedWallStart
+        ),
+      () =>
+        recordHistogram("finalizer.embed_wait_ms", PERF.now() - _embedWallStart)
+    );
+    utterance.embeddingPromise = embedOutcome.catch((error): undefined => {
+      log.warn(
+        { err: error, utteranceId: utterance.utteranceId },
+        "Failed to generate embedding for utterance"
+      );
+      return;
+    });
 
-    // Assign topic (awaits in-flight embedding via TopicManager)
-    const topicId = await this.topicManager.assignTopic(utterance);
-    utterance.topicId = topicId;
+    // Anchor publish-path timing before the utterance can be held by the merger.
+    this.publishTrack.set(utterance.utteranceId, {
+      finalizeStartPerf: finalizeStart,
+      sttTs: result.ts,
+    });
 
-    utterance.embeddingPromise = undefined;
-
+    // P2.1: push to the merger and publish BEFORE topic assignment — the
+    // transcript must not wait on the embedding round trip.
     const merger = this.getOrCreateMerger(sessionId);
     const toPublish = merger.push(utterance);
 
     if (toPublish) {
-      await this.publishUtterance(toPublish, finalizeStart);
+      await this.publishUtterance(toPublish);
+    }
+
+    // If the merger consumed this utterance into a same-speaker merge, its
+    // id is gone: drop its timing anchor and skip its topic delta (the
+    // surviving utterance keeps its own topic; the client never saw this id).
+    const pendingAfterPush = merger.peekPending();
+    const mergedAway =
+      !toPublish &&
+      !!pendingAfterPush &&
+      pendingAfterPush.utteranceId !== utterance.utteranceId;
+    if (mergedAway) {
+      this.publishTrack.delete(utterance.utteranceId);
     }
 
     if (merger.hasPending()) {
@@ -328,6 +407,17 @@ export class UtteranceFinalizer {
       this.ringBuffers.set(sessionId, ringBuffer);
     }
     ringBuffer.push(utterance);
+
+    // Assign topic after publish (awaited: keeps per-session ordering and
+    // topic-centroid updates serialized). Already-rendered rows catch up via
+    // the topic delta below; Tier 2/3 await the embedding independently.
+    const topicId = await this.topicManager.assignTopic(utterance);
+    utterance.topicId = topicId;
+    utterance.embeddingPromise = undefined;
+
+    if (!mergedAway) {
+      await this.publishTopicDelta(sessionId, utterance.utteranceId, topicId);
+    }
   }
 
   getRingBuffer(sessionId: string): RingBuffer | undefined {
@@ -433,6 +523,14 @@ export class UtteranceFinalizer {
 
     this.clearMergerFlushTimer(sessionId);
 
+    // Drain any in-flight finalize first so the flush below can't race it
+    // at merger.push / publish.
+    const inflight = this.processChains.get(sessionId);
+    if (inflight) {
+      await inflight;
+    }
+    this.processChains.delete(sessionId);
+
     const merger = this.mergers.get(sessionId);
     if (merger) {
       const pending = merger.flush();
@@ -443,33 +541,28 @@ export class UtteranceFinalizer {
 
     await this.awaitPublishedHandlersForSession(sessionId);
 
-    this.buffer.delete(sessionId);
     this.mergers.delete(sessionId);
     this.sequences.delete(sessionId);
     this.ringBuffers.delete(sessionId);
+    for (const utteranceId of this.publishTrack.keys()) {
+      if (utteranceId.startsWith(`${sessionId}:`)) {
+        this.publishTrack.delete(utteranceId);
+      }
+    }
 
     await this.topicManager.closeSession(sessionId);
   }
 
   async closeAll(): Promise<void> {
-    log.info({ count: this.buffer.size }, "Closing all sessions");
+    log.info({ count: this.mergers.size }, "Closing all sessions");
 
-    const sessionIds = [...this.buffer.keys()];
+    const sessionIds = [...this.mergers.keys()];
 
     for (const sessionId of sessionIds) {
       await this.closeSession(sessionId);
     }
 
     log.info({ closedCount: sessionIds.length }, "All sessions closed");
-  }
-
-  private getOrCreateBuffer(sessionId: string): PartialBuffer {
-    let buffer = this.buffer.get(sessionId);
-    if (!buffer) {
-      buffer = new PartialBuffer();
-      this.buffer.set(sessionId, buffer);
-    }
-    return buffer;
   }
 
   private getOrCreateMerger(sessionId: string): UtteranceMerger {
@@ -575,25 +668,69 @@ export class UtteranceFinalizer {
     await Promise.allSettled([...bucket]);
   }
 
+  /**
+   * Emit `{ type: "utterance_topic", utteranceId, topicId }` on the topic
+   * channel so clients that already rendered the utterance (published
+   * before topic assignment) can patch its topic. Full topic state
+   * continues on the same channel unchanged.
+   */
+  private async publishTopicDelta(
+    sessionId: string,
+    utteranceId: string,
+    topicId: string
+  ): Promise<void> {
+    try {
+      await this.publisher.publish(
+        topicChannel(sessionId),
+        JSON.stringify({ type: "utterance_topic", utteranceId, topicId })
+      );
+    } catch (error) {
+      log.error(
+        { err: error, sessionId, utteranceId },
+        "Failed to publish utterance topic delta"
+      );
+    }
+  }
+
   private async publishUtterance(
     utterance: Utterance,
-    _finalizeStartMs?: number
+    options?: UtterancePublishOptions
   ): Promise<void> {
     const channel = utteranceChannel(utterance.sessionId);
     const message = JSON.stringify(utterance, (key, value) =>
       key === "embeddingPromise" ? undefined : value
     );
 
+    // Consume the publish-path timing anchor (set in processFinal).
+    // Republishes (retroactive re-identification, session flush) find no
+    // anchor and are not recorded — only the first publish counts.
+    const track = this.publishTrack.get(utterance.utteranceId);
+    if (track) {
+      this.publishTrack.delete(utterance.utteranceId);
+      recordHistogram(
+        "finalizer.merger_hold_ms",
+        PERF.now() - track.finalizeStartPerf
+      );
+      if (Number.isFinite(track.sttTs) && track.sttTs > 0) {
+        recordHistogram(
+          "finalizer.stt_final_to_publish_ms",
+          Date.now() - track.sttTs
+        );
+      }
+    }
+
     try {
       await this.publisher.publish(channel, message);
 
       for (const handler of this.publishedHandlers) {
-        const inflight = Promise.resolve(handler(utterance)).catch((error) => {
-          log.error(
-            { err: error, utteranceId: utterance.utteranceId },
-            "Utterance published handler failed"
-          );
-        });
+        const inflight = Promise.resolve(handler(utterance, options)).catch(
+          (error) => {
+            log.error(
+              { err: error, utteranceId: utterance.utteranceId },
+              "Utterance published handler failed"
+            );
+          }
+        );
         this.trackPublishedHandler(utterance.sessionId, inflight);
       }
 
@@ -612,17 +749,6 @@ export class UtteranceFinalizer {
         "Failed to publish utterance"
       );
     }
-  }
-
-  getStats(): { sessionCount: number; totalBufferedPartials: number } {
-    let totalBufferedPartials = 0;
-    for (const buffer of this.buffer.values()) {
-      totalBufferedPartials += buffer.getPartialCount();
-    }
-    return {
-      sessionCount: this.buffer.size,
-      totalBufferedPartials,
-    };
   }
 }
 

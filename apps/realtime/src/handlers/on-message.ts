@@ -1,4 +1,5 @@
 import { sessionManager } from "@larity/stt";
+import { recordHistogram } from "@larity/stt/metrics";
 import { getStreamer } from "../audio/registry";
 import { createRealtimeLogger } from "../logger";
 import {
@@ -128,10 +129,24 @@ function handleBinaryFrame(
   ts: number
 ): void {
   updateLastFrameTs(sessionId, ts);
-  const frame = Buffer.isBuffer(message) ? message : Buffer.from(message);
-  sessionManager.sendAudio(sessionId, frame).catch((err) => {
+  // P4.10: zero-copy view — `Buffer.from(u8)` copies, while
+  // `Buffer.from(ab, offset, len)` shares the underlying memory.
+  const frame = Buffer.isBuffer(message)
+    ? message
+    : Buffer.from(
+        message.buffer as ArrayBuffer,
+        message.byteOffset,
+        message.byteLength
+      );
+  const recvTs = ts;
+  // P4.10: the send chain is synchronous (enqueue + flush attempt), so the
+  // histogram now measures pure recv→enqueue without awaiting a handshake.
+  try {
+    sessionManager.sendAudio(sessionId, frame);
+  } catch (err) {
     log.error({ err, sessionId }, "Failed to relay frame to Deepgram");
-  });
+  }
+  recordHistogram("ingest.frame_recv_to_deepgram_send_ms", Date.now() - recvTs);
 
   // Fire-and-forget S3 audio persistence — errors never block live processing
   const streamer = getStreamer(sessionId);

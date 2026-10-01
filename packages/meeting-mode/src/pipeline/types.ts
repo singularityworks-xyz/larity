@@ -127,6 +127,8 @@ export interface Tier1Result {
 export interface Tier2Outcome {
   classification: Tier2Classification;
   completionTokens?: number;
+  /** True when classification is the built-in fallback (LLM unreachable or invalid). */
+  isFallback?: boolean;
   promptTokens?: number;
   shouldStopForDeepReasoning: boolean;
 }

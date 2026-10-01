@@ -18,23 +18,64 @@ import {
 
 const log = createRealtimeLogger("publisher");
 
+const VAD_HISTORY_TTL_SECONDS = 2 * 60 * 60;
+
+/** Minimal Redis surface used by VAD publish (test seam). */
+export interface VadRedisMulti {
+  exec(): Promise<unknown>;
+  publish(channel: string, message: string): VadRedisMulti;
+  rpush(key: string, message: string): VadRedisMulti;
+}
+
+export interface VadRedisClient {
+  expire(key: string, seconds: number): Promise<unknown>;
+  multi(): VadRedisMulti;
+}
+
 /**
- * Publish a VAD signal to Redis and append it to the history list
+ * Publish a VAD signal to Redis and append it to the history list.
+ *
+ * P5.4: publish+rpush go in one MULTI (was 2 serial round trips). EXPIRE
+ * runs only when this push created the list (`llen === 1`) — exactly once
+ * per session, with no local bookkeeping to leak. The client is injectable
+ * for tests; production passes the shared singleton.
  */
-export async function publishVadSignal(payload: VadSignal): Promise<void> {
+export async function publishVadSignal(
+  payload: VadSignal,
+  client?: VadRedisClient | null
+): Promise<void> {
   const channel = vadChannel(payload.sessionId);
+  const vadHistoryKey = `meeting.vad.${payload.sessionId}`;
+  const redisClient = client ?? redis;
   try {
     const message = JSON.stringify(payload);
-    if (redis && typeof redis.publish === "function") {
-      await redis.publish(channel, message);
+    if (redisClient && typeof redisClient.multi === "function") {
+      const results = (await redisClient
+        .multi()
+        .publish(channel, message)
+        .rpush(vadHistoryKey, message)
+        .exec()) as [[unknown, unknown], [unknown, number]] | undefined;
+      // ioredis exec resolves [[err, pubRes], [err, listLen]].
+      const listLen = results?.[1]?.[1];
+      if (listLen === 1 && typeof redisClient.expire === "function") {
+        await redisClient.expire(vadHistoryKey, VAD_HISTORY_TTL_SECONDS);
+      }
+      return;
     }
-
-    const vadHistoryKey = `meeting.vad.${payload.sessionId}`;
-    if (redis && typeof redis.rpush === "function") {
-      await redis.rpush(vadHistoryKey, message);
+    // Serial fallback for clients without MULTI (preserves the old guards).
+    const legacy = redisClient as unknown as {
+      expire?: (key: string, seconds: number) => Promise<unknown>;
+      publish?: (channel: string, message: string) => Promise<unknown>;
+      rpush?: (key: string, message: string) => Promise<unknown>;
+    };
+    if (legacy && typeof legacy.publish === "function") {
+      await legacy.publish(channel, message);
     }
-    if (redis && typeof redis.expire === "function") {
-      await redis.expire(vadHistoryKey, 2 * 60 * 60);
+    if (legacy && typeof legacy.rpush === "function") {
+      await legacy.rpush(vadHistoryKey, message);
+    }
+    if (legacy && typeof legacy.expire === "function") {
+      await legacy.expire(vadHistoryKey, VAD_HISTORY_TTL_SECONDS);
     }
   } catch (error) {
     log.error(

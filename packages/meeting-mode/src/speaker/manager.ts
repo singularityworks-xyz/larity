@@ -7,6 +7,10 @@ const log = createMeetingModeLogger("speaker-manager");
 export class SpeakerManager {
   private readonly identifiers: Map<string, SpeakerIdentifier> = new Map();
 
+  getIdentifierIfExists(sessionId: string): SpeakerIdentifier | undefined {
+    return this.identifiers.get(sessionId);
+  }
+
   getIdentifier(sessionId: string): SpeakerIdentifier {
     let identifier = this.identifiers.get(sessionId);
     if (!identifier) {

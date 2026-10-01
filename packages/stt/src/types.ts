@@ -41,4 +41,10 @@ export interface SttResult {
   start: number; // Seconds from Deepgram
   transcript: string;
   ts: number; // Unix timestamp when processed
+  /**
+   * Envelope type for Redis pub/sub (P5.1). Set by the publisher so the
+   * realtime subscriber can forward the payload verbatim without
+   * parse+spread+stringify per message.
+   */
+  type: "stt_partial" | "stt_final";
 }

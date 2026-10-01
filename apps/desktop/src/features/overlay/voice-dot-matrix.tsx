@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
 
@@ -78,6 +79,10 @@ export function VoiceDotMatrix({ isSpeaking, label }: VoiceDotMatrixProps) {
   useEffect(() => {
     let isMounted = true;
     let unlisten: (() => void) | undefined;
+    // P4.4: register as an amplitude listener (paired release below).
+    invoke("vad_set_amplitude_listener", { enabled: true }).catch(
+      () => undefined
+    );
     listen<number>("raw-mic-amplitude", (e) => {
       if (!isSpeakingRef.current) {
         return;
@@ -101,6 +106,9 @@ export function VoiceDotMatrix({ isSpeaking, label }: VoiceDotMatrixProps) {
     return () => {
       isMounted = false;
       unlisten?.();
+      invoke("vad_set_amplitude_listener", { enabled: false }).catch(
+        () => undefined
+      );
     };
   }, []);
 

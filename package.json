@@ -19,6 +19,7 @@
     "dev": "turbo run dev",
     "deps": "bunx taze -wr && bunx sherif@latest --fix",
     "mock": "cd apps/mock && bun run mock",
+    "mock:latency": "cd apps/mock && bun run latency",
     "build": "turbo run build",
     "check-types": "turbo run check-types && make rust-clippy",
     "check": "ultracite fix --unsafe && make rust-fix",
@@ -46,5 +47,5 @@
   "patchedDependencies": {
     "@deepgram/sdk@5.4.0": "patches/@deepgram%2Fsdk@5.4.0.patch"
   },
-  "version": "0.1.5"
+  "version": "0.1.6"
 }

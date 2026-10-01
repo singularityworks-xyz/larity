@@ -10,32 +10,47 @@ interface CacheEntry {
 
 const MAX_CACHE_SIZE = 200;
 
+interface SessionCache {
+  /** Exact normalized-text hits, O(1). */
+  byText: Map<string, CacheEntry>;
+  /** Cosine-scan list in LRU order (most-recently used at the end). */
+  vectors: CacheEntry[];
+}
+
 export class Tier2SemanticCache {
-  private readonly sessions = new Map<string, CacheEntry[]>();
+  private readonly sessions = new Map<string, SessionCache>();
+
+  private getOrCreateSession(sessionId: string): SessionCache {
+    let session = this.sessions.get(sessionId);
+    if (!session) {
+      session = { byText: new Map(), vectors: [] };
+      this.sessions.set(sessionId, session);
+    }
+    return session;
+  }
 
   get(
     sessionId: string,
     embedding: number[],
     text: string
   ): Tier2Classification | undefined {
-    const entries = this.sessions.get(sessionId);
-    if (!entries || entries.length === 0) {
+    const session = this.sessions.get(sessionId);
+    if (!session || session.vectors.length === 0) {
       return;
     }
 
     const normalized = normalizeText(text);
 
-    for (const entry of entries) {
-      if (entry.normalizedText === normalized) {
-        this.touch(sessionId, entry);
-        return entry.classification;
-      }
+    const exact = session.byText.get(normalized);
+    if (exact) {
+      this.touch(session, exact);
+      return exact.classification;
     }
 
-    for (const entry of entries) {
+    for (const entry of session.vectors) {
       const sim = cosineSimilarity(embedding, entry.embedding);
       if (sim >= 0.97) {
-        this.touch(sessionId, entry);
+        this.touch(session, entry);
         return entry.classification;
       }
     }
@@ -49,43 +64,39 @@ export class Tier2SemanticCache {
     text: string,
     classification: Tier2Classification
   ): void {
-    let entries = this.sessions.get(sessionId);
-    if (!entries) {
-      entries = [];
-      this.sessions.set(sessionId, entries);
-    }
-
+    const session = this.getOrCreateSession(sessionId);
     const normalized = normalizeText(text);
 
-    const existing = entries.find((e) => e.normalizedText === normalized);
+    const existing = session.byText.get(normalized);
     if (existing) {
       existing.classification = classification;
       existing.embedding = embedding;
-      this.touch(sessionId, existing);
+      this.touch(session, existing);
       return;
     }
 
-    if (entries.length >= MAX_CACHE_SIZE) {
-      entries.shift();
+    if (session.vectors.length >= MAX_CACHE_SIZE) {
+      const evicted = session.vectors.shift();
+      if (evicted) {
+        session.byText.delete(evicted.normalizedText);
+      }
     }
 
-    entries.push({
+    const entry: CacheEntry = {
       text,
       normalizedText: normalized,
       embedding,
       classification,
-    });
+    };
+    session.vectors.push(entry);
+    session.byText.set(normalized, entry);
   }
 
-  private touch(sessionId: string, entry: CacheEntry): void {
-    const entries = this.sessions.get(sessionId);
-    if (!entries) {
-      return;
-    }
-    const idx = entries.indexOf(entry);
-    if (idx !== -1 && idx < entries.length - 1) {
-      entries.splice(idx, 1);
-      entries.push(entry);
+  private touch(session: SessionCache, entry: CacheEntry): void {
+    const idx = session.vectors.indexOf(entry);
+    if (idx !== -1 && idx < session.vectors.length - 1) {
+      session.vectors.splice(idx, 1);
+      session.vectors.push(entry);
     }
   }
 

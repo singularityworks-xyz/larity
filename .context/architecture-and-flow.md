@@ -206,13 +206,13 @@ interface SpeakerIdentity {
 ```
 
 ### 7.2 Speculative Processing (Latency Optimization)
-* **On Partial Hypotheses (confidence > 0.7):**
-    * Start intent classification speculatively
-    * Identify likely topic from partial text
-    * Pre-fetch relevant constraints for that topic
-    * Pre-warm LLM connection if high-signal keywords detected
-* **On Final:** If text matches speculation → use pre-computed results (200-300ms saved)
-* **Success Rate:** ~85% of speculative work is usable
+* **Flag-gated and OFF by default (`SPECULATIVE_ENABLED`)** — enabled only when a measured hit rate meets the P3.6 go/no-go rule (see `docs/SPECULATIVE_PROCESSING.md`)
+* **On Partial Hypotheses (confidence ≥ 0.7, TEAM speaker, throttle passes):**
+    * Start Tier 2 classification speculatively (fire-and-forget)
+    * Throttled per session+speaker: ≤1 in flight, ≥500 ms apart, ≥4 new words, no in-flight prefix
+    * Pre-fetch relevant constraints for the predicted topic
+* **On Final:** if the final fuzzy-matches a cached speculation (normalized Levenshtein ≤ 0.30) → reuse it and skip the Tier 2 LLM call
+* **Failure mode:** no match / flag off / cost warning mode → normal Tier 2 runs; speculation never blocks the pipeline
 
 ### 8. STT Normalization Layer
 * **Component:** DeepgramConnection (STT layer) + Utterance Finalizer (meeting-mode)
@@ -260,7 +260,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 * **Accelerator, NOT a gate** — fires instant alerts but everything passes through to Tier 2
 
 #### Tier 2: Small LLM Classification (~$0.002/call, <200ms)
-* **SambaNova** structured outputs (**`SAMBANOVA_TIER2_MODEL`**) — JSON Schema **`strict`**; optional slots expressed as **`null`** keys per provider rules (see `architecture_decisions.md` **B.18**)
+* **General Compute** structured outputs (**`GENERALCOMPUTE_TIER2_MODEL`**) — JSON Schema **`strict`**; optional slots expressed as **`null`** keys per provider rules (see `architecture_decisions.md` **B.18**)
 * Input: utterance + speaker identity + last 2-3 utterances from same speaker (cross-utterance context)
 * **Replaces ALL old regex pattern libraries** (risky language, pressure tactics, tone, scope creep, backtracking, vague language)
 * Returns: intent, commitmentType, tone, riskSignals, extractedData, confidence, and `topicDelta` fields
@@ -290,7 +290,7 @@ Latency envelope (post pre-filter): `max(Tier1, Tier2, Tier3) ≈ 200 ms`; with 
 | Model | Purpose | Cost/call | Example |
 |-------|---------|-----------|---------|
 | **Embedding** | Search, similarity, novelty | ~$0.00002 | text-embedding-004 (Gemini via @google/genai) |
-| **Small LLM** | Classification, extraction | ~$0.002 | SambaNova (`SAMBANOVA_TIER2_MODEL`) |
+| **Small LLM** | Classification, extraction | ~$0.002 | General Compute (`GENERALCOMPUTE_TIER2_MODEL`) |
 | **Large LLM** | Deep reasoning | ~$0.02 | gemini-2.5-pro |
 
 **Total cost per 1-hour meeting:** ~$0.76 in single-channel fallback, ~$1.22 in dual-channel default (includes Deepgram channel-minute cost; LLM/embedding tiers remain ~$0.30).

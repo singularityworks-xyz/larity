@@ -447,7 +447,6 @@ export class SpeakerIdentifier {
   }
 
   tryLateIdentification(
-    signal: VadSignal,
     pendingUtterances: Array<{ diarizationIndex: number; timestamp: number }>
   ): Array<{ diarizationIndex: number; speaker: SpeakerIdentity }> {
     const results: Array<{
@@ -455,7 +454,10 @@ export class SpeakerIdentifier {
       speaker: SpeakerIdentity;
     }> = [];
 
-    this.processVadSignal(signal);
+    // NOTE: do NOT call processVadSignal here. The subscriber already routes
+    // every VAD edge through SpeakerManager.handleVadSignal → processVadSignal
+    // before late identification runs; recording it again would duplicate the
+    // interval, the clock sample, and the Redis persist (hset + expire).
 
     if (this.clockTracker.isUntrusted()) {
       return results;

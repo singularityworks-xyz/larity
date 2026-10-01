@@ -387,7 +387,7 @@ The server calculates `networkLatency = (serverReceiveTs - clientSendTs) / 2` an
 Desktop clocks drift and network jitter is random. The `ClockOffsetTracker` handles this by maintaining a **sliding window median** (last 30 samples) per user:
 
 1. **Sampling**: Every VAD signal includes `clientSendTs`.
-2. **Offset Calculation**: `offset = serverReceiveTs - clientSendTs - estimatedRTT`.
+2. **Offset Calculation**: `offset = serverReceiveTs - clientSendTs - halfRTT`, where `halfRTT = clamp((serverReceiveTs - clientSendTs) / 2, 0, 500)` is measured per signal (not a hard-coded 50 ms), matching the `audio_stream_start` estimate.
 3. **Median Smoothing**: The median of the window is used as the authoritative offset. Median is robust to sudden network "spikes" and jitter.
 4. **Drift Detection**: If the median shifts by more than 500ms suddenly, the clock is marked as `untrusted` for 2 seconds to prevent miscorrelation.
 
@@ -464,12 +464,32 @@ Desktop mic → AudioProcessor (16kHz mono i16) → VoiceActivityDetector::predi
 |--------|-------------------|----------------|
 | Module | `@ricky0123/vad-web` | `voice_activity_detector` crate |
 | Model | Silero VAD (bundled WASM) | Silero VAD V5 (ONNX Runtime) |
-| Chunking | 512-sample windows (non-buffered) | Accumulates into 512-sample windows from 800-sample producer chunks |
+| Chunking | 512-sample windows (non-buffered) | Accumulates into 512-sample windows from 512-sample producer frames (P4.7; was 800) |
 | Gain | None | 16× (+24dB) for quiet-mic compensation |
 | Debounce | None | 3 consecutive frames required to transition |
 | Events | N/A (was broken on Linux) | Tauri `app.emit("vad-speech-start"/"vad-speech-end")` |
 
 **Files involved:** `apps/desktop/src-tauri/src/audio/vad.rs`, `apps/desktop/src/services/vad.ts`, `apps/desktop/src/routes/settings.tsx`
+
+### Phase 4 capture hardening (P4.2–P4.5)
+
+The cpal callback no longer processes audio inline. It copies input into a
+preallocated lock-free SPSC ring (`audio/ring.rs`) and wakes a worker thread,
+which does downmix → resample → 512-sample framing → VAD send → mixer send →
+amplitude emit. Callback work is `memcpy` + atomics only: no allocations, no
+`app.emit`, no clock reads, no mutexes.
+
+Related behaviour changes:
+
+- **VAD backlog is drop-oldest (P4.5).** The VAD loop collapses any waiting
+  backlog to the newest frame before windowing, so onset detection runs on
+  fresh speech instead of draining up to ~128 ms of history.
+- **Amplitude events are listener-gated at ≤ 15 Hz (P4.4).**
+  `raw-mic-amplitude` goes to the overlay window only (its sole consumer);
+  `vad-amplitude` goes to the main window only, and only while `VadManager`
+  has an `onAmplitude` callback. Both are silent when nobody listens; the
+  toggle is the `vad_set_amplitude_listener` command (refcounted, so the
+  overlay visualizers and `VadManager` cannot disable each other).
 
 ### Migration 2: `ts` (Processing Time) → `speechTimestamp` (Actual Speech Time)
 
@@ -519,6 +539,30 @@ if (typeof message === "object" && message !== null && !Buffer.isBuffer(message)
 The realtime server published VAD signals to `meeting.vad.<sessionId>` but meeting-mode subscribed to `realtime.vad.*`. These never matched, so VAD signals were silently dropped in Redis.
 
 **Fix:** Changed `vadChannel()` in `apps/realtime/src/redis/channels.ts` from `meeting.vad.${sessionId}` to `realtime.vad.${sessionId}` to match meeting-mode's subscriber pattern.
+
+---
+
+### Deepgram tuning knobs (P5.7, defaults LOCKED)
+
+Deepgram connection options are env-configurable (`packages/stt/src/env.ts`) but the
+defaults below are measured-locked — do not change without re-running the matrix:
+
+| Knob | Default | Notes |
+|------|---------|-------|
+| `endpointing` | 450 | Speech-final silence threshold (ms) |
+| `utterance_end_ms` | 1000 | Minimum accepted by the API (800 is rejected outright) |
+| `no_delay` | off | Smart-format hold shows no measurable win |
+| `diarize` (mic channel) | on | Attribution correctness beats the latency win until roster path is verified |
+
+Decision matrix (upstream sibling repo, 2026-09-20, real keys, same 5-sentence TTS fixture, metric `stt.audio_end_to_final_ms`):
+
+| Lever | p50 | Verdict |
+|-------|-----|---------|
+| baseline (ep 450, ue 1000, diarize on) | 346 ms | — |
+| `no_delay=true` | 394 ms | NO CHANGE (within noise; keep off) |
+| mic `diarize=false` | 288 ms | PROMISING but keep default on (mic finals carry `diarizationIndex: -1`; host short-circuit unverified live) |
+| `endpointing=300` | 319 ms | NO CHANGE (no clear win; keep 450) |
+| `utterance_end_ms=800` | 0 finals | INVALID: API rejects the connection outright — never use |
 
 ---
 
