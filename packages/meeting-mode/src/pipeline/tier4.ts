@@ -219,10 +219,13 @@ export class Tier4DeepReasoner {
       ? new GoogleGenAI({ apiKey: GEMINI_API_KEY })
       : (null as unknown as GoogleGenAI);
     this.timeoutMs = options.timeoutMs ?? GEMINI_TIER4_TIMEOUT_MS;
-    if (GEMINI_API_KEY) {
-      this.invoke =
-        options.invoke ??
-        ((prompt, timeoutMs) => this.invokeGeminiTier4(prompt, timeoutMs));
+    if (options.invoke) {
+      // Explicit injection (tests / callers) always wins, independent of key
+      // presence, so behavior is deterministic without provider credentials.
+      this.invoke = options.invoke;
+    } else if (GEMINI_API_KEY) {
+      this.invoke = (prompt, timeoutMs) =>
+        this.invokeGeminiTier4(prompt, timeoutMs);
     } else {
       this.invoke = async () =>
         JSON.stringify({
@@ -232,7 +235,7 @@ export class Tier4DeepReasoner {
           reasoning: "GEMINI_API_KEY not set",
           routing: "shared",
           severity: "low",
-          message: "",
+          message: "none",
           surfaceReason: null,
           suggestion: null,
           targetUserId: null,

@@ -283,8 +283,10 @@ mod tests {
             0x0102030405060708
         );
         let decoded: Vec<i16> = frame[9..]
-            .chunks_exact(2)
-            .map(|c| i16::from_le_bytes([c[0], c[1]]))
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|[lo, hi]| i16::from_le_bytes([*lo, *hi]))
             .collect();
         assert_eq!(decoded, samples);
     }

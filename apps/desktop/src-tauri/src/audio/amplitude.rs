@@ -24,8 +24,9 @@ impl AmplitudeListeners {
 
     /// Release one listener. Never goes below zero (unpaired releases from
     /// a best-effort JS `finally` are harmless).
+    #[allow(deprecated)] // `fetch_update` renamed `try_update` on newer Rust; keep older-toolchain support.
     pub fn release(&self) -> usize {
-        // `fetch_update` loops internally; contention here is negligible
+        // The update loops internally; contention here is negligible
         // (mount/unmount frequency, not audio frequency).
         self.count
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |c| {
