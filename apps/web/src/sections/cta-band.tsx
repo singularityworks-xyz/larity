@@ -103,7 +103,7 @@ export function CtaBand() {
                   </svg>
                 </Link>
                 <span className="font-mono text-xs text-zinc-600">
-                  v0.1.19 · Free for founding teams
+                  v0.1.20 · Free for founding teams
                 </span>
               </div>
 
