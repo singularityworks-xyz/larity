@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "../lib/router.tsx";
 
-const LATEST_VERSION = "0.1.19";
+const LATEST_VERSION = "0.1.20";
 const GITHUB_REPO = "singularityworks-xyz/larity";
 const RELEASE_BASE_URL = `https://github.com/${GITHUB_REPO}/releases/latest/download`;
 const RELEASES_PAGE_URL = `https://github.com/${GITHUB_REPO}/releases`;
