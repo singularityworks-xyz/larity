@@ -1,7 +1,7 @@
 import Redis from "ioredis";
+import { meetingSessionService } from "../features/meetings/meeting-session.service";
 import { systemEvents } from "../lib/events";
 import { createControlLogger } from "../logger";
-import { meetingSessionService } from "../services/meeting-session.service";
 
 const log = createControlLogger("session-listener");
 

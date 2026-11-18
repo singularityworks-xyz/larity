@@ -1,7 +1,7 @@
 import { checkRedisHealth, connectRedis } from "@larity/db/redis";
 import { Elysia } from "elysia";
 import { rootLogger } from "./logger";
-import type { BaseWorker } from "./worker";
+import type { BaseWorker } from "./runtime/worker";
 
 const PORT = Number.parseInt(process.env.WORKERS_PORT ?? "8080", 10);
 
@@ -21,11 +21,19 @@ export async function startWorkersApp(): Promise<void> {
   }
   rootLogger.info("Redis connected");
 
-  const { TranscribeWorker } = await import("./transcribe.worker");
-  const { SummaryWorker } = await import("./summary.worker");
-  const { AudioCleanupWorker } = await import("./audio-cleanup.worker");
-  const { ClientPersonaWorker } = await import("./client-persona.worker");
-  const { PreMeetingBriefWorker } = await import("./pre-meeting-brief.worker");
+  const { TranscribeWorker } = await import(
+    "./jobs/transcribe/transcribe.worker"
+  );
+  const { SummaryWorker } = await import("./jobs/summary/summary.worker");
+  const { AudioCleanupWorker } = await import(
+    "./jobs/audio-cleanup/audio-cleanup.worker"
+  );
+  const { ClientPersonaWorker } = await import(
+    "./jobs/client-persona/client-persona.worker"
+  );
+  const { PreMeetingBriefWorker } = await import(
+    "./jobs/pre-meeting-brief/pre-meeting-brief.worker"
+  );
 
   // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
   registerWorker(new TranscribeWorker() as any);

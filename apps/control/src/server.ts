@@ -4,28 +4,26 @@ import { Prisma } from "@larity/db/prisma";
 import { preMeetingBriefQueue } from "@larity/jobs";
 import { Elysia } from "elysia";
 import { env } from "./env";
+import { clientsRoutes } from "./features/clients/clients.routes";
+import { policyGuardrailsRoutes } from "./features/clients/policy-guardrails.routes";
+import { documentsRoutes } from "./features/documents/documents.routes";
+import { homeRoutes } from "./features/home/home.routes";
+import { authRoutes } from "./features/identity/auth.routes";
+import { orgsRoutes } from "./features/identity/orgs.routes";
+import { usersRoutes } from "./features/identity/users.routes";
+import { decisionsRoutes } from "./features/meeting-records/decisions.routes";
+import { importantPointsRoutes } from "./features/meeting-records/important-points.routes";
+import { openQuestionsRoutes } from "./features/meeting-records/open-questions.routes";
+import { tasksRoutes } from "./features/meeting-records/tasks.routes";
+import { internalSessionRoutes } from "./features/meetings/internal-session.routes";
+import { meetingSessionRoutes } from "./features/meetings/meeting-session.routes";
+import { meetingsRoutes } from "./features/meetings/meetings.routes";
+import { notificationsRoutes } from "./features/notifications/notifications.routes";
+import { remindersRoutes } from "./features/reminders/reminders.routes";
 import { prisma } from "./lib/prisma";
 import { createControlLogger } from "./logger";
 import { requireAuth } from "./middleware/auth";
 import { requestLogger } from "./middleware/logger";
-import {
-  authRoutes,
-  clientsRoutes,
-  decisionsRoutes,
-  documentsRoutes,
-  homeRoutes,
-  importantPointsRoutes,
-  internalSessionRoutes,
-  meetingSessionRoutes,
-  meetingsRoutes,
-  notificationsRoutes,
-  openQuestionsRoutes,
-  orgsRoutes,
-  policyGuardrailsRoutes,
-  remindersRoutes,
-  tasksRoutes,
-  usersRoutes,
-} from "./routes";
 
 const log = createControlLogger("server");
 
