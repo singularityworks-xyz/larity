@@ -18,12 +18,15 @@ import type {
   StartSessionInput,
   StartSessionResponse,
 } from "./meeting-session.validator";
+import { SESSION_TTL } from "./session-constants";
+import {
+  getSessionStatus,
+  isValidSession,
+  updateSessionActivity,
+} from "./session-status.service";
 
 // Environment variable for WebSocket URL
 const REALTIME_WS_URL = process.env.REALTIME_WS_URL || "ws://localhost:3001";
-
-// Session TTL in seconds (auto-expire after 4 hours of no activity)
-const SESSION_TTL = 4 * 60 * 60;
 
 // Lock TTL in seconds (prevent race conditions)
 const LOCK_TTL = 30;
@@ -405,92 +408,9 @@ export const meetingSessionService = {
     return { success: true, meetingId };
   },
 
-  /**
-   * Get session status
-   */
-  async getStatus(sessionId: string): Promise<SessionStatusResponse | null> {
-    const sessionKey = redisKeys.meetingSession(sessionId);
-    const data = await redis.hgetall(sessionKey);
-
-    if (!data || Object.keys(data).length === 0) {
-      return null;
-    }
-
-    if (!(data.sessionId && data.meetingId && data.startedAt && data.status)) {
-      return null;
-    }
-
-    const now = Date.now();
-    const startedAt = Number.parseInt(data.startedAt, 10);
-
-    return {
-      sessionId: data.sessionId,
-      meetingId: data.meetingId,
-      status: data.status as SessionStatus,
-      startedAt,
-      duration: now - startedAt,
-      utteranceCount: Number.parseInt(data.utteranceCount || "0", 10),
-      lastActivityAt: data.lastActivityAt
-        ? Number.parseInt(data.lastActivityAt, 10)
-        : undefined,
-    };
-  },
-
-  /**
-   * Update session activity (called when utterances are processed)
-   */
-  async updateActivity(sessionId: string): Promise<void> {
-    const sessionKey = redisKeys.meetingSession(sessionId);
-    const configKey = redisKeys.sessionConfig(sessionId);
-    const now = Date.now();
-
-    await redis.hset(sessionKey, {
-      lastActivityAt: now.toString(),
-      status: "active",
-    });
-
-    // Increment utterance count
-    await redis.hincrby(sessionKey, "utteranceCount", 1);
-
-    // Refresh TTL on both session and config keys
-    await redis.expire(sessionKey, SESSION_TTL);
-    await redis.expire(configKey, SESSION_TTL);
-  },
-
-  /**
-   * Check if a session is valid (for realtime server validation)
-   */
-  async isValidSession(
-    sessionId: string,
-    userId?: string,
-    role?: "host" | "participant"
-  ): Promise<boolean> {
-    const sessionKey = redisKeys.meetingSession(sessionId);
-    const sessionData = await redis.hgetall(sessionKey);
-
-    if (!sessionData || Object.keys(sessionData).length === 0) {
-      return false;
-    }
-
-    // If userId and role are provided, validate authorization
-    if (userId && role) {
-      if (role === "host") {
-        // Only the user who started the session can be host
-        return sessionData.userId === userId;
-      }
-
-      if (role === "participant") {
-        // Must have joined via the join endpoint (and be in participants set)
-        const participantsKey = redisKeys.sessionParticipants(sessionId);
-        const isParticipant = await redis.sismember(participantsKey, userId);
-        return isParticipant === 1;
-      }
-    }
-
-    // Default: fail closed if specific validation parameters are missing
-    // We require explicit role validation for security
-    return false;
-  },
+  getStatus: getSessionStatus,
+  updateActivity: updateSessionActivity,
+  isValidSession,
 
   /**
    * Join an existing meeting session
