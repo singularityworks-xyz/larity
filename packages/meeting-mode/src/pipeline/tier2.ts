@@ -197,7 +197,7 @@ export function buildTier2Request(input: Tier2Input): Tier2ChatRequest {
   return {
     model: GENERALCOMPUTE_TIER2_MODEL,
     messages: [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: TIER2_CLASSIFICATION_PROMPT },
       { role: "user", content: buildUserMessage(input) },
     ],
     temperature: 0,
@@ -216,7 +216,7 @@ export function buildTier2Request(input: Tier2Input): Tier2ChatRequest {
 }
 
 /** Built once — rubric + compact calibration (system role). */
-const SYSTEM_PROMPT = [
+export const TIER2_CLASSIFICATION_PROMPT = [
   `You are Tier 2: fast semantic classifier for live multilingual business meetings.
 Output must match the JSON schema only. All eight top-level keys are required (intent, commitmentType, tone, riskSignals, extractedData, confidence, topicDelta, identityGuess); all five extractedData keys are required (null when unused); topicDelta is null or a full object with all seven keys.
 
@@ -376,7 +376,7 @@ function nullableNumber(): { anyOf: [{ type: "number" }, { type: "null" }] } {
 }
 
 /** JSON Schema for OpenAI `response_format.json_schema` (strict). */
-function getTier2JsonSchema(): Record<string, unknown> {
+export function getTier2JsonSchema(): Record<string, unknown> {
   const topicDeltaObject = {
     type: "object",
     additionalProperties: false,

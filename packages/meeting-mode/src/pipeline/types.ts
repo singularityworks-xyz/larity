@@ -136,7 +136,16 @@ export interface Tier2Outcome {
 export interface Tier3Result {
   forceTier4: boolean;
   ledgerMatches: Array<{ id: string; score: number }>;
-  memoryMatches: Array<{ type: string; id: string; score: number }>;
+  memoryMatches: Array<{
+    type: string;
+    id: string;
+    score: number;
+    /** Retrieved with the match, including rows outside the startup preload. */
+    item?: string;
+    meetingDate?: string;
+    status?: string;
+  }>;
+  memoryStatus?: "ok" | "unavailable" | "not_configured";
   noveltyScore: number;
 }
 
@@ -160,6 +169,7 @@ export interface Tier4CommitmentMatch {
 export interface Tier4Context {
   matchedCommitments: Tier4CommitmentMatch[];
   matchedHistoricalItems: Tier4HistoricalMatch[];
+  memoryStatus?: Tier3Result["memoryStatus"];
   recentUtterances: Utterance[];
   relevantConstraints: Constraint[];
   sessionId: string;

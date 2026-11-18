@@ -3,6 +3,7 @@ import type { PreloadedContextPayload } from "../constraint/types";
 import { createMeetingModeLogger } from "../logger";
 import { cosineSimilarity } from "../topic/similarity";
 import type { Utterance } from "../utterance/types";
+import { incrementCounter } from "./metrics";
 import type { Tier3Result } from "./types";
 
 const log = createMeetingModeLogger("tier3-search");
@@ -21,9 +22,23 @@ export interface CommitmentLedgerSearchAdapter {
   >;
 }
 
+export type OrganizationMemoryQuery = (
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<Tier3Result["memoryMatches"]>;
+
 export class Tier3SearchEngine {
   private readonly MEMORY_THRESHOLD = 0.7; // ~0.3 cosine distance
   private readonly LEDGER_THRESHOLD = 0.8;
+
+  private readonly queryMemory: OrganizationMemoryQuery;
+
+  constructor(options: { queryMemory?: OrganizationMemoryQuery } = {}) {
+    this.queryMemory =
+      options.queryMemory ??
+      ((strings, ...values) =>
+        prisma.$queryRaw<Tier3Result["memoryMatches"]>(strings, ...values));
+  }
 
   async evaluate(
     utterance: Utterance,
@@ -42,6 +57,7 @@ export class Tier3SearchEngine {
         forceTier4: false,
         noveltyScore: 0,
         memoryMatches: [],
+        memoryStatus: "unavailable",
         ledgerMatches: [],
       };
     }
@@ -61,6 +77,7 @@ export class Tier3SearchEngine {
           forceTier4: false,
           noveltyScore,
           memoryMatches: [],
+          memoryStatus: "not_configured",
           ledgerMatches: [],
         };
       }
@@ -72,18 +89,18 @@ export class Tier3SearchEngine {
       this.searchMemory(embedding, payload),
     ] as const;
 
-    const [noveltyScore, ledgerMatches, memoryMatches] =
-      await Promise.all(tasks);
+    const [noveltyScore, ledgerMatches, memory] = await Promise.all(tasks);
 
     // Suggest Tier 4: memory or commitment-ledger similarity (potential contradiction).
     // The pipeline engine still respects Tier 2 `shouldStopForDeepReasoning` so low-value
     // lines do not invoke Tier 4 even when ledger embedding matches loosely.
-    const forceTier4 = memoryMatches.length > 0 || ledgerMatches.length > 0;
+    const forceTier4 = memory.matches.length > 0 || ledgerMatches.length > 0;
 
     return {
       forceTier4,
       noveltyScore,
-      memoryMatches,
+      memoryMatches: memory.matches,
+      memoryStatus: memory.status,
       ledgerMatches,
     };
   }
@@ -129,74 +146,56 @@ export class Tier3SearchEngine {
   private async searchMemory(
     embedding: number[],
     payload: PreloadedContextPayload | null
-  ): Promise<Array<{ type: string; id: string; score: number }>> {
+  ): Promise<{
+    matches: Tier3Result["memoryMatches"];
+    status: NonNullable<Tier3Result["memoryStatus"]>;
+  }> {
     if (!payload) {
-      return [];
+      return { matches: [], status: "not_configured" };
     }
 
     const { clientId, orgId } = payload;
-    const matches: Array<{ type: string; id: string; score: number }> = [];
-
+    const vectorStr = `[${embedding.join(",")}]`;
     try {
-      const vectorStr = `[${embedding.join(",")}]`;
-
-      const [decisions, policies, points] = await Promise.all([
-        prisma.$queryRaw<Array<{ id: string; similarity: number }>>`
-          SELECT id, 1 - (embedding <=> ${vectorStr}::vector) as similarity
-          FROM decisions
-          WHERE "clientId" = ${clientId} AND embedding IS NOT NULL
-          ORDER BY embedding <=> ${vectorStr}::vector
-          LIMIT 2;
-        `,
-        prisma.$queryRaw<Array<{ id: string; similarity: number }>>`
-          SELECT id, 1 - (embedding <=> ${vectorStr}::vector) as similarity
-          FROM policy_guardrails
-          WHERE "orgId" = ${orgId} AND embedding IS NOT NULL
-          ORDER BY embedding <=> ${vectorStr}::vector
-          LIMIT 2;
-        `,
-        prisma.$queryRaw<Array<{ id: string; similarity: number }>>`
-          SELECT id, 1 - (embedding <=> ${vectorStr}::vector) as similarity
-          FROM important_points
-          WHERE "clientId" = ${clientId} AND embedding IS NOT NULL
-          ORDER BY embedding <=> ${vectorStr}::vector
-          LIMIT 2;
-        `,
-      ]);
-
-      for (const d of decisions) {
-        if (d.similarity >= this.MEMORY_THRESHOLD) {
-          matches.push({ type: "decision", id: d.id, score: d.similarity });
-        }
-      }
-
-      for (const p of policies) {
-        if (p.similarity >= this.MEMORY_THRESHOLD) {
-          matches.push({
-            type: "policy_guardrail",
-            id: p.id,
-            score: p.similarity,
-          });
-        }
-      }
-
-      for (const p of points) {
-        if (p.similarity >= this.MEMORY_THRESHOLD) {
-          matches.push({
-            type: "important_point",
-            id: p.id,
-            score: p.similarity,
-          });
-        }
-      }
+      // Retrieve evidence text with its rank. Startup preloads are bounded and
+      // cannot hydrate every row a vector search may find later in a meeting.
+      // One round trip also avoids borrowing three pool connections per utterance.
+      const matches = await this.queryMemory`
+        SELECT * FROM (
+          (SELECT 'decision' AS type, id, title || ': ' || content AS item,
+            1 - (embedding <=> ${vectorStr}::vector) AS score,
+            "createdAt"::text AS "meetingDate", status::text AS status
+           FROM decisions
+           WHERE "clientId" = ${clientId} AND status = 'ACTIVE' AND embedding IS NOT NULL
+           ORDER BY embedding <=> ${vectorStr}::vector LIMIT 2)
+          UNION ALL
+          (SELECT 'policy_guardrail' AS type, id, name || ': ' || description AS item,
+            1 - (embedding <=> ${vectorStr}::vector) AS score,
+            "createdAt"::text AS "meetingDate", 'active' AS status
+           FROM policy_guardrails
+           WHERE "orgId" = ${orgId} AND "isActive" = true
+             AND ("clientId" IS NULL OR "clientId" = ${clientId}) AND embedding IS NOT NULL
+           ORDER BY embedding <=> ${vectorStr}::vector LIMIT 2)
+          UNION ALL
+          (SELECT 'important_point' AS type, id, content AS item,
+            1 - (embedding <=> ${vectorStr}::vector) AS score,
+            "createdAt"::text AS "meetingDate", category::text AS status
+           FROM important_points
+           WHERE "clientId" = ${clientId} AND embedding IS NOT NULL
+           ORDER BY embedding <=> ${vectorStr}::vector LIMIT 2)
+        ) AS evidence
+        WHERE score >= ${this.MEMORY_THRESHOLD}
+        ORDER BY score DESC;
+      `;
+      return { matches, status: "ok" };
     } catch (error) {
       log.error(
         { err: error, clientId },
         "Failed to execute pgvector search in Tier 3"
       );
+      incrementCounter("pipeline.retrieval_errors_total");
+      return { matches: [], status: "unavailable" };
     }
-
-    return matches.sort((a, b) => b.score - a.score);
   }
 }
 

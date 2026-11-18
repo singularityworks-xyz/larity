@@ -22,10 +22,13 @@ export interface PipelineTracePayload {
   };
   latencyMs?: {
     tier2?: number;
+    retrieval?: number;
+    analysis?: number;
     gate?: number;
     tier4?: number;
     total?: number;
   };
+  mode?: "live" | "legacy";
   sessionId: string;
   terminalLine: string;
   textPreview: string;
@@ -165,6 +168,8 @@ function formatTier4Brief(
 
 function latencySnapshotFromResult(result: PipelineEvaluationResult) {
   return {
+    retrieval: result.latencies.retrievalMs,
+    analysis: result.latencies.analysisMs,
     tier2: result.latencies.tier2Ms,
     gate: result.latencies.gateMs,
     tier4:
@@ -185,6 +190,7 @@ function buildDroppedTracePayload(
 ): PipelineTracePayload {
   return {
     v: PIPELINE_TRACE_VERSION,
+    mode: result.mode ?? "legacy",
     sessionId: utterance.sessionId,
     utteranceId: utterance.utteranceId,
     timestamp: utterance.timestamp,
@@ -234,6 +240,7 @@ export function buildPipelineTracePayload(
   const terminalLine = `[pipeline] utt=${shortUtteranceId(utterance.utteranceId)} | T2 ${tier2Trace.intent} conf=${tier2Trace.confidence} risks=${tier2Trace.riskSignalCount} stopPrep=${tier2Trace.stopDeepReason ? "yes" : "no"} | T3 fT4=${tier3Trace.forceTier4 ? "yes" : "no"} mem=${tier3Trace.memoryMatchCount} led=${tier3Trace.ledgerMatchCount} novel=${tier3Trace.noveltyScore} | gates highSig=${highSignal ? "yes" : "no"} runT4=${result.runTier4 ? "yes" : "no"} | ${t4Brief} | T1 tec=${tier1.technicalHit ? "yes" : "no"} blk=${tier1.blocklistHit ? "yes" : "no"} prc=${tier1.pricingHit ? "yes" : "no"} text="${textPreview}"`;
   return {
     v: PIPELINE_TRACE_VERSION,
+    mode: result.mode ?? "legacy",
     sessionId: utterance.sessionId,
     utteranceId: utterance.utteranceId,
     timestamp: utterance.timestamp,
@@ -282,6 +289,9 @@ function pipelineTraceCompactLogFields(payload: PipelineTracePayload) {
     tier4Surfaced: payload.tier4?.surfaced,
     tier4LatencyMs: payload.tier4?.ms,
     pipelineLatencyMsTotal: payload.latencyMs?.total,
+    pipelineMode: payload.mode,
+    retrievalLatencyMs: payload.latencyMs?.retrieval,
+    analysisLatencyMs: payload.latencyMs?.analysis,
   };
 }
 

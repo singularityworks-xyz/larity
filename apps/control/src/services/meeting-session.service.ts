@@ -943,6 +943,7 @@ export const meetingSessionService = {
         where: {
           orgId,
           isActive: true,
+          OR: [{ clientId: null }, { clientId }],
         },
         orderBy: { createdAt: "desc" },
         take: CONTEXT_MAX_RESULTS,

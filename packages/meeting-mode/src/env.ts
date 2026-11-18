@@ -88,6 +88,16 @@ export const GENERALCOMPUTE_TIER2_TIMEOUT_MS =
 export const TIER2_REASONING_EFFORT =
   process.env.TIER2_REASONING_EFFORT || "low";
 
+/** Compact decision path stays opt-in until full conversation replay passes. */
+export const MEETING_PIPELINE_MODE =
+  process.env.MEETING_PIPELINE_MODE === "live" ? "live" : "legacy";
+
+/** Bound inference concurrency per meeting without serializing every alert. */
+export const LIVE_PIPELINE_CONCURRENCY = Math.min(
+  4,
+  Math.max(1, parsePositiveInt(process.env.LIVE_PIPELINE_CONCURRENCY, 2))
+);
+
 export const GEMINI_TIER4_MODEL =
   process.env.GEMINI_TIER4_MODEL || "gemini-3.5-flash-lite";
 

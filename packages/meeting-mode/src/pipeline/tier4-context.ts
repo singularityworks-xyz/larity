@@ -151,6 +151,16 @@ function hydrateOneHistoricalMatch(
   payload: PreloadedContextPayload | null,
   m: Tier3Result["memoryMatches"][number]
 ): Tier4HistoricalMatch {
+  if (m.item) {
+    return {
+      memoryType: m.type,
+      sourceId: m.id,
+      item: m.item,
+      similarity: m.score,
+      meetingDate: m.meetingDate,
+      status: m.status,
+    };
+  }
   if (!payload) {
     return historicalWithoutPayloadRow(m);
   }
@@ -264,6 +274,7 @@ export function assembleTier4Context(input: Tier4AssemblyInput): Tier4Context {
     tier2Classification: input.tier2,
     recentUtterances: input.recentUtterances,
     matchedHistoricalItems,
+    memoryStatus: input.tier3.memoryStatus,
     matchedCommitments,
     relevantConstraints,
     speakerStates: input.speakerStates,
@@ -284,9 +295,11 @@ export function tierContextForPromptPayload(
     tier1: {
       blocklistHit: ctx.tier1Result.blocklistHit,
       technicalHit: ctx.tier1Result.technicalHit,
+      pricingHit: ctx.tier1Result.pricingHit,
       detectionSummary: ctx.tier1Result.detections.slice(0, 12),
     },
     matchedHistoricalItems: ctx.matchedHistoricalItems,
+    memoryRetrievalStatus: ctx.memoryStatus,
     matchedCommitments: ctx.matchedCommitments.map(
       ({ commitment: c, similarity }) => ({
         similarity,

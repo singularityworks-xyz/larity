@@ -15,10 +15,12 @@ import { CostManager, hasPricingForModel } from "./cost/manager";
 import {
   GEMINI_TIER4_MODEL,
   GENERALCOMPUTE_TIER2_MODEL,
+  MEETING_PIPELINE_MODE,
   validateEnv,
 } from "./env";
 import { rootLogger } from "./logger";
 import { MeetingPipelineEngine } from "./pipeline/engine";
+import { LiveDecisionAnalyzer } from "./pipeline/live-decision";
 import { getMetricsSnapshot } from "./pipeline/metrics";
 import { publishPipelineEvaluationTrace } from "./pipeline/pipeline-trace";
 import { PreFilter } from "./pipeline/pre-filter";
@@ -175,6 +177,8 @@ async function main(): Promise<void> {
     preFilter: new PreFilter(),
     tier1: new Tier1StructuralDetector(),
     tier2: new Tier2Classifier(),
+    liveAnalyzer:
+      MEETING_PIPELINE_MODE === "live" ? new LiveDecisionAnalyzer() : undefined,
     tier4: new Tier4DeepReasoner(),
     tier4Alerts: {
       publish: async (sessionId: string, alert: Alert) => {
@@ -334,21 +338,6 @@ async function main(): Promise<void> {
       return;
     }
 
-    // P2.10: single round trip (MULTI) instead of serial RPUSH + EXPIRE.
-    // EXPIRE stays per-utterance so the 7-day TTL always counts from the
-    // latest line rather than hydration time.
-    try {
-      const multi = redisClient.multi();
-      multi.rpush(key, payload);
-      multi.expire(key, UTTERANCE_CACHE_TTL);
-      await multi.exec();
-    } catch (err) {
-      rootLogger.error(
-        { err, sessionId: utterance.sessionId },
-        "Failed to cache live utterance in Redis"
-      );
-    }
-
     pipelineEngine.evaluateUtteranceQueued(
       utterance,
       // P2.9: telemetry must not hold the per-session FIFO chain — the next
@@ -365,6 +354,21 @@ async function main(): Promise<void> {
         return Promise.resolve();
       }
     );
+
+    // P2.10: single round trip (MULTI) instead of serial RPUSH + EXPIRE.
+    // EXPIRE stays per-utterance so the 7-day TTL always counts from the
+    // latest line rather than hydration time.
+    try {
+      const multi = redisClient.multi();
+      multi.rpush(key, payload);
+      multi.expire(key, UTTERANCE_CACHE_TTL);
+      await multi.exec();
+    } catch (err) {
+      rootLogger.error(
+        { err, sessionId: utterance.sessionId },
+        "Failed to cache live utterance in Redis"
+      );
+    }
   });
 
   await startSubscriber(

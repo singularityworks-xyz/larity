@@ -18,7 +18,7 @@ export interface Tier4DeepReasonerOptions {
   timeoutMs?: number;
 }
 
-const CATEGORY_PROMPT_BLOCK = `
+export const CATEGORY_PROMPT_BLOCK = `
 Evaluate the context JSON and choose exactly ONE alertType. Base your decision on the provided tier2 (intent, tone, riskSignals), tier1 (blocklistHit, technicalHit, pricingHit), speaker identity (type: TEAM/EXTERNAL), and matchedCommitments (Tier 3 ledger matches). riskSignal names match Tier 2 exactly.
 
 1. risky_commitment (Routing: personal)
@@ -138,7 +138,7 @@ function buildTier4Prompt(context: Tier4Context): string {
   return lines.join("\n");
 }
 
-function geminiTier4StructuredSchema(): {
+export function geminiTier4StructuredSchema(): {
   type: typeof Type.OBJECT;
   properties: Record<string, unknown>;
   required: string[];

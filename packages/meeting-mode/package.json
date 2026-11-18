@@ -1,13 +1,14 @@
 {
   "name": "meeting-mode",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "exports": {
     ".": "./src/index.ts"
   },
   "scripts": {
     "dev": "bun --env-file=../../.env src/index.ts",
+    "test": "bun test",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {

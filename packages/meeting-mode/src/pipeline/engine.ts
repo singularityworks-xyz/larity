@@ -3,7 +3,11 @@ import { createAlert } from "../alerts/types";
 import type { Commitment } from "../commitment/types";
 import type { Constraint, PreloadedContextPayload } from "../constraint/types";
 import { CostManager } from "../cost/manager";
-import { GEMINI_TIER4_MODEL, GENERALCOMPUTE_TIER2_MODEL } from "../env";
+import {
+  GEMINI_TIER4_MODEL,
+  GENERALCOMPUTE_TIER2_MODEL,
+  LIVE_PIPELINE_CONCURRENCY,
+} from "../env";
 import { createMeetingModeLogger } from "../logger";
 import { SpeakerStateTracker } from "../speaker-state/tracker";
 import type { SpeakerStateAlert } from "../speaker-state/types";
@@ -16,6 +20,8 @@ import {
 } from "../speculative/types";
 import type { TopicState } from "../topic/types";
 import type { Utterance } from "../utterance/types";
+import type { LiveAnalyzer } from "./live-analyzer";
+import { LiveEvaluationScheduler } from "./live-scheduler";
 import { incrementCounter, recordHistogram } from "./metrics";
 import { PreFilter, type PreFilterDecision } from "./pre-filter";
 import { Tier1StructuralDetector, textMatchesTier1PricingPath } from "./tier1";
@@ -132,6 +138,9 @@ export interface PipelineEngineDependencies {
     sessionId: string
   ) => Promise<Array<{ id: string; name: string }>>;
   getTopics?: (sessionId: string) => TopicState[];
+  /** Contextual alert decision runs independently of detailed extraction. */
+  liveAnalyzer?: LiveAnalyzer;
+  liveConcurrency?: number;
   /** Hook after pipeline session teardown (e.g. clear session-scoped alert publishers) */
   onPipelineSessionClosed?: (sessionId: string) => void;
   onSpeakerIdentityGuessed?: (
@@ -147,6 +156,7 @@ export interface PipelineEngineDependencies {
   tier1?: Tier1StructuralDetector;
   tier2?: Tier2Classifier;
   tier2Cache?: Tier2SemanticCache;
+  tier3?: Tier3SearchEngine;
   tier4?: Tier4DeepReasoner;
   tier4Alerts?: Tier4AlertsPublisher;
 }
@@ -162,12 +172,15 @@ export interface PipelineEvaluationResult {
   dropReason?: string;
   latencies: {
     preFilterMs: number;
+    retrievalMs?: number;
+    analysisMs?: number;
     tier1Ms?: number;
     tier2Ms?: number;
     gateMs?: number;
     tier4Ms?: number;
     pipelineBudgetMs: number;
   };
+  mode?: "live" | "legacy";
   retractUtteranceId?: string;
   runTier4: boolean;
   sessionCost?: number;
@@ -227,12 +240,21 @@ export class MeetingPipelineEngine {
   private readonly onPipelineSessionClosed?: (sessionId: string) => void;
   private readonly evaluationChains = new Map<string, Promise<unknown>>();
   private readonly evaluationDepth = new Map<string, number>();
+  private readonly liveAnalyzer?: LiveAnalyzer;
+  private readonly liveScheduler: LiveEvaluationScheduler;
+  private readonly liveCommitChains = new Map<string, Promise<void>>();
+  private readonly sessionControllers = new Map<string, AbortController>();
+  private readonly hydrationTasks = new Map<string, Promise<void>>();
 
   constructor(deps: PipelineEngineDependencies) {
     this.preFilter = deps.preFilter ?? new PreFilter();
     this.tier1 = deps.tier1 ?? new Tier1StructuralDetector();
     this.tier2 = deps.tier2 ?? new Tier2Classifier();
-    this.tier3 = new Tier3SearchEngine();
+    this.tier3 = deps.tier3 ?? new Tier3SearchEngine();
+    this.liveAnalyzer = deps.liveAnalyzer;
+    this.liveScheduler = new LiveEvaluationScheduler(
+      deps.liveConcurrency ?? LIVE_PIPELINE_CONCURRENCY
+    );
     this.finalizer = deps.finalizer;
     this.constraintManager = deps.constraintManager;
     this.commitmentManager = deps.commitmentManager;
@@ -283,6 +305,25 @@ export class MeetingPipelineEngine {
     ) => Promise<void>
   ): void {
     const sessionId = utterance.sessionId;
+    if (this.liveAnalyzer) {
+      const enqueuePerf = PERF.now();
+      const queuedAtMs = Date.now();
+      this.liveScheduler.enqueue(sessionId, async () => {
+        recordHistogram("pipeline.queue_wait_ms", PERF.now() - enqueuePerf);
+        try {
+          const result = await this.evaluateUtterance(utterance, {
+            queuedAtMs,
+          });
+          await afterEvaluate?.(utterance, result);
+        } catch (error) {
+          log.warn(
+            { err: error, utteranceId: utterance.utteranceId },
+            "Live evaluation failed"
+          );
+        }
+      });
+      return;
+    }
     const enqueuePerf = PERF.now();
     const queuedAtMs = Date.now();
     this.evaluationDepth.set(
@@ -337,6 +378,9 @@ export class MeetingPipelineEngine {
     utterance: Utterance,
     options: { backlogDepth?: number; queuedAtMs?: number } = {}
   ): Promise<PipelineEvaluationResult> {
+    if (this.liveAnalyzer) {
+      return this.evaluateLiveUtterance(utterance, options.queuedAtMs);
+    }
     const start = PERF.now();
     const queuedAtMs = options.queuedAtMs;
     const backlogDepth = options.backlogDepth ?? 0;
@@ -575,6 +619,339 @@ export class MeetingPipelineEngine {
     };
   }
 
+  /** Wait for queued evaluations (used by lifecycle callers and deterministic tests). */
+  async waitForIdle(sessionId: string): Promise<void> {
+    await this.liveScheduler.waitForIdle(sessionId);
+    await this.evaluationChains.get(sessionId);
+  }
+
+  private getSessionController(sessionId: string): AbortController {
+    let controller = this.sessionControllers.get(sessionId);
+    if (!controller) {
+      controller = new AbortController();
+      this.sessionControllers.set(sessionId, controller);
+    }
+    return controller;
+  }
+
+  private async evaluateLiveUtterance(
+    utterance: Utterance,
+    queuedAtMs?: number
+  ): Promise<PipelineEvaluationResult> {
+    const start = PERF.now();
+    const { sessionId } = utterance;
+    const signal = this.getSessionController(sessionId).signal;
+    // Run before any I/O so duplicate handling follows arrival order.
+    const preFilter = this.runPreFilter(utterance);
+    const emptyResult = (): PipelineEvaluationResult => ({
+      mode: "live",
+      dropped: signal.aborted || preFilter.dropped,
+      dropReason: signal.aborted ? "session_closed" : preFilter.reason,
+      retractUtteranceId: preFilter.retractUtteranceId,
+      runTier4: false,
+      tier4Outcome: { invoked: false },
+      latencies: {
+        preFilterMs: preFilter.preFilterMs,
+        pipelineBudgetMs: PERF.now() - start,
+      },
+    });
+    if (preFilter.dropped) {
+      return emptyResult();
+    }
+
+    // Capture history before inference; a slow request must not see later speech.
+    const recentUtterances = this.finalizer
+      .getRecentUtterancesChronological(sessionId, {
+        excludeUtteranceId: utterance.utteranceId,
+        limit: 48,
+      })
+      .filter(
+        (u) =>
+          u.utteranceId !== utterance.utteranceId &&
+          u.timestamp <= utterance.timestamp
+      )
+      .map((u) => ({ ...u, speaker: { ...u.speaker } }));
+    const previousCommit =
+      this.liveCommitChains.get(sessionId) ?? Promise.resolve();
+    let releaseCommit: () => void = () => undefined;
+    const finished = new Promise<void>((resolve) => {
+      releaseCommit = resolve;
+    });
+    const commitTail = previousCommit.then(() => finished);
+    this.liveCommitChains.set(sessionId, commitTail);
+    try {
+      const retrievalStart = PERF.now();
+      // Hydration and this utterance's embedding do not depend on one another.
+      await Promise.all([
+        this.ensureSessionHydrated(sessionId),
+        this.ensureUtteranceEmbedding(utterance),
+      ]);
+      if (signal.aborted) {
+        return emptyResult();
+      }
+      const payload = this.sessions.get(sessionId)?.contextPayload ?? null;
+      const tier1 = this.tier1.detect(utterance);
+      const [tier3, topicLabel, sessionCost] = await Promise.all([
+        this.tier3.evaluate(
+          utterance,
+          payload,
+          this.commitmentManager,
+          this.finalizer.getRecentEmbeddings(sessionId, 10)
+        ),
+        this.getCurrentTopicLabel(sessionId, utterance.topicId),
+        this.costManager.getSessionCost(sessionId),
+      ]);
+      const retrievalMs = PERF.now() - retrievalStart;
+      recordHistogram("pipeline.retrieval_ms", retrievalMs);
+      if (signal.aborted) {
+        return emptyResult();
+      }
+      const runAnalysis = this.shouldRunLiveAnalysis(sessionCost, tier1, tier3);
+      const unknown: Tier2Classification = {
+        intent: "general",
+        commitmentType: null,
+        tone: "neutral",
+        riskSignals: [],
+        extractedData: {},
+        confidence: 0,
+      };
+      const input: Tier2Input = {
+        utterance: utterance.text,
+        speaker: utterance.speaker,
+        recentSameSpeaker: recentUtterances
+          .filter((u) => u.speaker.speakerId === utterance.speaker.speakerId)
+          .slice(-3)
+          .map((u) => u.text),
+        topicLabel,
+        structuralPricingCue: tier1.pricingHit,
+        knownClientMembers:
+          this.sessions.get(sessionId)?.knownClientMembers ?? [],
+      };
+      const context = assembleTier4Context({
+        utterance,
+        topicSummary: topicLabel ?? "",
+        tier1,
+        tier2: unknown,
+        tier3,
+        payload,
+        recentUtterances,
+        allCommitments: this.commitmentManager
+          .getAll(sessionId)
+          .filter(
+            (c) =>
+              c.utteranceId !== utterance.utteranceId &&
+              c.timestamp <= utterance.timestamp
+          ),
+        allConstraints: this.constraintManager.getAll(sessionId),
+        speakerStates: this.speakerStateTracker.getSummaries(sessionId),
+      });
+      // Enrichment never gates publication: the decision uses retrieved facts and
+      // raw transcript context, not the classifier's eventual labels.
+      const enrichment = this.startLiveEnrichment(
+        runAnalysis,
+        input,
+        sessionId
+      );
+      const analysisStart = PERF.now();
+      const analysis =
+        runAnalysis && this.liveAnalyzer
+          ? await this.liveAnalyzer.analyze(context, input, signal)
+          : {
+              classification: null,
+              response: null,
+              promptTokens: 0,
+              completionTokens: 0,
+            };
+      const analysisMs = PERF.now() - analysisStart;
+      if (runAnalysis) {
+        recordHistogram("pipeline.analysis_ms", analysisMs);
+      }
+      if (analysis.promptTokens || analysis.completionTokens) {
+        // Charge returned usage even when the session closed during the call.
+        this.costManager
+          .recordCost(
+            sessionId,
+            analysis.promptTokens,
+            analysis.completionTokens,
+            GEMINI_TIER4_MODEL
+          )
+          .catch((error) =>
+            log.warn({ err: error }, "Live analysis cost recording failed")
+          );
+      }
+      if (signal.aborted) {
+        return emptyResult();
+      }
+      const surfaced = await this.publishLiveAlert(
+        utterance,
+        analysis.response,
+        queuedAtMs
+      );
+      // Alerts publish as soon as they are validated. State updates retain arrival
+      // order so topic deltas and speaker trajectories cannot move backwards.
+      await previousCommit;
+      if (signal.aborted) {
+        return emptyResult();
+      }
+      const classification = enrichment
+        ? await enrichment
+        : analysis.classification;
+      const speakerAlerts = await this.commitLiveState(
+        utterance,
+        classification,
+        signal
+      );
+      this.recordSpeakerAlertLatency(surfaced, speakerAlerts, queuedAtMs);
+
+      return {
+        mode: "live",
+        dropped: false,
+        retractUtteranceId: preFilter.retractUtteranceId,
+        runTier4: runAnalysis,
+        sessionCost,
+        tier1,
+        tier2: classification ?? unknown,
+        tier3,
+        tier4Response: analysis.response,
+        tier4Outcome: { invoked: runAnalysis, surfaced, latencyMs: analysisMs },
+        latencies: {
+          preFilterMs: preFilter.preFilterMs,
+          retrievalMs,
+          analysisMs,
+          tier4Ms: runAnalysis ? analysisMs : undefined,
+          pipelineBudgetMs: PERF.now() - start,
+        },
+      };
+    } finally {
+      releaseCommit();
+      if (this.liveCommitChains.get(sessionId) === commitTail) {
+        commitTail.then(() => {
+          if (this.liveCommitChains.get(sessionId) === commitTail) {
+            this.liveCommitChains.delete(sessionId);
+          }
+        });
+      }
+    }
+  }
+
+  private recordSpeakerAlertLatency(
+    surfaced: boolean,
+    count: number,
+    queuedAtMs?: number
+  ): void {
+    if (!surfaced && count && queuedAtMs !== undefined) {
+      recordHistogram(
+        "pipeline.utterance_to_alert_ms",
+        Date.now() - queuedAtMs
+      );
+    }
+  }
+
+  private startLiveEnrichment(
+    run: boolean,
+    input: Tier2Input,
+    sessionId: string
+  ): Promise<Tier2Classification> | undefined {
+    if (!(run && this.liveAnalyzer?.requiresClassification)) {
+      return;
+    }
+    return this.tier2.classify(input, sessionId).then((outcome) => {
+      this.costManager
+        .recordCost(
+          sessionId,
+          outcome.promptTokens ?? 0,
+          outcome.completionTokens ?? 0,
+          GENERALCOMPUTE_TIER2_MODEL
+        )
+        .catch((error) =>
+          log.warn({ err: error }, "Enrichment cost recording failed")
+        );
+      return outcome.classification;
+    });
+  }
+
+  private shouldRunLiveAnalysis(
+    cost: number,
+    tier1: Tier1Result,
+    tier3: Tier3Result
+  ): boolean {
+    if (this.costManager.isHardCapReached(cost)) {
+      return false;
+    }
+    if (!this.costManager.isWarningMode(cost)) {
+      return true;
+    }
+    return (
+      tier1.technicalHit ||
+      tier1.blocklistHit ||
+      tier1.pricingHit ||
+      tier3.forceTier4
+    );
+  }
+
+  private async publishLiveAlert(
+    utterance: Utterance,
+    response: Tier4Response | null,
+    queuedAtMs?: number
+  ): Promise<boolean> {
+    if (!(response && this.tier4Alerts)) {
+      return false;
+    }
+    const alert = buildAlertFromTier4Response({
+      response,
+      triggerUtteranceId: utterance.utteranceId,
+      speaker: utterance.speaker,
+      topicId: utterance.topicId,
+    });
+    if (!alert) {
+      return false;
+    }
+    try {
+      await this.tier4Alerts.publish(utterance.sessionId, alert);
+      if (queuedAtMs !== undefined) {
+        recordHistogram(
+          "pipeline.utterance_to_alert_ms",
+          Date.now() - queuedAtMs
+        );
+      }
+      return true;
+    } catch (error) {
+      log.warn({ err: error }, "Live alert publication failed");
+      return false;
+    }
+  }
+
+  private async commitLiveState(
+    utterance: Utterance,
+    classification: Tier2Classification | null,
+    signal: AbortSignal
+  ): Promise<number> {
+    await this.constraintManager.processUtterance(utterance).catch((error) => {
+      log.warn({ err: error }, "Live constraint update failed");
+    });
+    if (!classification || signal.aborted) {
+      return 0;
+    }
+    await this.applyTier2SideEffects(utterance, classification, signal);
+    if (signal.aborted) {
+      return 0;
+    }
+    this.speakerStateTracker.ingest(
+      utterance.sessionId,
+      utterance,
+      classification
+    );
+    if (classification.identityGuess) {
+      const guess = classification.identityGuess;
+      this.onSpeakerIdentityGuessed?.(
+        utterance.sessionId,
+        guess.index,
+        guess.memberId
+      );
+    }
+    return this.publishSpeakerStateAlerts(utterance, classification);
+  }
+
   private isHighSignal(
     tier1: Tier1Result,
     tier2Classification: Tier2Classification
@@ -669,6 +1046,10 @@ export class MeetingPipelineEngine {
   }
 
   async evaluatePartial(partial: PartialUtterance): Promise<void> {
+    // Partial classification would duplicate the single-call live analysis.
+    if (this.liveAnalyzer) {
+      return;
+    }
     await this.ensureSessionHydrated(partial.sessionId);
 
     // P3.5: speculation is speculative spend — stop it as soon as the session
@@ -889,6 +1270,11 @@ export class MeetingPipelineEngine {
   }
 
   closeSession(sessionId: string): void {
+    this.sessionControllers.get(sessionId)?.abort();
+    this.sessionControllers.delete(sessionId);
+    this.hydrationTasks.delete(sessionId);
+    this.liveScheduler.closeSession(sessionId);
+    this.liveCommitChains.delete(sessionId);
     this.preFilter.closeSession(sessionId);
     this.tier1.closeSession(sessionId);
     this.tier2Cache.closeSession(sessionId);
@@ -902,6 +1288,13 @@ export class MeetingPipelineEngine {
   }
 
   closeAll(): void {
+    for (const controller of this.sessionControllers.values()) {
+      controller.abort();
+    }
+    this.sessionControllers.clear();
+    this.hydrationTasks.clear();
+    this.liveScheduler.closeAll();
+    this.liveCommitChains.clear();
     this.preFilter.closeAll();
     this.tier1.closeAll();
     this.tier2Cache.closeAll();
@@ -915,8 +1308,12 @@ export class MeetingPipelineEngine {
 
   private async applyTier2SideEffects(
     utterance: Utterance,
-    classification: Tier2Classification
+    classification: Tier2Classification,
+    signal?: AbortSignal
   ): Promise<void> {
+    if (signal?.aborted) {
+      return;
+    }
     const { sessionId, text, embedding, topicId } = utterance;
 
     if (embedding && embedding.length > 0) {
@@ -931,6 +1328,9 @@ export class MeetingPipelineEngine {
       );
     }
 
+    if (signal?.aborted) {
+      return;
+    }
     await this.maybeWriteCommitment(utterance, embedding, { classification });
   }
 
@@ -1090,7 +1490,27 @@ export class MeetingPipelineEngine {
     }
   }
 
-  private async ensureSessionHydrated(sessionId: string): Promise<void> {
+  private ensureSessionHydrated(sessionId: string): Promise<void> {
+    const pending = this.hydrationTasks.get(sessionId);
+    if (pending) {
+      return pending;
+    }
+    const controller = this.getSessionController(sessionId);
+    const task = this.hydrateSession(sessionId, controller.signal).finally(
+      () => {
+        if (this.hydrationTasks.get(sessionId) === task) {
+          this.hydrationTasks.delete(sessionId);
+        }
+      }
+    );
+    this.hydrationTasks.set(sessionId, task);
+    return task;
+  }
+
+  private async hydrateSession(
+    sessionId: string,
+    signal: AbortSignal
+  ): Promise<void> {
     const existing = this.sessions.get(sessionId);
     if (existing?.hydrated) {
       return;
@@ -1099,26 +1519,28 @@ export class MeetingPipelineEngine {
     // Fetch once and share: the constraint manager reuses the payload
     // instead of issuing its own Redis GET (P2.10).
     const contextPayload = await this.getContextPayload(sessionId);
-    await this.constraintManager.ensureHydrated(sessionId, contextPayload);
-    await this.commitmentManager.hydrateSession(sessionId);
-
-    this.tier1.seedContext(sessionId, contextPayload);
-
-    await this.costManager.primeSessionCost(sessionId);
-
-    // P2.6: client membership is meeting-scoped, not per-utterance — fetch
-    // once here instead of a Redis HGET + Postgres query ahead of every
-    // Tier 2 call. Refreshed on participant join (refreshSessionMembers).
-    let knownClientMembers: Array<{ id: string; name: string }> = [];
-    try {
-      knownClientMembers = await this.getKnownClientMembers(sessionId);
-    } catch (error) {
+    if (signal.aborted) {
+      return;
+    }
+    // These session-local reads are independent; coalesce them across callers
+    // without adding their network waits together on the first utterance.
+    const memberTask = this.getKnownClientMembers(sessionId).catch((error) => {
       log.warn(
         { err: error, sessionId },
         "Known client members lookup failed; proceeding without candidates"
       );
+      return [];
+    });
+    const [, , , knownClientMembers] = await Promise.all([
+      this.constraintManager.ensureHydrated(sessionId, contextPayload),
+      this.commitmentManager.hydrateSession(sessionId),
+      this.costManager.primeSessionCost(sessionId),
+      memberTask,
+    ]);
+    if (signal.aborted) {
+      return;
     }
-
+    this.tier1.seedContext(sessionId, contextPayload);
     if (contextPayload) {
       this.predictivePreloader.seedFromContext(sessionId, contextPayload);
     }

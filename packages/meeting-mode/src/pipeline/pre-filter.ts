@@ -1,13 +1,18 @@
 import { ACOUSTIC_BLEED_TIMEOUT_MS } from "../env";
 import type { Utterance } from "../utterance/types";
-import {
-  extractSlidingWindows,
-  isNearTextMatch,
-  normalizeAlphaNumeric,
-  tokenize,
-} from "./text-utils";
+import { normalizeForComparison } from "./text-utils";
 
-const MIN_WORDS_REQUIRED = 3;
+const EVIDENCE_PUNCTUATION = /[^\p{L}\p{N}\p{M}\s$€£₹%.]/gu;
+const TRAILING_FULL_STOP = /\.$/;
+
+// Preserve Devanagari, currencies and decimals: each can change a commitment.
+function normalizeEvidence(text: string): string {
+  return normalizeForComparison(text)
+    .replace(EVIDENCE_PUNCTUATION, "")
+    .replace(TRAILING_FULL_STOP, "")
+    .trim();
+}
+
 const RECENT_WINDOW_SIZE = 12;
 const ACKNOWLEDGEMENT_PHRASES = new Set([
   "ok",
@@ -49,18 +54,19 @@ export class PreFilter {
   private readonly sessions = new Map<string, SessionPreFilterState>();
 
   evaluate(utterance: Utterance): PreFilterDecision {
-    const words = tokenize(utterance.text);
-    if (words.length < MIN_WORDS_REQUIRED) {
+    const normalized = normalizeEvidence(utterance.text);
+    // Short negations, prices and dates can reverse a prior commitment.
+    // Only empty/noise text is too short to evaluate.
+    if (!normalized) {
       return { dropped: true, reason: "too_short" };
     }
 
-    const normalized = normalizeAlphaNumeric(utterance.text);
     if (this.isAcknowledgement(normalized)) {
       return { dropped: true, reason: "acknowledgement" };
     }
 
     const state = this.getSessionState(utterance.sessionId);
-    const duplicate = this.findNearDuplicate(state.recent, normalized);
+    const duplicate = this.findDuplicate(state.recent, normalized);
 
     if (duplicate) {
       const timeDiff = Math.abs(utterance.timestamp - duplicate.timestamp);
@@ -141,37 +147,16 @@ export class PreFilter {
       return true;
     }
 
-    const utteranceTokens = tokenize(normalizedUtterance);
-    if (utteranceTokens.length === 0 || utteranceTokens.length > 4) {
-      return false;
-    }
-
-    for (const phrase of ACKNOWLEDGEMENT_PHRASES) {
-      const phraseTokens = tokenize(phrase);
-      const windows = extractSlidingWindows(
-        utteranceTokens,
-        phraseTokens.length
-      );
-      for (const candidate of windows) {
-        if (isNearTextMatch(candidate, phrase, 0.2)) {
-          return true;
-        }
-      }
-    }
-
     return false;
   }
 
-  private findNearDuplicate(
+  private findDuplicate(
     recent: RecentUtteranceEntry[],
     normalizedUtterance: string
   ): RecentUtteranceEntry | undefined {
     for (let i = recent.length - 1; i >= 0; i -= 1) {
       const entry = recent[i];
-      if (
-        entry &&
-        isNearTextMatch(entry.normalizedText, normalizedUtterance, 0.12)
-      ) {
+      if (entry && entry.normalizedText === normalizedUtterance) {
         return entry;
       }
     }

@@ -3,6 +3,8 @@ import {
   GEMINI_TIER4_MODEL,
   GENERALCOMPUTE_BASE_URL,
   GENERALCOMPUTE_TIER2_TIMEOUT_MS,
+  LIVE_PIPELINE_CONCURRENCY,
+  MEETING_PIPELINE_MODE,
   MERGE_GROUPING_MS,
   MERGE_PUBLISH_GAP_MS,
   PIPELINE_TRACE_PRETTY_JSON,
@@ -10,6 +12,10 @@ import {
 } from "./env";
 
 describe("meeting-mode env defaults", () => {
+  test("experimental live analysis stays opt-in with bounded overlap", () => {
+    expect(MEETING_PIPELINE_MODE).toBe("legacy");
+    expect(LIVE_PIPELINE_CONCURRENCY).toBe(2);
+  });
   test("merger publish gap stays short (P2.3)", () => {
     // Guard against regressing the publish path to the old ~700ms hold.
     // Overridable via MERGE_PUBLISH_GAP_MS; the test env leaves it unset.
