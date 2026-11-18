@@ -1,5 +1,6 @@
 import { Type } from "@google/genai";
 import type { MeetingAnalysis } from "@larity/db/meeting-analysis.types";
+import { ai } from "../../lib/gemini";
 import type {
   ExtractedDecision,
   ExtractedImportantPoint,
@@ -7,7 +8,6 @@ import type {
   ExtractedTask,
 } from "./extraction-llm";
 import { EXTRACTION_MODEL } from "./extraction-llm";
-import { ai } from "./gemini";
 import type { TalkTimeStats } from "./talk-time";
 
 const EVIDENCE_CLEANUP_REGEX = /^\[[^\]]+\]:\s*/;

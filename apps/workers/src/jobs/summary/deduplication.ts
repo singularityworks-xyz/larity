@@ -1,4 +1,4 @@
-import { createWorkerLogger } from "../logger";
+import { createWorkerLogger } from "../../logger";
 import { generateEmbedding } from "./embeddings";
 
 const log = createWorkerLogger("deduplication");

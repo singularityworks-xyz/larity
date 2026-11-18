@@ -4,29 +4,29 @@ import type { MeetingAnalysis } from "@larity/db/meeting-analysis.types";
 import { Prisma } from "@larity/db/prisma";
 import type { SummaryJobData } from "@larity/jobs";
 import type { Job } from "bullmq";
-import { chunkUtterances } from "../../lib/chunking";
+import {
+  cleanupMeetingStateKeys,
+  publishMeetingProcessed,
+  setJobStatus,
+} from "../../lib/job-status";
+import { BaseWorker } from "../../runtime/worker";
+import { chunkUtterances } from "./chunking";
 import {
   getCommitmentEmbedding,
   getSessionCommitments,
   type RedisCommitment,
-} from "../../lib/commitments";
-import { cosineSimilarity, deduplicateItems } from "../../lib/deduplication";
-import { generateEmbedding } from "../../lib/embeddings";
+} from "./commitments";
+import { cosineSimilarity, deduplicateItems } from "./deduplication";
+import { generateEmbedding } from "./embeddings";
 import {
   type ExtractedDecision,
   type ExtractedImportantPoint,
   type ExtractedOpenQuestion,
   type ExtractedTask,
   extractInsightsFromTranscriptChunk,
-} from "../../lib/extraction-llm";
-import { generateMeetingAnalysis } from "../../lib/final-analysis-llm";
-import {
-  cleanupMeetingStateKeys,
-  publishMeetingProcessed,
-  setJobStatus,
-} from "../../lib/job-status";
-import { computeTalkTime } from "../../lib/talk-time";
-import { BaseWorker } from "../../runtime/worker";
+} from "./extraction-llm";
+import { generateMeetingAnalysis } from "./final-analysis-llm";
+import { computeTalkTime } from "./talk-time";
 
 interface Utterance {
   channel: number;

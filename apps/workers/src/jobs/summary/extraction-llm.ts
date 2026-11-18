@@ -1,5 +1,5 @@
 import { Type } from "@google/genai";
-import { ai } from "./gemini";
+import { ai } from "../../lib/gemini";
 
 export const EXTRACTION_MODEL = "gemini-3.1-flash-lite";
 const EXTRACTION_TIMEOUT_MS = 30_000; // 30s timeout for bulk extraction
