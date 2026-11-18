@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { paginationSchema } from "../../lib/pagination";
+import { paginationSchema } from "../../../lib/pagination";
 
 export const TaskStatus = z.enum([
   "OPEN",

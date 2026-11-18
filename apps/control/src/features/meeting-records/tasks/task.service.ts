@@ -1,5 +1,5 @@
-import { applyPagination } from "../../lib/pagination";
-import { prisma } from "../../lib/prisma";
+import { applyPagination } from "../../../lib/pagination";
+import { prisma } from "../../../lib/prisma";
 import type {
   CreateTaskInput,
   TaskQueryInput,

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { prisma } from "../../lib/prisma";
+import { prisma } from "../../../lib/prisma";
 import type {
   CreateDecisionInput,
   ReviseDecisionInput,

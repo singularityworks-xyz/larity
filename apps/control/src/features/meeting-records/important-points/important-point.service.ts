@@ -1,4 +1,4 @@
-import { prisma } from "../../lib/prisma";
+import { prisma } from "../../../lib/prisma";
 import type { CreateImportantPointInput } from "./important-point.validator";
 
 export const ImportantPointService = {
