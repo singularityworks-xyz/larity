@@ -22,7 +22,10 @@
     "mock:latency": "cd apps/mock && bun run latency",
     "build": "turbo run build",
     "check-types": "turbo run check-types && make rust-clippy",
+    "lint": "ultracite check",
+    "fix": "ultracite fix && make rust-fmt",
     "check": "ultracite fix --unsafe && make rust-fix",
+    "version:bump": "bun scripts/version-manager.ts",
     "test": "bun test",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
@@ -30,7 +33,7 @@
     "db:push": "turbo run push --filter=@larity/db",
     "db:migrate": "turbo run migrate --filter=@larity/db",
     "db:studio": "turbo run studio --filter=@larity/db",
-    "setup": "cp -n .env.example .env 2>/dev/null || true && bun install && bun docker:up && bun db:generate && bun db:push"
+    "setup": "cp -n .env.example .env 2>/dev/null || true && bun install && bun docker:up && bun db:gen && bun db:push"
   },
   "type": "module",
   "workspaces": [
@@ -47,5 +50,5 @@
   "patchedDependencies": {
     "@deepgram/sdk@5.4.0": "patches/@deepgram%2Fsdk@5.4.0.patch"
   },
-  "version": "0.1.8"
+  "version": "0.1.6"
 }

@@ -6,14 +6,11 @@ pre-commit:
     - name: typecheck
       glob: "**/*.{ts,tsx}"
       run: bun run check-types
-    - name: version-bump
-      run: bun scripts/version-manager.ts
-      stage_fixed: true
     - name: rust-fmt
-      glob: "apps/desktop/src-tauri/**/*.rs"
-      run: cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml
+      glob: "apps/{desktop,mock}/src-tauri/**/*.rs"
+      run: cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml && cargo fmt --manifest-path apps/mock/src-tauri/Cargo.toml
       stage_fixed: true
     - name: rust-clippy
-      glob: "apps/desktop/src-tauri/**/*.rs"
-      run: cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings
+      glob: "apps/{desktop,mock}/src-tauri/**/*.rs"
+      run: cargo clippy --locked --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings && cargo clippy --locked --manifest-path apps/mock/src-tauri/Cargo.toml --all-targets -- -D warnings
 
