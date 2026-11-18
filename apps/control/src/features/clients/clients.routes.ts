@@ -7,12 +7,12 @@ import {
   createClientSchema,
   updateClientSchema,
 } from "./client.validator";
-import { ClientMemberService } from "./client-member.service";
+import { ClientMemberService } from "./members/client-member.service";
 import {
   clientMemberIdSchema,
   createClientMemberSchema,
   updateClientMemberSchema,
-} from "./client-member.validator";
+} from "./members/client-member.validator";
 
 export const clientsRoutes = new Elysia({ prefix: "/clients" })
   .use(requireAuth)

@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
 import { z } from "zod";
-import { createControlLogger } from "../../logger";
+import { createControlLogger } from "../../../logger";
 import { PolicyGuardrailService } from "./policy-guardrail.service";
 import {
   createPolicyGuardrailSchema,

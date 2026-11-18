@@ -5,7 +5,7 @@ import { preMeetingBriefQueue } from "@larity/jobs";
 import { Elysia } from "elysia";
 import { env } from "./env";
 import { clientsRoutes } from "./features/clients/clients.routes";
-import { policyGuardrailsRoutes } from "./features/clients/policy-guardrails.routes";
+import { policyGuardrailsRoutes } from "./features/clients/guardrails/policy-guardrails.routes";
 import { documentsRoutes } from "./features/documents/documents.routes";
 import { homeRoutes } from "./features/home/home.routes";
 import { authRoutes } from "./features/identity/auth.routes";

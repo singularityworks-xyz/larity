@@ -1,4 +1,4 @@
-import { prisma } from "../../lib/prisma";
+import { prisma } from "../../../lib/prisma";
 import { DEFAULT_POLICY_GUARDRAILS } from "./default-guardrails";
 import type {
   CreatePolicyGuardrailInput,
