@@ -14,7 +14,6 @@ const log = createControlLogger("policy-guardrails-routes");
 export const policyGuardrailsRoutes = new Elysia({
   prefix: "/policy-guardrails",
 })
-  // List all policy guardrails
   .get(
     "/",
     async ({ query }) => {
@@ -60,7 +59,6 @@ export const policyGuardrailsRoutes = new Elysia({
     },
     { params: policyGuardrailIdSchema }
   )
-  // Create policy guardrail
   .post(
     "/",
     async ({ body, set }) => {
@@ -115,7 +113,6 @@ export const policyGuardrailsRoutes = new Elysia({
     },
     { body: z.object({ orgId: z.string().uuid() }) }
   )
-  // Update policy guardrail
   .patch(
     "/:id",
     async ({ params, body, set }) => {
@@ -133,7 +130,6 @@ export const policyGuardrailsRoutes = new Elysia({
     },
     { params: policyGuardrailIdSchema, body: updatePolicyGuardrailSchema }
   )
-  // Delete policy guardrail
   .delete(
     "/:id",
     async ({ params, set }) => {
@@ -151,7 +147,6 @@ export const policyGuardrailsRoutes = new Elysia({
     },
     { params: policyGuardrailIdSchema }
   )
-  // Activate guardrail
   .post(
     "/:id/activate",
     async ({ params, set }) => {
@@ -169,7 +164,6 @@ export const policyGuardrailsRoutes = new Elysia({
     },
     { params: policyGuardrailIdSchema }
   )
-  // Deactivate guardrail
   .post(
     "/:id/deactivate",
     async ({ params, set }) => {

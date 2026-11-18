@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Enums
 export const UserRole = z.enum(["OWNER", "ADMIN", "MEMBER"]);
 export type UserRole = z.infer<typeof UserRole>;
 
@@ -10,12 +9,10 @@ const betterAuthId = z
   .length(32, "Invalid user ID")
   .regex(/^[a-zA-Z0-9]+$/, "Invalid user ID");
 
-// ID schemas
 export const userIdSchema = z.object({
   id: betterAuthId,
 });
 
-// Create schema
 export const createUserSchema = z.object({
   name: z
     .string()
@@ -28,7 +25,6 @@ export const createUserSchema = z.object({
   timezone: z.string().max(50).optional(),
 });
 
-// Update schema
 export const updateUserSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   email: z.email("Invalid email address").trim().toLowerCase().optional(),
@@ -37,7 +33,6 @@ export const updateUserSchema = z.object({
   timezone: z.string().max(50).optional().nullable(),
 });
 
-// Query schema
 export const userQuerySchema = z
   .object({
     orgId: z.uuid().optional(),
@@ -45,6 +40,5 @@ export const userQuerySchema = z
   })
   .optional();
 
-// Type exports
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;

@@ -19,7 +19,6 @@ import {
 
 export const orgsRoutes = new Elysia({ prefix: "/orgs" })
   .use(requireAuth)
-  // List all orgs
   .get(
     "/",
     async ({ query }) => {
@@ -28,7 +27,6 @@ export const orgsRoutes = new Elysia({ prefix: "/orgs" })
     },
     { query: orgQuerySchema }
   )
-  // Get org by id
   .get(
     "/:id",
     async ({ params, set }) => {
@@ -41,7 +39,6 @@ export const orgsRoutes = new Elysia({ prefix: "/orgs" })
     },
     { params: orgIdSchema }
   )
-  // Create org
   .post(
     "/",
     async ({ body, user, set }) => {
@@ -62,7 +59,6 @@ export const orgsRoutes = new Elysia({ prefix: "/orgs" })
     },
     { body: createOrgSchema }
   )
-  // Update org (owner only)
   .patch(
     "/:id",
     async ({ params, body, user, set }) => {
@@ -97,7 +93,6 @@ export const orgsRoutes = new Elysia({ prefix: "/orgs" })
     },
     { params: orgIdSchema, body: updateOrgSchema }
   )
-  // Delete org (owner only)
   .delete(
     "/:id",
     async ({ params, user, set }) => {
@@ -125,7 +120,6 @@ export const orgsRoutes = new Elysia({ prefix: "/orgs" })
     },
     { params: orgIdSchema }
   )
-  // Create invite for org (OWNER or ADMIN)
   .post(
     "/:id/invites",
     async ({ params, body, user, set }) => {

@@ -4,7 +4,6 @@ import type { CreateOrgInput, UpdateOrgInput } from "../validators";
 export const OrgService = {
   create(data: CreateOrgInput, creatorUserId: string) {
     return prisma.$transaction(async (tx) => {
-      // Create the org
       const org = await tx.org.create({
         data,
         include: {

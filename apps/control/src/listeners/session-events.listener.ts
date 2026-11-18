@@ -42,7 +42,6 @@ async function handleSessionStart(event: SessionStartEvent): Promise<void> {
     return;
   }
 
-  // Update session activity
   await meetingSessionService.updateActivity(sessionId);
 }
 

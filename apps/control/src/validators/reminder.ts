@@ -7,7 +7,6 @@ const betterAuthId = z
   .length(32, "Invalid user ID")
   .regex(/^[a-zA-Z0-9]+$/, "Invalid user ID");
 
-// Enums
 export const ReminderStatus = z.enum([
   "PENDING",
   "TRIGGERED",
@@ -24,12 +23,10 @@ export const ReminderEntityType = z.enum([
 ]);
 export type ReminderEntityType = z.infer<typeof ReminderEntityType>;
 
-// ID schemas
 export const reminderIdSchema = z.object({
   id: z.uuid("Invalid reminder ID"),
 });
 
-// Create schema
 export const createReminderSchema = z.object({
   userId: betterAuthId,
   clientId: z.uuid("Invalid client ID").optional(),
@@ -40,7 +37,6 @@ export const createReminderSchema = z.object({
   linkedEntityId: z.uuid().optional(),
 });
 
-// Update schema
 export const updateReminderSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().max(2000).optional().nullable(),
@@ -50,7 +46,6 @@ export const updateReminderSchema = z.object({
   linkedEntityId: z.uuid().optional().nullable(),
 });
 
-// Query schema with pagination
 export const reminderQuerySchema = z
   .object({
     userId: betterAuthId.optional(),
@@ -63,12 +58,10 @@ export const reminderQuerySchema = z
   .extend(paginationSchema.shape)
   .optional();
 
-// Snooze schema
 export const snoozeReminderSchema = z.object({
   dueAt: z.coerce.date(),
 });
 
-// Type exports
 export type CreateReminderInput = z.infer<typeof createReminderSchema>;
 export type UpdateReminderInput = z.infer<typeof updateReminderSchema>;
 export type ReminderQueryInput = z.infer<typeof reminderQuerySchema>;

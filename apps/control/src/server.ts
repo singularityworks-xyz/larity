@@ -30,9 +30,7 @@ import {
 const log = createControlLogger("server");
 
 export const app = new Elysia()
-  // Request logging
   .use(requestLogger)
-  // CORS
   .use(
     cors({
       origin: (request) => {
@@ -53,7 +51,6 @@ export const app = new Elysia()
       credentials: true,
     })
   )
-  // Global error handler
   .onError(({ code, error, set }) => {
     log.error({ code, err: error }, "Global error handler");
 
@@ -82,9 +79,7 @@ export const app = new Elysia()
       message: (error as Error).message,
     };
   })
-  // Health check
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
-  // Cron jobs
   .use(
     cron({
       name: "pre-meeting-brief-generator",
@@ -122,32 +117,23 @@ export const app = new Elysia()
       },
     })
   )
-  // Auth routes
   .use(authRoutes)
-  // Internal server-to-server routes (no user auth required)
   .use(internalSessionRoutes)
 
-  // Protected API routes
   .group("/api", (app) =>
     app
       .use(requireAuth)
-      // Core identity
       .use(orgsRoutes)
       .use(clientsRoutes)
       .use(usersRoutes)
       .use(notificationsRoutes)
-      // Home / dashboard
       .use(homeRoutes)
-      // Meeting domain
       .use(meetingsRoutes)
-      // Decisions & tasks
       .use(tasksRoutes)
       .use(decisionsRoutes)
       .use(openQuestionsRoutes)
       .use(importantPointsRoutes)
-      // Policy & compliance
       .use(policyGuardrailsRoutes)
-      // Documents & reminders
       .use(documentsRoutes)
       .use(remindersRoutes)
       .use(meetingSessionRoutes)

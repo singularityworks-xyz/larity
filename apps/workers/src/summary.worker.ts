@@ -122,7 +122,6 @@ export class SummaryWorker extends BaseWorker<
         utterances,
       });
 
-      // Compute speaker stats using talkTimeStats, commitments and open questions counts
       const commitmentCounts: Record<string, number> = {};
       for (const c of commitments) {
         const name = c.speaker.name || "Unknown";
@@ -268,7 +267,6 @@ export class SummaryWorker extends BaseWorker<
 
       utterances.sort((a, b) => a.timestamp - b.timestamp);
 
-      // 2. Chunk transcript (15-min windows, 2-min overlaps)
       const WINDOW_SIZE_SEC = 15 * 60; // 900s
       const OVERLAP_SEC = 2 * 60; // 120s
       const chunks = chunkUtterances(utterances, WINDOW_SIZE_SEC, OVERLAP_SEC);
@@ -282,7 +280,6 @@ export class SummaryWorker extends BaseWorker<
         "Chunked transcript for extraction"
       );
 
-      // 3. Extract raw items from chunks
       const participantNames = meeting.participants
         .map((p) => p.user?.name || p.externalName)
         .filter(Boolean)
@@ -325,7 +322,6 @@ export class SummaryWorker extends BaseWorker<
         }
       }
 
-      // 4. Deduplicate items
       this.log.info(
         { meetingId },
         "Starting deduplication of extracted insights"
@@ -359,7 +355,6 @@ export class SummaryWorker extends BaseWorker<
         "Deduplication completed"
       );
 
-      // 5. Retrieve commitments from ledger
       this.log.info({ sessionId }, "Fetching commitments from ledger");
       const commitments = await getSessionCommitments(orgId, sessionId);
       this.log.info(
@@ -367,7 +362,6 @@ export class SummaryWorker extends BaseWorker<
         "Retrieved commitments"
       );
 
-      // 6. Name resolution helper
       const resolveUserOrParticipant = (
         hint: string | undefined
       ): string | null => {
@@ -383,7 +377,6 @@ export class SummaryWorker extends BaseWorker<
         return null;
       };
 
-      // 7. Date parsing helper
       const parseOptionalDate = (
         dateStr: string | undefined | null
       ): Date | null => {
@@ -394,7 +387,6 @@ export class SummaryWorker extends BaseWorker<
         return Number.isNaN(parsed.getTime()) ? null : parsed;
       };
 
-      // 8. Pre-generate embeddings for decisions (network call outside transaction)
       const decisionsWithEmbeddings = await Promise.all(
         decisions.map(async (d) => {
           const text = `${d.title} ${d.content}`;
@@ -403,7 +395,6 @@ export class SummaryWorker extends BaseWorker<
         })
       );
 
-      // 9. Pre-generate embeddings for important points (network call outside transaction)
       const pointsWithEmbeddings = await Promise.all(
         importantPoints.map(async (p) => {
           const embedding = await generateEmbedding(p.content);
@@ -411,7 +402,6 @@ export class SummaryWorker extends BaseWorker<
         })
       );
 
-      // 10. Pre-generate embeddings for commitments (network call outside transaction)
       const commitmentsWithEmbeddings = await Promise.all(
         commitments.map(async (c) => {
           let embedding = getCommitmentEmbedding(c);
@@ -422,7 +412,6 @@ export class SummaryWorker extends BaseWorker<
         })
       );
 
-      // 11. Generate structured meeting analysis (Tier 3 network call outside transaction)
       const analysis = await this.generateMeetingAnalysisWrapper(
         meeting,
         utterances,
@@ -433,7 +422,6 @@ export class SummaryWorker extends BaseWorker<
         commitments
       );
 
-      // 12. Prisma transactional write (modularized to satisfy complexity limits)
       await prisma.$transaction(async (tx) => {
         // Query existing decisions and their embeddings in a single batch
         const existingDecisions = await tx.decision.findMany({
@@ -523,7 +511,6 @@ export class SummaryWorker extends BaseWorker<
         "Insights extraction and persistence finished successfully"
       );
 
-      // 13. Tier 4: Persist and embed raw utterances for Assistant RAG (outside main transaction)
       try {
         await this.persistUtterances(meeting.clientId, meetingId, utterances);
       } catch (err) {

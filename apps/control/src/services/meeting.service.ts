@@ -233,7 +233,6 @@ export const MeetingService = {
 
     // Use transaction for atomic creation
     return prisma.$transaction(async (tx) => {
-      // Create decisions
       const decisions = await Promise.all(
         data.decisions.map((d) =>
           tx.decision.create({
@@ -251,7 +250,6 @@ export const MeetingService = {
         )
       );
 
-      // Create tasks
       const tasks = await Promise.all(
         data.tasks.map((t) =>
           tx.task.create({
@@ -268,7 +266,6 @@ export const MeetingService = {
         )
       );
 
-      // Create open questions
       const openQuestions = await Promise.all(
         data.openQuestions.map((q) =>
           tx.openQuestion.create({
@@ -284,7 +281,6 @@ export const MeetingService = {
         )
       );
 
-      // Create important points
       const importantPoints = await Promise.all(
         data.importantPoints.map((p) =>
           tx.importantPoint.create({
@@ -300,7 +296,6 @@ export const MeetingService = {
         )
       );
 
-      // Update meeting summary if provided
       if (data.summary) {
         await tx.meeting.update({
           where: { id: meetingId },

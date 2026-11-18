@@ -1,11 +1,9 @@
 import { z } from "zod";
 import { paginationSchema } from "../lib/pagination";
 
-// Enums
 export const ClientStatus = z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]);
 export type ClientStatus = z.infer<typeof ClientStatus>;
 
-// ID schemas
 export const clientIdSchema = z.object({
   id: z.uuid("Invalid client ID"),
 });
@@ -14,7 +12,6 @@ export const clientSlugSchema = z.object({
   slug: z.string().min(1),
 });
 
-// Create schema
 export const createClientSchema = z.object({
   orgId: z.uuid("Invalid organization ID"),
   name: z
@@ -34,7 +31,6 @@ export const createClientSchema = z.object({
   metadata: z.record(z.string(), z.any()).optional(),
 });
 
-// Update schema
 export const updateClientSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   slug: z
@@ -52,7 +48,6 @@ export const updateClientSchema = z.object({
   metadata: z.record(z.string(), z.any()).optional(),
 });
 
-// Query schema with pagination
 export const clientQuerySchema = z
   .object({
     orgId: z.uuid().optional(),
@@ -60,7 +55,6 @@ export const clientQuerySchema = z
   })
   .extend(paginationSchema.shape);
 
-// Type exports
 export type CreateClientInput = z.infer<typeof createClientSchema>;
 export type UpdateClientInput = z.infer<typeof updateClientSchema>;
 export type ClientQueryInput = z.infer<typeof clientQuerySchema>;

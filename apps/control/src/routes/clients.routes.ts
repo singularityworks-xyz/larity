@@ -13,7 +13,6 @@ import {
 
 export const clientsRoutes = new Elysia({ prefix: "/clients" })
   .use(requireAuth)
-  // List all clients - any authenticated user can view
   .get(
     "/",
     async ({ query, user, set }) => {
@@ -32,7 +31,6 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
     },
     { query: clientQuerySchema }
   )
-  // Get client by id - any authenticated user can view
   .get(
     "/:id",
     async ({ params, set }) => {
@@ -45,7 +43,6 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
     },
     { params: clientIdSchema }
   )
-  // Create client - requires OWNER or ADMIN role
   .use(requireOwnerOrAdmin)
   .post(
     "/",
@@ -81,7 +78,6 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
     },
     { body: createClientSchema.omit({ orgId: true }) }
   )
-  // Update client - requires OWNER or ADMIN role
   .patch(
     "/:id",
     async ({ params, body, set }) => {
@@ -106,7 +102,6 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
     },
     { params: clientIdSchema, body: updateClientSchema }
   )
-  // Delete client - requires OWNER or ADMIN role
   .delete(
     "/:id",
     async ({ params, set }) => {
@@ -165,7 +160,6 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
       body: createClientMemberSchema.omit({ clientId: true }),
     }
   )
-  // Update member/contact - requires OWNER or ADMIN role
   .patch(
     "/members/:id",
     async ({ params, body, set }) => {

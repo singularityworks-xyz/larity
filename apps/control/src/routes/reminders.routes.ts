@@ -9,7 +9,6 @@ import {
 } from "../validators";
 
 export const remindersRoutes = new Elysia({ prefix: "/reminders" })
-  // List all reminders
   .get(
     "/",
     async ({ query }) => {
@@ -34,7 +33,6 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
         .optional(),
     }
   )
-  // Get reminder by id
   .get(
     "/:id",
     async ({ params, set }) => {
@@ -47,7 +45,6 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
     },
     { params: reminderIdSchema }
   )
-  // Create reminder
   .post(
     "/",
     async ({ body, set }) => {
@@ -68,7 +65,6 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
     },
     { body: createReminderSchema }
   )
-  // Update reminder
   .patch(
     "/:id",
     async ({ params, body, set }) => {
@@ -86,7 +82,6 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
     },
     { params: reminderIdSchema, body: updateReminderSchema }
   )
-  // Delete reminder
   .delete(
     "/:id",
     async ({ params, set }) => {
@@ -104,7 +99,6 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
     },
     { params: reminderIdSchema }
   )
-  // Trigger reminder
   .post(
     "/:id/trigger",
     async ({ params, set }) => {
@@ -122,7 +116,6 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
     },
     { params: reminderIdSchema }
   )
-  // Dismiss reminder
   .post(
     "/:id/dismiss",
     async ({ params, set }) => {
@@ -140,7 +133,6 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
     },
     { params: reminderIdSchema }
   )
-  // Snooze reminder
   .post(
     "/:id/snooze",
     async ({ params, body, set }) => {

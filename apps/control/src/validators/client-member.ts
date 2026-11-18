@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Enums - Updated to reflect client contacts (not users)
 export const ClientMemberRole = z.enum([
   "PRIMARY_CONTACT",
   "CONTACT",
@@ -9,12 +8,10 @@ export const ClientMemberRole = z.enum([
 ]);
 export type ClientMemberRole = z.infer<typeof ClientMemberRole>;
 
-// ID schemas
 export const clientMemberIdSchema = z.object({
   id: z.uuid("Invalid client member ID"),
 });
 
-// Create schema
 export const createClientMemberSchema = z.object({
   clientId: z.uuid("Invalid client ID"),
   name: z
@@ -31,7 +28,6 @@ export const createClientMemberSchema = z.object({
   role: ClientMemberRole.default("CONTACT"),
 });
 
-// Update schema
 export const updateClientMemberSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   email: z.email().max(255).optional(),
@@ -44,7 +40,6 @@ export const updateClientMemberSchema = z.object({
   role: ClientMemberRole.optional(),
 });
 
-// Query schema
 export const clientMemberQuerySchema = z
   .object({
     clientId: z.string().uuid().optional(),
@@ -52,6 +47,5 @@ export const clientMemberQuerySchema = z
   })
   .optional();
 
-// Type exports
 export type CreateClientMemberInput = z.infer<typeof createClientMemberSchema>;
 export type UpdateClientMemberInput = z.infer<typeof updateClientMemberSchema>;

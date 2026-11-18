@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Enums
 export const ImportantPointCategory = z.enum([
   "COMMITMENT",
   "CONSTRAINT",
@@ -11,12 +10,10 @@ export const ImportantPointCategory = z.enum([
 ]);
 export type ImportantPointCategory = z.infer<typeof ImportantPointCategory>;
 
-// ID schemas
 export const importantPointIdSchema = z.object({
   id: z.string().uuid("Invalid important point ID"),
 });
 
-// Create schema
 export const createImportantPointSchema = z.object({
   clientId: z.uuid("Invalid client ID"),
   content: z.string().min(1, "Content is required").max(5000),
@@ -26,7 +23,6 @@ export const createImportantPointSchema = z.object({
   transcriptEvidence: z.string().max(10_000).optional(),
 });
 
-// Query schema
 export const importantPointQuerySchema = z
   .object({
     clientId: z.uuid().optional(),
@@ -36,7 +32,6 @@ export const importantPointQuerySchema = z
   })
   .optional();
 
-// Type exports
 export type CreateImportantPointInput = z.infer<
   typeof createImportantPointSchema
 >;

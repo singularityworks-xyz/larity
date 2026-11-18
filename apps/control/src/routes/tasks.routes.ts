@@ -9,7 +9,6 @@ import {
 } from "../validators";
 
 export const tasksRoutes = new Elysia({ prefix: "/tasks" })
-  // List all tasks (with optional filters)
   .get(
     "/",
     async ({ query }) => {
@@ -20,7 +19,6 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
     },
     { query: taskQuerySchema }
   )
-  // Get task by id
   .get(
     "/:id",
     async ({ params, set }) => {
@@ -33,7 +31,6 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
     },
     { params: taskIdSchema }
   )
-  // Create task
   .post(
     "/",
     async ({ body, set }) => {
@@ -55,7 +52,6 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
     },
     { body: createTaskSchema }
   )
-  // Update task
   .patch(
     "/:id",
     async ({ params, body, set }) => {
@@ -80,7 +76,6 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
     },
     { params: taskIdSchema, body: updateTaskSchema }
   )
-  // Delete task
   .delete(
     "/:id",
     async ({ params, set }) => {
@@ -98,7 +93,6 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
     },
     { params: taskIdSchema }
   )
-  // Mark task as complete
   .post(
     "/:id/complete",
     async ({ params, set }) => {
@@ -116,7 +110,6 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
     },
     { params: taskIdSchema }
   )
-  // Reopen task
   .post(
     "/:id/reopen",
     async ({ params, set }) => {
@@ -134,7 +127,6 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
     },
     { params: taskIdSchema }
   )
-  // Mark task as in progress
   .post(
     "/:id/start",
     async ({ params, set }) => {
@@ -152,7 +144,6 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
     },
     { params: taskIdSchema }
   )
-  // Mark task as blocked
   .post(
     "/:id/block",
     async ({ params, set }) => {

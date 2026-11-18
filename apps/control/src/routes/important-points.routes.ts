@@ -7,7 +7,6 @@ import {
 } from "../validators";
 
 export const importantPointsRoutes = new Elysia({ prefix: "/important-points" })
-  // List all important points
   .get(
     "/",
     async ({ query }) => {
@@ -29,7 +28,6 @@ export const importantPointsRoutes = new Elysia({ prefix: "/important-points" })
     },
     { params: importantPointIdSchema }
   )
-  // Create important point
   .post(
     "/",
     async ({ body, set }) => {
@@ -50,7 +48,6 @@ export const importantPointsRoutes = new Elysia({ prefix: "/important-points" })
     },
     { body: createImportantPointSchema }
   )
-  // Delete important point (no update - immutable by design)
   .delete(
     "/:id",
     async ({ params, set }) => {

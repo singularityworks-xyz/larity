@@ -8,7 +8,6 @@ import {
 } from "../validators";
 
 export const usersRoutes = new Elysia({ prefix: "/users" })
-  // List all users (with optional filters)
   .get(
     "/",
     async ({ query }) => {
@@ -17,7 +16,6 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
     },
     { query: userQuerySchema }
   )
-  // Get user by id
   .get(
     "/:id",
     async ({ params, set }) => {
@@ -44,7 +42,6 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
     },
     { params: userIdSchema }
   )
-  // Create user
   .post(
     "/",
     async ({ body, set }) => {
@@ -66,7 +63,6 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
     },
     { body: createUserSchema }
   )
-  // Update user
   .patch(
     "/:id",
     async ({ params, body, set }) => {
@@ -88,7 +84,6 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
     },
     { params: userIdSchema, body: updateUserSchema }
   )
-  // Delete user
   .delete(
     "/:id",
     async ({ params, set }) => {

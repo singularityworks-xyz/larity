@@ -221,23 +221,6 @@ export const desktopShellClass = "mx-auto grid w-full gap-4 pb-8";
 
 export const formPanelClass = cx(panelClass, "w-full max-w-[640px]");
 
-export const dashboardGridClass =
-  "grid gap-3 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]";
-
-export const choiceCardClass =
-  "cursor-pointer rounded-[var(--radius-0)] border border-border bg-bg-elevated p-4 transition-colors duration-150 hover:border-border-strong hover:bg-bg-subtle";
-
-export const cardTitleClass = "mt-0 mb-1 text-[13px] font-semibold text-fg";
-
-export const cardTextClass =
-  "m-0 text-xs font-medium leading-normal text-fg-muted";
-
-export const inviteListClass =
-  "mt-2 grid list-none gap-0 border border-border-subtle p-0";
-
-export const inviteRowClass =
-  "flex items-start justify-between gap-3 border-border-subtle border-b px-3 py-2.5 last:border-b-0";
-
 export const tabsPanelClass = cx(panelClass, "grid gap-3");
 
 export const tabsRowClass = "flex gap-0 border-border border-b";

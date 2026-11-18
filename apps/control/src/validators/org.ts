@@ -1,11 +1,9 @@
 import { z } from "zod";
 
-// ID schemas
 export const orgIdSchema = z.object({
   id: z.uuid("Invalid organization ID"),
 });
 
-// Create schema
 export const createOrgSchema = z.object({
   name: z
     .string()
@@ -22,7 +20,6 @@ export const createOrgSchema = z.object({
   settings: z.record(z.string(), z.any()).optional(),
 });
 
-// Update schema
 export const updateOrgSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   slug: z
@@ -37,7 +34,6 @@ export const updateOrgSchema = z.object({
   settings: z.record(z.string(), z.any()).optional(),
 });
 
-// Query schema
 export const orgQuerySchema = z
   .object({
     slug: z.string().optional(),
@@ -65,7 +61,6 @@ export const joinOrgSchema = z.object({
     .max(64, "Invite code is invalid"),
 });
 
-// Type exports
 export type CreateOrgInput = z.infer<typeof createOrgSchema>;
 export type UpdateOrgInput = z.infer<typeof updateOrgSchema>;
 export type CreateOrgInviteInput = z.infer<typeof createOrgInviteSchema>;

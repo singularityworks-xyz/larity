@@ -9,7 +9,6 @@ import {
 } from "../validators";
 
 export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
-  // List all open questions
   .get(
     "/",
     async ({ query }) => {
@@ -31,7 +30,6 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
     },
     { params: openQuestionIdSchema }
   )
-  // Create open question
   .post(
     "/",
     async ({ body, set }) => {
@@ -52,7 +50,6 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
     },
     { body: createOpenQuestionSchema }
   )
-  // Update open question
   .patch(
     "/:id",
     async ({ params, body, set }) => {
@@ -70,7 +67,6 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
     },
     { params: openQuestionIdSchema, body: updateOpenQuestionSchema }
   )
-  // Delete open question
   .delete(
     "/:id",
     async ({ params, set }) => {
@@ -130,7 +126,6 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
     },
     { params: openQuestionIdSchema }
   )
-  // Reopen question
   .post(
     "/:id/reopen",
     async ({ params, set }) => {

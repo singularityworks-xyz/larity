@@ -505,7 +505,7 @@ function StepVoice({ onComplete }: { onComplete: () => void }) {
             onClick={handleComplete}
             type="button"
           >
-            Go to dashboard
+            Go to home
             <ArrowRight size={14} />
           </button>
         ) : (
@@ -537,7 +537,7 @@ function progressDotClass(i: number, step: number): string {
 function renderStepContent(
   step: number,
   onSetStep: (step: number) => void,
-  onNavigateToDashboard: () => void
+  onNavigateToHome: () => void
 ) {
   if (step === 0) {
     return <StepPermissions onComplete={() => onSetStep(1)} />;
@@ -545,7 +545,7 @@ function renderStepContent(
   if (step === 1) {
     return <StepCalendar onSkip={() => onSetStep(2)} />;
   }
-  return <StepVoice onComplete={onNavigateToDashboard} />;
+  return <StepVoice onComplete={onNavigateToHome} />;
 }
 
 export function OnboardingPage() {
@@ -555,7 +555,7 @@ export function OnboardingPage() {
 
   useEffect(() => {
     if (session.user?.orgId) {
-      navigate("/dashboard", { replace: true });
+      navigate("/home", { replace: true });
     }
   }, [session.user?.orgId, navigate]);
 
@@ -574,7 +574,7 @@ export function OnboardingPage() {
             </div>
           </div>
 
-          {renderStepContent(step, setStep, () => navigate("/dashboard"))}
+          {renderStepContent(step, setStep, () => navigate("/home"))}
         </div>
       </div>
     </>

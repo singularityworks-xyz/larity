@@ -42,7 +42,6 @@ export async function deduplicateItems<T extends DeduplicatableItem>(
     return items;
   }
 
-  // Generate embeddings for all items
   const itemsWithEmbeddings = await Promise.all(
     items.map(async (item) => {
       try {

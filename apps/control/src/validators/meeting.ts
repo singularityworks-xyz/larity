@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { paginationSchema } from "../lib/pagination";
 
-// Enums
 export const MeetingStatus = z.enum([
   "SCHEDULED",
   "LIVE",
@@ -10,12 +9,10 @@ export const MeetingStatus = z.enum([
 ]);
 export type MeetingStatus = z.infer<typeof MeetingStatus>;
 
-// ID schemas
 export const meetingIdSchema = z.object({
   id: z.uuid("Invalid meeting ID"),
 });
 
-// Create schema - now client-scoped instead of org-scoped
 export const createMeetingSchema = z.object({
   clientId: z.uuid("Invalid client ID"),
   title: z
@@ -29,7 +26,6 @@ export const createMeetingSchema = z.object({
   calendarEventId: z.string().max(255).optional(),
 });
 
-// Update schema
 export const updateMeetingSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().max(2000).optional().nullable(),
@@ -42,7 +38,6 @@ export const updateMeetingSchema = z.object({
   summary: z.string().max(10_000).optional().nullable(),
 });
 
-// Query schema - now client-scoped with pagination
 export const meetingQuerySchema = z
   .object({
     clientId: z.uuid().optional(),
@@ -112,7 +107,6 @@ export const meetingExtractionSchema = z.object({
   summary: z.string().max(10_000).optional(),
 });
 
-// Type exports
 export type CreateMeetingInput = z.infer<typeof createMeetingSchema>;
 export type UpdateMeetingInput = z.infer<typeof updateMeetingSchema>;
 export type MeetingExtractionInput = z.infer<typeof meetingExtractionSchema>;

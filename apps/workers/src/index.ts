@@ -21,11 +21,11 @@ export async function startWorkersApp(): Promise<void> {
   }
   rootLogger.info("Redis connected");
 
-  // Instantiate and register stub workers
   const { TranscribeWorker } = await import("./transcribe.worker");
   const { SummaryWorker } = await import("./summary.worker");
   const { AudioCleanupWorker } = await import("./audio-cleanup.worker");
   const { ClientPersonaWorker } = await import("./client-persona.worker");
+  const { PreMeetingBriefWorker } = await import("./pre-meeting-brief.worker");
 
   // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
   registerWorker(new TranscribeWorker() as any);
@@ -35,6 +35,8 @@ export async function startWorkersApp(): Promise<void> {
   registerWorker(new AudioCleanupWorker() as any);
   // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
   registerWorker(new ClientPersonaWorker() as any);
+  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
+  registerWorker(new PreMeetingBriefWorker() as any);
 
   const app = new Elysia()
     .get("/health", async () => {

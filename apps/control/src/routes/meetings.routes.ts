@@ -27,7 +27,6 @@ import {
 
 export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   .use(requireAuth)
-  // List all meetings (with optional filters)
   .get(
     "/",
     async ({ query }) => {
@@ -38,7 +37,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { query: meetingQuerySchema }
   )
-  // Get meeting by id (includes tasks and decisions)
   .get(
     "/:id",
     async ({ params, set }) => {
@@ -81,7 +79,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema }
   )
-  // Create meeting
   .post(
     "/",
     async ({ body, set }) => {
@@ -99,7 +96,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { body: createMeetingSchema }
   )
-  // Update meeting
   .patch(
     "/:id",
     async ({ params, body, set }) => {
@@ -117,7 +113,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema, body: updateMeetingSchema }
   )
-  // Delete meeting
   .delete(
     "/:id",
     async ({ params, set }) => {
@@ -135,7 +130,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema }
   )
-  // Start meeting (transition to LIVE)
   .post(
     "/:id/start",
     async ({ params, set }) => {
@@ -153,7 +147,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema }
   )
-  // End meeting (transition to ENDED)
   .post(
     "/:id/end",
     async ({ params, set }) => {
@@ -171,7 +164,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema }
   )
-  // Cancel meeting
   .post(
     "/:id/cancel",
     async ({ params, set }) => {
@@ -247,7 +239,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
       body: createMeetingParticipantBaseSchema.omit({ meetingId: true }),
     }
   )
-  // Update participant
   .patch(
     "/participants/:id",
     async ({ params, body, set }) => {
@@ -268,7 +259,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingParticipantIdSchema, body: updateMeetingParticipantSchema }
   )
-  // Mark participant as attended
   .post(
     "/participants/:id/attended",
     async ({ params, set }) => {
@@ -320,7 +310,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema }
   )
-  // Create transcript for meeting
   .post(
     "/:id/transcript",
     async ({ params, body, set }) => {
@@ -352,7 +341,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
       body: createTranscriptSchema.omit({ meetingId: true }),
     }
   )
-  // Update transcript
   .patch(
     "/:id/transcript",
     async ({ params, body, set }) => {
@@ -375,7 +363,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema, body: updateTranscriptSchema }
   )
-  // Delete transcript
   .delete(
     "/:id/transcript",
     async ({ params, set }) => {
@@ -411,7 +398,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema }
   )
-  // Trigger reprocessing of meeting insights
   .post(
     "/:id/reprocess",
     async ({ params, set }) => {

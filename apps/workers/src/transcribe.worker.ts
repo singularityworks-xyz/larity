@@ -346,13 +346,10 @@ export class TranscribeWorker extends BaseWorker<
         })
       );
 
-      // 6. Persist refined transcript in Postgres
       await this.saveTranscriptToPostgres(meetingId, mergedUtterances);
 
-      // 7. Update status to done
       await setJobStatus(sessionId, "transcribe", "done");
 
-      // 8. Chain summary extraction job
       this.log.info({ meetingId }, "Chaining summary extraction job");
       await summaryQueue.add("meeting.summary", {
         sessionId,
@@ -381,7 +378,6 @@ export class TranscribeWorker extends BaseWorker<
         }
       }
 
-      // 9. Schedule a delayed audio cleanup job (TTL of 3 hours)
       this.log.info({ sessionId }, "Scheduling audio cleanup job (3-hour TTL)");
       await audioCleanupQueue.add(
         "meeting.cleanupAudio",

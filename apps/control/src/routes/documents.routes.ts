@@ -9,7 +9,6 @@ import {
 } from "../validators";
 
 export const documentsRoutes = new Elysia({ prefix: "/documents" })
-  // List all documents
   .get(
     "/",
     async ({ query }) => {
@@ -20,7 +19,6 @@ export const documentsRoutes = new Elysia({ prefix: "/documents" })
     },
     { query: documentQuerySchema }
   )
-  // Get document by id
   .get(
     "/:id",
     async ({ params, set }) => {
@@ -33,7 +31,6 @@ export const documentsRoutes = new Elysia({ prefix: "/documents" })
     },
     { params: documentIdSchema }
   )
-  // Create document
   .post(
     "/",
     async ({ body, set }) => {
@@ -54,7 +51,6 @@ export const documentsRoutes = new Elysia({ prefix: "/documents" })
     },
     { body: createDocumentSchema }
   )
-  // Update document
   .patch(
     "/:id",
     async ({ params, body, set }) => {
@@ -72,7 +68,6 @@ export const documentsRoutes = new Elysia({ prefix: "/documents" })
     },
     { params: documentIdSchema, body: updateDocumentSchema }
   )
-  // Delete document
   .delete(
     "/:id",
     async ({ params, set }) => {
@@ -90,7 +85,6 @@ export const documentsRoutes = new Elysia({ prefix: "/documents" })
     },
     { params: documentIdSchema }
   )
-  // Archive document
   .post(
     "/:id/archive",
     async ({ params, set }) => {

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { paginationSchema } from "../lib/pagination";
 
-// Enums
 export const TaskStatus = z.enum([
   "OPEN",
   "IN_PROGRESS",
@@ -14,12 +13,10 @@ export type TaskStatus = z.infer<typeof TaskStatus>;
 export const TaskPriority = z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]);
 export type TaskPriority = z.infer<typeof TaskPriority>;
 
-// ID schemas
 export const taskIdSchema = z.object({
   id: z.uuid("Invalid task ID"),
 });
 
-// Create schema - now client-scoped instead of org-scoped
 export const createTaskSchema = z.object({
   clientId: z.uuid("Invalid client ID"),
   title: z
@@ -37,7 +34,6 @@ export const createTaskSchema = z.object({
   externalRef: z.string().max(255).optional(),
 });
 
-// Update schema
 export const updateTaskSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   description: z.string().max(5000).optional().nullable(),
@@ -50,7 +46,6 @@ export const updateTaskSchema = z.object({
   externalRef: z.string().max(255).optional().nullable(),
 });
 
-// Query schema - now client-scoped with pagination
 export const taskQuerySchema = z
   .object({
     clientId: z.uuid().optional(),
@@ -65,7 +60,6 @@ export const taskQuerySchema = z
   .extend(paginationSchema.shape)
   .optional();
 
-// Type exports
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 export type TaskQueryInput = z.infer<typeof taskQuerySchema>;

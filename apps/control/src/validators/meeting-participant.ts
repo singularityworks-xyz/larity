@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Enums
 export const MeetingParticipantRole = z.enum([
   "HOST",
   "PARTICIPANT",
@@ -14,7 +13,6 @@ const betterAuthId = z
   .length(32, "Invalid user ID")
   .regex(/^[a-zA-Z0-9]+$/, "Invalid user ID");
 
-// ID schemas
 export const meetingParticipantIdSchema = z.object({
   id: z.uuid("Invalid meeting participant ID"),
 });
@@ -23,7 +21,6 @@ export const meetingParticipantParamsSchema = z.object({
   meetingId: z.uuid("Invalid meeting ID"),
 });
 
-// Base create schema (without refinement) - used for .omit() operations
 export const createMeetingParticipantBaseSchema = z.object({
   meetingId: z.uuid("Invalid meeting ID"),
   userId: betterAuthId.optional(),
@@ -32,7 +29,6 @@ export const createMeetingParticipantBaseSchema = z.object({
   role: MeetingParticipantRole.default("PARTICIPANT"),
 });
 
-// Create schema - either internal user OR external participant (with refinement)
 export const createMeetingParticipantSchema =
   createMeetingParticipantBaseSchema.refine(
     (data) => data.userId || (data.externalName && data.externalEmail),
@@ -42,13 +38,11 @@ export const createMeetingParticipantSchema =
     }
   );
 
-// Update schema
 export const updateMeetingParticipantSchema = z.object({
   role: MeetingParticipantRole.optional(),
   attendedAt: z.coerce.date().optional(),
 });
 
-// Query schema
 export const meetingParticipantQuerySchema = z
   .object({
     meetingId: z.uuid().optional(),
@@ -57,7 +51,6 @@ export const meetingParticipantQuerySchema = z
   })
   .optional();
 
-// Type exports
 export type CreateMeetingParticipantInput = z.infer<
   typeof createMeetingParticipantSchema
 >;

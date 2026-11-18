@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { paginationSchema } from "../lib/pagination";
 
-// Enums
 export const DocumentType = z.enum([
   "NOTE",
   "CONTRACT",
@@ -16,12 +15,10 @@ export type DocumentType = z.infer<typeof DocumentType>;
 export const DocumentStatus = z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]);
 export type DocumentStatus = z.infer<typeof DocumentStatus>;
 
-// ID schemas
 export const documentIdSchema = z.object({
   id: z.uuid("Invalid document ID"),
 });
 
-// Create schema
 export const createDocumentSchema = z.object({
   clientId: z.uuid("Invalid client ID"),
   createdById: z.uuid("Invalid user ID").optional(),
@@ -33,7 +30,6 @@ export const createDocumentSchema = z.object({
   fileUrl: z.url().optional(),
 });
 
-// Update schema
 export const updateDocumentSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   content: z.string().min(1).optional(),
@@ -44,7 +40,6 @@ export const updateDocumentSchema = z.object({
   fileUrl: z.url().optional().nullable(),
 });
 
-// Query schema with pagination
 export const documentQuerySchema = z
   .object({
     clientId: z.uuid().optional(),
@@ -56,7 +51,6 @@ export const documentQuerySchema = z
   .extend(paginationSchema.shape)
   .optional();
 
-// Type exports
 export type CreateDocumentInput = z.infer<typeof createDocumentSchema>;
 export type UpdateDocumentInput = z.infer<typeof updateDocumentSchema>;
 export type DocumentQueryInput = z.infer<typeof documentQuerySchema>;

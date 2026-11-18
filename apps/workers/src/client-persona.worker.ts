@@ -52,7 +52,6 @@ export class ClientPersonaWorker extends BaseWorker<
       return { success: false };
     }
 
-    // Get the transcript
     const transcript = await prisma.transcript.findUnique({
       where: { meetingId },
     });

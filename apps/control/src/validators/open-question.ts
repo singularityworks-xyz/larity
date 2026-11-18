@@ -1,16 +1,13 @@
 import { z } from "zod";
 import { paginationSchema } from "../lib/pagination";
 
-// Enums
 export const OpenQuestionStatus = z.enum(["OPEN", "RESOLVED", "DEFERRED"]);
 export type OpenQuestionStatus = z.infer<typeof OpenQuestionStatus>;
 
-// ID schemas
 export const openQuestionIdSchema = z.object({
   id: z.uuid("Invalid open question ID"),
 });
 
-// Create schema
 export const createOpenQuestionSchema = z.object({
   clientId: z.uuid("Invalid client ID"),
   question: z.string().min(1, "Question is required").max(2000),
@@ -20,7 +17,6 @@ export const createOpenQuestionSchema = z.object({
   dueAt: z.coerce.date().optional(),
 });
 
-// Update schema
 export const updateOpenQuestionSchema = z.object({
   question: z.string().min(1).max(2000).optional(),
   assigneeId: z.uuid().optional().nullable(),
@@ -31,7 +27,6 @@ export const updateOpenQuestionSchema = z.object({
   resolvedAt: z.coerce.date().optional().nullable(),
 });
 
-// Query schema with pagination
 export const openQuestionQuerySchema = z
   .object({
     clientId: z.uuid().optional(),
@@ -42,7 +37,6 @@ export const openQuestionQuerySchema = z
   .extend(paginationSchema.shape)
   .optional();
 
-// Type exports
 export type CreateOpenQuestionInput = z.infer<typeof createOpenQuestionSchema>;
 export type UpdateOpenQuestionInput = z.infer<typeof updateOpenQuestionSchema>;
 export type OpenQuestionQueryInput = z.infer<typeof openQuestionQuerySchema>;

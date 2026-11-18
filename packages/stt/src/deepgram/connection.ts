@@ -1,11 +1,3 @@
-/**
- * deepgram/connection.ts — Deepgram Live Connection
- *
- * Manages a live transcription connection for a single session.
- * Uses lazy connection - only connects when first audio arrives.
- * Handles transcript events and publishes to Redis.
- */
-
 import { publishSystemEvent, redis } from "@larity/db/redis";
 import {
   DEEPGRAM_DIARIZE_MIC,
@@ -55,9 +47,6 @@ export function shouldSendKeepAlive(
 
 const log = createSttLogger("dg-connection");
 
-/**
- * Sleep utility for reconnection delays
- */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -79,16 +68,6 @@ function summarizeDiarizedSpeakers(words: DeepgramWord[] | undefined): string {
   return [...seen].sort((a, b) => a - b).join(",");
 }
 
-/**
- * DeepgramConnection manages a live transcription session.
- *
- * Responsibilities:
- * - Open/close Deepgram WebSocket connection (lazy on first audio)
- * - Send mono linear16 PCM buffers (tag/strip handled upstream in dual-channel session)
- * - Handle transcript events → publish to Redis
- * - Implement exponential backoff reconnection
- * - Stamp logical channel (mic vs sys) on published SttResult
- */
 export class DeepgramConnection {
   private connection: LiveConnection | null = null;
   private readonly sessionId: string;
@@ -200,9 +179,6 @@ export class DeepgramConnection {
     });
   }
 
-  /**
-   * Connect to Deepgram (called lazily on first audio)
-   */
   private async connect(): Promise<void> {
     if (this.isClosed || this.isConnecting || this.isConnected) {
       return;
@@ -378,9 +354,6 @@ export class DeepgramConnection {
     });
   }
 
-  /**
-   * Set the perfect server-side timestamp for the start of the audio stream
-   */
   setAudioStreamStart(serverAudioStartTs: number): void {
     log.info(
       `Anchor TS set for ${this.sessionId}: ${serverAudioStartTs} (previously: ${this.streamStartServerTs})`

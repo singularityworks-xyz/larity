@@ -39,17 +39,12 @@ export class SessionManager {
       ((sessionId: string) => createDualChannelSession(sessionId));
   }
 
-  /**
-   * Create a new Deepgram connection for a session
-   */
   createSession(sessionId: string): boolean {
-    // Check if session already exists
     if (this.connections.has(sessionId)) {
       log.info(`Session ${sessionId} already exists`);
       return true;
     }
 
-    // Enforce connection limit
     if (this.connections.size >= MAX_CONNECTIONS) {
       log.error(
         `Max connections (${MAX_CONNECTIONS}) reached, rejecting ${sessionId}`
@@ -89,9 +84,6 @@ export class SessionManager {
     }
   }
 
-  /**
-   * Close and remove a session
-   */
   closeSession(sessionId: string): void {
     const connection = this.connections.get(sessionId);
     if (!connection) {
@@ -133,23 +125,14 @@ export class SessionManager {
     }
   }
 
-  /**
-   * Check if a session exists
-   */
   hasSession(sessionId: string): boolean {
     return this.connections.has(sessionId);
   }
 
-  /**
-   * Get current session count
-   */
   get sessionCount(): number {
     return this.connections.size;
   }
 
-  /**
-   * Close all sessions (for graceful shutdown)
-   */
   closeAll(): void {
     log.info(`Closing all ${this.connections.size} sessions...`);
 

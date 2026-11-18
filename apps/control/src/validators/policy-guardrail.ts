@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Enums
 export const GuardrailRuleType = z.enum([
   "NDA",
   "LEGAL",
@@ -20,12 +19,10 @@ export const GuardrailSourceType = z.enum([
 ]);
 export type GuardrailSourceType = z.infer<typeof GuardrailSourceType>;
 
-// ID schemas
 export const policyGuardrailIdSchema = z.object({
   id: z.uuid("Invalid policy guardrail ID"),
 });
 
-// Create schema
 export const createPolicyGuardrailSchema = z.object({
   orgId: z.uuid("Invalid organization ID"),
   clientId: z.uuid("Invalid client ID").optional(),
@@ -40,7 +37,6 @@ export const createPolicyGuardrailSchema = z.object({
   sourceId: z.uuid().optional(),
 });
 
-// Update schema
 export const updatePolicyGuardrailSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().min(1).max(2000).optional(),
@@ -53,7 +49,6 @@ export const updatePolicyGuardrailSchema = z.object({
   sourceId: z.uuid().optional().nullable(),
 });
 
-// Query schema
 export const policyGuardrailQuerySchema = z
   .object({
     orgId: z.uuid().optional(),
@@ -64,7 +59,6 @@ export const policyGuardrailQuerySchema = z
   })
   .optional();
 
-// Type exports
 export type CreatePolicyGuardrailInput = z.infer<
   typeof createPolicyGuardrailSchema
 >;

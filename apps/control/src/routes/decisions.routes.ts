@@ -10,7 +10,6 @@ import {
 } from "../validators";
 
 export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
-  // List all decisions (latest versions only, with optional filters)
   .get(
     "/",
     async ({ query }) => {
@@ -19,7 +18,6 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
     },
     { query: decisionQuerySchema }
   )
-  // Get decision by id (specific record)
   .get(
     "/:id",
     async ({ params, set }) => {
@@ -83,7 +81,6 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
       }),
     }
   )
-  // Create new decision (version 1)
   .post(
     "/",
     async ({ body, set }) => {
@@ -104,7 +101,6 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
     },
     { body: createDecisionSchema }
   )
-  // Create new revision of an existing decision
   .post(
     "/ref/:decisionRef/revise",
     async ({ params, body, set }) => {
@@ -146,7 +142,6 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
     },
     { params: decisionRefSchema }
   )
-  // Delete all versions of a decision
   .delete(
     "/ref/:decisionRef",
     async ({ params, set }) => {
@@ -159,7 +154,6 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
     },
     { params: decisionRefSchema }
   )
-  // Delete specific decision record by id
   .delete(
     "/:id",
     async ({ params, set }) => {

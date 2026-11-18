@@ -150,7 +150,6 @@ export async function generateMeetingAnalysis(
       text: u.text.toLowerCase(),
     }));
 
-    // Helper to find timestamp of an item from its evidence
     const findTimestamp = (evidence: string | undefined): number | null => {
       if (!evidence) {
         return null;
@@ -173,7 +172,6 @@ export async function generateMeetingAnalysis(
 
     const fmtTs = (ts: number | null) => (ts === null ? "" : ` (at ${ts}s)`);
 
-    // Format decisions with timestamps
     const decisionsFormatted = input.decisions
       .map((d) => {
         const ts = findTimestamp(d.evidence);
@@ -181,7 +179,6 @@ export async function generateMeetingAnalysis(
       })
       .join("\n");
 
-    // Format tasks
     const tasksFormatted = input.tasks
       .map(
         (t) =>
@@ -189,7 +186,6 @@ export async function generateMeetingAnalysis(
       )
       .join("\n");
 
-    // Format open questions
     const openQuestionsFormatted = input.openQuestions
       .map(
         (q) =>
@@ -197,7 +193,6 @@ export async function generateMeetingAnalysis(
       )
       .join("\n");
 
-    // Format important points by category
     const pointsByCategory: Record<string, string[]> = {};
     for (const p of input.importantPoints) {
       if (!pointsByCategory[p.category]) {
@@ -212,7 +207,6 @@ export async function generateMeetingAnalysis(
       .map(([cat, list]) => `### Category: ${cat}\n${list.join("\n")}`)
       .join("\n\n");
 
-    // Format talk time stats
     const talkTimeFormatted = Object.entries(input.talkTimeStats)
       .map(
         ([speaker, stat]) =>
