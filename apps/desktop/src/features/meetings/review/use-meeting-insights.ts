@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../../lib/api";
+import { api } from "../../../lib/api";
 import type { MeetingInsights } from "./types";
 
 export function useMeetingInsights(meetingId: string) {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { cx } from "../../lib/ui";
+import { cx } from "../../../lib/ui";
 
 interface ConstraintCounterProps {
   className?: string;

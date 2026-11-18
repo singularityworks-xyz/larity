@@ -1,10 +1,10 @@
 import { Check, Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
-import { Avatar } from "../../../components/avatar";
-import { buttonClass, cx, inputClass } from "../../../lib/ui";
-import { useClientMembers } from "../../clients/use-client-members";
-import { useCreateClientMember } from "../../clients/use-create-client-member";
+import { Avatar } from "../../../../components/avatar";
+import { buttonClass, cx, inputClass } from "../../../../lib/ui";
+import { useClientMembers } from "../../../clients/use-client-members";
+import { useCreateClientMember } from "../../../clients/use-create-client-member";
 
 export function ExpectedParticipantsPicker({
   clientId,

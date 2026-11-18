@@ -1,5 +1,5 @@
 import { Crown } from "lucide-react";
-import { cx } from "../../lib/ui";
+import { cx } from "../../../lib/ui";
 import type { LiveParticipant } from "./types";
 
 const WHITESPACE_RE = /\s+/;

@@ -1,8 +1,8 @@
 import { emit, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useState } from "react";
-import { cx } from "../../lib/ui";
-import { useConfirmSpeakerMapping } from "../meetings/use-confirm-speaker-mapping";
+import { cx } from "../../../lib/ui";
+import { useConfirmSpeakerMapping } from "../use-confirm-speaker-mapping";
 import { AlertRegion } from "./alert-region";
 import { AmbientStrip } from "./ambient-strip";
 import { OverlayFooter } from "./overlay-footer";

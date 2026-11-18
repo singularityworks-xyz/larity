@@ -1,6 +1,6 @@
 import { Bell, BellOff, PhoneOff, UserCog } from "lucide-react";
 import { useEffect, useState } from "react";
-import { cx } from "../../lib/ui";
+import { cx } from "../../../lib/ui";
 
 function formatElapsed(ms: number): string {
   const totalSec = Math.floor(ms / 1000);

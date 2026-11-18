@@ -7,7 +7,7 @@ import {
   inputClass,
   labelClass,
   panelClass,
-} from "../../lib/ui";
+} from "../../../lib/ui";
 
 interface NameConfigModalProps {
   defaultName: string;

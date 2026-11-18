@@ -5,7 +5,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { cx } from "../../lib/ui";
+import { cx } from "../../../lib/ui";
 import { ParticipantAvatars } from "./participant-avatars";
 import type { LiveParticipant } from "./types";
 

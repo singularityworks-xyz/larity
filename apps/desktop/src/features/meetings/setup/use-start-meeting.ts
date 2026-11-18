@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
-import { api } from "../../lib/api";
-import type { StartSessionResponse } from "./types";
+import { api } from "../../../lib/api";
+import type { StartSessionResponse } from "../types";
 
 interface StartAdhocInput {
   agenda?: string;

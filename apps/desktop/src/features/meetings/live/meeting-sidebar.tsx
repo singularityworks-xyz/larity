@@ -1,10 +1,10 @@
 import { listen } from "@tauri-apps/api/event";
 import { ChevronDown, Crown, GitBranch, Pencil, UserCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { cx, inputClass } from "../../lib/ui";
-import { useClientMembers } from "../clients/use-client-members";
-import { useCreateClientMember } from "../clients/use-create-client-member";
-import { useConfirmSpeakerMapping } from "../meetings/use-confirm-speaker-mapping";
+import { cx, inputClass } from "../../../lib/ui";
+import { useClientMembers } from "../../clients/use-client-members";
+import { useCreateClientMember } from "../../clients/use-create-client-member";
+import { useConfirmSpeakerMapping } from "../use-confirm-speaker-mapping";
 import { IDENTIFICATION_CONFIDENCE_THRESHOLD } from "./participant-avatars";
 import type { LiveCommitment, LiveParticipant } from "./types";
 

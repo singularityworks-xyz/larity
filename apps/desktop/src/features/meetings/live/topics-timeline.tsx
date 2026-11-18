@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { cx } from "../../lib/ui";
+import { cx } from "../../../lib/ui";
 import type { LiveTopic } from "./types";
 
 function formatOffset(meetingStartMs: number, topicStartMs: number): string {

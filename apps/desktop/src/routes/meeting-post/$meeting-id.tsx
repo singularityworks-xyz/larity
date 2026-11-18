@@ -28,16 +28,16 @@ import type {
   Task,
   TaskPriority,
   TranscriptUtterance,
-} from "../../features/meeting-post/types";
-import { useMeetingInsights } from "../../features/meeting-post/use-meeting-insights";
-import { useMeetingTranscript } from "../../features/meeting-post/use-meeting-transcript";
+} from "../../features/meetings/review/types";
+import { useMeetingInsights } from "../../features/meetings/review/use-meeting-insights";
+import { useMeetingTranscript } from "../../features/meetings/review/use-meeting-transcript";
 import {
   isProcessingComplete,
   isProcessingInProgress,
   isProcessingSettled,
   useProcessingStatus,
-} from "../../features/meeting-post/use-processing-status";
-import { useReprocess } from "../../features/meeting-post/use-reprocess";
+} from "../../features/meetings/review/use-processing-status";
+import { useReprocess } from "../../features/meetings/review/use-reprocess";
 import { cx } from "../../lib/ui";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

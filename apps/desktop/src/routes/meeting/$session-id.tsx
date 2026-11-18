@@ -2,33 +2,33 @@ import { Channel, invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { AlertCard } from "../../features/alerts/alert-card";
-import { mapBackendAlertToMeetingAlert } from "../../features/alerts/mapper";
-import { useAlertQueue } from "../../features/alerts/use-alert-queue";
 import { useAuthSession } from "../../features/auth/use-session";
-import { AmbientStatusBar } from "../../features/meeting-live/ambient-status-bar";
+import { AlertCard } from "../../features/meetings/alerts/alert-card";
+import { mapBackendAlertToMeetingAlert } from "../../features/meetings/alerts/mapper";
+import { useAlertQueue } from "../../features/meetings/alerts/use-alert-queue";
+import { AmbientStatusBar } from "../../features/meetings/live/ambient-status-bar";
 import {
   isUtteranceTopicDelta,
   mapBackendCommitmentToLive,
   mapBackendTopicToLive,
   mapBackendUtteranceToLive,
   mapSpeakerToParticipant,
-} from "../../features/meeting-live/mappers";
+} from "../../features/meetings/live/mappers";
 
 const UNIDENTIFIED_SPEAKER_REGEX = /^Speaker \d+$/i;
 
-import { MeetingHeader } from "../../features/meeting-live/meeting-header";
-import { MeetingSidebar } from "../../features/meeting-live/meeting-sidebar";
-import { NameConfigModal } from "../../features/meeting-live/name-config-modal";
-import { TopicsTimeline } from "../../features/meeting-live/topics-timeline";
-import { TranscriptStream } from "../../features/meeting-live/transcript-stream";
+import { MeetingHeader } from "../../features/meetings/live/meeting-header";
+import { MeetingSidebar } from "../../features/meetings/live/meeting-sidebar";
+import { NameConfigModal } from "../../features/meetings/live/name-config-modal";
+import { TopicsTimeline } from "../../features/meetings/live/topics-timeline";
+import { TranscriptStream } from "../../features/meetings/live/transcript-stream";
 import type {
   LiveCommitment,
   LiveParticipant,
   LivePendingUtterance,
   LiveTopic,
   LiveUtterance,
-} from "../../features/meeting-live/types";
+} from "../../features/meetings/live/types";
 import { api } from "../../lib/api";
 import { WS_URL } from "../../lib/env";
 import {

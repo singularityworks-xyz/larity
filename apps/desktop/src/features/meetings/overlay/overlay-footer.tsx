@@ -1,5 +1,5 @@
 import { Bell, BellOff, Clock, Maximize2, PhoneOff } from "lucide-react";
-import { cx } from "../../lib/ui";
+import { cx } from "../../../lib/ui";
 
 interface OverlayFooterProps {
   alertsMuted: boolean;

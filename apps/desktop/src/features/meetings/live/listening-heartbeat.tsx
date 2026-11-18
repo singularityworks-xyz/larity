@@ -1,4 +1,4 @@
-import { cx } from "../../lib/ui";
+import { cx } from "../../../lib/ui";
 
 interface ListeningHeartbeatProps {
   isActive: boolean;

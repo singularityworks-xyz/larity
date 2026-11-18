@@ -2,8 +2,8 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mapBackendAlertToMeetingAlert } from "../alerts/mapper";
 import { useAlertQueue } from "../alerts/use-alert-queue";
-import { mapSpeakerToParticipant } from "../meeting-live/mappers";
-import type { LiveParticipant } from "../meeting-live/types";
+import { mapSpeakerToParticipant } from "../live/mappers";
+import type { LiveParticipant } from "../live/types";
 import type { OverlaySpeaker, OverlayTeammate } from "./types";
 
 const WHITESPACE_RE = /\s+/;

@@ -5,14 +5,14 @@ import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useClientMembers } from "../../features/clients/use-client-members";
 import { useClients } from "../../features/clients/use-clients";
-import { ExpectedParticipantsPicker } from "../../features/meetings/components/expected-participants-picker";
+import { ExpectedParticipantsPicker } from "../../features/meetings/setup/components/expected-participants-picker";
 import {
   CustomDatePicker,
   CustomTimePicker,
-} from "../../features/meetings/components/schedule-pickers";
-import { useCreateMeetingParticipant } from "../../features/meetings/use-create-meeting-participant";
-import { useScheduleMeeting } from "../../features/meetings/use-schedule-meeting";
-import { useStartMeeting } from "../../features/meetings/use-start-meeting";
+} from "../../features/meetings/setup/components/schedule-pickers";
+import { useCreateMeetingParticipant } from "../../features/meetings/setup/use-create-meeting-participant";
+import { useScheduleMeeting } from "../../features/meetings/setup/use-schedule-meeting";
+import { useStartMeeting } from "../../features/meetings/setup/use-start-meeting";
 import { cx, formErrorClass } from "../../lib/ui";
 import { AppShell } from "../shared";
 

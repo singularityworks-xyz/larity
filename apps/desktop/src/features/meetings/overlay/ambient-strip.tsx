@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { cx } from "../../lib/ui";
+import { cx } from "../../../lib/ui";
 import type { OverlaySpeaker, OverlayTeammate } from "./types";
 import { VoiceDotMatrix } from "./voice-dot-matrix";
 
