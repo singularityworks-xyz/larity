@@ -1,13 +1,18 @@
 import { checkRedisHealth, connectRedis } from "@larity/db/redis";
 import { Elysia } from "elysia";
 import { rootLogger } from "./logger";
-import type { BaseWorker } from "./runtime/worker";
+import type { WorkerHealth } from "./runtime/worker";
 
 const PORT = Number.parseInt(process.env.WORKERS_PORT ?? "8080", 10);
 
-const activeWorkers: BaseWorker[] = [];
+interface RegisteredWorker {
+  close(): Promise<void>;
+  getHealth(): Promise<WorkerHealth>;
+}
 
-export function registerWorker(worker: BaseWorker): void {
+const activeWorkers: RegisteredWorker[] = [];
+
+export function registerWorker(worker: RegisteredWorker): void {
   activeWorkers.push(worker);
 }
 
@@ -35,16 +40,11 @@ export async function startWorkersApp(): Promise<void> {
     "./jobs/pre-meeting-brief/pre-meeting-brief.worker"
   );
 
-  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
-  registerWorker(new TranscribeWorker() as any);
-  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
-  registerWorker(new SummaryWorker() as any);
-  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
-  registerWorker(new AudioCleanupWorker() as any);
-  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
-  registerWorker(new ClientPersonaWorker() as any);
-  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
-  registerWorker(new PreMeetingBriefWorker() as any);
+  registerWorker(new TranscribeWorker());
+  registerWorker(new SummaryWorker());
+  registerWorker(new AudioCleanupWorker());
+  registerWorker(new ClientPersonaWorker());
+  registerWorker(new PreMeetingBriefWorker());
 
   const app = new Elysia()
     .get("/health", async () => {
