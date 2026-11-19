@@ -1,11 +1,12 @@
 import type { PreMeetingBriefJobData } from "@larity/jobs";
+import { PRE_MEETING_BRIEF_QUEUE } from "@larity/jobs/meeting-handoffs";
 import type { Job } from "bullmq";
 import { AIBriefGeneratorService } from "meeting-mode";
 import { BaseWorker } from "../../runtime/worker";
 
 export class PreMeetingBriefWorker extends BaseWorker {
   constructor() {
-    super("meeting.preMeetingBrief");
+    super(PRE_MEETING_BRIEF_QUEUE);
   }
 
   async process(job: Job<PreMeetingBriefJobData>): Promise<void> {

@@ -2,6 +2,7 @@ import { cors } from "@elysiajs/cors";
 import { cron } from "@elysiajs/cron";
 import { Prisma } from "@larity/db/prisma";
 import { preMeetingBriefQueue } from "@larity/jobs";
+import { enqueuePreMeetingBrief } from "@larity/jobs/meeting-handoffs";
 import { Elysia } from "elysia";
 import { env } from "./env";
 import { clientsRoutes } from "./features/clients/clients.routes";
@@ -97,11 +98,7 @@ export const app = new Elysia()
 
         for (const meeting of meetings) {
           try {
-            await preMeetingBriefQueue.add(
-              "generate",
-              { meetingId: meeting.id },
-              { jobId: `pre-meeting-brief-${meeting.id}` }
-            );
+            await enqueuePreMeetingBrief(preMeetingBriefQueue, meeting.id);
           } catch (error) {
             log.error(
               { err: error, meetingId: meeting.id },

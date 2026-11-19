@@ -13,6 +13,7 @@ import {
   summaryQueue,
   type TranscribeJobData,
 } from "@larity/jobs";
+import { enqueueTranscriptionSummary } from "@larity/jobs/meeting-handoffs";
 import {
   type BatchTranscriptionResult,
   transcribeAudioBuffer,
@@ -351,7 +352,7 @@ export class TranscribeWorker extends BaseWorker<
       await setJobStatus(sessionId, "transcribe", "done");
 
       this.log.info({ meetingId }, "Chaining summary extraction job");
-      await summaryQueue.add("meeting.summary", {
+      await enqueueTranscriptionSummary(summaryQueue, {
         sessionId,
         orgId,
         meetingId,

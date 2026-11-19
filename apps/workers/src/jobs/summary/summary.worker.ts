@@ -2,6 +2,7 @@ import { prisma } from "@larity/db/client";
 import type { MeetingAnalysis } from "@larity/db/meeting-analysis.types";
 import { Prisma } from "@larity/db/prisma";
 import type { SummaryJobData } from "@larity/jobs";
+import { SUMMARY_QUEUE } from "@larity/jobs/meeting-handoffs";
 import type { Job } from "bullmq";
 import {
   cleanupMeetingStateKeys,
@@ -63,7 +64,7 @@ export class SummaryWorker extends BaseWorker<
   { success: boolean }
 > {
   constructor() {
-    super("meeting.summary");
+    super(SUMMARY_QUEUE);
   }
 
   private async generateMeetingAnalysisWrapper(
