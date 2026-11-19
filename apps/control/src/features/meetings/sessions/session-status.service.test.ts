@@ -1,32 +1,44 @@
-import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
-import { redis } from "@larity/db/redis";
+import { describe, expect, mock, test } from "bun:test";
 import { redisKeys } from "@larity/db/redis/keys";
 import { getSessionStatus, isValidSession } from "./session-status.service";
 
-afterEach(() => {
-  mock.restore();
-});
+function sessionReader(record: Record<string, string>) {
+  return {
+    hgetall: () => Promise.resolve(record),
+    sismember: mock(() => Promise.resolve(1)),
+  };
+}
 
 describe("session status and authorization", () => {
   test("rejects missing or incomplete session records", async () => {
-    spyOn(redis, "hgetall").mockResolvedValue({ sessionId: "session" });
-    expect(await getSessionStatus("session")).toBeNull();
-    expect(await isValidSession("session")).toBe(false);
+    const reader = sessionReader({ sessionId: "session" });
+    expect(await getSessionStatus("session", reader)).toBeNull();
+    expect(await isValidSession("session", undefined, undefined, reader)).toBe(
+      false
+    );
   });
 
   test("requires the host identity or participant membership", async () => {
-    spyOn(redis, "hgetall").mockResolvedValue({ userId: "host" });
-    const membership = spyOn(redis, "sismember").mockResolvedValue(1);
+    const reader = sessionReader({ userId: "host" });
+    const membership = reader.sismember;
 
-    expect(await isValidSession("session", "host", "host")).toBe(true);
-    expect(await isValidSession("session", "other", "host")).toBe(false);
-    expect(await isValidSession("session", "guest", "participant")).toBe(true);
+    expect(await isValidSession("session", "host", "host", reader)).toBe(true);
+    expect(await isValidSession("session", "other", "host", reader)).toBe(
+      false
+    );
+    expect(
+      await isValidSession("session", "guest", "participant", reader)
+    ).toBe(true);
     expect(membership).toHaveBeenCalledWith(
       redisKeys.sessionParticipants("session"),
       "guest"
     );
     membership.mockResolvedValue(0);
-    expect(await isValidSession("session", "guest", "participant")).toBe(false);
-    expect(await isValidSession("session", "host")).toBe(false);
+    expect(
+      await isValidSession("session", "guest", "participant", reader)
+    ).toBe(false);
+    expect(await isValidSession("session", "host", undefined, reader)).toBe(
+      false
+    );
   });
 });

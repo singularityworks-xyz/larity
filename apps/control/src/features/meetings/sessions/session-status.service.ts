@@ -6,10 +6,13 @@ import type {
 } from "./meeting-session.validator";
 import { SESSION_TTL } from "./session-constants";
 
+type SessionReader = Pick<typeof redis, "hgetall" | "sismember">;
+
 export async function getSessionStatus(
-  sessionId: string
+  sessionId: string,
+  reader: SessionReader = redis
 ): Promise<SessionStatusResponse | null> {
-  const data = await redis.hgetall(redisKeys.meetingSession(sessionId));
+  const data = await reader.hgetall(redisKeys.meetingSession(sessionId));
   if (!(data?.sessionId && data.meetingId && data.startedAt && data.status)) {
     return null;
   }
@@ -43,9 +46,10 @@ export async function updateSessionActivity(sessionId: string): Promise<void> {
 export async function isValidSession(
   sessionId: string,
   userId?: string,
-  role?: "host" | "participant"
+  role?: "host" | "participant",
+  reader: SessionReader = redis
 ): Promise<boolean> {
-  const sessionData = await redis.hgetall(redisKeys.meetingSession(sessionId));
+  const sessionData = await reader.hgetall(redisKeys.meetingSession(sessionId));
   if (!sessionData || Object.keys(sessionData).length === 0) {
     return false;
   }
@@ -55,7 +59,7 @@ export async function isValidSession(
     }
     if (role === "participant") {
       return (
-        (await redis.sismember(
+        (await reader.sismember(
           redisKeys.sessionParticipants(sessionId),
           userId
         )) === 1
