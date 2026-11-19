@@ -10,9 +10,13 @@ The refactor is on `refactor/feature-structure`. See the [implementation plan](f
 | M3 | The realtime, STT, and Redis gate passed 62 tests. |
 | M4 | The meeting analysis, realtime, and STT gate passed 191 tests. Both analysis modes completed the local meeting smoke scenario. |
 | M5 | Removed unreferenced code and retired debug probes. Lint passed, and both native crates passed formatting and locked Clippy checks. |
-| M6 | The clean checkout at `2b0af5b` used Bun 1.3.14 with a frozen lockfile. Prisma generation, lint, 12 uncached type checks, 229 Bun tests across 56 files, and four JS builds passed. Both native crates passed their locked checks. |
+| M6 | A clean checkout at `2ca25a6` passed frozen install, Prisma generation, lint, 12 uncached type checks, 242 Bun tests across 60 files, four JS builds, both Rust formatting and locked Clippy checks, and desktop Rust tests (22 passed; mock reported zero tests). A second full Bun run passed with Redis available. |
 
-After M6, `e6fbf28` added replacement context and development docs. The only later source change is `1b04727`, which gives the mock app a unique native bundle identifier; its Linux deb and rpm packages built successfully. The verification-record commit is documentation-only. No other source changes followed the fully tested `2b0af5b` revision.
+The first M6 clean-checkout run at `2b0af5b` used the repository-pinned Bun 1.3.14 and passed 229 tests across 56 files. Later source commits added a unique mock bundle identifier (`1b04727`), synchronized Cargo lockfiles during explicit release version bumps (`e5115e7`), added control and worker contract coverage (`136b848`), extracted desktop live event and connection lifecycle hooks (`2ca25a6`), and isolated control route tests from Bun module-mock state (`554f866`). The mock Linux deb and rpm packages built at `1b04727`.
+
+At `2ca25a6`, the clean-checkout verification used Bun 1.4.4 and passed the full 242-test suite, including with disposable Redis. At `554f866`, the repository-pinned Bun 1.3.14 full suite passed again: 242 tests across 60 files, 682 assertions. The final route-test isolation change also passed repository lint (460 files), a direct control typecheck, the control bundle build, and the commit hook's workspace typecheck. The 12-task workspace typecheck in that hook used Turbo cache; the changed control package was separately typechecked directly. The Rust sources did not change after their final checks at `2ca25a6`.
+
+The replacement context and development docs were added in `e6fbf28`; subsequent verification and acceptance-record commits are documentation-only. This final documentation update follows the verified source commit `554f866` and records the continuation checks above.
 
 ## Deletion and comment audit
 
