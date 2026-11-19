@@ -1,2 +1,2 @@
 [install]
-node-linker = "hoisted"
+linker = "hoisted"
