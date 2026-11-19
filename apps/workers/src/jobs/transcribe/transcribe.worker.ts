@@ -7,7 +7,10 @@ import {
   summaryQueue,
   type TranscribeJobData,
 } from "@larity/jobs";
-import { enqueueTranscriptionSummary } from "@larity/jobs/meeting-handoffs";
+import {
+  enqueueTranscriptionSummary,
+  TRANSCRIBE_QUEUE,
+} from "@larity/jobs/meeting-handoffs";
 import type { BatchTranscriptionResult } from "@larity/stt";
 import type { Job } from "bullmq";
 import type { Redis } from "ioredis";
@@ -124,7 +127,7 @@ export class TranscribeWorker extends BaseWorker<
   { success: boolean }
 > {
   constructor() {
-    super("meeting.transcribe");
+    super(TRANSCRIBE_QUEUE);
   }
 
   protected async process(

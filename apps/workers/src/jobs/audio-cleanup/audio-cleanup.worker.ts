@@ -4,6 +4,7 @@ import {
   getS3Config,
 } from "@larity/infra/s3";
 import type { AudioCleanupJobData } from "@larity/jobs";
+import { AUDIO_CLEANUP_QUEUE } from "@larity/jobs/meeting-handoffs";
 import type { Job } from "bullmq";
 import { BaseWorker } from "../../runtime/worker";
 
@@ -15,7 +16,7 @@ export class AudioCleanupWorker extends BaseWorker<
   private readonly bucketName = getS3Config().bucket;
 
   constructor() {
-    super("meeting.cleanupAudio");
+    super(AUDIO_CLEANUP_QUEUE);
   }
 
   protected async process(

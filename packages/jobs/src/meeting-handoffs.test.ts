@@ -1,7 +1,9 @@
 import { expect, mock, test } from "bun:test";
+import { createCommonJobOptions } from "./job-options";
 import {
   enqueuePreMeetingBrief,
   enqueueTranscriptionSummary,
+  REGISTERED_WORKER_QUEUE_NAMES,
 } from "./meeting-handoffs";
 import { PreMeetingBriefJobSchema, SummaryJobSchema } from "./schemas";
 
@@ -40,4 +42,24 @@ test("transcription forwards session scope and propagates an enqueue failure", a
   await expect(enqueueTranscriptionSummary({ add }, input)).rejects.toBe(
     failure
   );
+});
+
+test("registered worker queues have stable unique names", () => {
+  expect(REGISTERED_WORKER_QUEUE_NAMES).toEqual([
+    "meeting.transcribe",
+    "meeting.summary",
+    "meeting.cleanupAudio",
+    "client.personaExtraction",
+    "meeting.preMeetingBrief",
+  ]);
+  expect(new Set(REGISTERED_WORKER_QUEUE_NAMES).size).toBe(
+    REGISTERED_WORKER_QUEUE_NAMES.length
+  );
+});
+
+test("job retries use exponential backoff", () => {
+  expect(createCommonJobOptions(250)).toEqual({
+    attempts: 3,
+    backoff: { type: "exponential", delay: 250 },
+  });
 });

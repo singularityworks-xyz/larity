@@ -1,6 +1,7 @@
 import { Type } from "@google/genai";
 import { prisma } from "@larity/db/client";
 import type { ClientPersonaJobData } from "@larity/jobs";
+import { CLIENT_PERSONA_QUEUE } from "@larity/jobs/meeting-handoffs";
 import type { Job } from "bullmq";
 import { ai } from "../../runtime/gemini";
 import { BaseWorker } from "../../runtime/worker";
@@ -33,7 +34,7 @@ export class ClientPersonaWorker extends BaseWorker<
   { success: boolean }
 > {
   constructor() {
-    super("client.personaExtraction");
+    super(CLIENT_PERSONA_QUEUE);
   }
 
   async process(job: Job<ClientPersonaJobData>): Promise<{ success: boolean }> {

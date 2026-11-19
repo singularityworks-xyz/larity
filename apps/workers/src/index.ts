@@ -1,14 +1,12 @@
 import { checkRedisHealth, connectRedis } from "@larity/db/redis";
 import { Elysia } from "elysia";
 import { rootLogger } from "./logger";
-import type { WorkerHealth } from "./runtime/worker";
+import {
+  createRegisteredWorkers,
+  type RegisteredWorker,
+} from "./runtime/registry";
 
 const PORT = Number.parseInt(process.env.WORKERS_PORT ?? "8080", 10);
-
-interface RegisteredWorker {
-  close(): Promise<void>;
-  getHealth(): Promise<WorkerHealth>;
-}
 
 const activeWorkers: RegisteredWorker[] = [];
 
@@ -40,11 +38,15 @@ export async function startWorkersApp(): Promise<void> {
     "./jobs/pre-meeting-brief/pre-meeting-brief.worker"
   );
 
-  registerWorker(new TranscribeWorker());
-  registerWorker(new SummaryWorker());
-  registerWorker(new AudioCleanupWorker());
-  registerWorker(new ClientPersonaWorker());
-  registerWorker(new PreMeetingBriefWorker());
+  for (const worker of createRegisteredWorkers({
+    TranscribeWorker,
+    SummaryWorker,
+    AudioCleanupWorker,
+    ClientPersonaWorker,
+    PreMeetingBriefWorker,
+  })) {
+    registerWorker(worker);
+  }
 
   const app = new Elysia()
     .get("/health", async () => {
