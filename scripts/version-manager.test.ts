@@ -3,6 +3,7 @@ import {
   getModifiedFolders,
   incrementVersion,
   updateCargoToml,
+  updateCargoWorkspaceVersion,
 } from "./version-manager.ts";
 
 describe("version-manager tests", () => {
@@ -82,6 +83,52 @@ tauri = { version = "2", features = [] }
     test("should handle missing [package] gracefully", () => {
       const content = `[dependencies]\ntauri = "2"\n`;
       expect(updateCargoToml(content, "0.0.1")).toBe(content);
+    });
+  });
+
+  describe("updateCargoWorkspaceVersion", () => {
+    test("updates the local Cargo.lock package and preserves registry entries", () => {
+      const cargoToml = `[package]
+name = "mock-overlay"
+version = "0.1.1"
+
+[dependencies]
+tauri = "2"
+`;
+      const cargoLock = `version = 4
+
+[[package]]
+name = "mock-overlay"
+version = "0.1.1"
+dependencies = ["tauri"]
+
+[[package]]
+name = "mock-overlay"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "deadbeef"
+`;
+
+      const result = updateCargoWorkspaceVersion(cargoToml, cargoLock, "0.1.2");
+
+      expect(result.cargoToml).toContain('version = "0.1.2"');
+      expect(result.cargoLock).toContain(
+        '[[package]]\nname = "mock-overlay"\nversion = "0.1.2"'
+      );
+      expect(result.cargoLock).toContain(
+        'name = "mock-overlay"\nversion = "0.1.1"\nsource = "registry+'
+      );
+      expect(result.cargoLock).toContain('checksum = "deadbeef"');
+    });
+
+    test("fails when the local package is missing from Cargo.lock", () => {
+      expect(() =>
+        updateCargoWorkspaceVersion(
+          '[package]\nname = "mock-overlay"\nversion = "0.1.1"\n',
+          'version = 4\n\n[[package]]\nname = "other"\nversion = "0.1.1"\n',
+          "0.1.2"
+        )
+      ).toThrow("Expected one local mock-overlay@0.1.1 entry in Cargo.lock");
     });
   });
 });

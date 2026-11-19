@@ -23,7 +23,7 @@
     "check-types": "turbo run check-types && make rust-clippy",
     "lint": "ultracite check",
     "fix": "ultracite fix && make rust-fmt",
-    "check": "ultracite fix --unsafe && make rust-fix",
+    "check": "ultracite check && bun run check-types",
     "version:bump": "bun scripts/version-manager.ts",
     "test": "bun test",
     "docker:up": "docker compose up -d",
