@@ -19,7 +19,6 @@ const log = createRealtimeLogger("publisher");
 
 const VAD_HISTORY_TTL_SECONDS = 2 * 60 * 60;
 
-/** Minimal Redis surface used by VAD publish (test seam). */
 export interface VadRedisMulti {
   exec(): Promise<unknown>;
   publish(channel: string, message: string): VadRedisMulti;
@@ -31,14 +30,6 @@ export interface VadRedisClient {
   multi(): VadRedisMulti;
 }
 
-/**
- * Publish a VAD signal to Redis and append it to the history list.
- *
- * P5.4: publish+rpush go in one MULTI (was 2 serial round trips). EXPIRE
- * runs only when this push created the list (`llen === 1`) — exactly once
- * per session, with no local bookkeeping to leak. The client is injectable
- * for tests; production passes the shared singleton.
- */
 export async function publishVadSignal(
   payload: VadSignal,
   client?: VadRedisClient | null
@@ -54,7 +45,6 @@ export async function publishVadSignal(
         .publish(channel, message)
         .rpush(vadHistoryKey, message)
         .exec()) as [[unknown, unknown], [unknown, number]] | undefined;
-      // ioredis exec resolves [[err, pubRes], [err, listLen]].
       const listLen = results?.[1]?.[1];
       if (listLen === 1 && typeof redisClient.expire === "function") {
         await redisClient.expire(vadHistoryKey, VAD_HISTORY_TTL_SECONDS);
@@ -84,9 +74,6 @@ export async function publishVadSignal(
   }
 }
 
-/**
- * Publish session start event
- */
 export async function publishSessionStart(
   event: SessionStartEvent
 ): Promise<void> {
@@ -102,9 +89,6 @@ export async function publishSessionStart(
   }
 }
 
-/**
- * Publish session end event
- */
 export async function publishSessionEnd(event: SessionEndEvent): Promise<void> {
   try {
     if (redis && typeof redis.publish === "function") {
@@ -118,9 +102,6 @@ export async function publishSessionEnd(event: SessionEndEvent): Promise<void> {
   }
 }
 
-/**
- * Publish participant join event
- */
 export async function publishParticipantJoin(
   event: ParticipantJoinEvent
 ): Promise<void> {
@@ -136,9 +117,6 @@ export async function publishParticipantJoin(
   }
 }
 
-/**
- * Publish participant leave event
- */
 export async function publishParticipantLeave(
   event: ParticipantLeaveEvent
 ): Promise<void> {
@@ -154,9 +132,6 @@ export async function publishParticipantLeave(
   }
 }
 
-/**
- * Publish participant role change event
- */
 export async function publishParticipantRoleChange(
   sessionId: string,
   event: { speakerId: string; role: "TEAM" | "EXTERNAL" }

@@ -17,23 +17,9 @@ import {
 
 const log = createControlLogger("meeting-session-routes");
 
-/**
- * Meeting Session Routes
- *
- * Endpoints for managing live meeting sessions.
- * All routes require authentication.
- *
- * Base path: /meeting-session
- */
 export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
   .use(requireAuth)
 
-  /**
-   * POST /meeting-session/start
-   *
-   * Start a new meeting session.
-   * Creates a session in Redis and returns WebSocket connection details.
-   */
   .post(
     "/start",
     async ({ body, user, set }) => {
@@ -46,10 +32,8 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
       }
 
       try {
-        // Validate request body
         const validatedInput = startSessionSchema.parse(body);
 
-        // Start session
         const result = await meetingSessionService.start(
           validatedInput,
           user.id
@@ -110,11 +94,6 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
     }
   )
 
-  /**
-   * POST /meeting-session/start-adhoc
-   *
-   * Create an ad-hoc meeting and start a live session.
-   */
   .post(
     "/start-adhoc",
     async ({ body, user, set }) => {
@@ -192,12 +171,6 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
     }
   )
 
-  /**
-   * POST /meeting-session/join
-   *
-   * Join an existing meeting session.
-   * Returns connection details for participants.
-   */
   .post(
     "/join",
     async ({ body, user, set }) => {
@@ -264,12 +237,6 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
     }
   )
 
-  /**
-   * POST /meeting-session/end
-   *
-   * End an active meeting session.
-   * Cleans up Redis state and updates meeting status.
-   */
   .post(
     "/end",
     async ({ body, user, set }) => {
@@ -329,11 +296,6 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
     }
   )
 
-  /**
-   * GET /meeting-session/:id/status
-   *
-   * Get current status of a session.
-   */
   .get(
     "/:id/status",
     async ({ params, set }) => {
@@ -374,12 +336,6 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
     }
   )
 
-  /**
-   * GET /meeting-session/by-meeting/:meetingId
-   *
-   * Get session status by meeting ID.
-   * Useful when you have the meeting ID but not the session ID.
-   */
   .get(
     "/by-meeting/:meetingId",
     async ({ params, set }) => {
@@ -420,11 +376,6 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
     }
   )
 
-  /**
-   * GET /meeting-session/active
-   *
-   * List active sessions scoped to caller org.
-   */
   .get("/active", async ({ user, set }) => {
     if (!user) {
       set.status = 401;
@@ -453,11 +404,6 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
     }
   })
 
-  /**
-   * POST /meeting-session/:id/config
-   *
-   * Update session configuration (host only).
-   */
   .post(
     "/:id/config",
     async ({ body, params, user, set }) => {

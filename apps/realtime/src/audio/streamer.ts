@@ -96,8 +96,6 @@ export class AudioStreamer {
       leavePartsOnError: false,
     });
 
-    // Attach silent catch handlers immediately to prevent unhandled promise rejections
-    // if the upload fails early (e.g. invalid credentials) before end() is called
     this.ch0UploadPromise = this.ch0Upload.done();
     this.ch0UploadPromise.catch((error) => {
       log.error({ err: error, sessionId }, "S3 upload failed early for ch0");

@@ -9,7 +9,6 @@ const envPath = join(projectRoot, ".env");
 
 config({ path: envPath });
 
-// Environment variable validation
 const requiredEnvVars = ["DATABASE_URL"] as const;
 
 export function validateEnv() {

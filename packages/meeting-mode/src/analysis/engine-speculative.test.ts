@@ -89,8 +89,6 @@ describe("Speculative Tier 2 session wiring (P3.3)", () => {
       },
     });
 
-    // evaluatePartial hydrates first (filling the P2.6 session cache), then
-    // the throttle (fresh speaker) lets the first partial through.
     await engine.evaluatePartial({
       confidence: 0.95,
       sessionId: "spec-session",
@@ -107,14 +105,11 @@ describe("Speculative Tier 2 session wiring (P3.3)", () => {
     });
     await settle();
 
-    // Members fetched once at hydration…
     expect(getKnownClientMembers).toHaveBeenCalledTimes(1);
-    // …and the speculative Tier 2 call reused the session cache.
     expect(box.input).not.toBeNull();
     expect(box.input?.knownClientMembers).toEqual([
       { id: "c1", name: "Client One" },
     ]);
-    // Spend is visible under its own track and in the session total.
     expect(
       await costManager.getTrackedCost("spec-session", SPECULATIVE_COST_TRACK)
     ).toBeGreaterThan(0);
@@ -136,7 +131,6 @@ describe("Speculative Tier 2 session wiring (P3.3)", () => {
     await engine.evaluatePartial(makePartial());
     await settle();
 
-    // Hydration still happened, but no speculative Tier 2 call fired.
     expect(tier2Calls).toHaveLength(0);
   });
 

@@ -36,13 +36,11 @@ export class UtteranceMerger {
     return this.pending !== null;
   }
 
-  /** Exposed for scheduling a gap-based flush in the finalizer (not part of merge logic). */
   peekPending(): Utterance | null {
     return this.pending;
   }
 
   private shouldMerge(prev: Utterance, next: Utterance): boolean {
-    // Only merge utterances from the same speaker
     if (prev.speaker.speakerId !== next.speaker.speakerId) {
       // Fallback: if speakerId differs because speaker identification
       // resolved between utterances (e.g. "spk_1" → "user123"), check

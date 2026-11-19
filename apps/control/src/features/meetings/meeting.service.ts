@@ -133,7 +133,6 @@ export const MeetingService = {
   },
 
   async startMeeting(id: string) {
-    // Validate status transition: only SCHEDULED meetings can be started
     const meeting = await prisma.meeting.findUnique({
       where: { id },
       select: { status: true },
@@ -167,7 +166,6 @@ export const MeetingService = {
   },
 
   async endMeeting(id: string) {
-    // Validate status transition: only LIVE meetings can be ended
     const meeting = await prisma.meeting.findUnique({
       where: { id },
       select: { status: true },
@@ -196,7 +194,6 @@ export const MeetingService = {
   },
 
   async cancelMeeting(id: string) {
-    // Validate status transition: only SCHEDULED meetings can be cancelled
     const meeting = await prisma.meeting.findUnique({
       where: { id },
       select: { status: true },
@@ -218,7 +215,6 @@ export const MeetingService = {
     });
   },
 
-  // Bulk extraction endpoint for post-meeting processing
   async extractFromMeeting(meetingId: string, data: MeetingExtractionInput) {
     const meeting = await prisma.meeting.findUnique({
       where: { id: meetingId },
@@ -243,7 +239,6 @@ export const MeetingService = {
               content: d.content,
               rationale: d.rationale,
               evidence: d.evidence,
-              // TODO v2: Add authorId field to track decision authorship
               tags: d.tags,
             },
           })
@@ -463,7 +458,6 @@ export const MeetingService = {
     const orgId = meeting.client.orgId;
 
     if (meeting.transcript) {
-      // Reprocess summary only
       const statusKey = redisKeys.meetingJobStatus(sessionId, "summary");
       await redis.set(statusKey, "queued", "EX", 24 * 60 * 60);
 
@@ -480,7 +474,6 @@ export const MeetingService = {
         sessionId,
       };
     }
-    // Reprocess from transcription step
     const transcribeStatusKey = redisKeys.meetingJobStatus(
       sessionId,
       "transcribe"
@@ -529,7 +522,6 @@ export const MeetingService = {
       throw new Error("Meeting not found");
     }
 
-    // Load the target member and verify tenant boundaries
     const member = await prisma.clientMember.findUnique({
       where: { id: clientMemberId },
       select: { clientId: true },

@@ -4,10 +4,6 @@ import { createControlLogger } from "../logger";
 
 const log = createControlLogger("request-logger");
 
-/**
- * Request logging middleware
- * Adds request ID and logs request/response details
- */
 export const requestLogger = new Elysia({ name: "request-logger" })
   .derive(() => ({
     requestId: randomUUID(),

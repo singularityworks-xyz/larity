@@ -104,7 +104,6 @@ describe("per-session subscriptions (P5.2)", () => {
 
     const client = makeClient();
     setSubscriptionClient(client);
-    // Still unsubscribed after the earlier no-op subscribe.
     await unsubscribeSession("s1");
     expect(client.calls).toHaveLength(0);
   });
@@ -136,7 +135,6 @@ describe("per-session subscriptions (P5.2)", () => {
     setSubscriptionClient(client);
 
     const subscribing = subscribeSession("s1");
-    // Let the subscribe op begin and block inside the Redis subscribe call.
     await new Promise((resolve) => setTimeout(resolve, 0));
     const unsubscribing = unsubscribeSession("s1");
     release();
@@ -171,7 +169,6 @@ describe("per-session subscriptions (P5.2)", () => {
     expect(calls.filter((c) => c.kind === "subscribe")).toHaveLength(1);
     expect(calls.filter((c) => c.kind === "unsubscribe")).toHaveLength(1);
 
-    // State says not subscribed, so a later unsubscribe is a no-op.
     await unsubscribeSession("s1");
     expect(calls.filter((c) => c.kind === "unsubscribe")).toHaveLength(1);
     expect(calls.filter((c) => c.kind === "punsubscribe")).toHaveLength(0);
@@ -185,7 +182,6 @@ describe("per-session subscriptions (P5.2)", () => {
     await subscribeSession("s2");
     await unsubscribeSession("s1");
 
-    // s2 remains subscribed: unsubscribing it still issues commands.
     await unsubscribeSession("s2");
     expect(client.calls.filter((c) => c.kind === "unsubscribe")).toHaveLength(
       2

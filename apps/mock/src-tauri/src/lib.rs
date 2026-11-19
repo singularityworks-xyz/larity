@@ -6,7 +6,6 @@ pub fn run() {
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
 
-            // Enforce always on top programmatically
             let _ = window.set_always_on_top(true);
 
             #[cfg(target_os = "macos")]

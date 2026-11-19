@@ -20,15 +20,11 @@ import {
   updateSessionActivity,
 } from "./session-status.service";
 
-// Environment variable for WebSocket URL
 const REALTIME_WS_URL = process.env.REALTIME_WS_URL || "ws://localhost:3001";
 
 // Lock TTL in seconds (prevent race conditions)
 const LOCK_TTL = 30;
 
-/**
- * Session data stored in Redis
- */
 interface SessionData {
   lastActivityAt: number;
   meetingId: string;
@@ -40,14 +36,6 @@ interface SessionData {
   utteranceCount: number;
 }
 
-/**
- * Meeting Session Service
- *
- * Handles the lifecycle of live meeting sessions:
- * - Starting sessions (creates Redis state, validates meeting)
- * - Ending sessions (cleans up Redis, updates meeting)
- * - Getting session status
- */
 export const meetingSessionService = {
   /**
    * Start a new meeting session
@@ -65,7 +53,6 @@ export const meetingSessionService = {
   ): Promise<StartSessionResponse> {
     const { meetingId, metadata } = input;
 
-    // Step 1: Validate meeting exists and can be started
     const meeting = await prisma.meeting.findUnique({
       where: { id: meetingId },
       select: {
@@ -93,7 +80,6 @@ export const meetingSessionService = {
       throw new MeetingSessionError("Meeting not found", "MEETING_NOT_FOUND");
     }
 
-    // Only SCHEDULED meetings can be started
     if (meeting.status !== "SCHEDULED") {
       throw new MeetingSessionError(
         `Cannot start session: meeting is ${meeting.status}`,
@@ -101,12 +87,10 @@ export const meetingSessionService = {
       );
     }
 
-    // Step 2: Check if there's already an active session for this meeting
     const existingSessionId = await redis.get(
       redisKeys.meetingToSession(meetingId)
     );
     if (existingSessionId) {
-      // Check if that session is still valid
       const existingSession = await redis.hgetall(
         redisKeys.meetingSession(existingSessionId)
       );
@@ -118,7 +102,6 @@ export const meetingSessionService = {
       }
     }
 
-    // Step 3: Acquire distributed lock
     const lockKey = redisKeys.sessionLock(meetingId);
     const lockAcquired = await redis.set(lockKey, "1", "EX", LOCK_TTL, "NX");
 
@@ -130,7 +113,6 @@ export const meetingSessionService = {
     }
 
     try {
-      // Step 4: Create session
       const sessionId = randomUUID();
       const now = Date.now();
 
@@ -171,20 +153,16 @@ export const meetingSessionService = {
         metadata: metadata as Record<string, string> | undefined,
       };
 
-      // Store session in Redis Hash
       const sessionKey = redisKeys.meetingSession(sessionId);
       await redis.hset(sessionKey, this.serializeSession(sessionData));
       await redis.expire(sessionKey, SESSION_TTL);
 
-      // Add to active sessions set
       await redis.sadd(redisKeys.activeSessions(), sessionId);
 
-      // Initialize session config with defaults
       const configKey = redisKeys.sessionConfig(sessionId);
       await redis.hset(configKey, "allowNameCustomization", "true");
       await redis.expire(configKey, SESSION_TTL);
 
-      // Map meeting to session
       await redis.set(
         redisKeys.meetingToSession(meetingId),
         sessionId,
@@ -192,7 +170,6 @@ export const meetingSessionService = {
         SESSION_TTL
       );
 
-      // Step 5: Update meeting status in database
       await prisma.meeting.update({
         where: { id: meetingId },
         data: {
@@ -201,7 +178,6 @@ export const meetingSessionService = {
         },
       });
 
-      // Build WebSocket URL with session ID, user ID, and role
       const websocketUrl = `${REALTIME_WS_URL}?sessionId=${sessionId}&userId=${_userId}&role=host`;
 
       return {
@@ -213,7 +189,6 @@ export const meetingSessionService = {
         allowNameCustomization: true,
       };
     } finally {
-      // Always release lock
       await redis.del(lockKey);
     }
   },
@@ -293,22 +268,12 @@ export const meetingSessionService = {
     );
   },
 
-  /**
-   * End a meeting session
-   *
-   * Flow:
-   * 1. Validate session exists
-   * 2. Mark session as ending
-   * 3. Update meeting status to ENDED
-   * 4. Clean up Redis state
-   */
   async end(
     input: EndSessionInput,
     _userId: string
   ): Promise<{ success: boolean; meetingId: string }> {
     const { sessionId, reason } = input;
 
-    // Step 1: Get session data
     const sessionKey = redisKeys.meetingSession(sessionId);
     const sessionData = await redis.hgetall(sessionKey);
 
@@ -325,7 +290,6 @@ export const meetingSessionService = {
       );
     }
 
-    // Prevent ending already-ending session
     if (status === "ending") {
       throw new MeetingSessionError(
         "Session is already ending",
@@ -333,12 +297,10 @@ export const meetingSessionService = {
       );
     }
 
-    // Step 2: Mark session as ending (other services can see this)
     await redis.hset(sessionKey, "status", "ending");
     await redis.hset(sessionKey, "endedAt", Date.now().toString());
     await redis.hset(sessionKey, "endReason", reason || "user_ended");
 
-    // Step 3: Update meeting in database
     await prisma.meeting.update({
       where: { id: meetingId },
       data: {
@@ -347,8 +309,6 @@ export const meetingSessionService = {
       },
     });
 
-    // Step 4: Clean up Redis (with short delay to let other services react)
-    // The actual cleanup happens after a grace period
     await scheduleCleanup(sessionId, meetingId);
 
     return { success: true, meetingId };
@@ -358,9 +318,6 @@ export const meetingSessionService = {
   updateActivity: updateSessionActivity,
   isValidSession,
 
-  /**
-   * Join an existing meeting session
-   */
   async join(
     sessionId: string,
     userId: string
@@ -373,7 +330,6 @@ export const meetingSessionService = {
     joinedAt: number;
     allowNameCustomization: boolean;
   }> {
-    // 1. Check session exists and is active
     const sessionKey = redisKeys.meetingSession(sessionId);
     const sessionData = await redis.hgetall(sessionKey);
 
@@ -393,7 +349,6 @@ export const meetingSessionService = {
       );
     }
 
-    // 2. Verify user is allowed to join
     const meeting = await prisma.meeting.findUnique({
       where: { id: meetingId },
       include: { client: { select: { orgId: true } } },
@@ -438,17 +393,14 @@ export const meetingSessionService = {
       },
     });
 
-    // 3. Add to participants set
     const participantsKey = redisKeys.sessionParticipants(sessionId);
     await redis.sadd(participantsKey, userId);
     await redis.expire(participantsKey, SESSION_TTL);
 
-    // 4. Read session config
     const configKey = redisKeys.sessionConfig(sessionId);
     const configData = await redis.hget(configKey, "allowNameCustomization");
     const allowNameCustomization = configData !== "false";
 
-    // 5. Return connection details
     const websocketUrl = `${REALTIME_WS_URL}?sessionId=${sessionId}&userId=${userId}&role=${responseRole}`;
 
     return {
@@ -579,9 +531,6 @@ export const meetingSessionService = {
     );
   },
 
-  /**
-   * Get session by meeting ID
-   */
   async getByMeetingId(
     meetingId: string
   ): Promise<SessionStatusResponse | null> {
@@ -592,9 +541,6 @@ export const meetingSessionService = {
     return this.getStatus(sessionId);
   },
 
-  /**
-   * Helper: Serialize session data for Redis HSET
-   */
   serializeSession(data: SessionData): Record<string, string> {
     return {
       sessionId: data.sessionId,
@@ -609,9 +555,6 @@ export const meetingSessionService = {
   },
 };
 
-/**
- * Custom error class for session-related errors
- */
 export class MeetingSessionError extends Error {
   code: string;
 
@@ -622,9 +565,6 @@ export class MeetingSessionError extends Error {
   }
 }
 
-/**
- * Map error codes to HTTP status codes
- */
 export function getHttpStatusForError(code: string): number {
   const statusMap: Record<string, number> = {
     MEETING_NOT_FOUND: 404,

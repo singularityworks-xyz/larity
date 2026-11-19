@@ -12,7 +12,6 @@ import type {
 
 export const PIPELINE_TRACE_VERSION = 1 as const;
 
-/** Safe for Redis + desktop logs — no embeddings or internal `reasoning`; surfaced copy is user-visible UI text */
 export interface PipelineTracePayload {
   dropped: boolean;
   dropReason?: string;
@@ -264,7 +263,6 @@ export function buildPipelineTracePayload(
 }
 
 type RedisPublish = Pick<
-  /* ioredis & minimal stubs */
   { publish: (channel: string, msg: string) => Promise<number> },
   "publish"
 >;
@@ -277,7 +275,6 @@ export function stringifyPipelineTracePayload(
     : JSON.stringify(payload);
 }
 
-/** Summary object for compact (non-pretty) pino structured fields */
 function pipelineTraceCompactLogFields(payload: PipelineTracePayload) {
   return {
     sessionId: payload.sessionId,

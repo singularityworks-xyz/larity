@@ -11,9 +11,7 @@ interface CacheEntry {
 const MAX_CACHE_SIZE = 200;
 
 interface SessionCache {
-  /** Exact normalized-text hits, O(1). */
   byText: Map<string, CacheEntry>;
-  /** Cosine-scan list in LRU order (most-recently used at the end). */
   vectors: CacheEntry[];
 }
 

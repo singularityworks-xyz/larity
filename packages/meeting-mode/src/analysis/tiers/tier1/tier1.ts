@@ -17,8 +17,6 @@ const CURRENCY_REGEX =
   /(?:[$€£₹]\s?\d+(?:[.,]\d+)?|\b\d+(?:[.,]\d+)?\s?(?:usd|inr|eur|gbp|rs|rupees?)\b)/gi;
 const QUANTITY_REGEX =
   /\b\d+\s?(?:hours?|days?|weeks?|months?|people|developers|engineers|tickets?)\b/gi;
-/** Lightweight currency indicator check without the `g` flag — avoids sticky
- *  lastIndex issues when called inside `.some()` across multiple detect() calls. */
 const PRICING_HINT_RE =
   /[$€£₹]|\b(?:usd|inr|eur|gbp|rs|rupees?|dollars?|cents?)\b/i;
 const TECHNICAL_PATTERN_REGEXES: ReadonlyArray<{
@@ -204,10 +202,6 @@ const TIER1_PRICING_SCAN_REGEXES = [
   QUANTITY_REGEX,
 ] as const;
 
-/**
- * Same pricing signal as `Tier1Result.pricingHit` (numeric detections + currency hint).
- * Exposed so Tier 2 can receive a hint while Tier 1 runs in parallel with Tier 2.
- */
 export function textMatchesTier1PricingPath(text: string): boolean {
   const raw: Tier1Detection[] = [];
   for (const regex of TIER1_PRICING_SCAN_REGEXES) {

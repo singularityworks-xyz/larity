@@ -21,13 +21,11 @@ export function ClientsPage() {
   const [sortOption, setSortOption] = useState("updatedDesc");
   const { data: clients, isLoading } = useClients();
 
-  // O(N log N) optimal sorting & filtering with memoization to minimize CPU load
   const processedClients = useMemo(() => {
     if (!clients) {
       return [];
     }
 
-    // 1. Filter
     let result = clients;
     if (filterStatus !== "ALL") {
       result = result.filter((c) => c.status === filterStatus);
@@ -42,7 +40,6 @@ export function ClientsPage() {
       );
     }
 
-    // 2. Sort
     return result.slice().sort((a, b) => {
       switch (sortOption) {
         case "nameAsc":

@@ -25,8 +25,6 @@ export class VadManager {
       this.unlistenAmplitude = await listen<number>("vad-amplitude", (e) =>
         onAmp(e.payload)
       );
-      // P4.4: tell Rust a listener exists so vad-amplitude emits flow
-      // (≤15 Hz). Best-effort — a failure only means silence, not breakage.
       await invoke("vad_set_amplitude_listener", { enabled: true }).then(
         () => {
           this.amplitudeAcquired = true;

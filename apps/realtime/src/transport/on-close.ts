@@ -17,13 +17,6 @@ import type { RealtimeSocket } from "./types";
 
 const log = createRealtimeLogger("on-close");
 
-/**
- * Handle WebSocket connection close
- *
- * @param ws - The WebSocket connection
- * @param code - Close code
- * @param message - Close reason
- */
 export function onClose(
   ws: RealtimeSocket,
   code: number,
@@ -36,12 +29,8 @@ export function onClose(
   // session. Capture identity before removal, since removal deletes it.
   const wasActive = isActiveConnection(sessionId, userId, ws);
 
-  // Remove connection from memory
-  // returns session if it was the last connection and session is removed
   const sessionRemoved = removeConnection(sessionId, userId, ws);
 
-  // P5.2: leave the session's Redis channels when its last connection
-  // closes, so this instance stops receiving its traffic.
   if (sessionRemoved) {
     unsubscribeSession(sessionId).catch((err) => {
       log.error({ err, sessionId }, "Failed to unsubscribe session");
@@ -54,9 +43,6 @@ export function onClose(
   log.info({ sessionId, userId, role, code, duration }, "Connection closed");
 
   if (!(wasActive || sessionRemoved)) {
-    // A stale socket (replaced by a newer one for this user) closed. The
-    // session, Deepgram connection, and streamer all belong to the live
-    // socket — leave them running.
     log.info(
       { sessionId, userId },
       "Ignoring stale socket close — active session untouched"
@@ -64,7 +50,6 @@ export function onClose(
     return;
   }
 
-  // Publish participant leave event
   publishParticipantLeave({
     sessionId,
     userId,
@@ -76,7 +61,6 @@ export function onClose(
     );
   });
 
-  // If host left or session is empty, publish session end
   const currentSession = getSession(sessionId);
   const isSessionEmpty = !!sessionRemoved;
 
@@ -96,8 +80,6 @@ export function onClose(
       log.error({ err, sessionId }, "Failed to publish session end");
     });
 
-    // Close the audio persistence streamer asynchronously
-    // This completes the S3 multipart upload and writes the manifest, then triggers the transcription job
     closeStreamer(sessionId)
       .then(async (manifest) => {
         if (!manifest) {

@@ -5,7 +5,6 @@ import { normalizeForComparison } from "./text-utils";
 const EVIDENCE_PUNCTUATION = /[^\p{L}\p{N}\p{M}\s$€£₹%.]/gu;
 const TRAILING_FULL_STOP = /\.$/;
 
-// Preserve Devanagari, currencies and decimals: each can change a commitment.
 function normalizeEvidence(text: string): string {
   return normalizeForComparison(text)
     .replace(EVIDENCE_PUNCTUATION, "")
@@ -55,8 +54,6 @@ export class PreFilter {
 
   evaluate(utterance: Utterance): PreFilterDecision {
     const normalized = normalizeEvidence(utterance.text);
-    // Short negations, prices and dates can reverse a prior commitment.
-    // Only empty/noise text is too short to evaluate.
     if (!normalized) {
       return { dropped: true, reason: "too_short" };
     }
@@ -76,8 +73,6 @@ export class PreFilter {
 
       if (isBleed) {
         if (duplicate.isCurrentUser && !utterance.speaker.isCurrentUser) {
-          // Case 2: Clean loopback (EXTERNAL) arrives after mic bleed (USER)
-          // Keep loopback, retract previous mic bleed
           const idx = state.recent.indexOf(duplicate);
           if (idx !== -1) {
             state.recent[idx] = {
@@ -93,8 +88,6 @@ export class PreFilter {
           };
         }
         if (!duplicate.isCurrentUser && utterance.speaker.isCurrentUser) {
-          // Case 3: Mic bleed (USER) arrives after clean loopback (EXTERNAL)
-          // Drop mic bleed, retract it so it's not saved/cluttering
           return {
             dropped: true,
             reason: "near_duplicate",
@@ -103,7 +96,6 @@ export class PreFilter {
         }
       }
 
-      // Default: standard duplicate (same speaker type or timeDiff > timeout)
       return { dropped: true, reason: "near_duplicate" };
     }
 

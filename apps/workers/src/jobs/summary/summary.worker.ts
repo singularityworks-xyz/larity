@@ -272,8 +272,8 @@ export class SummaryWorker extends BaseWorker<
 
       utterances.sort((a, b) => a.timestamp - b.timestamp);
 
-      const WINDOW_SIZE_SEC = 15 * 60; // 900s
-      const OVERLAP_SEC = 2 * 60; // 120s
+      const WINDOW_SIZE_SEC = 15 * 60;
+      const OVERLAP_SEC = 2 * 60;
       const chunks = chunkUtterances(utterances, WINDOW_SIZE_SEC, OVERLAP_SEC);
 
       this.log.info(
@@ -428,7 +428,6 @@ export class SummaryWorker extends BaseWorker<
       );
 
       await prisma.$transaction(async (tx) => {
-        // Query existing decisions and their embeddings in a single batch
         const existingDecisions = await tx.decision.findMany({
           where: { meetingId },
           orderBy: { version: "desc" },
@@ -453,7 +452,6 @@ export class SummaryWorker extends BaseWorker<
           }
         }
 
-        // Delete old items for idempotency
         await tx.decision.deleteMany({ where: { meetingId } });
         await tx.task.deleteMany({ where: { meetingId } });
         await tx.openQuestion.deleteMany({ where: { meetingId } });
@@ -502,7 +500,6 @@ export class SummaryWorker extends BaseWorker<
           resolveUserOrParticipant
         );
 
-        // Update Meeting Summary
         if (analysis) {
           await tx.meeting.update({
             where: { id: meetingId },
@@ -528,10 +525,8 @@ export class SummaryWorker extends BaseWorker<
           { err, meetingId },
           "Failed to embed and persist utterances for Assistant"
         );
-        // Non-fatal, do not throw
       }
 
-      // Write job status done, publish completed event, and clean up Redis keys
       await setJobStatus(sessionId, "summary", "done");
       await publishMeetingProcessed(meetingId, sessionId);
       await cleanupMeetingStateKeys(meetingId, sessionId);

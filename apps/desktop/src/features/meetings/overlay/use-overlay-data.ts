@@ -59,7 +59,6 @@ export function useOverlayData() {
   const [commitmentCount, setCommitmentCount] = useState(0);
   const [isMicActive, setIsMicActive] = useState(false);
   const [alertsMuted, setAlertsMuted] = useState(false);
-  // const [rememberFlash, setRememberFlash] = useState(false);
   const [identityGuesses, setIdentityGuesses] = useState<
     Array<{ id: string; index: string; memberId: string }>
   >([]);
@@ -90,17 +89,11 @@ export function useOverlayData() {
     [alertQueue]
   );
 
-  // const handleRememberThis = useCallback(() => {
-  //   setRememberFlash(true);
-  //   window.setTimeout(() => setRememberFlash(false), 2000);
-  // }, []);
-
   const addAlertRef = useRef(alertQueue.addAlert);
   addAlertRef.current = alertQueue.addAlert;
 
   const seenCommitmentIdsRef = useRef(new Set<string>());
 
-  // Receive forwarded data from the meeting page via Tauri events
   useEffect(() => {
     function handleAlert(payload: Record<string, unknown> | undefined): void {
       if (!payload) {
@@ -296,13 +289,11 @@ export function useOverlayData() {
     expandedAlertId,
     isMicActive,
     meetingTitle: params.meetingTitle,
-    // rememberFlash,
     role: params.role,
     sessionId: params.sessionId,
     setAlertsMuted,
     setExpandedAlertId,
     startedAtMs: params.startedAtMs,
-    // handleRememberThis,
     alertsMuted,
     visibleAlerts,
     pendingCount: alertQueue.pendingCount,

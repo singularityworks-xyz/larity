@@ -44,13 +44,10 @@ describe("UtteranceFinalizer retroactive republish (P2.4)", () => {
       return Promise.resolve();
     });
 
-    // Diarization index 5 with no identifier: EXTERNAL spk_5. A second,
-    // different-speaker final forces the first out of the merger.
     await finalizer.process(makeFinal(5, "client says we agree today"));
     await finalizer.process(makeFinal(6, "host replies with thanks now"));
     expect(seen).toEqual([{ id: "test-session:0", options: undefined }]);
 
-    // Late VAD correlation identifies the speaker as a team member.
     await finalizer.processRetroactiveIdentification("test-session", 5, {
       confidence: 0.9,
       diarizationIndices: [1005],

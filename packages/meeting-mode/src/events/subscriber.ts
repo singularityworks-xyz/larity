@@ -76,7 +76,6 @@ async function getHydratedIdentifier(
   if (!speakerManagerRef) {
     return null;
   }
-  // Fast path without copying the identifier map per STT message (P2.5).
   const existing = speakerManagerRef.getIdentifierIfExists(sessionId);
   if (existing) {
     return existing;
@@ -86,7 +85,6 @@ async function getHydratedIdentifier(
   try {
     const client = _redisClientRef ?? redis;
     if (client) {
-      // 1. Try to load from intermediate session state in Redis first (e.g. across mic switches or network drops)
       const stateKey = redisKeys.meetingSessionState(sessionId);
       const rawState = await client.get(stateKey);
       if (rawState) {
@@ -103,7 +101,6 @@ async function getHydratedIdentifier(
         return identifier;
       }
 
-      // 2. Fall back to Prisma DB state
       await loadIdentifierFromDb(client, sessionId, identifier);
     }
   } catch (err) {
@@ -115,13 +112,6 @@ async function getHydratedIdentifier(
   return identifier;
 }
 
-/**
- * Decide whether a Redis `pmessage` delivery should invoke `handleSttResult`,
- * and in which mode. Redis `*` spans `.` separators, so overlapping patterns
- * can deliver the same message more than once — the concrete channel shape
- * (not the matched pattern alone) determines handling. Exactly one of the
- * two pattern deliveries resolves non-null per message.
- */
 export function resolveSttDispatch(
   pattern: string,
   channel: string
@@ -141,19 +131,6 @@ export function resolveSttDispatch(
   return null;
 }
 
-/**
- * Speculative partial dispatch (P3.2). Resolves the partial's speaker with
- * the same call the final will perform moments later (existing mapping, host
- * short-circuit, or provisional VAD candidate) and feeds the partial to the
- * pipeline engine fire-and-forget — partial handling never waits on the
- * hydration/cost reads inside `evaluatePartial`.
- *
- * Early resolution converges to identical identifier state: mapping `source`
- * is write-only, and the provisional path exists precisely for this
- * partial-then-final sequence. Returns true when a speculation was
- * dispatched. The `enabled` parameter defaults to SPECULATIVE_ENABLED and
- * exists as a test seam.
- */
 export function dispatchSpeculativePartial(
   result: SttResult,
   identifier: SpeakerIdentifier,
@@ -200,7 +177,6 @@ async function handleSttResult(
       return;
     }
 
-    // Register identifier so finalizer can resolve speakers
     const identifier = await getHydratedIdentifier(result.sessionId);
     if (!identifier) {
       return;
@@ -212,7 +188,6 @@ async function handleSttResult(
       identifier.processSttPartial(result.diarizationIndex, safeTs);
     }
     if (isPartial) {
-      // P3.2: speculative path — fire-and-forget behind SPECULATIVE_ENABLED.
       dispatchSpeculativePartial(result, identifier, pipelineEngineRef);
     }
 
@@ -293,7 +268,6 @@ async function handleParticipantJoin(message: string): Promise<void> {
       role?: "host" | "participant";
     };
     if (speakerManagerRef) {
-      // Ensure it's hydrated so we don't lose existing state
       await getHydratedIdentifier(event.sessionId);
       const name = event.name || event.userId;
       speakerManagerRef.registerTeamMember(
@@ -303,9 +277,6 @@ async function handleParticipantJoin(message: string): Promise<void> {
         event.role
       );
     }
-    // A new member changes Tier 2 identity-guess candidates: refresh the
-    // pipeline's session cache (P2.6). Not awaited — join handling stays
-    // fast. refreshSessionMembers never rejects (failures keep the cache).
     pipelineEngineRef?.refreshSessionMembers(event.sessionId);
   } catch (error) {
     log.error({ err: error }, "Error handling participant join");
@@ -319,7 +290,6 @@ async function handleVadSignal(message: string): Promise<void> {
 
   try {
     const signal = JSON.parse(message) as VadSignal;
-    // ensure hydrated first
     const identifier = await getHydratedIdentifier(signal.sessionId);
     if (!identifier) {
       return;
@@ -329,7 +299,6 @@ async function handleVadSignal(message: string): Promise<void> {
     const ringBuffer = finalizerRef.getRingBuffer(signal.sessionId);
 
     if (ringBuffer) {
-      // Fetch unidentified utterances from the last 2 seconds
       const recentTs = Date.now() - 2000;
       const pendingUtterances = ringBuffer
         .getAll()
@@ -495,9 +464,6 @@ export async function startSubscriber(
 
   subscriber.on("pmessage", async (_pattern, channel, message) => {
     try {
-      // Guard on the concrete channel, not just the matched pattern: Redis
-      // `*` also spans `.` separators, so overlapping patterns can deliver
-      // the same message twice. Only the matching shape is processed.
       const sttRoute = resolveSttDispatch(_pattern, channel);
       if (sttRoute) {
         await handleSttResult(channel, message, sttRoute === "partial");

@@ -79,7 +79,6 @@ export function AlertCard({
       style={style}
     >
       <div className="flex flex-col gap-2 p-3 px-4">
-        {/* Header */}
         <div className="flex flex-row items-start justify-between gap-2">
           <div className="flex flex-row items-center gap-2 font-medium">
             <IconComponent
@@ -111,12 +110,10 @@ export function AlertCard({
           </div>
         </div>
 
-        {/* Message */}
         <div className="break-words font-medium text-fg leading-snug">
           {alert.message || alert.title}
         </div>
 
-        {/* Suggestion */}
         {alert.suggestion && (
           <div className="mt-1 flex items-start gap-1.5 rounded-[3px] bg-accent-subtle px-2 py-1.5 font-medium text-accent text-xs">
             <Lightbulb className="mt-[1px] shrink-0" size={13} />
@@ -124,7 +121,6 @@ export function AlertCard({
           </div>
         )}
 
-        {/* Footer Actions */}
         <div className="mt-1 flex flex-row items-center justify-between">
           {onToggleExpand && (
             <button
@@ -151,7 +147,6 @@ export function AlertCard({
           )}
         </div>
 
-        {/* Expanded Content */}
         {isExpanded && (
           <div className="fade-in slide-in-from-top-1 mt-2 flex animate-in flex-col gap-3 border-border-subtle border-t pt-3 duration-fast">
             {alert.evidence?.utterance && (

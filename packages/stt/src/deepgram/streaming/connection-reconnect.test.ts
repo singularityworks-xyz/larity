@@ -3,7 +3,6 @@ import { getMetricsSnapshot, resetMetrics } from "../../metrics";
 
 type Handler = (...args: unknown[]) => void;
 
-/** Minimal fake for the SDK v5 Listen V1 socket used by DeepgramConnection. */
 class FakeLiveSocket {
   readonly handlers = new Map<string, Handler[]>();
   readonly sentMedia: unknown[] = [];
@@ -68,14 +67,12 @@ mock.module("@larity/db/redis", () => ({
   redis: { publish: publishMock },
 }));
 
-// Import after mocks so the connection uses the fake client + fake redis.
 afterAll(() => mock.restore());
 
 import { DeepgramConnection } from "./connection";
 
 async function connectLive(conn: DeepgramConnection): Promise<FakeLiveSocket> {
   const pending = conn.sendAudio(Buffer.alloc(1024));
-  // Let connect() run to waitForOpen, then open the first socket.
   await new Promise((resolve) => setTimeout(resolve, 10));
   expect(createdSockets.length).toBeGreaterThan(0);
   createdSockets[0]?.emit("open");
@@ -95,9 +92,7 @@ describe("DeepgramConnection reconnect ownership", () => {
     const conn = new DeepgramConnection("test-session", 0);
     const first = await connectLive(conn);
 
-    // Drop the live socket with a non-idle code → app reconnect (100ms).
     first.emit("close", { code: 1006 });
-    // Wait out the backoff + connect of the replacement socket.
     await new Promise((resolve) => setTimeout(resolve, 250));
     expect(createdSockets.length).toBe(2);
     const second = createdSockets[1] as FakeLiveSocket;
@@ -108,7 +103,6 @@ describe("DeepgramConnection reconnect ownership", () => {
     const orphansBefore =
       getMetricsSnapshot().counters["stt.orphan_events_total"];
 
-    // Stale open on the abandoned socket: ignored, orphan closed, live state kept.
     first.emit("open");
     expect(first.closed).toBe(true);
     expect(conn.connected).toBe(true);
@@ -200,10 +194,8 @@ describe("DeepgramConnection reconnect ownership", () => {
     first.emit("close", { code: 1011 });
     expect(conn.connected).toBe(false);
     await new Promise((resolve) => setTimeout(resolve, 250));
-    // No scheduled reconnect for an idle close.
     expect(createdSockets.length).toBe(1);
 
-    // Late transcripts from the abandoned socket are ignored.
     first.emit("message", {
       channel: {
         alternatives: [{ confidence: 0.9, transcript: "stale words" }],
@@ -216,7 +208,6 @@ describe("DeepgramConnection reconnect ownership", () => {
       getMetricsSnapshot().counters["stt.orphan_events_total"] ?? 0;
     expect(orphansAfter - orphansBefore).toBeGreaterThanOrEqual(1);
 
-    // The next audio frame lazily reconnects.
     conn.sendAudio(Buffer.alloc(1024));
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(createdSockets.length).toBe(2);

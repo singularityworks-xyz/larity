@@ -75,7 +75,6 @@ describe("utterance topic deltas (P2.1)", () => {
         topicId: "topic_1",
       })
     ).toBe(true);
-    // Deltas share topicId but carry no label: not full topic state.
     expect(
       isBackendTopicState({
         topicId: "topic_1",

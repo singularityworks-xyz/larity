@@ -11,24 +11,13 @@ import type { RealtimeSocket } from "./transport/types";
 
 const log = createRealtimeLogger("server");
 
-// WebSocket configuration constants
-/** Maximum payload length in bytes (64 KB) */
 const WEBSOCKET_MAX_PAYLOAD_BYTES = 64 * 1024;
-/** Idle timeout in seconds (10 minutes) */
 const WEBSOCKET_IDLE_TIMEOUT_SECONDS = 600;
 
-/**
- * Start the WebSocket server
- * Returns a promise that resolves when the server is listening
- */
 // biome-ignore lint/suspicious/noExplicitAny: complex Elysia type
 export function startServer(): Promise<any> {
   return new Promise((resolve, reject) => {
     try {
-      // NOTE: Bun/Elysia only applies `maxPayloadLength`/`idleTimeout` from
-      // the constructor-level `websocket` options — the same keys on the
-      // `app.ws()` route are silently ignored (verified by probe: a 100 KB
-      // frame stays open with route-level options, closes with these).
       const app = new Elysia({
         websocket: {
           maxPayloadLength: WEBSOCKET_MAX_PAYLOAD_BYTES,
@@ -51,7 +40,6 @@ export function startServer(): Promise<any> {
       addAdminRoutes(app as any);
 
       app.ws("/*", {
-        // Schema validation for the connection URL query parameters
         query: t.Object({
           sessionId: t.String({ error: "Missing sessionId query parameter" }),
           userId: t.String({ error: "Missing userId query parameter" }),
@@ -61,13 +49,6 @@ export function startServer(): Promise<any> {
           name: t.Optional(t.String()),
         }),
 
-        // NOTE: `maxPayloadLength`/`idleTimeout` intentionally absent here —
-        // they are only honored via the constructor `websocket` options above.
-
-        /**
-         * Runs before the WebSocket connection is established.
-         * We validate the session with the control plane here.
-         */
         beforeHandle({ sessionValidation, set }) {
           if (!sessionValidation.isValid) {
             set.status = 401;
@@ -75,9 +56,6 @@ export function startServer(): Promise<any> {
           }
         },
 
-        /**
-         * Called when WebSocket connection is established
-         */
         open(socket) {
           const { sessionId, userId, role, name } = socket.data.query;
           const orgId =
@@ -99,9 +77,6 @@ export function startServer(): Promise<any> {
           onOpen(socket as unknown as RealtimeSocket);
         },
 
-        /**
-         * Called for every incoming message
-         */
         message(socket, message) {
           onMessage(
             socket as unknown as RealtimeSocket,
@@ -109,22 +84,15 @@ export function startServer(): Promise<any> {
           );
         },
 
-        /**
-         * Called when send buffer is draining after being full
-         */
         drain(socket) {
           onDrain(socket as unknown as RealtimeSocket);
         },
 
-        /**
-         * Called when connection closes
-         */
         close(socket, code, message) {
           onClose(socket as unknown as RealtimeSocket, code, message);
         },
       });
 
-      // Bind to port
       app.listen(env.PORT, (server) => {
         if (server) {
           log.info({ port: env.PORT }, "WebSocket server listening");
@@ -139,9 +107,6 @@ export function startServer(): Promise<any> {
   });
 }
 
-/**
- * Graceful shutdown helper
- */
 // biome-ignore lint/suspicious/noExplicitAny: complex Elysia type
 export function stopServer(app: any): void {
   app.stop();

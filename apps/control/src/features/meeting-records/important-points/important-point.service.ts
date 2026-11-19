@@ -53,8 +53,6 @@ export const ImportantPointService = {
     });
   },
 
-  // Important points are immutable - no update method
-
   delete(id: string) {
     return prisma.importantPoint.delete({
       where: { id },

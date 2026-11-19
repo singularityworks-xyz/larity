@@ -35,7 +35,6 @@ export interface Alert {
 
   status: AlertStatus;
   suggestion?: string;
-  /** Brief user-visible “why flagged” line from Tier 4 when surfaced */
   surfaceReason?: string;
   targetUserId?: string;
   timestamp: number;

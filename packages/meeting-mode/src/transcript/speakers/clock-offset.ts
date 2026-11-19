@@ -9,9 +9,6 @@ export class ClockOffsetTracker {
     clientSendTs: number,
     serverReceiveTs: number
   ): void {
-    // Measured one-way delay: half the observed client→server transit,
-    // clamped like the audio_stream_start estimate in realtime on-message.
-    // (Previously a hard-coded 50 ms, which biased offsets on slow links.)
     const halfRTT = Math.max(
       0,
       Math.min(500, (serverReceiveTs - clientSendTs) / 2)
@@ -33,12 +30,10 @@ export class ClockOffsetTracker {
     const currentMedian = this.calculateMedian(userSamples);
     this.lastMedianOffset.set(userId, currentMedian);
 
-    // Detect large shifts > 500ms
     if (
       previousMedian !== undefined &&
       Math.abs(currentMedian - previousMedian) > 500
     ) {
-      // Mark as untrusted for 2 seconds
       this.untrustedUntil = Date.now() + 2000;
     }
   }
@@ -51,7 +46,6 @@ export class ClockOffsetTracker {
     return Date.now() < this.untrustedUntil;
   }
 
-  // for testing purposes
   fastForwardTime(now: number): void {
     if (now >= this.untrustedUntil) {
       this.untrustedUntil = 0;

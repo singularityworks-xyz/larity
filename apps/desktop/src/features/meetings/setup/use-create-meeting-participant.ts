@@ -4,7 +4,6 @@ import { api } from "../../../lib/api";
 type ISODateString = string;
 
 interface CreateMeetingParticipantInput {
-  /** ISO 8601 datetime string */
   attendedAt?: ISODateString;
   externalEmail?: string;
   externalName?: string;

@@ -1,10 +1,3 @@
-/**
- * types.ts — Type definitions for the realtime plane
- *
- * Defines the shape of session data and WebSocket user data.
- */
-
-// We define our custom data that will be attached to Elysia's Context
 export interface SocketData {
   connectedAt: number;
   lastFrameTs: number;
@@ -15,11 +8,6 @@ export interface SocketData {
   userId: string;
 }
 
-/**
- * Since we use Elysia, the socket exposes a `data` property.
- * We'll define a generic interface that matches what Elysia gives us
- * so our handlers don't need to import Elysia internals everywhere.
- */
 export interface RealtimeSocket {
   close: () => void;
   data: SocketData;
@@ -28,9 +16,6 @@ export interface RealtimeSocket {
   ) => void;
 }
 
-/**
- * Connection entry within a session
- */
 export interface SessionConnection {
   connectedAt: number;
   role: "host" | "participant";
@@ -38,19 +23,12 @@ export interface SessionConnection {
   userId: string;
 }
 
-/**
- * Session entry stored in the in-memory registry
- * Handles multiple connections per session
- */
 export interface SessionEntry {
-  connections: Map<string, SessionConnection>; // key: userId
+  connections: Map<string, SessionConnection>;
   lastFrameTs: number;
   startedAt: number;
 }
 
-/**
- * Payload structure for VAD signals from clients
- */
 export interface VadSignal {
   clientSendTs: number;
   role?: "host" | "participant";

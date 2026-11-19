@@ -110,7 +110,6 @@ describe("Tier 4 backlog shed (P2.8)", () => {
       },
     });
 
-    // Burst of 4: U1 dequeues with 3 behind it (skip), the rest run.
     engine.evaluateUtteranceQueued(makeUtterance(0));
     engine.evaluateUtteranceQueued(makeUtterance(1));
     engine.evaluateUtteranceQueued(makeUtterance(2));

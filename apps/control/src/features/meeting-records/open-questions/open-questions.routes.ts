@@ -17,7 +17,6 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
     },
     { query: openQuestionQuerySchema }
   )
-  // Get open question by id
   .get(
     "/:id",
     async ({ params, set }) => {
@@ -84,7 +83,6 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
     },
     { params: openQuestionIdSchema }
   )
-  // Resolve open question
   .post(
     "/:id/resolve",
     async ({ params, body, set }) => {
@@ -108,7 +106,6 @@ export const openQuestionsRoutes = new Elysia({ prefix: "/open-questions" })
       body: z.object({ decisionId: z.string().uuid().optional() }).optional(),
     }
   )
-  // Defer open question
   .post(
     "/:id/defer",
     async ({ params, set }) => {

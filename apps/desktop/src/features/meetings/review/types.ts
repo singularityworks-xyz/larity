@@ -1,7 +1,3 @@
-/**
- * Types for the post-meeting insights view.
- * These mirror the Prisma models returned by the control app endpoints.
- */
 import type { MeetingAnalysis } from "@larity/db/meeting-analysis.types";
 
 export type DecisionStatus = "ACTIVE" | "SUPERSEDED" | "REVOKED";
@@ -111,7 +107,7 @@ export interface TranscriptUtterance {
 }
 
 export interface MeetingTranscript {
-  content: string; // JSON string of TranscriptUtterance[]
+  content: string;
   createdAt: string;
   duration: number | null;
   format: "RAW" | "NORMALIZED" | "STRUCTURED";

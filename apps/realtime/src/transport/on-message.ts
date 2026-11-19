@@ -66,8 +66,6 @@ function handleParsedVadPayload(
       Number.isFinite(clientSendTs) &&
       Number.isFinite(ts)
     ) {
-      // Estimate one-way network latency as half of the observed RTT
-      // (Server receive time - Client send time)
       const networkLatency = Math.max(
         0,
         Math.min(500, (ts - (clientSendTs ?? ts)) / 2)
@@ -139,8 +137,6 @@ function handleBinaryFrame(
         message.byteLength
       );
   const recvTs = ts;
-  // P4.10: the send chain is synchronous (enqueue + flush attempt), so the
-  // histogram now measures pure recv→enqueue without awaiting a handshake.
   try {
     sessionManager.sendAudio(sessionId, frame);
   } catch (err) {
@@ -166,12 +162,6 @@ function handleBinaryFrame(
   }
 }
 
-/**
- * Handle incoming WebSocket message
- *
- * @param ws - The WebSocket connection
- * @param message - Raw message data
- */
 export function onMessage(
   ws: RealtimeSocket,
   message: string | Buffer | Uint8Array | Record<string, unknown>

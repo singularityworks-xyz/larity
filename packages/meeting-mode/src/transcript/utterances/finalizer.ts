@@ -31,12 +31,6 @@ const PERF = {
  */
 const LIVE_ECHO_TIME_WINDOW_MS = 4000;
 
-/**
- * Minimum bigram-Jaccard similarity between a mic utterance and a system
- * utterance for the mic utterance to be classified as an acoustic echo and
- * discarded. Mirrors the offline threshold; see ECHO_SIMILARITY_THRESHOLD in
- * offline-correlation.ts for the full rationale.
- */
 const LIVE_ECHO_SIMILARITY_THRESHOLD = 0.4;
 
 export interface UtterancePublisher extends TopicPublisher {
@@ -55,7 +49,6 @@ export type RetroactiveUpdateHandler = (
   oldSpeakerType: string
 ) => Promise<void>;
 
-/** Why an utterance is (re)published. Absent for first-time publishes. */
 export interface UtterancePublishOptions {
   republish?: "reidentified" | "role_change";
 }
@@ -82,7 +75,6 @@ export class UtteranceFinalizer {
     ReturnType<typeof setTimeout>
   >();
 
-  /** In-flight `onUtterancePublished` handlers per session (drained on close). */
   private readonly publishedHandlerInflight = new Map<
     string,
     Set<Promise<unknown>>
@@ -96,12 +88,6 @@ export class UtteranceFinalizer {
    */
   private readonly processChains = new Map<string, Promise<unknown>>();
 
-  /**
-   * Publish-path timing anchors per utteranceId (`${sessionId}:${seq}`).
-   * Set in `processFinal`, consumed (and deleted) in `publishUtterance`.
-   * Entries for ids consumed by a same-speaker merge are deleted at push
-   * time since the merged utterance retains the previous id.
-   */
   private readonly publishTrack = new Map<
     string,
     { finalizeStartPerf: number; sttTs: number }
@@ -111,13 +97,8 @@ export class UtteranceFinalizer {
     publisher: UtterancePublisher,
     options: {
       topicManager?: TopicManagerOptions;
-      /** Same-speaker merge window (ms between segment ends). */
       mergerGroupingMs?: number;
-      /** Flush pending publish after audio end + this gap (ms). */
       mergerPublishGapMs?: number;
-      /**
-       * @deprecated Sets both grouping and publish gap when the split env vars are unused.
-       */
       mergerGapMs?: number;
       dependencies?: {
         embedder?: UtteranceEmbedder;
@@ -239,10 +220,6 @@ export class UtteranceFinalizer {
   async process(result: SttResult): Promise<void> {
     const { sessionId, isFinal } = result;
 
-    // P2.12: partials are intentionally not accumulated. The old
-    // PartialBuffer only ever fed getStats() (no callers) while costing an
-    // append + overflow splice per interim; provisional speaker mapping
-    // happens in the identifier, not here.
     if (!isFinal) {
       return;
     }
@@ -265,8 +242,6 @@ export class UtteranceFinalizer {
   ): Promise<void> {
     this.clearMergerFlushTimer(sessionId);
 
-    // P2.12: finalized fields come straight from the STT final — the removed
-    // PartialBuffer never contributed anything beyond this mapping.
     const finalized = {
       text: result.transcript,
       confidence: result.confidence,
@@ -351,8 +326,6 @@ export class UtteranceFinalizer {
 
     const _embedWallStart = PERF.now();
     const embedOutcome = this.embedder.embed(utterance.text);
-    // Tap (don't alter) the in-flight embedding to time it. Both branches
-    // handle the outcome, so no unhandled rejection is introduced.
     embedOutcome.then(
       () =>
         recordHistogram(
@@ -370,7 +343,6 @@ export class UtteranceFinalizer {
       return;
     });
 
-    // Anchor publish-path timing before the utterance can be held by the merger.
     this.publishTrack.set(utterance.utteranceId, {
       finalizeStartPerf: finalizeStart,
       sttTs: result.ts,
@@ -385,9 +357,6 @@ export class UtteranceFinalizer {
       await this.publishUtterance(toPublish);
     }
 
-    // If the merger consumed this utterance into a same-speaker merge, its
-    // id is gone: drop its timing anchor and skip its topic delta (the
-    // surviving utterance keeps its own topic; the client never saw this id).
     const pendingAfterPush = merger.peekPending();
     const mergedAway =
       !toPublish &&
@@ -408,9 +377,6 @@ export class UtteranceFinalizer {
     }
     ringBuffer.push(utterance);
 
-    // Assign topic after publish (awaited: keeps per-session ordering and
-    // topic-centroid updates serialized). Already-rendered rows catch up via
-    // the topic delta below; Tier 2/3 await the embedding independently.
     const topicId = await this.topicManager.assignTopic(utterance);
     utterance.topicId = topicId;
     utterance.embeddingPromise = undefined;
@@ -458,10 +424,6 @@ export class UtteranceFinalizer {
       .reverse();
   }
 
-  /**
-   * Utterances before the latest finalize (excluding optional id), chronological order (oldest first).
-   * Used for Tier 4 recent transcript context — current utterance is not yet appended when handlers run.
-   */
   getRecentUtterancesChronological(
     sessionId: string,
     options?: { excludeUtteranceId?: string; limit?: number }
@@ -668,12 +630,6 @@ export class UtteranceFinalizer {
     await Promise.allSettled([...bucket]);
   }
 
-  /**
-   * Emit `{ type: "utterance_topic", utteranceId, topicId }` on the topic
-   * channel so clients that already rendered the utterance (published
-   * before topic assignment) can patch its topic. Full topic state
-   * continues on the same channel unchanged.
-   */
   private async publishTopicDelta(
     sessionId: string,
     utteranceId: string,
@@ -701,9 +657,6 @@ export class UtteranceFinalizer {
       key === "embeddingPromise" ? undefined : value
     );
 
-    // Consume the publish-path timing anchor (set in processFinal).
-    // Republishes (retroactive re-identification, session flush) find no
-    // anchor and are not recorded — only the first publish counts.
     const track = this.publishTrack.get(utterance.utteranceId);
     if (track) {
       this.publishTrack.delete(utterance.utteranceId);

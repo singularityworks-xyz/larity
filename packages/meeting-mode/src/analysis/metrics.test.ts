@@ -38,7 +38,6 @@ describe("MetricsRegistry", () => {
     }
     const hist = registry.snapshot().histograms.capped;
     expect(hist?.count).toBe(1024);
-    // Oldest 76 samples (1..76) evicted, so min is 77.
     expect(hist?.min).toBe(77);
     expect(hist?.max).toBe(1100);
   });

@@ -1,6 +1,5 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
-// Import after mocks so the connection uses the fake client.
 afterAll(() => mock.restore());
 
 import { DeepgramConnection } from "./connection";
@@ -66,10 +65,6 @@ function tick(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * P5.7: lock the default connect query. Any default change here must come
- * with a measured decision-matrix entry in the plan.
- */
 describe("Deepgram connect query defaults (P5.7)", () => {
   beforeEach(() => {
     seenConfigs.length = 0;

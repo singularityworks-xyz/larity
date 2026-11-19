@@ -12,7 +12,6 @@ export function useOverlayData() {
   const [micAmplitude, setMicAmplitude] = useState(0);
   const [isMicActive] = useState(true);
 
-  // Mocks
   const clientName = "Acme Corp";
   const meetingTitle = "Q3 Product Demo";
   const sessionId = "mock-session-123";
@@ -48,7 +47,7 @@ export function useOverlayData() {
         if (expandedAlertId === id) {
           setExpandedAlertId(null);
         }
-      }, 300); // match fade out duration
+      }, 300);
     },
     [expandedAlertId]
   );
@@ -61,9 +60,7 @@ export function useOverlayData() {
   }, []);
 
   useEffect(() => {
-    // Reference startedAtMs so the linter is happy and the effect re-runs when resetApp triggers
     const _timerResetKey = startedAtMs;
-    // Fire alerts 20 seconds after start
     const timer = setTimeout(() => {
       const alert1: MeetingAlert = {
         id: "alert-1",
@@ -126,7 +123,6 @@ export function useOverlayData() {
     return () => clearTimeout(timer);
   }, [startedAtMs]);
 
-  // Simulate mic amplitude
   useEffect(() => {
     const interval = setInterval(() => {
       if (isMicActive) {

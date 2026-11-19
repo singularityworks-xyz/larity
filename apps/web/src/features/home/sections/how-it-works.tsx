@@ -59,7 +59,6 @@ export function HowItWorks() {
               className={`flex flex-col items-center gap-12 md:flex-row md:gap-16 ${i % 2 === 0 ? "" : "md:flex-row-reverse"}`}
               key={act.num}
             >
-              {/* Text block */}
               <div className="flex w-full flex-col gap-4 md:w-1/2">
                 <span className="font-mono text-[10px] text-accent uppercase tracking-[0.25em]">
                   {act.num} — {act.phase}
@@ -71,7 +70,6 @@ export function HowItWorks() {
                   {act.body}
                 </p>
               </div>
-              {/* Media */}
               <div className="w-full overflow-hidden rounded-2xl border border-zinc-100 shadow-sm shadow-zinc-900/5 md:w-1/2">
                 {act.media}
               </div>

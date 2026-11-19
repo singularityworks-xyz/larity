@@ -623,7 +623,6 @@ function IdentifyExternalSpeakerDropdown({
       autoFocus
       className={cx(inputClass, "cursor-pointer")}
       onBlur={() => {
-        // Only trigger complete on blur if we haven't selected "new"
         if (!isCreatingNew) {
           onComplete();
         }

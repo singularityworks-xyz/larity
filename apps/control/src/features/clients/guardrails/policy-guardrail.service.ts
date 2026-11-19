@@ -57,16 +57,12 @@ export const PolicyGuardrailService = {
     });
   },
 
-  // Get all active guardrails for a client (org-level + client-specific)
   findActiveForClient(orgId: string, clientId: string) {
     return prisma.policyGuardrail.findMany({
       where: {
         orgId,
         isActive: true,
-        OR: [
-          { clientId: null }, // Org-level
-          { clientId }, // Client-specific
-        ],
+        OR: [{ clientId: null }, { clientId }],
       },
       orderBy: [{ severity: "desc" }, { createdAt: "desc" }],
     });
@@ -105,7 +101,6 @@ export const PolicyGuardrailService = {
 
   async seedDefaultForOrg(orgId: string) {
     return await prisma.$transaction(async (tx) => {
-      // Lock the Org row to prevent concurrent seeding race conditions
       await tx.$executeRaw`SELECT id FROM orgs WHERE id = ${orgId} FOR UPDATE`;
 
       const existingCount = await tx.policyGuardrail.count({

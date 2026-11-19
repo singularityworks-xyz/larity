@@ -1,19 +1,3 @@
-/**
- * test-client.ts — Realtime Integration Test Client
- *
- * Simulates a host sending linear16 PCM frames to the realtime plane.
- *
- * Integration path exercised:
- * host WebSocket -> realtime worker -> in-process Deepgram WS -> Redis transcript channel
- *
- * Usage:
- *   bun run apps/realtime/scripts/test-client.ts [sessionId] [frameCount] [intervalMs] [toneHz]
- *
- * Examples:
- *   bun run apps/realtime/scripts/test-client.ts
- *   bun run apps/realtime/scripts/test-client.ts my-session-123 120 50 440
- */
-
 import Redis from "ioredis";
 
 const sessionId = process.argv[2] || `test-session-${Date.now()}`;

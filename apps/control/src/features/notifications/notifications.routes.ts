@@ -19,7 +19,6 @@ export const notificationsRoutes = new Elysia({ prefix: "/notifications" })
 
       systemEvents.on(`user_notification:${userId}`, listener);
 
-      // Store listener to clean up later
       ws.data = Object.assign(ws.data, { _notificationListener: listener });
     },
     close(ws) {

@@ -18,11 +18,9 @@ import { startSubscriber, stopSubscriber } from "./events/redis/subscriber";
 import { rootLogger } from "./logger";
 import { startServer, stopServer } from "./server";
 
-// Track the Elysia instance for graceful shutdown
 // biome-ignore lint/suspicious/noExplicitAny: complex Elysia type
 let appInstance: any | null = null;
 
-// main entry point
 async function main(): Promise<void> {
   rootLogger.info("Starting realtime plane...");
   rootLogger.info({ port: env.PORT }, "Port configured");
@@ -37,7 +35,6 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Connect to Redis
   rootLogger.info("Connecting to Redis...");
   const redisConnected = await connectRedis();
 
@@ -47,7 +44,6 @@ async function main(): Promise<void> {
   }
   rootLogger.info("Redis connected");
 
-  // Start Redis subscriber to relay pipeline output to WebSocket clients
   try {
     await startSubscriber();
     rootLogger.info("Redis subscriber started");
@@ -56,7 +52,6 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Start WebSocket server
   try {
     appInstance = await startServer();
     rootLogger.info("Realtime plane is ready");
@@ -66,7 +61,6 @@ async function main(): Promise<void> {
   }
 }
 
-// shutdown handler
 async function shutdown(signal: string): Promise<void> {
   rootLogger.info({ signal }, "Received signal, shutting down...");
 
@@ -91,7 +85,6 @@ async function shutdown(signal: string): Promise<void> {
   process.exit(0);
 }
 
-// Handle shutdown signals
 process.on("SIGTERM", () => {
   shutdown("SIGTERM").catch((error) => {
     rootLogger.error({ error }, "SIGTERM shutdown failed");
@@ -105,7 +98,6 @@ process.on("SIGINT", () => {
   });
 });
 
-// Handle uncaught errors
 process.on("uncaughtException", (error) => {
   rootLogger.fatal({ error }, "FATAL: Uncaught exception");
   process.exit(1);
@@ -116,7 +108,6 @@ process.on("unhandledRejection", (reason) => {
   process.exit(1);
 });
 
-// Start the application
 main().catch((error) => {
   rootLogger.fatal({ error }, "FATAL: Startup failed");
   process.exit(1);

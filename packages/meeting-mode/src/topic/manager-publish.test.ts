@@ -40,7 +40,6 @@ describe("TopicManager persist+publish (P2.10)", () => {
       { enableAsyncSummarization: false }
     );
 
-    // Direct embedding: no provider call.
     const topicId = await manager.assignTopic(makeUtterance());
     expect(hset).toHaveBeenCalledTimes(1);
     expect(publish).toHaveBeenCalledTimes(1);

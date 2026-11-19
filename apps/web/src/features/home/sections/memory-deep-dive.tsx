@@ -106,16 +106,13 @@ function TypewriterInput() {
 
   return (
     <div className="flex w-full flex-col rounded-2xl border border-zinc-900/15 bg-white p-4 text-left shadow-[0_12px_40px_rgba(0,0,0,0.04)] sm:p-5 md:p-6">
-      {/* Multi-line Typing Area */}
       <div className="min-h-[80px] w-full flex-1 sm:min-h-[100px] md:min-h-[120px]">
         <span className="block break-words font-body font-normal text-base text-zinc-900 leading-relaxed sm:text-xl md:text-2xl">
           {displayText}
           <span className="ml-1 inline-block h-4 w-1.5 animate-pulse bg-accent/80 align-middle sm:h-5 sm:w-2 md:h-6 md:w-2" />
         </span>
       </div>
-      {/* Bottom Row / Toolbar */}
       <div className="mt-3 flex min-h-[40px] items-center justify-between border-zinc-100 border-t pt-3 sm:mt-4 sm:pt-4">
-        {/* Dynamic Company Pill */}
         <div className="flex min-h-[32px] items-center">
           {(() => {
             const matchedCompany = COMPANIES.find((c) =>
@@ -139,7 +136,6 @@ function TypewriterInput() {
             );
           })()}
         </div>
-        {/* Send Button */}
         <button
           aria-label="Send query"
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white transition-colors hover:bg-zinc-800 sm:h-10 sm:w-10"
@@ -170,7 +166,6 @@ export function MemoryDeepDive() {
   return (
     <section className="w-full bg-[#EFEBDD] py-28 text-zinc-900">
       <div className="mx-auto max-w-6xl px-6 md:px-8">
-        {/* Editorial Header */}
         <div className="mb-20">
           <span className="font-mono text-[10px] text-accent uppercase tracking-[0.25em]">
             Organisational Memory
@@ -185,9 +180,7 @@ export function MemoryDeepDive() {
           </h2>
         </div>
 
-        {/* Full-width editorial blocks separated by technical divider lines */}
         <div className="flex flex-col gap-10">
-          {/* Block 1: Calendar Sync */}
           <div className="border-zinc-900/30 border-t pt-10">
             <div className="relative aspect-[2.39/1] w-full overflow-hidden rounded-xl border border-zinc-900/30 bg-zinc-50/50">
               {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
@@ -218,10 +211,8 @@ export function MemoryDeepDive() {
             </div>
           </div>
 
-          {/* Block 2: Semantic Search (Coded Typewriter Visual) */}
           <div className="border-zinc-900/30 border-t pt-10">
             <div className="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl border border-zinc-900/30 p-4 sm:aspect-[16/9] sm:p-6 lg:aspect-[2.39/1]">
-              {/* Background image */}
               {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
               <img
                 alt="Search Backdrop"
@@ -230,7 +221,6 @@ export function MemoryDeepDive() {
                 src="/image.png"
                 width={1337}
               />
-              {/* Overlay content */}
               <div className="relative z-10 w-full max-w-[860px] px-4 md:px-8">
                 <TypewriterInput />
               </div>
@@ -254,7 +244,6 @@ export function MemoryDeepDive() {
             </div>
           </div>
 
-          {/* Block 3: Versioned Decisions */}
           <div className="border-zinc-900/30 border-t pt-10">
             <div className="relative aspect-[2.39/1] w-full overflow-hidden rounded-xl border border-zinc-900/30 bg-zinc-50/50">
               {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}

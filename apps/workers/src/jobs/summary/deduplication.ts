@@ -3,9 +3,6 @@ import { generateEmbedding } from "./embeddings";
 
 const log = createWorkerLogger("deduplication");
 
-/**
- * Computes the cosine similarity between two numeric vectors.
- */
 export function cosineSimilarity(vecA: number[], vecB: number[]): number {
   if (vecA.length !== vecB.length) {
     throw new Error("Vectors must have the same length");
@@ -30,10 +27,6 @@ export interface DeduplicatableItem {
   textToEmbed: string;
 }
 
-/**
- * Deduplicates an array of items based on cosine similarity of their embeddings.
- * Keeps the first item encountered when a duplicate is found.
- */
 export async function deduplicateItems<T extends DeduplicatableItem>(
   items: T[],
   threshold = 0.95
@@ -52,7 +45,6 @@ export async function deduplicateItems<T extends DeduplicatableItem>(
           { err: error },
           "Failed to generate embedding; item kept without deduplication"
         );
-        // Return null embedding on failure, which will prevent similarity matches
         return { item, embedding: null as number[] | null };
       }
     })

@@ -1,10 +1,3 @@
-/**
- * session-manager.ts — Session Manager
- *
- * Manages the mapping between session IDs and Deepgram connections.
- * Enforces connection limits and provides session lifecycle methods.
- */
-
 import { createDualChannelSession } from "./deepgram/streaming/dual-channel-session";
 import { MAX_CONNECTIONS } from "./env";
 import { createSttLogger } from "./logger";
@@ -13,7 +6,6 @@ const log = createSttLogger("session-manager");
 
 interface SessionConnection {
   close(): void;
-  /** Optional eager dial; sessions without it fall back to lazy connect. */
   preconnect?(): void;
   sendAudio(audioBuffer: Buffer): void;
   setAudioStreamStart(serverAudioStartTs: number): void;
@@ -21,14 +13,6 @@ interface SessionConnection {
 
 type ConnectionFactory = (sessionId: string) => SessionConnection;
 
-/**
- * SessionManager maintains active Deepgram connections.
- *
- * Responsibilities:
- * - Create/close Deepgram connections per session
- * - Route audio to the correct connection
- * - Enforce max concurrent connections limit
- */
 export class SessionManager {
   private readonly connections: Map<string, SessionConnection> = new Map();
   private readonly createConnection: ConnectionFactory;
@@ -52,8 +36,6 @@ export class SessionManager {
       return false;
     }
 
-    // Create connection (dialed eagerly via connectSession; lazy on first
-    // audio remains as the fallback path)
     const connection = this.createConnection(sessionId);
     this.connections.set(sessionId, connection);
 
@@ -64,11 +46,6 @@ export class SessionManager {
     return true;
   }
 
-  /**
-   * Eagerly dial a session's Deepgram sockets (fire-and-forget). Overlaps
-   * the TLS+WebSocket handshake with the client's first audio so stream
-   * start doesn't pay the full handshake serially.
-   */
   connectSession(sessionId: string): void {
     const connection = this.connections.get(sessionId);
     if (!connection) {
@@ -99,25 +76,15 @@ export class SessionManager {
     );
   }
 
-  /**
-   * Send audio to a session. Synchronous (P4.10): enqueue + flush attempt.
-   *
-   * Buffer layout: `[tag: u8][pcm mono linear16 LE]`.
-   * See `deepgram/dual-channel-session.ts` for tag constants.
-   */
   sendAudio(sessionId: string, audioBuffer: Buffer): void {
     const connection = this.connections.get(sessionId);
     if (!connection) {
-      // Silently drop - session may have ended
       return;
     }
 
     connection.sendAudio(audioBuffer);
   }
 
-  /**
-   * Set the perfect server-side timestamp for the start of the audio stream
-   */
   setAudioStreamStart(sessionId: string, serverAudioStartTs: number): void {
     const connection = this.connections.get(sessionId);
     if (connection) {
@@ -145,5 +112,4 @@ export class SessionManager {
   }
 }
 
-// Export singleton instance
 export const sessionManager = new SessionManager();

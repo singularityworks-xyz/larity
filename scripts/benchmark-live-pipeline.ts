@@ -1,5 +1,3 @@
-/** Synthetic provider check; sends no transcripts or organization records. */
-
 import { LiveMeetingAnalyzer } from "../packages/meeting-mode/src/analysis/live/live-analyzer";
 import { LiveDecisionAnalyzer } from "../packages/meeting-mode/src/analysis/live/live-decision";
 import type {

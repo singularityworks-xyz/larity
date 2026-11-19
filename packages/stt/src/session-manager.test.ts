@@ -20,7 +20,6 @@ describe("SessionManager.connectSession", () => {
     expect(preconnect).not.toHaveBeenCalled();
     manager.connectSession("s1");
     expect(preconnect).toHaveBeenCalledTimes(1);
-    // P4.10: the send chain is synchronous — no promise involved.
     manager.sendAudio("s1", Buffer.alloc(1024));
     expect(sendAudio).toHaveBeenCalledTimes(1);
   });

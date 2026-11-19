@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-/// Minimum milliseconds between amplitude emits (≈15 Hz, P4.4).
 pub const AMPLITUDE_EMIT_INTERVAL_MS: u64 = 66;
 
 /// Refcounted amplitude-listener registry (P4.4).
@@ -17,17 +16,12 @@ pub struct AmplitudeListeners {
 }
 
 impl AmplitudeListeners {
-    /// Register one listener. Returns the new count (for tests/logging).
     pub fn acquire(&self) -> usize {
         self.count.fetch_add(1, Ordering::AcqRel) + 1
     }
 
-    /// Release one listener. Never goes below zero (unpaired releases from
-    /// a best-effort JS `finally` are harmless).
     #[allow(deprecated)] // `fetch_update` renamed `try_update` on newer Rust; keep older-toolchain support.
     pub fn release(&self) -> usize {
-        // The update loops internally; contention here is negligible
-        // (mount/unmount frequency, not audio frequency).
         self.count
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |c| {
                 Some(c.saturating_sub(1))
@@ -41,9 +35,6 @@ impl AmplitudeListeners {
     }
 }
 
-/// True when an amplitude emit is due: a listener exists and the interval
-/// has elapsed since `last_emit_ms`. Pure — unit-tested below; both the
-/// capture worker and the VAD loop use it.
 pub fn should_emit_amplitude(
     listeners: &AmplitudeListeners,
     last_emit_ms: u64,
@@ -78,7 +69,6 @@ mod tests {
         listeners.acquire(); // VadManager
         listeners.release(); // overlay unmounts
         assert!(listeners.has_listeners());
-        // Unpaired extra releases never underflow.
         listeners.release();
         listeners.release();
         assert!(!listeners.has_listeners());

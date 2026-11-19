@@ -6,9 +6,6 @@ const log = createSttLogger("dg-client");
 
 let client: DeepgramClient | null = null;
 
-/**
- * Get or create the Deepgram client instance
- */
 export function getDeepgramClient(): DeepgramClient {
   if (!client) {
     if (!DEEPGRAM_API_KEY) {

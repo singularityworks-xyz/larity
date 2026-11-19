@@ -59,7 +59,6 @@ describe("UtteranceFinalizer publish-path metrics", () => {
       { dependencies: finalizerDependencies }
     );
 
-    // Two different-speaker finals: the second forces the first out of the merger.
     await finalizer.process(
       makeFinal({ diarizationIndex: 0, text: "hello world today" })
     );
@@ -68,8 +67,6 @@ describe("UtteranceFinalizer publish-path metrics", () => {
     );
 
     expect(published.length).toBe(1);
-    // P2.1: the first utterance is published before its topic is assigned,
-    // then patched via a topic delta.
     expect(topicDeltas).toEqual([
       {
         type: "utterance_topic",
@@ -100,7 +97,6 @@ describe("UtteranceFinalizer publish-path metrics", () => {
       { dependencies: finalizerDependencies }
     );
 
-    // Same speaker, back-to-back: second merges into the first, no publish yet.
     await finalizer.process(
       makeFinal({ diarizationIndex: 0, text: "first part spoken" })
     );
@@ -116,7 +112,6 @@ describe("UtteranceFinalizer publish-path metrics", () => {
 
     await finalizer.closeSession("test-session");
     const after = getMetricsSnapshot();
-    // closeSession flushes the merged pending utterance exactly once.
     expect(after.histograms["finalizer.stt_final_to_publish_ms"]?.count).toBe(
       1
     );

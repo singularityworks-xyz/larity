@@ -66,8 +66,6 @@ export function handleSystemEventChannel(
     return true;
   }
 
-  // P5.1: `publishSystemEvent` already includes `type: "system_event"` —
-  // forward verbatim.
   broadcast(sessionId, message);
   return true;
 }
@@ -83,8 +81,6 @@ export function handleAlertChannel(channel: string, message: string): void {
 
   let wrapped: string;
   try {
-    // P5.1: publishers include `type: "alert"`; forward verbatim. Validate
-    // only (no spread/re-stringify) so corrupt payloads still drop here.
     JSON.parse(message) as unknown;
     wrapped = message;
   } catch {

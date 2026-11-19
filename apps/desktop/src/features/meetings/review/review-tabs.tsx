@@ -39,8 +39,6 @@ function formatTimestamp(seconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-// ── Processing Status Banner ─────────────────────────────────────────────────
-
 const SKELETON_ROW_KEYS = [
   "post-sk-row-1",
   "post-sk-row-2",
@@ -67,8 +65,6 @@ function SkeletonRows({ count = 4 }: { count?: number }) {
     </div>
   );
 }
-
-// ── Status Badges & Chips ───────────────────────────────────────────────────
 
 function DecisionStatusBadge({ status }: { status: Decision["status"] }) {
   if (status === "SUPERSEDED") {
@@ -173,8 +169,6 @@ function CategoryChip({ category }: { category: ImportantPointCategory }) {
     </span>
   );
 }
-
-// ── Memoized Tab Components ──────────────────────────────────────────────────
 
 const TranscriptRow = memo(function TranscriptRow({
   utterance,
@@ -652,8 +646,6 @@ function NotesTab({ meetingId }: { meetingId: string }) {
   );
 }
 
-// ── Tab definitions ──────────────────────────────────────────────────────────
-
 export type TabId =
   | "brief"
   | "transcript"
@@ -669,8 +661,6 @@ export interface Tab {
   id: TabId;
   label: string;
 }
-
-// ── Tab Content Renderer ──────────────────────────────────────────────────────
 
 export function TabContent({
   activeTab,
@@ -708,5 +698,3 @@ export function TabContent({
       return null;
   }
 }
-
-// ── Main Page ────────────────────────────────────────────────────────────────

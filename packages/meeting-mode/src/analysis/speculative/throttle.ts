@@ -43,11 +43,6 @@ export function countWords(text: string): number {
   return normalized.split(" ").length;
 }
 
-/**
- * Words in `current` not covered by `previous`. Growing partials ("we can"
- * → "we can deliver by friday") count only the appended tail; a revision
- * that diverges counts its full length as new.
- */
 export function countNewWords(current: string, previous: string): number {
   const next = normalizeForPrefix(current);
   const prev = normalizeForPrefix(previous);

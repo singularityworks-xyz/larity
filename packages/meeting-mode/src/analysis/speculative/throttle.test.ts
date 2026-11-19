@@ -75,7 +75,6 @@ describe("SpeculationThrottle", () => {
   test("fewer than 4 new words after the interval is blocked", () => {
     const throttle = new SpeculationThrottle();
     throttle.markStarted(SESSION, SPEAKER, "we can deliver by friday", 1000);
-    // +3 words, well past the interval.
     expect(
       throttle.shouldSpeculate(
         SESSION,
@@ -89,7 +88,6 @@ describe("SpeculationThrottle", () => {
   test("4+ new words after the interval is allowed", () => {
     const throttle = new SpeculationThrottle();
     throttle.markStarted(SESSION, SPEAKER, "we can deliver by friday", 1000);
-    // The in-flight speculation settled, so rule 3 no longer applies.
     throttle.markSettled(SESSION, SPEAKER, "we can deliver by friday");
     expect(
       throttle.shouldSpeculate(
@@ -105,8 +103,6 @@ describe("SpeculationThrottle", () => {
   test("in-flight prefix blocks even when time and words allow", () => {
     const throttle = new SpeculationThrottle();
     throttle.markStarted(SESSION, SPEAKER, "we can deliver", 0);
-    // Long past the interval, many new words — but the in-flight text
-    // ("we can deliver") is a prefix of the current partial.
     expect(
       throttle.shouldSpeculate(
         SESSION,
@@ -169,7 +165,6 @@ describe("SpeculationThrottle", () => {
   test("state is tracked per session+speaker", () => {
     const throttle = new SpeculationThrottle();
     throttle.markStarted(SESSION, SPEAKER, "we can deliver by friday", 1000);
-    // A different speaker in the same session is unaffected.
     expect(
       throttle.shouldSpeculate(
         SESSION,
@@ -178,7 +173,6 @@ describe("SpeculationThrottle", () => {
         1001
       )
     ).toBe(true);
-    // The same speaker in a different session is unaffected.
     expect(
       throttle.shouldSpeculate(
         "sess-2",

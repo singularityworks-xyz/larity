@@ -62,7 +62,6 @@ describe("SpeakerStateTracker session-scoped dedupe", () => {
 
   test("same alert fires independently in two sessions", () => {
     expect(endOfMeetingAlerts(tracker, "s1")).toContain("undiscussed_agenda");
-    // Pre-fix the global firedAlerts set suppressed this second firing.
     expect(endOfMeetingAlerts(tracker, "s2")).toContain("undiscussed_agenda");
   });
 

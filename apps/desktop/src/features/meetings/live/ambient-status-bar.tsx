@@ -81,7 +81,7 @@ interface AmbientStatusBarProps {
   constraintCount: number;
   contradictionCount: number;
   currentTopic: string | null;
-  externalCommitmentCount: number; // Ignored for badges per spec, or combine?
+  externalCommitmentCount: number;
   isStreamActive: boolean;
   participants: LiveParticipant[];
   teamCommitmentCount: number;
@@ -110,11 +110,6 @@ export function AmbientStatusBar({
           "linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%)",
       }}
     >
-      {/* Replaced ListeningHeartbeat with just the indicator per spec if needed, but the layout says: */}
-      {/* ◉  |  [Topic chip]  |  [Constraint badge]  [Commitment badges]  |  [Participant row] */}
-      {/* However, the ◉ in the status bar was removed in the spec, wait, it says "◉  |  [Topic chip — animated]" */}
-      {/* Actually the live dot is in the title bar now, but maybe it remains here? No, spec says: */}
-      {/* "The flat topic text becomes a topic chip" */}
       <span className="flex items-center">
         <span
           className={cx(

@@ -11,18 +11,6 @@ function isGuestPath(pathname: string): boolean {
   );
 }
 
-/**
- * Loaders are fast-path synchronous when a session token is stored:
- * the shell paints immediately and AuthGuardSkeleton validates the
- * session client-side (cookie) after first paint.
- *
- * When NO token is stored, we fall back to the server cookie check so
- * legacy cookie-only sessions (e.g. email login before token persistence)
- * still resolve correctly. That round-trip only happens for users who are
- * about to be redirected anyway, so it does not add perceived latency to
- * normal logged-in navigation.
- */
-
 export async function authGateLoader({
   request,
 }: {
@@ -32,12 +20,9 @@ export async function authGateLoader({
   const token = getStoredSessionToken();
 
   if (token) {
-    // Token present: render shell immediately; AuthGuardSkeleton handles
-    // session validation + orgId redirect client-side after first paint.
     return null;
   }
 
-  // No stored token: could be a legacy cookie session — verify server-side.
   const { data } = await authClient.getSession();
   if (!data?.user) {
     clearStoredSessionToken();
@@ -56,7 +41,6 @@ export async function rootIndexLoader(): Promise<never> {
     throw redirect("/home");
   }
 
-  // Legacy cookie session fallback.
   const { data } = await authClient.getSession();
   if (!data?.user) {
     clearStoredSessionToken();
@@ -81,8 +65,6 @@ export async function guestOnlyLoader({
     return null;
   }
 
-  // No stored token: verify cookie so signed-in users on guest pages are
-  // redirected even without a persisted token.
   const { data } = await authClient.getSession();
   if (data?.user && isGuestPath(pathname)) {
     throw redirect("/home");
@@ -94,7 +76,6 @@ export async function guestOnlyLoader({
 export async function onboardingLoader(): Promise<null> {
   const token = getStoredSessionToken();
 
-  // Verify session server-side for onboarding flow.
   const { data } = await authClient.getSession();
   if (!data?.user) {
     if (token) {

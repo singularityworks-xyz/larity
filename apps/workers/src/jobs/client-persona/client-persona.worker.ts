@@ -144,11 +144,9 @@ ${utterancesText}
 
       const updatedPersona = JSON.parse(responseText);
 
-      // Use the existing clientMember.persona to perform a deep merge and avoid losing nested keys
       const existingPersona = clientMember.persona || {};
       const mergedPersona = deepMerge(existingPersona, updatedPersona);
 
-      // Update ClientMember.persona in the DB
       await prisma.clientMember.update({
         where: { id: clientMemberId },
         data: {

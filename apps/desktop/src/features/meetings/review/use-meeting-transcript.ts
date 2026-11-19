@@ -7,10 +7,9 @@ export function useMeetingTranscript(meetingId: string) {
     queryKey: ["meeting-transcript", meetingId],
     queryFn: () =>
       api.get<MeetingTranscript>(`/meetings/${meetingId}/transcript`),
-    staleTime: 10 * 60 * 1000, // 10 minutes — transcript is immutable post-processing
+    staleTime: 10 * 60 * 1000,
     enabled: Boolean(meetingId),
     retry: (failureCount, error) => {
-      // Don't retry 404s — transcript may not exist yet
       if (error && typeof error === "object" && "status" in error) {
         const err = error as { status: number };
         if (err.status === 404) {

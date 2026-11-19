@@ -19,16 +19,9 @@ function stripEmbedding(commitment: Commitment): Omit<Commitment, "embedding"> {
   return rest;
 }
 
-/** Budget for recent-transcript history in Tier 4 prompts (~1200 tokens). */
 const RECENT_UTTERANCE_CHAR_BUDGET = 4800;
-/** Hard item cap preserved from the previous slice(-48) behavior. */
 const RECENT_UTTERANCE_MAX_ITEMS = 48;
 
-/**
- * Compact one-line history for the Tier 4 prompt (P2.11): speaker name/role
- * plus text only, newest-first budget fill. Full Utterance objects cost
- * ~60-80 tokens each (confidence, offsets, indices) with no reasoning value.
- */
 function recentUtteranceLines(utterances: Utterance[]): string[] {
   const lines: string[] = [];
   let chars = 0;
@@ -186,7 +179,6 @@ function hydrateOneHistoricalMatch(
   return historicalPreloadMissRow(m);
 }
 
-/** Hydrate Tier 3 memory match IDs against preloaded context (no DB on hot path). */
 export function hydrateTier4HistoricalMatches(
   payload: PreloadedContextPayload | null,
   memoryMatches: Tier3Result["memoryMatches"]
@@ -198,7 +190,6 @@ export function hydrateTier4HistoricalMatches(
   return memoryMatches.map((m) => hydrateOneHistoricalMatch(payload, m));
 }
 
-/** Map Tier 3 ledger matches to hydrated commitments using in-session ledger. */
 export function hydrateTier4LedgerMatches(
   ledgerMatches: Tier3Result["ledgerMatches"],
   commitments: readonly Commitment[]
@@ -216,7 +207,6 @@ export function hydrateTier4LedgerMatches(
   return out;
 }
 
-/** Cap constraint text for prompts (deterministic truncation). */
 function capConstraints(
   constraints: readonly Constraint[],
   limit: number
@@ -284,7 +274,6 @@ export function assembleTier4Context(input: Tier4AssemblyInput): Tier4Context {
   };
 }
 
-/** JSON-safe Tier 4 prompt payload (drops vectors / embeddings). */
 export function tierContextForPromptPayload(
   ctx: Tier4Context
 ): Record<string, unknown> {

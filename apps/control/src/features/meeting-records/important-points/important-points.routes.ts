@@ -15,7 +15,6 @@ export const importantPointsRoutes = new Elysia({ prefix: "/important-points" })
     },
     { query: importantPointQuerySchema }
   )
-  // Get important point by id
   .get(
     "/:id",
     async ({ params, set }) => {

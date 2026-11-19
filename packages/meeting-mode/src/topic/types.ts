@@ -36,7 +36,7 @@ export interface TopicState {
   riskFlags: RiskFlag[];
   summary: string;
   topicId: string;
-  utteranceCount: number; // Important for calculating running centroid
+  utteranceCount: number;
 }
 
 export interface UtteranceWithTopic {

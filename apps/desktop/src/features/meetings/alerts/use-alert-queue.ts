@@ -51,7 +51,6 @@ export function useAlertQueue(
   const dismissAlert = useCallback((id: string) => {
     setExitingIds((prev) => new Set([...prev, id]));
 
-    // Cancel the auto-dismiss timer — the exit animation replaces it
     const existingAuto = autoDismissTimeoutsRef.current.get(id);
     if (existingAuto) {
       window.clearTimeout(existingAuto);
@@ -71,7 +70,6 @@ export function useAlertQueue(
     animTimeoutsRef.current.set(id, animTimerId);
   }, []);
 
-  // Promote from queue when space opens up
   useEffect(() => {
     if (queue.length > 0 && visibleAlerts.length < maxVisible) {
       const nextAlert = queue[0];
@@ -121,7 +119,6 @@ export function useAlertQueue(
         }
 
         if (prev.length >= maxVisible) {
-          // Immediately dismiss the oldest active alert
           const oldestAlert = [...prev].sort(
             (a, b) => a.timestamp - b.timestamp
           )[0];

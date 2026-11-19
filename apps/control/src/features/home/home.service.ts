@@ -148,7 +148,6 @@ export const HomeService = {
       },
     });
 
-    // Enrich recent activity with commitments-count per meeting
     const activityWithCommitments = await Promise.all(
       recentActivity.map(async (m) => {
         let commitmentsCaptured = 0;

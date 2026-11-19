@@ -11,10 +11,6 @@ export interface TalkTimeStats {
   };
 }
 
-/**
- * Computes talk time statistics for each speaker from their utterances.
- * Rounded to 1 decimal place.
- */
 export function computeTalkTime(
   utterances: TalkTimeUtterance[]
 ): TalkTimeStats {

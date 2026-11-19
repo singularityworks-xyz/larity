@@ -4,7 +4,6 @@ import type {
   UpdateClientMemberInput,
 } from "./client-member.validator";
 
-// ClientMembers are external contacts (not linked to User)
 export const ClientMemberService = {
   create(data: CreateClientMemberInput) {
     const { clientId, ...rest } = data;
@@ -58,10 +57,7 @@ export const ClientMemberService = {
   findByClient(clientId: string) {
     return prisma.clientMember.findMany({
       where: { clientId },
-      orderBy: [
-        { role: "asc" }, // PRIMARY_CONTACT first
-        { updatedAt: "desc" },
-      ],
+      orderBy: [{ role: "asc" }, { updatedAt: "desc" }],
     });
   },
 

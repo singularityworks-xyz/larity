@@ -1,7 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Load dotenv dynamically in development
 try {
   const { config } = await import("dotenv");
   const __dirname = path.dirname(fileURLToPath(import.meta.url));

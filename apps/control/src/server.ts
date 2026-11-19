@@ -34,13 +34,11 @@ export const app = new Elysia()
           return false;
         }
 
-        // Public waitlist route can be accessed from any origin
         const url = new URL(request.url);
         if (url.pathname === "/api/waitlist") {
           return true;
         }
 
-        // Restrict all other routes to trusted frontend origins
         return env.FRONTEND_ORIGINS.includes(origin);
       },
       credentials: true,

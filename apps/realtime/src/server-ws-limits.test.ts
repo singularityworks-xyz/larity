@@ -39,8 +39,6 @@ describe("realtime WS limits (P1.10)", () => {
     ws.send(new Uint8Array(100 * 1024));
 
     const code = await closed;
-    // Bun terminates oversize frames without a close frame (client sees
-    // 1006); any close proves the limit is enforced.
     expect(code).not.toBe(-1);
   }, 15_000);
 

@@ -26,9 +26,6 @@ export interface RedisCommitment {
   utteranceId: string;
 }
 
-/**
- * Downloads session_state.json from S3 and extracts commitments.
- */
 async function getCommitmentsFromS3(
   orgId: string,
   sessionId: string
@@ -60,16 +57,12 @@ async function getCommitmentsFromS3(
   }
 }
 
-/**
- * Retrieves the commitments for a meeting session, checking Redis with a fallback to S3.
- */
 export async function getSessionCommitments(
   orgId: string,
   sessionId: string
 ): Promise<RedisCommitment[]> {
   const redis = getRedisClient();
 
-  // 1. Try meetingCommitment key in Redis
   try {
     const raw = await redis.get(redisKeys.meetingCommitment(sessionId));
     if (raw) {
@@ -82,7 +75,6 @@ export async function getSessionCommitments(
     console.warn("Failed to read meetingCommitment from Redis:", error);
   }
 
-  // 2. Try meetingLedgerSnapshot key in Redis
   try {
     const raw = await redis.get(redisKeys.meetingLedgerSnapshot(sessionId));
     if (raw) {
@@ -95,7 +87,6 @@ export async function getSessionCommitments(
     console.warn("Failed to read meetingLedgerSnapshot from Redis:", error);
   }
 
-  // 3. Fall back to S3 session_state.json
   const s3Commitments = await getCommitmentsFromS3(orgId, sessionId);
   if (s3Commitments) {
     return s3Commitments;
@@ -104,9 +95,6 @@ export async function getSessionCommitments(
   return [];
 }
 
-/**
- * Unpacks the embedding of a commitment if stored as base64, returning a 768-dim number[].
- */
 export function getCommitmentEmbedding(commitment: RedisCommitment): number[] {
   if (Array.isArray(commitment.embedding) && commitment.embedding.length > 0) {
     return commitment.embedding;

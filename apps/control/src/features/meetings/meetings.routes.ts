@@ -54,7 +54,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema }
   )
-  // Get meeting brief (dynamically generates for ad-hoc if missing)
   .get(
     "/:id/brief",
     async ({ params, user, set }) => {
@@ -186,7 +185,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema }
   )
-  // Bulk extraction (post-meeting AI processing)
   .post(
     "/:id/extract",
     async ({ params, body, set }) => {
@@ -204,8 +202,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema, body: meetingExtractionSchema }
   )
-  // --- Participants ---
-  // Get meeting participants
   .get(
     "/:id/participants",
     async ({ params }) => {
@@ -216,7 +212,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema }
   )
-  // Add participant to meeting
   .post(
     "/:id/participants",
     async ({ params, body, set }) => {
@@ -283,7 +278,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingParticipantIdSchema }
   )
-  // Remove participant
   .delete(
     "/participants/:id",
     async ({ params, set }) => {
@@ -301,8 +295,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingParticipantIdSchema }
   )
-  // --- Transcript ---
-  // Get meeting transcript
   .get(
     "/:id/transcript",
     async ({ params, set }) => {
@@ -390,7 +382,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema }
   )
-  // Get processing status of meeting
   .get(
     "/:id/processing-status",
     async ({ params, set }) => {
@@ -419,7 +410,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
     },
     { params: meetingIdSchema }
   )
-  // Get aggregated insights for meeting
   .get(
     "/:id/insights",
     async ({ params }) => {
@@ -431,7 +421,6 @@ export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
       query: meetingInsightsQuerySchema,
     }
   )
-  // Confirm speaker mapping deduction
   .post(
     "/:id/speaker-mappings",
     async ({ params, body, set }) => {

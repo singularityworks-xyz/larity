@@ -116,9 +116,7 @@ export function MeetingMode() {
             thorough control center.
           </p>
 
-          {/* Interactive Image Frame */}
           <div className="relative mt-16 w-full">
-            {/* The screenshot image wrapper */}
             <div className="relative overflow-hidden rounded-2xl border border-accent/20 bg-white/10 p-2 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.12)] backdrop-blur-sm">
               {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
               <img
@@ -129,7 +127,6 @@ export function MeetingMode() {
                 width={2560}
               />
 
-              {/* Glowing Pulse Dots on the image (Desktop only) */}
               {cards.map((card) => (
                 <div
                   className={`absolute z-30 hidden h-3.5 w-3.5 items-center justify-center md:flex ${card.dotClass}`}
@@ -141,7 +138,6 @@ export function MeetingMode() {
               ))}
             </div>
 
-            {/* Desktop Absolute Positioned Floating Cards */}
             {cards.map((card) => (
               <div
                 className={`absolute z-40 hidden w-64 md:block ${card.positionClass} transition-all duration-300 hover:-translate-y-1`}
@@ -165,7 +161,6 @@ export function MeetingMode() {
             ))}
           </div>
 
-          {/* Mobile Grid Layout (Visible on small screens, hidden on desktop) */}
           <div className="mt-12 grid w-full grid-cols-1 gap-6 text-left sm:grid-cols-2 md:hidden">
             {cards.map((card) => (
               <div

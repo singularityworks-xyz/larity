@@ -20,7 +20,6 @@ export function handleSttChannel(channel: string, message: string): boolean {
 
   const segments = channel.split(".");
   if (segments[2] === "final" || segments[2] === "partial") {
-    // P5.5: partials are sheddable per socket; finals never shed.
     broadcast(
       envelope.sessionId,
       message,
@@ -40,10 +39,6 @@ export function handleSttChannel(channel: string, message: string): boolean {
   return true;
 }
 
-/**
- * Parse an STT Redis channel into its envelope type + session id.
- * Returns null when the channel is not an STT channel at all.
- */
 export function parseSttEnvelope(channel: string): {
   sessionId: string;
   type: "stt_partial" | "stt_final";
@@ -67,8 +62,6 @@ export function parseSttEnvelope(channel: string): {
     return sessionId ? { sessionId, type: "stt_final" } : null;
   }
 
-  // Legacy pre-P1.1 final shape `meeting.stt.<sessionId>`. A bare `final`
-  // or `partial` third segment is a malformed channel, not a session id.
   if (parts.length >= 3) {
     const sessionId = parts.slice(2).join(".");
     if (sessionId && sessionId !== "final" && sessionId !== "partial") {

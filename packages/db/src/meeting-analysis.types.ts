@@ -9,17 +9,16 @@ export type KeyMomentCategory =
 
 export interface MeetingKeyMoment {
   category: KeyMomentCategory;
-  description: string; // "Client challenged team size"
+  description: string;
   timestamp: number; // seconds from start
 }
 export interface MeetingSpeakerStats {
-  /** Questions from this meeting that were assigned to this speaker. */
   assignedQuestionCount: number;
   commitmentCount: number;
   name: string;
-  participantId?: string; // resolved userId if matched
+  participantId?: string;
   role: "TEAM_MEMBER" | "EXTERNAL" | "UNKNOWN";
-  speakerLabel: string; // raw transcript label e.g. "Aman"
+  speakerLabel: string;
   talkTimePercent: number;
   utteranceCount: number;
 }
@@ -32,7 +31,7 @@ export interface MeetingAnalysis {
     | "SKEPTICAL"
     | "HOSTILE";
   durationSeconds: number;
-  generatedAt: string; // ISO timestamp
+  generatedAt: string;
   keyMoments: MeetingKeyMoment[];
   outcome: string;
   participantCount: number;

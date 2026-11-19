@@ -67,7 +67,6 @@ export interface SpeculativeProcessorDeps {
     speakerId: string,
     limit?: number
   ) => string[];
-  /** Per session+speaker speculation throttle (P3.1); injectable for tests. */
   throttle?: SpeculationThrottle;
   tier1: Tier1StructuralDetector;
   tier2: Tier2Classifier;
@@ -111,9 +110,6 @@ export class SpeculativeProcessor {
       return;
     }
 
-    // P3.1: at most one speculation per 500 ms per speaker, only when the
-    // partial grew by 4+ words, and never while an earlier speculation whose
-    // text is a prefix of this partial is still in flight.
     if (
       !this.throttle.shouldSpeculate(
         partial.sessionId,
@@ -192,7 +188,6 @@ export class SpeculativeProcessor {
       recentSameSpeaker,
       topicLabel,
       structuralPricingCue: textMatchesTier1PricingPath(partial.text),
-      // P3.3: session-cached members — no per-partial DB round trip.
       knownClientMembers: this.getKnownClientMembers(partial.sessionId),
     };
 
@@ -209,8 +204,6 @@ export class SpeculativeProcessor {
           tier2Outcome.promptTokens ?? 0,
           tier2Outcome.completionTokens ?? 0,
           GENERALCOMPUTE_TIER2_MODEL,
-          // P3.3: speculative spend stays visible under its own track for
-          // the P3.6 go/no-go decision (session total still includes it).
           { trackAs: SPECULATIVE_COST_TRACK }
         )
         .catch((err) =>

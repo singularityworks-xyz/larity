@@ -117,7 +117,6 @@ function getSystemEventSourceLabel(
   return "AI Reasoner";
 }
 
-/** Max ws_recv → setState samples retained per message type (dev diagnostics). */
 const WS_TIMING_RING_SIZE = 30;
 
 function pushWsTimingSample(ring: number[], valueMs: number): void {
@@ -134,7 +133,6 @@ function avgWsTimingMs(ring: number[]): number | null {
   return ring.reduce((acc, value) => acc + value, 0) / ring.length;
 }
 
-/** Dev-only: record ws_recv → handler latency into a ring buffer. */
 function sampleWsRecvTiming(ring: number[], getRecvPerf: () => number): void {
   if (!import.meta.env.DEV) {
     return;
@@ -212,10 +210,8 @@ export function MeetingPage() {
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
   const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
   const [alertsMuted, setAlertsMuted] = useState(false);
-  // const [rememberBanner, setRememberBanner] = useState<string | null>(null);
   const [constraintCount, setConstraintCount] = useState(0);
   const [ambientTopic, setAmbientTopic] = useState<string | null>(null);
-  // Dev-only ws_recv → setState latency (ms, avg of last 30) per STT type.
   const [wsPartialMs, setWsPartialMs] = useState<number | null>(null);
   const [wsFinalMs, setWsFinalMs] = useState<number | null>(null);
   const wsTimingRef = useRef<{ final: number[]; partial: number[] }>({
@@ -253,7 +249,6 @@ export function MeetingPage() {
   >([]);
   const [isBusy, setIsBusy] = useState(false);
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
-  // meetingId received from the meeting_processed WebSocket event after pipeline completes
   const [postProcessingMeetingId, setPostProcessingMeetingId] = useState<
     string | null
   >(null);
@@ -359,7 +354,6 @@ export function MeetingPage() {
       });
       streamingClient.disconnect();
       setIsBusy(false);
-      // Navigate to meeting review if processing has already completed; otherwise home
       if (postProcessingMeetingId) {
         navigate(`/meeting-post/${postProcessingMeetingId}`);
       } else {
@@ -441,7 +435,6 @@ export function MeetingPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Unidentified Speaker Detection (10 minutes)
   useEffect(() => {
     if (!(sessionId && isHost)) {
       return;
@@ -451,13 +444,11 @@ export function MeetingPage() {
       const now = Date.now();
       const elapsedMs = now - meetingStartedAtMs;
 
-      // Only check if more than 10 minutes have passed
       if (elapsedMs < 10 * 60 * 1000) {
         return;
       }
 
       for (const p of participants) {
-        // Speaker is unidentified if EXTERNAL and name is still the generic fallback
         const isUnidentified =
           p.type === "EXTERNAL" &&
           (p.confidence ?? 0) < 0.8 &&
@@ -481,7 +472,7 @@ export function MeetingPage() {
           });
         }
       }
-    }, 30_000); // Check every 30 seconds
+    }, 30_000);
 
     return () => clearInterval(checkInterval);
   }, [sessionId, meetingStartedAtMs, participants, isHost]);
@@ -542,8 +533,6 @@ export function MeetingPage() {
     });
 
     const unsubTopic = streamingClient.subscribe("topic", (data) => {
-      // Late topic assignment for an already-rendered utterance (P2.1):
-      // patch the row in place; unknown ids (merged-away segments) are ignored.
       if (isUtteranceTopicDelta(data)) {
         const { utteranceId, topicId } = data;
         setUtterances((prev) =>
@@ -825,8 +814,6 @@ export function MeetingPage() {
     });
 
     let isMounted = true;
-    // Last client warning synced to state (P4.9: sync change-driven at
-    // 1 Hz so unrelated UI warnings are never clobbered by an empty echo).
     let lastSyncedWarning = streamingClient.getWarning();
     const metricsSyncInterval = setInterval(() => {
       if (!isMounted) {
@@ -882,13 +869,6 @@ export function MeetingPage() {
     clearAudioChannel,
   ]);
 
-  // function handleRememberThis() {
-  //   setRememberBanner(
-  //     "Marked this moment — last ~30s will be structured when capture pipeline runs."
-  //   );
-  //   window.setTimeout(() => setRememberBanner(null), 8000);
-  // }
-
   async function handleToggleNameCustomization() {
     const next = !allowNameCustomization;
     try {
@@ -939,21 +919,9 @@ export function MeetingPage() {
           });
         }}
         onMuteAlertsToggle={() => setAlertsMuted((previous) => !previous)}
-        // onRememberThis={handleRememberThis}
         onToggleNameCustomization={handleToggleNameCustomization}
         startedAtMs={meetingStartedAtMs}
       />
-
-      {/* 
-      {rememberBanner ? (
-        <div
-          aria-live="polite"
-          className="border-border-subtle border-b bg-info-bg px-4 py-2 text-info-fg text-xs"
-        >
-          {rememberBanner}
-        </div>
-      ) : null}
-      */}
 
       {warning ? (
         <div

@@ -3,7 +3,6 @@ import { getMetricsSnapshot, resetMetrics } from "../../metrics";
 
 type Handler = (...args: unknown[]) => void;
 
-/** Fake socket with manual open control (never auto-opens). */
 class ManualLiveSocket {
   readonly handlers = new Map<string, Handler[]>();
   readonly sentMedia: unknown[] = [];
@@ -68,7 +67,6 @@ mock.module("@larity/db/redis", () => ({
   },
 }));
 
-// Import after mocks so the connection uses the fake client.
 afterAll(() => mock.restore());
 
 import { DeepgramConnection } from "./connection";
@@ -86,7 +84,6 @@ describe("DeepgramConnection pre-connect queue", () => {
 
   test("frames arriving during the handshake are delivered in order", async () => {
     const conn = new DeepgramConnection("test-session", 0);
-    // 70 frames > 64 cap: frames 0..5 drop, 6..69 deliver in order.
     const frames = Array.from({ length: 70 }, (_, i) =>
       Buffer.alloc(1024, i % 256)
     );
@@ -122,7 +119,6 @@ describe("DeepgramConnection pre-connect queue", () => {
     await tick(10);
     expect(conn.connected).toBe(true);
     expect(socket.sentMedia.length).toBe(0);
-    // Second preconnect while connected is a no-op.
     conn.preconnect();
     await tick(10);
     expect(createdSockets.length).toBe(1);
@@ -136,8 +132,6 @@ describe("DeepgramConnection pre-connect queue", () => {
     socket.emit("open");
     await tick(10);
 
-    // A tag-stripped subarray view into a larger buffer, as produced by
-    // the dual-channel session.
     const backing = Buffer.alloc(2048, 7);
     const frame = backing.subarray(1, 1025);
     conn.sendAudio(frame);
@@ -173,7 +167,6 @@ describe("DeepgramConnection pre-connect queue", () => {
     expect(attempts).toBe(1);
     expect(socket.sentMedia.length).toBe(0);
 
-    // A later frame retries the retained one first, in order.
     conn.sendAudio(Buffer.alloc(1024, 2));
     expect(socket.sentMedia.length).toBe(2);
     const firstByte = (entry: unknown): number =>
@@ -184,8 +177,6 @@ describe("DeepgramConnection pre-connect queue", () => {
 
   test("sendAudio is synchronous: enqueue happens before any await", () => {
     const conn = new DeepgramConnection("test-session", 0);
-    // Not connected: the frame must be queued synchronously (the lazy
-    // connect is fire-and-forget and the open handler flushes later).
     const result: unknown = conn.sendAudio(Buffer.alloc(1024));
     expect(result).toBeUndefined();
   });

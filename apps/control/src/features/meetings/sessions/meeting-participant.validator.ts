@@ -7,7 +7,6 @@ export const MeetingParticipantRole = z.enum([
 ]);
 export type MeetingParticipantRole = z.infer<typeof MeetingParticipantRole>;
 
-// Better-auth uses 32-character alphanumeric IDs, not UUIDs
 const betterAuthId = z
   .string()
   .length(32, "Invalid user ID")

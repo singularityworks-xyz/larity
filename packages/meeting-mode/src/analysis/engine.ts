@@ -72,7 +72,6 @@ const PERF = {
 interface SessionPipelineState {
   contextPayload: PreloadedContextPayload | null;
   hydrated: boolean;
-  /** Client members fetched once at hydration (P2.6); refreshed on joins. */
   knownClientMembers: Array<{ id: string; name: string }>;
 }
 
@@ -149,9 +148,6 @@ export class MeetingPipelineEngine {
         tier1: this.tier1,
         tier2: this.tier2,
         costManager: this.costManager,
-        // P3.3: speculative Tier 2 reads the Phase 2 session cache filled by
-        // ensureSessionHydrated (evaluatePartial hydrates first) — never its
-        // own HGET + Postgres fetch.
         getKnownClientMembers: (sid) =>
           this.sessions.get(sid)?.knownClientMembers ?? [],
         getRecentSameSpeakerText: (sid, spkId, limit) =>
@@ -164,10 +160,6 @@ export class MeetingPipelineEngine {
     this.onPipelineSessionClosed = deps.onPipelineSessionClosed;
   }
 
-  /**
-   * Queue pipeline evaluation per session so callers (e.g. utterance publish) are not
-   * blocked on LLM latency, while keeping strict FIFO ordering within a session.
-   */
   evaluateUtteranceQueued(
     utterance: Utterance,
     afterEvaluate?: (
@@ -280,11 +272,9 @@ export class MeetingPipelineEngine {
       };
     }
 
-    // --- Speculative cache lookup ---
     const speculativeMatch = this.speculativeProcessor.matchSpeculation(
       utterance.sessionId,
       utterance.text,
-      // P3.4: scan the speaker's trigram bucket, not all cached partials.
       utterance.speaker.speakerId
     );
     const speculativeHit = speculativeMatch.matched;
@@ -304,17 +294,9 @@ export class MeetingPipelineEngine {
       incrementCounter("pipeline.speculative_misses_total");
     }
 
-    // P2.12: the predictive-preloader call lived here with its result
-    // discarded (Tier 4 reads constraintManager.getAll, not the hot cache),
-    // costing ~45 string scans per utterance for nothing. Removed; the
-    // preloader class stays for Phase 3 speculative wiring (evaluatePartial
-    // already drives it), as does once-per-session seedFromContext.
-
-    // --- Run Tier 1 always (structural detection is free) ---
     const tier1Start = PERF.now();
     const tier1Task = Promise.resolve(this.tier1.detect(utterance));
 
-    // --- Tier 2: use speculative result if hit, otherwise run LLM ---
     const tier2Start = PERF.now();
     const tier2Task =
       speculativeHit && speculativeMatch.result
@@ -366,8 +348,6 @@ export class MeetingPipelineEngine {
       tier3Task,
       constraintTask,
     ]);
-    // --- Apply Tier 2 side effects that runTier2 would normally handle,
-    //     when the classification came from a speculative cache hit ---
     if (speculativeHit && speculativeMatch.result) {
       await this.applyTier2SideEffects(
         utterance,
@@ -413,7 +393,6 @@ export class MeetingPipelineEngine {
       tier4PassesStructuralOverride(tier1, tier2Stop) &&
       (highSignal || tier3.forceTier4);
 
-    // --- Speaker-aware Tier 4 gate ---
     runTier4 = applySpeakerAwareGate(
       runTier4,
       speakerPriority,
@@ -421,7 +400,6 @@ export class MeetingPipelineEngine {
       tier2.classification
     );
 
-    // --- Cost cap gates ---
     const sessionCost = await this.costManager.getSessionCost(
       utterance.sessionId
     );
@@ -498,7 +476,6 @@ export class MeetingPipelineEngine {
     };
   }
 
-  /** Wait for queued evaluations (used by lifecycle callers and deterministic tests). */
   async waitForIdle(sessionId: string): Promise<void> {
     await this.liveScheduler.waitForIdle(sessionId);
     await this.evaluationChains.get(sessionId);
@@ -553,7 +530,6 @@ export class MeetingPipelineEngine {
     const commit = this.liveCommitOrder.begin(sessionId);
     try {
       const retrievalStart = PERF.now();
-      // Hydration and this utterance's embedding do not depend on one another.
       await Promise.all([
         this.ensureSessionHydrated(sessionId),
         this.ensureUtteranceEmbedding(utterance),
@@ -622,8 +598,6 @@ export class MeetingPipelineEngine {
         allConstraints: this.constraintManager.getAll(sessionId),
         speakerStates: this.speakerStateTracker.getSummaries(sessionId),
       });
-      // Enrichment never gates publication: the decision uses retrieved facts and
-      // raw transcript context, not the classifier's eventual labels.
       const enrichment = this.startLiveEnrichment(
         runAnalysis,
         input,
@@ -644,7 +618,6 @@ export class MeetingPipelineEngine {
         recordHistogram("pipeline.analysis_ms", analysisMs);
       }
       if (analysis.promptTokens || analysis.completionTokens) {
-        // Charge returned usage even when the session closed during the call.
         this.costManager
           .recordCost(
             sessionId,
@@ -664,8 +637,6 @@ export class MeetingPipelineEngine {
         analysis.response,
         queuedAtMs
       );
-      // Alerts publish as soon as they are validated. State updates retain arrival
-      // order so topic deltas and speaker trajectories cannot move backwards.
       await commit.ready;
       if (signal.aborted) {
         return emptyResult();
@@ -804,14 +775,11 @@ export class MeetingPipelineEngine {
   }
 
   async evaluatePartial(partial: PartialUtterance): Promise<void> {
-    // Partial classification would duplicate the single-call live analysis.
     if (this.liveAnalyzer) {
       return;
     }
     await this.ensureSessionHydrated(partial.sessionId);
 
-    // P3.5: speculation is speculative spend — stop it as soon as the session
-    // enters cost-warning mode so the budget goes to real Tier 4 work.
     const sessionCost = await this.costManager.getSessionCost(
       partial.sessionId
     );
@@ -977,7 +945,6 @@ export class MeetingPipelineEngine {
   }> {
     const { embedding, sessionId, text } = utterance;
 
-    // Check semantic cache before LLM
     if (embedding && embedding.length > 0) {
       const cached = this.tier2Cache.get(sessionId, embedding, text);
       if (cached) {
@@ -1012,7 +979,6 @@ export class MeetingPipelineEngine {
       utterance.topicId
     );
 
-    // P2.6: session-cached at hydration; no per-utterance DB round trip.
     const knownClientMembers =
       this.sessions.get(sessionId)?.knownClientMembers ?? [];
 
@@ -1027,7 +993,6 @@ export class MeetingPipelineEngine {
 
     const tier2 = await this.tier2.classify(input, sessionId);
 
-    // Record Tier2 cost
     if (
       (tier2.promptTokens && tier2.promptTokens > 0) ||
       (tier2.completionTokens && tier2.completionTokens > 0)
@@ -1084,7 +1049,6 @@ export class MeetingPipelineEngine {
       return;
     }
 
-    // Skip persisting commitments without embeddings to avoid false similarity matches
     if (!embedding || embedding.length === 0) {
       log.debug(
         { utteranceId: utterance.utteranceId },
@@ -1151,14 +1115,10 @@ export class MeetingPipelineEngine {
       return;
     }
 
-    // Fetch once and share: the constraint manager reuses the payload
-    // instead of issuing its own Redis GET (P2.10).
     const contextPayload = await this.getContextPayload(sessionId);
     if (signal.aborted) {
       return;
     }
-    // These session-local reads are independent; coalesce them across callers
-    // without adding their network waits together on the first utterance.
     const memberTask = this.getKnownClientMembers(sessionId).catch((error) => {
       log.warn(
         { err: error, sessionId },
@@ -1188,10 +1148,6 @@ export class MeetingPipelineEngine {
     log.info({ sessionId }, "Pipeline session hydrated");
   }
 
-  /**
-   * Re-fetch cached client members after a mid-meeting join. Fire-and-forget
-   * safe: failures keep the previous cache.
-   */
   async refreshSessionMembers(sessionId: string): Promise<void> {
     try {
       const members = await this.getKnownClientMembers(sessionId);

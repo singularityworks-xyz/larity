@@ -90,7 +90,6 @@ export function AddClientPage() {
   const [error, setError] = useState<string | null>(null);
   const [slugEdited, setSlugEdited] = useState(false);
 
-  // Pending members state
   const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([]);
   const [newMemberName, setNewMemberName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -145,7 +144,6 @@ export function AddClientPage() {
         const client = await createClient.mutateAsync(parsed.data);
         createdClient = client;
 
-        // Create all pending members sequentially
         for (const member of pendingMembers) {
           await api.post(`/clients/${client.id}/members`, {
             name: member.name,
@@ -184,7 +182,6 @@ export function AddClientPage() {
       title="Add client"
     >
       <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
-        {/* Left Column: Client Details */}
         <section className={formPanelClass}>
           <div className="mb-4 border-white/5 border-b pb-2">
             <h2 className="m-0 font-semibold text-fg text-sm tracking-wide">
@@ -252,7 +249,6 @@ export function AddClientPage() {
           </form>
         </section>
 
-        {/* Right Column: Initial Team Members */}
         <section className={`${formPanelClass} flex h-full flex-col`}>
           <div className="mb-4 border-white/5 border-b pb-2">
             <h2 className="m-0 font-semibold text-fg text-sm tracking-wide">

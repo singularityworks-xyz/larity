@@ -54,7 +54,6 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Resize window to wide auth layout
   useEffect(() => {
     applyWindowProfile(WINDOW_PROFILES.auth, { center: true }).catch(() => {
       // best-effort outside Tauri
@@ -93,8 +92,6 @@ export function LoginPage() {
       return;
     }
 
-    // Persist the session token so route guards can authorize synchronously.
-    // Email sign-in returns the token (same as OAuth deep-link flow).
     const token = result.data?.token;
     if (token) {
       storeSessionToken(token);
@@ -139,7 +136,6 @@ export function LoginPage() {
     <div className={authSplitRootClass}>
       <TitleBar />
 
-      {/* ── Left panel — brand / ambient ── */}
       <aside aria-hidden="true" className={authBrandPanelClass}>
         <div className={authBrandInnerClass}>
           <div className={authBrandLogoClass}>
@@ -163,7 +159,6 @@ export function LoginPage() {
         <div className={authBrandBgClass} />
       </aside>
 
-      {/* ── Right panel — form ── */}
       <main className={authFormPanelClass}>
         <div className={authFormInnerClass}>
           <Link className={authBackClass} to="/welcome">

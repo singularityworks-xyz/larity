@@ -6,7 +6,6 @@ import { createRealtimeLogger } from "../logger";
 
 const log = createRealtimeLogger("admin-routes");
 
-// WAV header constants
 const WAV_HEADER_SIZE = 44;
 const RIFF_OFFSET = 0;
 const FILE_SIZE_OFFSET = 4;
@@ -32,22 +31,19 @@ export function createWavHeader(
   const byteRate = (sampleRate * channels * bitsPerSample) / 8;
   const blockAlign = (channels * bitsPerSample) / 8;
 
-  // RIFF header
   header.write("RIFF", RIFF_OFFSET);
   header.writeUInt32LE(36 + dataLength, FILE_SIZE_OFFSET);
   header.write("WAVE", WAVE_OFFSET);
 
-  // fmt chunk
   header.write("fmt ", FMT_CHUNK_OFFSET);
-  header.writeUInt32LE(16, FMT_CHUNK_SIZE_OFFSET); // chunk size
-  header.writeUInt16LE(1, AUDIO_FORMAT_OFFSET); // PCM format
+  header.writeUInt32LE(16, FMT_CHUNK_SIZE_OFFSET);
+  header.writeUInt16LE(1, AUDIO_FORMAT_OFFSET);
   header.writeUInt16LE(channels, CHANNELS_OFFSET);
   header.writeUInt32LE(sampleRate, SAMPLE_RATE_OFFSET);
   header.writeUInt32LE(byteRate, BYTE_RATE_OFFSET);
   header.writeUInt16LE(blockAlign, BLOCK_ALIGN_OFFSET);
   header.writeUInt16LE(bitsPerSample, BITS_PER_SAMPLE_OFFSET);
 
-  // data chunk
   header.write("data", DATA_LABEL_OFFSET);
   header.writeUInt32LE(dataLength, DATA_SIZE_OFFSET);
 
@@ -245,9 +241,6 @@ export function addAdminRoutes(app: Elysia): void {
     );
   }
 
-  // Aggregate-only latency snapshot (no session ids, no PII). Unauthenticated
-  // only when no ADMIN_API_KEY is configured (local dev/measurement); a
-  // configured key is required so a public origin cannot scrape it.
   app.get("/admin/metrics", ({ headers, set }) => {
     const requiredKey = process.env.ADMIN_API_KEY ?? "";
     if (requiredKey) {

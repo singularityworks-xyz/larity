@@ -51,7 +51,6 @@ export const AIBriefGeneratorService = {
     const hostParticipant = meeting.participants.find((p) => p.role === "HOST");
     const targetUserId = requestUserId || hostParticipant?.userId;
 
-    // Fetch context for the LLM
     const [pastMeetings, openTasks, openQuestions, landmines] =
       await Promise.all([
         prisma.meeting
@@ -135,7 +134,6 @@ export const AIBriefGeneratorService = {
       };
     }
 
-    // Build context string
     let contextStr = `Client: ${meeting.client.name}\n\n`;
 
     if (pastMeetings.length > 0) {
@@ -182,7 +180,6 @@ ${contextStr}
 
     const modelName = process.env.GEMINI_TIER4_MODEL || "gemini-3.1-flash-lite";
 
-    // Ask LLM to generate the JSON brief
     const ac = new AbortController();
     const timeoutId = setTimeout(() => ac.abort(), 15_000);
 
@@ -255,7 +252,6 @@ ${contextStr}
 
     const aiOutput = JSON.parse(content);
 
-    // Merge in the commitments accurately from the database
     const mineTasks = openTasks
       .filter((t) => t.assigneeId === targetUserId)
       .map((t) => ({ id: t.id, text: t.title, status: t.status }));

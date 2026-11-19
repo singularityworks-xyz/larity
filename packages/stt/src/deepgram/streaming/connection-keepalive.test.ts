@@ -1,6 +1,5 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
-// Import after mocks so the connection uses the fake client.
 afterAll(() => mock.restore());
 
 import {
@@ -11,7 +10,6 @@ import { DeepgramConnection } from "./connection";
 
 type Handler = (...args: unknown[]) => void;
 
-/** Fake socket with manual open control + KeepAlive recording. */
 class ManualLiveSocket {
   readonly handlers = new Map<string, Handler[]>();
   readonly sentMedia: unknown[] = [];
@@ -118,11 +116,9 @@ describe("Deepgram KeepAlive (P5.6)", () => {
     await tick(10);
 
     const handle = testHandle(conn);
-    // Never sent audio: lastAudioSendMs is 0 → idle since epoch.
     handle.sendKeepAliveIfIdle(Date.now());
     expect(socket.keepAlives).toEqual([{ type: "KeepAlive" }]);
 
-    // Audio just sent: no KeepAlive.
     conn.sendAudio(Buffer.alloc(1024));
     handle.sendKeepAliveIfIdle(Date.now());
     expect(socket.keepAlives).toHaveLength(1);
@@ -132,7 +128,6 @@ describe("Deepgram KeepAlive (P5.6)", () => {
 
   test("disconnected socket never sends KeepAlive", async () => {
     const conn = new DeepgramConnection("test-session", 0);
-    // Never opened: sendKeepAliveIfIdle must no-op without a socket.
     testHandle(conn).sendKeepAliveIfIdle(Date.now() + 60_000);
     expect(createdSockets).toHaveLength(0);
     await conn.close();
@@ -146,8 +141,6 @@ describe("Deepgram KeepAlive (P5.6)", () => {
     socket.emit("open");
     await tick(10);
     await conn.close();
-    // If the timer survived close, it would fire within ~5s; assert the
-    // handle is gone by checking a second close is a no-op (no throw).
     await conn.close();
     expect(socket.closed).toBe(true);
   });

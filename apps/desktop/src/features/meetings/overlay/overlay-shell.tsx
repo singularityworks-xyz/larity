@@ -223,20 +223,6 @@ export function OverlayShell() {
           </div>
         )}
 
-        {/* 
-        {data.rememberFlash && (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute right-3 bottom-2 h-8 w-8 rounded-full bg-accent-subtle"
-            style={{
-              animation:
-                "remember-ripple 1.4s cubic-bezier(0.2, 0, 0, 1) forwards",
-              zIndex: 2,
-            }}
-          />
-        )}
-        */}
-
         <OverlayFooter
           alertsMuted={data.alertsMuted}
           autoExpiryEnabled={data.autoExpiryEnabled}
@@ -245,12 +231,10 @@ export function OverlayShell() {
           onEndMeeting={handleEndMeeting}
           onExpandToPanel={handleExpandToPanel}
           onMuteAlerts={() => data.setAlertsMuted(!data.alertsMuted)}
-          // onRememberThis={data.handleRememberThis}
           onToggleAutoExpiry={() =>
             data.setAutoExpiryEnabled(!data.autoExpiryEnabled)
           }
           pendingCount={data.pendingCount}
-          // rememberFlash={data.rememberFlash}
         />
       </div>
     </div>

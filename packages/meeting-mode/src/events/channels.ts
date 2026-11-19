@@ -12,12 +12,6 @@ export const STT_LEGACY_PATTERN = redisKeys.meetingSttLegacy("*");
 const STT_FINAL_PREFIX = redisKeys.meetingSttFinal("");
 const STT_PARTIAL_PREFIX = redisKeys.meetingSttPartial("");
 
-/**
- * True only for the legacy `meeting.stt.<sessionId>` shape (3 segments, with
- * a session id that is not the literal `final`/`partial`). New-shape channels
- * also match `STT_LEGACY_PATTERN` (Redis `*` spans dots), so this guard is
- * what prevents legacy-pattern deliveries of new finals from double-handling.
- */
 export function isLegacyFinalSttChannel(channel: string): boolean {
   const parts = channel.split(".");
   const legacySessionId = parts[2] ?? "";
@@ -31,7 +25,6 @@ export function isLegacyFinalSttChannel(channel: string): boolean {
   );
 }
 
-/** True for `meeting.stt.final.<sessionId>` plus the legacy shape. */
 export function isFinalSttChannel(channel: string): boolean {
   if (
     channel.startsWith(STT_FINAL_PREFIX) &&
@@ -42,7 +35,6 @@ export function isFinalSttChannel(channel: string): boolean {
   return isLegacyFinalSttChannel(channel);
 }
 
-/** True for `meeting.stt.partial.<sessionId>` channels. */
 export function isPartialSttChannel(channel: string): boolean {
   return (
     channel.startsWith(STT_PARTIAL_PREFIX) &&
@@ -83,7 +75,6 @@ export function ledgerChannel(sessionId: string): string {
   return `meeting.ledger.${sessionId}`;
 }
 
-/** Dev telemetry: Tier 1–4 summarization emitted after evaluation (Redis pub/sub) */
 export function pipelineTraceChannel(sessionId: string): string {
   return `meeting.pipeline.${sessionId}`;
 }

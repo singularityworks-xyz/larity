@@ -1,5 +1,3 @@
-/** Live meeting panel shared types (placeholder until WS payloads wire in). */
-
 export type SpeakerSide = "team_self" | "team" | "external" | "unknown";
 
 export interface LiveTopic {
@@ -8,18 +6,14 @@ export interface LiveTopic {
   startedAt: number;
 }
 
-/** Raw Deepgram partial line (before meeting-mode enrichment). */
 export interface LiveSttPartial {
-  /** 0 = host mic, 1 = system / loopback */
   channel: number;
   sessionId: string;
-  /** Seconds from Deepgram (stream-relative). */
   start: number;
   transcript: string;
   ts: number;
 }
 
-/** STT final shown until processed utterance replaces it. */
 export interface LivePendingUtterance {
   channel: number;
   durationSec: number;
@@ -30,7 +24,6 @@ export interface LivePendingUtterance {
 }
 
 export interface LiveUtterance {
-  /** Optional identification confidence for chip dot coloring */
   confidence?: number;
   hasAlert?: boolean;
   hasMemory?: boolean;
@@ -41,7 +34,6 @@ export interface LiveUtterance {
   speakerType: SpeakerSide;
   text: string;
   timestamp: number;
-  /** Assigned asynchronously after publish (P2.1 topic delta); absent until then. */
   topicId?: string;
 }
 

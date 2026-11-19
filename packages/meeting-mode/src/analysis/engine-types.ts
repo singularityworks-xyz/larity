@@ -106,10 +106,8 @@ export interface PipelineEngineDependencies {
     sessionId: string
   ) => Promise<Array<{ id: string; name: string }>>;
   getTopics?: (sessionId: string) => TopicState[];
-  /** Contextual alert decision runs independently of detailed extraction. */
   liveAnalyzer?: LiveAnalyzer;
   liveConcurrency?: number;
-  /** Hook after pipeline session teardown (e.g. clear session-scoped alert publishers) */
   onPipelineSessionClosed?: (sessionId: string) => void;
   onSpeakerIdentityGuessed?: (
     sessionId: string,
@@ -158,10 +156,8 @@ export interface PipelineEvaluationResult {
   tier1?: Tier1Result;
   tier2?: Tier2Classification;
   tier2CacheHit?: boolean;
-  /** Mirrors Tier 2 classifier `shouldStopForDeepReasoning` (shown in traces / QA) */
   tier2StopDeepReasoning?: boolean;
   tier3?: Tier3Result;
   tier4Outcome?: Tier4EvaluationSummary;
-  /** Raw Tier 4 model output — **omit** downstream / logs for privacy unless required */
   tier4Response?: Tier4Response | null;
 }

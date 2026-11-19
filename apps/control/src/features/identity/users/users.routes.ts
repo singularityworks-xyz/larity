@@ -28,7 +28,6 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
     },
     { params: userIdSchema }
   )
-  // Get user's client assignments
   .get(
     "/:id/clients",
     async ({ params, set }) => {

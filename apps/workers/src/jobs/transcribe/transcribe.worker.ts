@@ -38,9 +38,6 @@ const WHITESPACE_REGEX = /\s+/;
 
 const MAX_TIME_WINDOW_NANOS = 1_000_000_000_000;
 
-/**
- * Fetches the live transcript and VAD history session state from Redis.
- */
 async function fetchRedisState(
   redis: Redis,
   sessionId: string,
@@ -84,9 +81,6 @@ async function fetchRedisState(
   return { liveUtterances, sessionState };
 }
 
-/**
- * Builds batch utterance segments array from Deepgram results.
- */
 function buildBatchSegments(
   ch0Result: BatchTranscriptionResult | null,
   ch1Result: BatchTranscriptionResult | null,
@@ -183,7 +177,6 @@ export class TranscribeWorker extends BaseWorker<
         meeting?.participants?.[0]?.externalName ||
         "Host";
 
-      // Reconstruct accurate connectionStartTime
       let connectionStartTime = meeting?.startedAt
         ? meeting.startedAt.getTime()
         : Date.now();
@@ -207,7 +200,6 @@ export class TranscribeWorker extends BaseWorker<
         hostName
       );
 
-      // Run advanced offline correlation engine
       const refinedSegments = processOfflineCorrelation({
         batchSegments,
         sessionState,
@@ -270,7 +262,7 @@ export class TranscribeWorker extends BaseWorker<
           s3Prefix,
         },
         {
-          delay: 3 * 60 * 60 * 1000, // 3 hours
+          delay: 3 * 60 * 60 * 1000,
         }
       );
 

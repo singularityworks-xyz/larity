@@ -20,7 +20,6 @@ import { tier2ClassificationSchema } from "../../types";
 
 const log = createMeetingModeLogger("tier2-classifier");
 
-/** OpenAI strict `json_schema` can spend many tokens before a valid doc; 400 was too low (intermittent `max completion tokens reached`). */
 const TIER2_MAX_COMPLETION_TOKENS = 1024;
 
 export interface Tier2InvokeResult {
@@ -29,15 +28,8 @@ export interface Tier2InvokeResult {
   text: string;
 }
 
-/**
- * Tier 2 request: base chat params. A named interface — not `as any` — so
- * `tsc` still checks every documented key (`reasoning_effort` is typed
- * upstream). Reconnection is an SDK client option (`maxRetries: 0`), never a
- * body field — strict providers reject unknown JSON body keys.
- */
 type Tier2ChatRequest = ChatCompletionCreateParamsNonStreaming;
 
-/** Validated reasoning control; unknown values fall back to "low". */
 function reasoningEffort(): ReasoningEffort {
   const raw = TIER2_REASONING_EFFORT;
   if (
@@ -118,10 +110,6 @@ export class Tier2Classifier {
         }
         return {
           classification: fallbackClassification(),
-          // Unknown input: stop deep reasoning unless Tier 1 (structural)
-          // or Tier 3 (contradiction) evidence re-opens it in the engine.
-          // The old `false` loosened the Tier 4 gate on every provider
-          // outage instead of tightening it.
           isFallback: true,
           shouldStopForDeepReasoning: true,
           promptTokens: promptTokens || 0,
@@ -139,8 +127,6 @@ export class Tier2Classifier {
       };
     } catch (error) {
       log.warn({ err: error }, "Tier2 classification failed silently");
-      // Any failure after (nearly) the full request budget is effectively a
-      // timeout: the per-session FIFO stays blocked for the whole window.
       if (performance.now() - invokeStart >= this.timeoutMs * 0.9) {
         incrementCounter("pipeline.tier2_timeouts_total");
       }
@@ -206,7 +192,6 @@ export function buildTier2Request(input: Tier2Input): Tier2ChatRequest {
     ],
     temperature: 0,
     max_tokens: TIER2_MAX_COMPLETION_TOKENS,
-    // Classification, not deep reasoning: keep test-time compute low.
     reasoning_effort: reasoningEffort(),
     response_format: {
       type: "json_schema",
@@ -219,7 +204,6 @@ export function buildTier2Request(input: Tier2Input): Tier2ChatRequest {
   };
 }
 
-/** Built once — rubric + compact calibration (system role). */
 export const TIER2_CLASSIFICATION_PROMPT = [
   `You are Tier 2: fast semantic classifier for live multilingual business meetings.
 Output must match the JSON schema only. All eight top-level keys are required (intent, commitmentType, tone, riskSignals, extractedData, confidence, topicDelta, identityGuess); all five extractedData keys are required (null when unused); topicDelta is null or a full object with all seven keys.
@@ -356,7 +340,6 @@ function parseTier2Response(raw: string): unknown {
     throw new Error("Tier2 returned empty response");
   }
 
-  // Strip markdown formatting if the provider wraps the JSON
   if (trimmed.startsWith("```json")) {
     trimmed = trimmed.slice(7);
   } else if (trimmed.startsWith("```")) {
@@ -370,7 +353,6 @@ function parseTier2Response(raw: string): unknown {
   return JSON.parse(trimmed);
 }
 
-/** OpenAI strict JSON Schema: every key under `properties` must appear in `required`; use null for unused fields. */
 function nullableString(): { anyOf: [{ type: "string" }, { type: "null" }] } {
   return { anyOf: [{ type: "string" }, { type: "null" }] };
 }
@@ -379,7 +361,6 @@ function nullableNumber(): { anyOf: [{ type: "number" }, { type: "null" }] } {
   return { anyOf: [{ type: "number" }, { type: "null" }] };
 }
 
-/** JSON Schema for OpenAI `response_format.json_schema` (strict). */
 export function getTier2JsonSchema(): Record<string, unknown> {
   const topicDeltaObject = {
     type: "object",

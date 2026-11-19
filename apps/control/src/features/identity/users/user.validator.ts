@@ -3,7 +3,6 @@ import { z } from "zod";
 export const UserRole = z.enum(["OWNER", "ADMIN", "MEMBER"]);
 export type UserRole = z.infer<typeof UserRole>;
 
-// Better-auth uses 32-character alphanumeric IDs, not UUIDs
 const betterAuthId = z
   .string()
   .length(32, "Invalid user ID")

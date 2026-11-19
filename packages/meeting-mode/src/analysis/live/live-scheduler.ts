@@ -8,7 +8,6 @@ interface SessionQueue {
   pending: Job[];
 }
 
-/** Bounded inference concurrency. A slow request does not serialize every later alert. */
 export class LiveEvaluationScheduler {
   private readonly sessions = new Map<string, SessionQueue>();
 
@@ -65,7 +64,6 @@ export class LiveEvaluationScheduler {
         break;
       }
       queue.active += 1;
-      // Defer so jobs are admitted in arrival order even for synchronous failures.
       Promise.resolve()
         .then(() => {
           if (this.sessions.get(sessionId) === queue) {

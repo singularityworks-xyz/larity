@@ -58,8 +58,6 @@ const clockDateFormatter = new Intl.DateTimeFormat([], {
   day: "numeric",
 });
 
-/* ── Utilities ──────────────────────────────────── */
-
 function formatTime(iso: string | null): string {
   if (!iso) {
     return "--:--";
@@ -97,8 +95,6 @@ function formatDateActivity(iso: string | null): string {
   }
   return shortDateFormatter.format(d);
 }
-
-/* ── Animation Variants ─────────────────────────── */
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -147,8 +143,6 @@ const Clock = memo(function Clock() {
     </div>
   );
 });
-
-/* ── Header ─────────────────────────────────────── */
 
 interface HeaderProps {
   canManage: boolean;
@@ -241,8 +235,6 @@ const Header = memo(function Header({
     </motion.header>
   );
 });
-
-/* ── Invites ────────────────────────────────────── */
 
 interface InvitePanelProps {
   copyMessage: string;
@@ -345,8 +337,6 @@ const InvitePanel = memo(function InvitePanel({
     </motion.div>
   );
 });
-
-/* ── Primary Action Card ────────────────────────── */
 
 const ActionGrid = memo(function ActionGrid({
   canManage,
@@ -464,8 +454,6 @@ const ActionGrid = memo(function ActionGrid({
   );
 });
 
-/* ── Next Meeting (Hero) ────────────────────────── */
-
 const NextMeetingHero = memo(function NextMeetingHero({
   meeting,
   loading,
@@ -576,8 +564,6 @@ const NextMeetingHero = memo(function NextMeetingHero({
     </motion.div>
   );
 });
-
-/* ── Bento Grid Sections ────────────────────────── */
 
 const TodayMeetingAction = memo(function TodayMeetingAction({
   m,
@@ -1000,8 +986,6 @@ const ClientShortcuts = memo(function ClientShortcuts() {
   );
 });
 
-/* ── Health Strip ───────────────────────────────── */
-
 const StatusDot = memo(function StatusDot({
   label,
   state,
@@ -1052,8 +1036,6 @@ const HealthStrip = memo(function HealthStrip({
     </div>
   );
 });
-
-/* ── Main Page ──────────────────────────────────── */
 
 export function HomePage() {
   const session = useAuthSession();

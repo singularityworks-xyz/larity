@@ -1,10 +1,8 @@
-// One-off seed: 353 realistic users across existing orgs, with working credentials.
-// Run: bun scripts/seed-users.ts > /tmp/seed-users.sql
 import { execSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 
 const PASSWORD = process.env.SEED_PASSWORD ?? "Larity123!";
-const PG_URL = process.env.SEED_PG_URL; // optional: verify emails against live DB
+const PG_URL = process.env.SEED_PG_URL;
 const EXISTING_ORGS = JSON.parse(
   execSync("cat /tmp/larity-existing-orgs.json", { encoding: "utf8" })
 ) as { id: string; slug: string; name: string }[];
@@ -17,7 +15,6 @@ const newPasswordHash = () =>
     { encoding: "utf8" }
   ).trim();
 
-// ---------------------------------------------------------------- name pools
 const FIRST = {
   Indian:
     "Aarav Vivaan Aditya Arjun Rohan Karthik Siddharth Rahul Nikhil Pranav Ishaan Dev Aniket Harsh Manish Tanvi Ananya Priya Sneha Meera Ishita Kavya Divya Ritika Neha Shreya Aditi Sanya Rohit Amit Suresh Vivek Rajesh Girish Deepak Naveen Arvind Kiran Lokesh Sandeep Hari Prasad Anand Vikram Abhinav Mayank Aryan Yash Kartik Shaurya Anirudh Varun Tarun Sagar Praveen Nithin Sathish Ashwin Keerthi Shruti Pooja Swati Bhavya Anjali Lakshmi Gauri Nandini Tanmay".split(
@@ -131,7 +128,7 @@ const orgPlan = (() => {
   const others = EXISTING_ORGS.filter((o) => !REACHING_OUT_SLUGS.has(o.slug));
   const weights = [4.4, 2.1, 1.6, 1.3];
   const totalWeight = weights.reduce((a, b) => a + b, 0);
-  let remaining = 353 - 181 - 9; // keep testorgs small
+  let remaining = 353 - 181 - 9;
   const plan: {
     org: { id: string; slug: string; name: string };
     count: number;
@@ -151,11 +148,9 @@ const orgPlan = (() => {
     );
     plan.push({ org, count, role: "small" });
   });
-  // Fix rounding drift: adjust largest org
   const diff = 353 - plan.reduce((a, b) => a + b.count, 0);
   const biggest = plan.reduce((a, b) => (a.count > b.count ? a : b));
   biggest.count += diff;
-  // Final guard: force exact total in case drift exceeded the largest org
   let drift = 353 - plan.reduce((a, b) => a + b.count, 0);
   while (drift !== 0 && plan.length > 0) {
     const target = plan.reduce((a, b) => (a.count > b.count ? a : b));
@@ -212,7 +207,6 @@ const makeEmail = (
   return candidate;
 };
 
-// ------------------------------------------------------------------ output
 const esc = (s: string) => s.replaceAll("'", "''");
 
 interface UserRow {
@@ -264,8 +258,6 @@ for (const { org, count, role } of orgPlan) {
     });
   }
 }
-
-// (No extra orgless users: the 353 target maps 1:1 onto org membership.)
 
 const hashCache = Array.from({ length: 12 }, newPasswordHash);
 

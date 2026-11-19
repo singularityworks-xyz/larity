@@ -3,14 +3,12 @@ import { cx } from "../../../lib/ui";
 
 interface OverlayFooterProps {
   alertsMuted: boolean;
-  // rememberFlash: boolean;
   autoExpiryEnabled: boolean;
   isEndingBusy: boolean;
   isHost: boolean;
   onEndMeeting: () => void;
   onExpandToPanel: () => void;
   onMuteAlerts: () => void;
-  // onRememberThis: () => void;
   onToggleAutoExpiry: () => void;
   pendingCount?: number;
 }
@@ -22,13 +20,11 @@ export function OverlayFooter({
   isHost,
   alertsMuted,
   isEndingBusy,
-  // rememberFlash,
   autoExpiryEnabled,
   pendingCount = 0,
   onEndMeeting,
   onMuteAlerts,
   onExpandToPanel,
-  // onRememberThis,
   onToggleAutoExpiry,
 }: OverlayFooterProps) {
   return (
@@ -104,26 +100,6 @@ export function OverlayFooter({
           +{pendingCount} queued
         </span>
       )}
-
-      {/* 
-      <button
-        aria-label="Remember this moment"
-        aria-pressed={rememberFlash}
-        className={cx(
-          footerButtonBase,
-          rememberFlash &&
-            "border-white/[0.10] bg-accent-subtle text-accent hover:border-white/[0.10] hover:bg-accent-subtle hover:text-accent"
-        )}
-        onClick={onRememberThis}
-        title="Remember this"
-        type="button"
-      >
-        <Bookmark
-          className={cx("h-3 w-3", rememberFlash && "fill-accent")}
-          strokeWidth={1.5}
-        />
-      </button>
-      */}
     </div>
   );
 }

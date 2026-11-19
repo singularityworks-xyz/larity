@@ -12,7 +12,6 @@ describe("GoogleGenAIEmbedder timeout", () => {
     await expect(embedder.embed("hello world today", 1)).rejects.toThrow(
       TIMEOUT_MESSAGE
     );
-    // Must settle on the timeout budget, not on network failure timing.
     expect(Date.now() - start).toBeLessThan(1000);
   });
 });

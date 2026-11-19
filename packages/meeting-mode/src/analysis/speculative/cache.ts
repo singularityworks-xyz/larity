@@ -17,22 +17,14 @@ function structuredEquiv(
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-/**
- * Index key: speaker + first 3 normalized words (P3.4). Partials grow by
- * appending words, so the opening trigram of a partial almost always equals
- * the final's — the bucket holds exactly the entries worth comparing.
- */
 function bucketKey(speakerId: string, normalizedText: string): string {
   const words = normalizedText.split(WORD_SPLIT_REGEX).slice(0, PREFIX_WORDS);
   return `${speakerId}|${words.join(" ")}`;
 }
 
 interface SessionEntry {
-  /** speaker|first-3-words → results (newest last). */
   byKey: Map<string, SpeculativeResult[]>;
-  /** speakerId → results (newest last). */
   bySpeaker: Map<string, SpeculativeResult[]>;
-  /** FIFO insertion order (newest last) — eviction + write-path dedup. */
   order: SpeculativeResult[];
 }
 
@@ -46,8 +38,6 @@ export class SpeculativeCache {
       this.sessions.set(sessionId, entry);
     }
 
-    // Write-path dedup scans the session's insertion order (small, infrequent)
-    // with the same semantics as the pre-P3.4 implementation.
     const existingIdx = entry.order.findIndex((r) =>
       structuredEquiv(r.classification, result.classification)
     );
@@ -105,12 +95,6 @@ export class SpeculativeCache {
     return { matched: false, result: null, mismatchRatio: bestMismatch };
   }
 
-  /**
-   * P3.4: compare only this speaker's trigram bucket when the speaker is
-   * known; widen to the speaker's other entries, but never to another
-   * speaker (that would reintroduce cross-speaker false matches). The
-   * whole-session scan is the legacy path when no speaker is supplied.
-   */
   private selectCandidates(
     entry: SessionEntry,
     normalizedFinal: string,

@@ -8,7 +8,6 @@ interface FooterProps {
 export function Footer({ onOpenPrivacy, onOpenTerms }: FooterProps) {
   return (
     <footer className="relative w-full overflow-hidden bg-bg pt-16 sm:pt-24">
-      {/* Background Image with Opacity Gradient */}
       <div
         className="pointer-events-none absolute inset-0 z-0 bg-bottom bg-cover bg-no-repeat"
         style={{
@@ -21,9 +20,7 @@ export function Footer({ onOpenPrivacy, onOpenTerms }: FooterProps) {
         }}
       />
       <div className="relative z-10 mx-auto flex max-w-6xl flex-col px-6 md:px-8">
-        {/* Sleek Top Section */}
         <div className="flex flex-col justify-between gap-12 sm:flex-row sm:items-end">
-          {/* Brand & Tagline */}
           <div className="flex flex-col items-start">
             <Link className="group mb-8 flex items-center gap-2.5" href="/">
               {/* biome-ignore lint/performance/noImgElement: not a Next.js project */}
@@ -43,7 +40,6 @@ export function Footer({ onOpenPrivacy, onOpenTerms }: FooterProps) {
             </p>
           </div>
 
-          {/* Minimalist Navigation */}
           <div className="flex flex-wrap items-center gap-x-8 gap-y-4 font-medium text-sm text-zinc-600 sm:justify-end">
             <Link
               className="transition-colors hover:text-zinc-900"
@@ -95,7 +91,6 @@ export function Footer({ onOpenPrivacy, onOpenTerms }: FooterProps) {
         </div>
       </div>
 
-      {/* Massive Edge-to-Edge Typography */}
       <div className="relative z-10 mt-4 flex w-full select-none justify-center overflow-hidden leading-none">
         <h2 className="font-bold font-display text-[22vw] text-accent/30 tracking-wide sm:text-[18vw]">
           LARITY

@@ -78,11 +78,8 @@ describe("Tier 4 prompt history slimming (P2.11)", () => {
     const lines = payload.recentUtterances as string[];
     expect(lines.length).toBeLessThanOrEqual(48);
     const totalChars = lines.join("").length;
-    // ~1200-token budget plus slack for one long newest line.
     expect(totalChars).toBeLessThan(4800 + 1200);
-    // Most-recent-first fill: the newest line always survives.
     expect(lines.at(-1)).toContain("59");
-    // No full utterance objects leak through.
     for (const line of lines) {
       expect(typeof line).toBe("string");
     }

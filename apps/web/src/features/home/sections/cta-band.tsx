@@ -54,7 +54,6 @@ export function CtaBand() {
       <div className="mx-auto max-w-6xl px-6 md:px-8">
         <div className="border-zinc-900/30 border-t border-b py-20 md:py-32">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-8">
-            {/* Left side: Huge Typography */}
             <div className="flex flex-col justify-between">
               <span className="mb-8 font-mono text-[10px] text-accent uppercase tracking-[0.25em]">
                 05 / Get Started
@@ -72,7 +71,6 @@ export function CtaBand() {
               </h2>
             </div>
 
-            {/* Right side: Direct Download + Form & Details */}
             <div className="flex flex-col justify-end lg:border-zinc-900/30 lg:border-l lg:pl-12">
               <p className="max-w-md font-light text-xl text-zinc-600 leading-relaxed">
                 Download the desktop application now for Windows and Linux. Get
@@ -80,7 +78,6 @@ export function CtaBand() {
                 organisational memory.
               </p>
 
-              {/* Primary Try Larity CTA */}
               <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
                 <Link
                   className="group inline-flex items-center justify-center gap-2.5 rounded-full bg-zinc-950 px-8 py-4 font-semibold text-[#f7f4ea] text-sm shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-accent hover:shadow-accent/25 hover:shadow-lg active:translate-y-0 active:scale-95"
@@ -107,7 +104,6 @@ export function CtaBand() {
                 </span>
               </div>
 
-              {/* Team Access Form */}
               <div className="mt-10 border-zinc-900/15 border-t pt-8">
                 <p className="mb-3 font-mono text-[10px] text-zinc-600 uppercase tracking-widest">
                   Or request team onboarding & dedicated deployment:

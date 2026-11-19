@@ -13,16 +13,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::ipc::{Channel, Response};
 use tauri::{AppHandle, Emitter, Manager};
 
-/// Ring capacity in mono f32 samples (P4.2). 65536 ≈ 0.7 s at 48 kHz
-/// stereo, ≈ 4 s at 16 kHz mono — deep enough to ride out scheduling
-/// jitter, shallow enough that a stuck worker drops instead of lagging.
 const RING_CAPACITY: usize = 65536;
-/// Scratch + conversion quantum for the worker and the callback (P4.2).
 const WORK_QUANTUM: usize = 8192;
 
-/// Requested cpal device period in frames (P4.6). Matches the rubato input
-/// quantum (`RESAMPLE_CHUNK` in `processor.rs`) so each wake completes one
-/// quantum after downmix instead of batching ~21 ms in the device default.
 const CPAL_BUFFER_FRAMES: u32 = 512;
 
 fn short_hash(s: &str) -> String {
@@ -38,14 +31,11 @@ pub(crate) fn now_ms() -> u64 {
         .as_millis() as u64
 }
 
-/// Owns one capture worker thread (P4.2). Dropping signals exit, wakes the
-/// worker, and joins it so no thread outlives its stream.
 pub struct StreamWorker {
     join: Option<std::thread::JoinHandle<()>>,
     running: Arc<AtomicBool>,
 }
 
-/// Bundled `StreamWorker::spawn` arguments (keeps the constructor arity down).
 struct WorkerParams {
     amplitude: AmplitudeListeners,
     app: AppHandle,
@@ -112,11 +102,6 @@ impl Drop for StreamWorker {
     }
 }
 
-/// Worker body (P4.2): everything the cpal callback used to do — downmix →
-/// resample → 512-sample framing → VAD send → mixer send → amplitude emit.
-/// Runs on a plain thread; allocations and clock reads are fine here. They
-/// are banned only from the cpal callback, which now just memcpys into the
-/// ring and unparks this worker.
 #[allow(clippy::too_many_arguments)]
 fn run_capture_worker(
     ring: Arc<SpscRing>,
@@ -155,7 +140,6 @@ fn run_capture_worker(
                     vad_tx.send(chunk.clone());
                 }
 
-                // Calculate true RMS over normalised [-1.0, 1.0] i16 samples
                 let sum_sq: f32 = chunk
                     .iter()
                     .map(|&x| {
@@ -209,7 +193,6 @@ pub struct CaptureHandles {
     pub _mic_worker: Option<StreamWorker>,
     pub _sys_worker: Option<StreamWorker>,
     pub sys_task: Option<tauri::async_runtime::JoinHandle<()>>,
-    /// Reason system/loopback capture is absent (`None` = full capture or VAD-only role).
     pub sys_error: Option<String>,
     pub _mixer: Option<Arc<AudioMixer>>,
 }
@@ -328,15 +311,12 @@ pub fn start_capture(
     let host = cpal::default_host();
 
     let is_host = role == "host";
-    // P4.1: raw frames travel over the JS-provided Channel (ArrayBuffer on
-    // arrival) instead of base64/JSON `audio-frame` emits.
     let mixer = if is_host {
         Some(Arc::new(AudioMixer::new(on_audio_frame)))
     } else {
         None
     };
 
-    // 1. Setup Microphone
     let mic_device = if let Some(id) = mic_device_id.clone() {
         let devices = host.input_devices().map_err(|e| e.to_string())?;
         let mut found = None;
@@ -379,9 +359,6 @@ pub fn start_capture(
         eprintln!("an error occurred on stream: {}", err);
     };
 
-    // P4.2: the cpal callback only memcpys into the ring and unparks the
-    // worker. No allocations, no `SystemTime::now()`, no `app.emit`, no
-    // (tokio) mutex locks. Verify by reading the two closures below.
     let mic_ring = Arc::new(SpscRing::new(RING_CAPACITY));
     let mic_running = Arc::new(AtomicBool::new(true));
     // P4.4: the worker emits amplitude only while a JS listener is

@@ -17,7 +17,6 @@ export const remindersRoutes = new Elysia({ prefix: "/reminders" })
     },
     { query: reminderQuerySchema }
   )
-  // Get due reminders
   .get(
     "/due",
     async ({ query }) => {

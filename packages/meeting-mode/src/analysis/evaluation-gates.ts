@@ -50,11 +50,6 @@ export function isHighSignal(
   );
 }
 
-/**
- * Structural Tier 1 hits (API key, password, pricing, blocklist) override
- * Tier 2's "stop deep reasoning" signal. An API key leaked in casual filler
- * should still reach Tier 4 for information_risk assessment.
- */
 export function tier4PassesStructuralOverride(
   tier1: Tier1Result,
   shouldStop: boolean
@@ -129,10 +124,6 @@ export function applyCostGates(
   return { runTier4, suppressReason: undefined };
 }
 
-/**
- * Backlog shed (P2.8): when the queue behind this utterance is deep, skip
- * its Tier 4 and let the chain drain instead of cascading slowness.
- */
 export function applyBacklogShed(
   runTier4: boolean,
   backlogDepth: number,

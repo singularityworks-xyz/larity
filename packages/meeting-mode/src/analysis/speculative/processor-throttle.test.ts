@@ -41,7 +41,6 @@ function makePartial(text: string): PartialUtterance {
   };
 }
 
-/** Deferred promise so tests can hold a speculation in flight. */
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (reason?: unknown) => void;
@@ -68,7 +67,6 @@ describe("SpeculativeProcessor throttle integration (P3.1)", () => {
       tier2,
     });
 
-    // Three growing partials in the same tick: only the first fires.
     processor.processPartial(makePartial("we can deliver"));
     processor.processPartial(makePartial("we can deliver by friday"));
     processor.processPartial(makePartial("we can deliver by friday afternoon"));
@@ -109,8 +107,6 @@ describe("SpeculativeProcessor throttle integration (P3.1)", () => {
         return gate.promise;
       },
     } as unknown as Tier2Classifier;
-    // Pre-seed the throttle with an old speculation so only the in-flight
-    // rule (not the 500 ms interval) decides.
     const throttle = new SpeculationThrottle();
     const processor = new SpeculativeProcessor({
       tier1: new Tier1StructuralDetector(),
@@ -119,14 +115,12 @@ describe("SpeculativeProcessor throttle integration (P3.1)", () => {
     });
 
     processor.processPartial(makePartial("we can deliver"));
-    // Grown partial while the first speculation is in flight → blocked.
     processor.processPartial(
       makePartial("we can deliver by friday afternoon please surely")
     );
     await flush();
     expect(calls).toBe(1);
 
-    // Settle, then age the throttle past the interval: the grown partial fires.
     gate.resolve({ classification: makeClassification() });
     await flush();
     throttle.markStarted(
@@ -164,7 +158,6 @@ describe("SpeculativeProcessor throttle integration (P3.1)", () => {
     await flush();
     expect(calls).toBe(1);
 
-    // Throttle settled despite the failure: an aged, grown partial fires.
     throttle.markStarted(
       SESSION,
       "spk_1001",

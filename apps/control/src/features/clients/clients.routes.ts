@@ -122,8 +122,6 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
     },
     { params: clientIdSchema }
   )
-  // --- Client Members (External Contacts) ---
-  // List members/contacts of a client - requires OWNER or ADMIN role
   .get(
     "/:id/members",
     async ({ params }) => {
@@ -132,7 +130,6 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
     },
     { params: clientIdSchema }
   )
-  // Add member/contact to client - requires OWNER or ADMIN role
   .post(
     "/:id/members",
     async ({ params, body, set }) => {
@@ -187,7 +184,6 @@ export const clientsRoutes = new Elysia({ prefix: "/clients" })
     },
     { params: clientMemberIdSchema, body: updateClientMemberSchema }
   )
-  // Remove member/contact from client - requires OWNER or ADMIN role
   .delete(
     "/members/:id",
     async ({ params, set }) => {

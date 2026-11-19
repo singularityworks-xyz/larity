@@ -220,8 +220,6 @@ export class Tier4DeepReasoner {
       : (null as unknown as GoogleGenAI);
     this.timeoutMs = options.timeoutMs ?? GEMINI_TIER4_TIMEOUT_MS;
     if (options.invoke) {
-      // Explicit injection (tests / callers) always wins, independent of key
-      // presence, so behavior is deterministic without provider credentials.
       this.invoke = options.invoke;
     } else if (GEMINI_API_KEY) {
       this.invoke = (prompt, timeoutMs) =>
@@ -243,10 +241,6 @@ export class Tier4DeepReasoner {
     }
   }
 
-  /**
-   * Returns parsed Tier 4 structured JSON or **null** on timeout / malformed / schema violation.
-   * Callers MUST still enforce surfacing thresholds (confidence, shouldSurface).
-   */
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: pre-existing, refactor deferred
   async reason(context: Tier4Context): Promise<{
     response: Tier4Response | null;

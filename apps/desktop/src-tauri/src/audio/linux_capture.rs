@@ -4,18 +4,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 
-/// Start Linux loopback (`parec`, falling back to `pw-record`).
-///
-/// Spawn is synchronous so a missing/failed recorder is reported to the
-/// caller (and surfaced via `audio_capture_status`) instead of being
-/// swallowed inside a detached task. The returned handle keeps the process
-/// alive and owns the forwarding loop; aborting it (on drop) stops capture.
 pub fn start_linux_sys_capture(
     tx: BoundedMixerQueue,
 ) -> Result<tauri::async_runtime::JoinHandle<()>, String> {
-    // Start `parec` targeting the default monitor.
-    // s16le, 16000 Hz, 1 channel (mono), raw PCM.
-    // P4.7: request low server-side buffering so loopback stays fresh.
     let child = match Command::new("parec")
         .args([
             "-d",
@@ -70,8 +61,6 @@ pub fn start_linux_sys_capture(
         // lifetime of this task (and kills it when the task is aborted).
         let _child = child;
 
-        // P4.7: 32 ms frames at 16 kHz = 512 samples = 1024 bytes, matching
-        // the mixer's frame quantum (was 50 ms / 800 samples).
         let mut buffer = [0u8; 1024];
 
         loop {
@@ -82,7 +71,6 @@ pub fn start_linux_sys_capture(
                         .unwrap()
                         .as_millis() as u64;
 
-                    // Convert bytes to i16
                     let mut samples = Vec::with_capacity(512);
                     for &[b0, b1] in buffer.as_chunks::<2>().0 {
                         let sample = i16::from_le_bytes([b0, b1]);
@@ -90,11 +78,8 @@ pub fn start_linux_sys_capture(
                     }
 
                     if tx.is_closed() {
-                        // Forward loop gone
                         break;
                     }
-                    // P4.3: bounded queue sheds oldest under load instead of
-                    // queueing latency.
                     tx.send_drop_oldest(MixerMessage {
                         source: SourceType::Sys,
                         timestamp_ms: ts,

@@ -131,5 +131,3 @@ export function ProcessingBanner({
   }
   return null;
 }
-
-// ── Skeleton ────────────────────────────────────────────────────────────────

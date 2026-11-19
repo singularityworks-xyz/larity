@@ -154,7 +154,6 @@ export function AmbientStrip({
         <VoiceDotMatrix isSpeaking={isVisuallySpeaking} />
         <SpeakerIndicator speaker={currentSpeaker} />
       </div>
-      {/* Bottom separator — gradient mask instead of border */}
       <div
         className="absolute right-0 bottom-0 left-0 h-[1px]"
         style={{

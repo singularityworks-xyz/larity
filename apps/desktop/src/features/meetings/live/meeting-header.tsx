@@ -34,7 +34,6 @@ interface MeetingHeaderProps {
   isHost: boolean;
   isStreamActive: boolean;
   meetingTitle: string;
-  // onRememberThis: () => void;
   onEndMeeting: () => void;
   onMuteAlertsToggle: () => void;
   onToggleNameCustomization: () => void;
@@ -51,7 +50,6 @@ export function MeetingHeader({
   isEndingBusy,
   allowNameCustomization,
   onMuteAlertsToggle,
-  // onRememberThis,
   onEndMeeting,
   onToggleNameCustomization,
 }: MeetingHeaderProps) {
@@ -113,17 +111,6 @@ export function MeetingHeader({
             <UserCog className="h-4 w-4" strokeWidth={1.5} />
           </button>
         )}
-        {/* 
-        <button
-          aria-label="Remember this moment"
-          className={ghostButtonClass}
-          onClick={onRememberThis}
-          title="Remember this"
-          type="button"
-        >
-          <Bookmark className="h-4 w-4" strokeWidth={1.5} />
-        </button>
-        */}
         <button
           aria-label={alertsMuted ? "Unmute alerts" : "Mute alerts"}
           className={ghostButtonClass}

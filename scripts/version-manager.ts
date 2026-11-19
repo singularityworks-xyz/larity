@@ -2,7 +2,6 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-// Version increment logic (rollover at 100)
 export function incrementVersion(version: string): string {
   const parts = version.split(".").map((p) => Number.parseInt(p, 10));
   if (parts.length !== 3 || parts.some(Number.isNaN)) {
@@ -25,14 +24,12 @@ export function incrementVersion(version: string): string {
   return `${major}.${minor}.${patch}`;
 }
 
-// Extract package/app folder from file path
 export function getModifiedFolders(
   changedFiles: string[],
   workspaces: string[]
 ): string[] {
   const modified = new Set<string>();
   for (const file of changedFiles) {
-    // Normalize path separators
     const normalizedFile = file.replace(/\\/g, "/");
     for (const ws of workspaces) {
       const prefix = `${ws}/`;
@@ -45,7 +42,6 @@ export function getModifiedFolders(
   return Array.from(modified);
 }
 
-// Find workspaces (apps/*, packages/*) in root
 export function findWorkspaces(rootDir: string): string[] {
   const workspaces: string[] = [];
   const dirs = ["apps", "packages"];
@@ -72,7 +68,6 @@ export function findWorkspaces(rootDir: string): string[] {
 const SECTION_START_REGEX = /\n\s*\[/;
 const CARGO_VERSION_REGEX = /^(version\s*=\s*")[^"]+(")/m;
 
-// Replace cargo package version
 export function updateCargoToml(content: string, newVersion: string): string {
   const packageIndex = content.indexOf("[package]");
   if (packageIndex === -1) {
@@ -98,7 +93,6 @@ export function updateCargoToml(content: string, newVersion: string): string {
   );
 }
 
-// Run Git commands to get modified files
 export function getGitModifiedFiles(): string[] {
   try {
     const staged = execSync("git diff --cached --name-only", {
@@ -130,7 +124,6 @@ if (import.meta.main) {
   if (isReset) {
     console.log("Resetting all versions to 0.0.1...");
 
-    // Reset root package
     if (fs.existsSync(rootPkgPath)) {
       const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, "utf8"));
       rootPkg.version = "0.0.1";
@@ -138,7 +131,6 @@ if (import.meta.main) {
       updatedFiles.push(rootPkgPath);
     }
 
-    // Reset all workspace package versions & Tauri versions
     for (const ws of workspaces) {
       const wsPath = path.join(rootDir, ws);
       const pkgPath = path.join(wsPath, "package.json");
@@ -149,7 +141,6 @@ if (import.meta.main) {
         updatedFiles.push(pkgPath);
       }
 
-      // Tauri Cargo.toml
       const cargoPath = path.join(wsPath, "src-tauri", "Cargo.toml");
       if (fs.existsSync(cargoPath)) {
         const cargoContent = fs.readFileSync(cargoPath, "utf8");
@@ -158,7 +149,6 @@ if (import.meta.main) {
         updatedFiles.push(cargoPath);
       }
 
-      // Tauri tauri.conf.json
       const tauriConfPath = path.join(wsPath, "src-tauri", "tauri.conf.json");
       if (fs.existsSync(tauriConfPath)) {
         const tauriConf = JSON.parse(fs.readFileSync(tauriConfPath, "utf8"));
@@ -171,7 +161,6 @@ if (import.meta.main) {
       }
     }
   } else {
-    // Normal Mode: Bump versions based on modified files
     const changedFiles = getGitModifiedFiles();
     const modifiedWorkspaces = getModifiedFolders(changedFiles, workspaces);
 
@@ -185,7 +174,6 @@ if (import.meta.main) {
       );
     }
 
-    // Bump root package version
     if (fs.existsSync(rootPkgPath)) {
       const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, "utf8"));
       const oldVersion = rootPkg.version || "0.0.1";
@@ -196,7 +184,6 @@ if (import.meta.main) {
       console.log(`Root package.json bumped: ${oldVersion} -> ${newVersion}`);
     }
 
-    // Bump modified workspaces
     for (const ws of modifiedWorkspaces) {
       const wsPath = path.join(rootDir, ws);
       const pkgPath = path.join(wsPath, "package.json");
@@ -212,7 +199,6 @@ if (import.meta.main) {
         console.log(`Workspace ${ws} bumped: ${oldVersion} -> ${newVersion}`);
       }
 
-      // Sync Tauri configs if present
       const cargoPath = path.join(wsPath, "src-tauri", "Cargo.toml");
       if (fs.existsSync(cargoPath)) {
         const cargoContent = fs.readFileSync(cargoPath, "utf8");
@@ -240,7 +226,6 @@ if (import.meta.main) {
     }
   }
 
-  // Auto git add updated files if we are in git repo
   if (updatedFiles.length > 0) {
     try {
       execSync(`git add ${updatedFiles.map((f) => `"${f}"`).join(" ")}`);

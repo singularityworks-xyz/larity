@@ -56,7 +56,6 @@ export function StartMeetingPage() {
   const [description, setDescription] = useState("");
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("now");
 
-  // Custom Date/Time State & Shortcuts
   const initialDate = useMemo(
     () => new Date().toISOString().split("T")[0] ?? "",
     []
@@ -359,7 +358,6 @@ export function StartMeetingPage() {
                   initial={{ opacity: 0, height: 0 }}
                 >
                   <div className="grid gap-5 sm:grid-cols-2">
-                    {/* Date Selector */}
                     <div className="flex flex-col gap-2">
                       <span className="font-semibold text-fg text-xs">
                         Date
@@ -374,7 +372,6 @@ export function StartMeetingPage() {
                       />
                     </div>
 
-                    {/* Time Selector */}
                     <div className="flex flex-col gap-2">
                       <span className="font-semibold text-fg text-xs">
                         Time

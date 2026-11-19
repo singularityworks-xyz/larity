@@ -30,7 +30,6 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
     },
     { params: decisionIdSchema }
   )
-  // Get latest version of a decision by ref
   .get(
     "/ref/:decisionRef",
     async ({ params, set }) => {
@@ -45,7 +44,6 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
     },
     { params: decisionRefSchema }
   )
-  // Get all versions of a decision (full history)
   .get(
     "/ref/:decisionRef/history",
     async ({ params, set }) => {
@@ -60,7 +58,6 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
     },
     { params: decisionRefSchema }
   )
-  // Get specific version of a decision
   .get(
     "/ref/:decisionRef/version/:version",
     async ({ params, set }) => {
@@ -124,7 +121,6 @@ export const decisionsRoutes = new Elysia({ prefix: "/decisions" })
       body: reviseDecisionSchema,
     }
   )
-  // Revoke a decision
   .post(
     "/ref/:decisionRef/revoke",
     async ({ params, set }) => {

@@ -62,7 +62,6 @@ export const orgsRoutes = new Elysia({ prefix: "/orgs" })
   .patch(
     "/:id",
     async ({ params, body, user, set }) => {
-      // Check if user is owner
       const isOwner = await OrgService.isOwner(params.id, user!.id);
       if (!isOwner) {
         set.status = 403;
@@ -96,7 +95,6 @@ export const orgsRoutes = new Elysia({ prefix: "/orgs" })
   .delete(
     "/:id",
     async ({ params, user, set }) => {
-      // Check if user is owner
       const isOwner = await OrgService.isOwner(params.id, user!.id);
       if (!isOwner) {
         set.status = 403;
@@ -148,7 +146,6 @@ export const orgsRoutes = new Elysia({ prefix: "/orgs" })
       body: createOrgInviteSchema,
     }
   )
-  // List active invites for org (OWNER or ADMIN)
   .get(
     "/:id/invites",
     async ({ params, user, set }) => {
@@ -167,7 +164,6 @@ export const orgsRoutes = new Elysia({ prefix: "/orgs" })
       params: orgIdSchema,
     }
   )
-  // Revoke invite (OWNER or ADMIN)
   .delete(
     "/invites/:inviteId",
     async ({ params, user, set }) => {
@@ -186,7 +182,6 @@ export const orgsRoutes = new Elysia({ prefix: "/orgs" })
       params: orgInviteIdSchema,
     }
   )
-  // Join org with invite code
   .post(
     "/join",
     async ({ body, user, set }) => {

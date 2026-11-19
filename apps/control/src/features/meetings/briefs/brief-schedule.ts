@@ -9,7 +9,7 @@ const log = createControlLogger("server");
 
 export const preMeetingBriefSchedule = cron({
   name: "pre-meeting-brief-generator",
-  pattern: "0 * * * *", // Every hour
+  pattern: "0 * * * *",
   async run() {
     log.info("Running pre-meeting brief cron...");
     const now = new Date();

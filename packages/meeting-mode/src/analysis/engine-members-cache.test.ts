@@ -87,7 +87,6 @@ describe("Tier 2 client-members session cache (P2.6)", () => {
     await engine.refreshSessionMembers("test-session");
     expect(getKnownClientMembers).toHaveBeenCalledTimes(2);
 
-    // Unknown sessions are safe no-ops.
     await engine.refreshSessionMembers("nope");
     expect(getKnownClientMembers).toHaveBeenCalledTimes(3);
   });

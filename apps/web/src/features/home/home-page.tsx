@@ -11,7 +11,6 @@ export function HomePage() {
   return (
     <>
       <Hero />
-      {/* Spacer to show the overflowed bottom 12% of the video on scroll */}
       <div className="h-24 bg-bg sm:h-48 md:h-96" />
       <ContextStrip />
       <HowItWorks />

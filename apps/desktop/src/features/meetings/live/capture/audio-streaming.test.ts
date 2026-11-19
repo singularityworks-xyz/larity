@@ -85,14 +85,12 @@ describe("AudioStreamingClient", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(sockets.length).toBe(1);
 
-    // A frame tagged for another session (stale Tauri Channel) is ignored.
     const stale = client.handleRawAudioFrame(
       requireFrame(buildRawFrame(0, 1_000_000n, [1, 2, 3])),
       "session-b"
     );
     expect(stale).toEqual({ sent: false, dropped: false });
 
-    // Connecting a different session replaces the socket.
     client.connect("session-b");
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(sockets.length).toBe(2);
@@ -166,7 +164,7 @@ describe("handleRawAudioFrame", () => {
 
     expect(result).toEqual({ dropped: false, sent: true });
     const sent = sockets[0]?.sent;
-    expect(sent?.length).toBe(2); // audio_stream_start + frame
+    expect(sent?.length).toBe(2);
     const frameBytes = sent?.[1] as Uint8Array;
     expect(frameBytes[0]).toBe(0);
     expect(frameBytes.length).toBe(5);
@@ -248,7 +246,7 @@ describe("flush on open and timer (P4.9)", () => {
     expect(client.getMetrics().framesSent).toBe(0);
 
     sock?.open();
-    expect(sock?.sent.length).toBe(2); // audio_stream_start + frame
+    expect(sock?.sent.length).toBe(2);
     expect(client.getMetrics().framesSent).toBe(1);
     client.disconnect();
   });
@@ -266,8 +264,6 @@ describe("flush on open and timer (P4.9)", () => {
     client.handleRawAudioFrame(requireFrame(buildRawFrame(1, 2n, [6])), "s");
     expect(sock?.sent.length).toBe(0);
 
-    // Socket opens without firing onopen (missed event): the pump still
-    // drains within a few intervals.
     if (sock) {
       sock.readyState = ManualSocket.OPEN;
     }

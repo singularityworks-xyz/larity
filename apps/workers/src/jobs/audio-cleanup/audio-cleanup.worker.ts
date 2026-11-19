@@ -28,7 +28,6 @@ export class AudioCleanupWorker extends BaseWorker<
       "Starting audio cleanup task"
     );
 
-    // List of files to delete at the end of the meeting's TTL
     const filesToDelete = [
       `${s3Prefix}/ch0.pcm16`,
       `${s3Prefix}/ch1.pcm16`,
@@ -54,7 +53,6 @@ export class AudioCleanupWorker extends BaseWorker<
           { key, err: error },
           `Failed to delete object ${key} from S3`
         );
-        // Rethrow so BullMQ can handle retries and report failure
         throw error;
       }
     });

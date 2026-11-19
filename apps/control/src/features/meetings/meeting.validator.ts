@@ -48,7 +48,6 @@ export const meetingQuerySchema = z
   .extend(paginationSchema.shape)
   .optional();
 
-// Extraction schema for bulk post-meeting processing
 export const meetingExtractionSchema = z.object({
   decisions: z
     .array(
@@ -57,7 +56,6 @@ export const meetingExtractionSchema = z.object({
         content: z.string().min(1),
         rationale: z.string().optional(),
         evidence: z.string().optional(),
-        // TODO v2: Add authorId field to track decision authorship
         tags: z.array(z.string()).default([]),
       })
     )

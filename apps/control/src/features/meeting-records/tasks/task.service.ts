@@ -91,7 +91,6 @@ export const TaskService = {
   },
 
   async markComplete(id: string) {
-    // Validate status transition: cannot complete CANCELLED tasks
     const task = await prisma.task.findUnique({
       where: { id },
       select: { status: true },

@@ -1,5 +1,4 @@
 export const DEFAULT_POLICY_GUARDRAILS = [
-  // --- BLOCK (Highest Severity) ---
   {
     name: "Strict External NDA",
     description:
@@ -81,7 +80,6 @@ export const DEFAULT_POLICY_GUARDRAILS = [
     isActive: false,
   },
 
-  // --- WARNING (Medium Severity) ---
   {
     name: "Competitor Comparisons",
     description:
@@ -163,7 +161,6 @@ export const DEFAULT_POLICY_GUARDRAILS = [
     isActive: false,
   },
 
-  // --- INFO (Low Severity) ---
   {
     name: "Inclusive Terminology",
     description:

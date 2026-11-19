@@ -4,11 +4,8 @@ import { redisKeys } from "@larity/db/redis/keys";
 export type JobStep = "transcribe" | "summary";
 export type JobStatus = "queued" | "processing" | "done" | "failed";
 
-const STATUS_TTL_SECONDS = 24 * 60 * 60; // 24 hours
+const STATUS_TTL_SECONDS = 24 * 60 * 60;
 
-/**
- * Sets the job status in Redis for a given meeting session and pipeline step.
- */
 export async function setJobStatus(
   sessionId: string,
   step: JobStep,
@@ -18,9 +15,6 @@ export async function setJobStatus(
   await redis.set(key, status, "EX", STATUS_TTL_SECONDS);
 }
 
-/**
- * Publishes the meeting.processed event to Redis Pub/Sub.
- */
 export async function publishMeetingProcessed(
   meetingId: string,
   sessionId: string
@@ -30,18 +24,11 @@ export async function publishMeetingProcessed(
     meetingId,
     sessionId,
     status: "complete",
-    // P5.1: envelope type travels with the payload so the realtime
-    // subscriber forwards it verbatim (no re-stringify).
     type: "meeting_processed",
   });
   await redis.publish(channel, payload);
 }
 
-/**
- * Cleans up temporary in-memory meeting state keys in Redis after successful persistence.
- * Note: We do NOT delete the job status keys here, as they need to remain readable
- * for checking the processing status of the meeting post-persistence. They will expire naturally.
- */
 export async function cleanupMeetingStateKeys(
   meetingId: string,
   sessionId: string
@@ -63,7 +50,6 @@ export async function cleanupMeetingStateKeys(
     redisKeys.intent(sessionId),
   ];
 
-  // Pipeline execution cleanup
   await Promise.all([
     redis.del(...keysToDel),
     redis.srem(redisKeys.activeSessions(), sessionId),

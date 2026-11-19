@@ -33,8 +33,6 @@ describe("resolveSttDispatch", () => {
     const channel = "meeting.stt.partial.s1";
     const viaFinal = resolveSttDispatch(STT_FINAL_PATTERN, channel);
     const viaPartial = resolveSttDispatch(STT_PARTIAL_PATTERN, channel);
-    // The old `meeting.stt.*` final pattern also matched partial channels,
-    // causing double processing. Now only the partial delivery resolves.
     expect(viaFinal).toBeNull();
     expect(viaPartial).toBe("partial");
   });

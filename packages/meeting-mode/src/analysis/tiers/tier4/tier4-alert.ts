@@ -4,13 +4,8 @@ import type { SpeakerIdentity } from "../../../transcript/utterances/types";
 import { SILENT_COLLABORATOR_THRESHOLDS } from "../../speculative/types";
 import type { Tier4Response } from "../../types";
 
-/**
- * @deprecated Use {@link getCategoryThreshold} or {@link SILENT_COLLABORATOR_THRESHOLDS} instead.
- * Kept for backward compatibility with code that needs a global floor.
- */
 export const MIN_TIER4_SURFACING_CONFIDENCE = 0.45;
 
-/** Human-readable titles keyed by canonical alert categories */
 export const TIER4_CATEGORY_TITLE: Record<AlertCategory, string> = {
   self_contradiction: "Contradiction",
   team_inconsistency: "Team inconsistency",
@@ -26,9 +21,6 @@ export const TIER4_CATEGORY_TITLE: Record<AlertCategory, string> = {
   undiscussed_agenda: "Undiscussed agenda",
 };
 
-/**
- * Ensure personal/both alerts always have targetUserId when possible.
- */
 export function coerceTier4RoutingForPublication(params: {
   response: Tier4Response;
   triggerSpeaker: SpeakerIdentity;
@@ -49,10 +41,6 @@ export function coerceTier4RoutingForPublication(params: {
   return { routing, targetUserId };
 }
 
-/**
- * Decide whether Tier 4 wishes to abstain despite schema validity.
- * Uses per-category confidence thresholds from SILENT_COLLABORATOR_THRESHOLDS.
- */
 export function shouldTier4Respond(response: Tier4Response): boolean {
   if (response.alertType === "none" || !response.shouldSurface) {
     return false;
@@ -82,10 +70,6 @@ export function shouldTier4Respond(response: Tier4Response): boolean {
   return true;
 }
 
-/**
- * Per-category confidence floor for Tier 4 alert surfacing.
- * Falls back to MIN_TIER4_SURFACING_CONFIDENCE for unknown categories.
- */
 export function getCategoryThreshold(category: AlertCategory): number {
   return (
     SILENT_COLLABORATOR_THRESHOLDS[category] ?? MIN_TIER4_SURFACING_CONFIDENCE

@@ -9,29 +9,20 @@ const COST_KEY_PREFIX = "meeting:cost:";
 const MODEL_PRICING: Record<string, { inputRate: number; outputRate: number }> =
   {
     "gemini-3.1-flash-lite": { inputRate: 0.25, outputRate: 1.5 },
-    // Tier 4 default (GEMINI_TIER4_MODEL="gemini-3.5-flash-lite").
-    // Public list pricing (global), verified against the rate card.
     "gemini-3.5-flash-lite": { inputRate: 0.3, outputRate: 2.5 },
     "gemini-pro": { inputRate: 1.25, outputRate: 1.25 },
-    // Tier 2 default (GENERALCOMPUTE_TIER2_MODEL="gpt-oss-120b"). General
-    // Compute list pricing: $0.21 in / $0.79 out per 1M. The prefixed alias
-    // is kept so env overrides in either form resolve correctly.
     "gpt-oss-120b": { inputRate: 0.21, outputRate: 0.79 },
     "openai/gpt-oss-120b": { inputRate: 0.21, outputRate: 0.79 },
-    // Gemini flash via the OpenAI-compatible endpoint (Tier 2 fallback
-    // provider / E2E). Public list pricing, approximate.
     "gemini-2.5-flash": { inputRate: 0.3, outputRate: 2.5 },
     "llama-3.3-70b": { inputRate: 0.85, outputRate: 1.2 },
     "llama3.1-8b": { inputRate: 0.1, outputRate: 0.1 },
   };
 
-/** Strip an `org/` provider prefix so `openai/gpt-oss-120b` matches `gpt-oss-120b`. */
 function normalizeModelKey(model: string): string {
   const slash = model.indexOf("/");
   return slash >= 0 ? model.slice(slash + 1) : model;
 }
 
-/** True when per-million-token rates are known for `model` (exact or normalized). */
 export function hasPricingForModel(model: string): boolean {
   return model in MODEL_PRICING || normalizeModelKey(model) in MODEL_PRICING;
 }
@@ -53,24 +44,13 @@ function pricingForModel(model: string): {
 const SESSION_COST_LIMIT = 2.0;
 const WARNING_THRESHOLD = 1.6;
 
-/**
- * Track name for speculative Tier 2 spend (P3.3). Speculative cost still
- * counts toward the session total (budget accuracy) and is additionally
- * accumulated under `meeting:cost:{sessionId}:tier2_speculative` so
- * speculative spend stays visible for the P3.6 go/no-go decision.
- */
 export const SPECULATIVE_COST_TRACK = "tier2_speculative";
 
 export interface RecordCostOptions {
-  /**
-   * Also accumulate this cost under a separate per-session track
-   * (`meeting:cost:{sessionId}:{trackAs}`), readable via `getTrackedCost`.
-   */
   trackAs?: string;
 }
 
 export interface CostManagerOptions {
-  /** TTL for hot-cache reads on `getSessionCost` */
   hotCacheTtlMs?: number;
 }
 
@@ -95,7 +75,6 @@ export class CostManager {
     this.hotCacheTtlMs = options.hotCacheTtlMs ?? COST_CAP_CACHE_TTL_MS;
   }
 
-  /** Reconcile hot cache from Redis (e.g. after session hydrate). */
   async primeSessionCost(sessionId: string): Promise<void> {
     const fresh = await this.readSessionCostUncached(sessionId);
     this.hotCostReads.set(sessionId, {
@@ -183,16 +162,11 @@ export class CostManager {
     return this.costs.get(sessionId) ?? 0;
   }
 
-  /** @internal test seam — pre-seed cost without connecting to Redis */
   _seedCost(sessionId: string, cost: number): void {
     this.costs.set(sessionId, cost);
     this.hotCostReads.set(sessionId, { value: cost, readAt: Date.now() });
   }
 
-  /**
-   * Connect to Redis explicitly when running in production.
-   * Not required for in-memory-only usage (tests, CI).
-   */
   async connect(): Promise<void> {
     if (this.redis && !this.redis.status?.startsWith("ready")) {
       try {
@@ -300,10 +274,6 @@ export class CostManager {
     this.trackedCosts.set(key, (this.trackedCosts.get(key) ?? 0) + cost);
   }
 
-  /**
-   * Read a separately-tracked spend bucket (e.g. `tier2_speculative`).
-   * Returns 0 when nothing was tracked yet.
-   */
   async getTrackedCost(sessionId: string, track: string): Promise<number> {
     const key = `${sessionId}:${track}`;
     const redis = this.redis;

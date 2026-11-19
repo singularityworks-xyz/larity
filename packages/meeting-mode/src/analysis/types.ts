@@ -32,7 +32,6 @@ export const tier2ToneSchema = z.enum([
   "confident",
 ]);
 
-/** Strip Groq strict-schema null placeholders before optional Zod fields */
 function optionalTier2String(max: number) {
   return z.preprocess(
     (val) =>
@@ -100,7 +99,6 @@ export interface Tier2Input {
   knownClientMembers?: Array<{ id: string; name: string }>;
   recentSameSpeaker: string[];
   speaker: SpeakerIdentity;
-  /** Structural price/currency cue (aligned with Tier1 `pricingHit`) for Tier2 user message. */
   structuralPricingCue?: boolean;
   topicLabel?: string;
   utterance: string;
@@ -121,8 +119,6 @@ export interface Tier1Detection {
 export interface Tier1Result {
   blocklistHit: boolean;
   detections: Tier1Detection[];
-  /** True when the utterance contains a currency/price mention (e.g. $400, 300 rupees, €50).
-   *  Drives the highSignal gate independently of Tier 2 classification quality. */
   pricingHit: boolean;
   technicalHit: boolean;
 }
@@ -130,7 +126,6 @@ export interface Tier1Result {
 export interface Tier2Outcome {
   classification: Tier2Classification;
   completionTokens?: number;
-  /** True when classification is the built-in fallback (LLM unreachable or invalid). */
   isFallback?: boolean;
   promptTokens?: number;
   shouldStopForDeepReasoning: boolean;
@@ -143,7 +138,6 @@ export interface Tier3Result {
     type: string;
     id: string;
     score: number;
-    /** Retrieved with the match, including rows outside the startup preload. */
     item?: string;
     meetingDate?: string;
     status?: string;
@@ -152,7 +146,6 @@ export interface Tier3Result {
   noveltyScore: number;
 }
 
-/** Historical memory hydrated for Tier 4 prompts */
 export interface Tier4HistoricalMatch {
   item: string;
   meetingDate?: string;
@@ -162,13 +155,11 @@ export interface Tier4HistoricalMatch {
   status?: string;
 }
 
-/** Ledger match hydrated with full commitment for Tier 4 */
 export interface Tier4CommitmentMatch {
   commitment: Commitment;
   similarity: number;
 }
 
-/** Rich context assembled after Tiers 1–3 gate for Tier 4 */
 export interface Tier4Context {
   matchedCommitments: Tier4CommitmentMatch[];
   matchedHistoricalItems: Tier4HistoricalMatch[];
@@ -204,7 +195,6 @@ export const tier4AlertTypeLiterals = [
 
 export type Tier4AlertKind = (typeof tier4AlertTypeLiterals)[number];
 
-/** Zod expects a tuple; keep aligned with Tier4AlertKind */
 export const tier4AlertTypeSchema = z.enum(
   tier4AlertTypeLiterals as unknown as readonly [
     Tier4AlertKind,
@@ -226,7 +216,6 @@ export const tier4ResponseSchema = z
     alertType: tier4AlertTypeSchema,
     severity: tier4SeveritySchema,
     message: z.string().min(1).max(480),
-    /** One short user-visible line (shown in overlay): why this alert fired */
     surfaceReason: z.preprocess(
       (val) => (val === null ? undefined : val),
       z.string().min(1).max(240).optional()

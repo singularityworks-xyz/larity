@@ -131,7 +131,6 @@ describe("removeConnection socket identity (P5.2)", () => {
   test("close wrapper sharing the raw socket removes the connection", () => {
     const raw = {};
     makeRawSocket("s1", "u1", raw);
-    // Elysia hands a DIFFERENT wrapper to close for the same connection.
     const closeSocket = makeSocket() as RealtimeSocket;
     (closeSocket as unknown as Record<string, unknown>).raw = raw;
 
@@ -150,7 +149,6 @@ describe("removeConnection socket identity (P5.2)", () => {
 
   test("wrappers without raw keep reference identity", () => {
     const socket = makeSocket();
-    // Store the identical wrapper (no spread copy): removal matches.
     addConnection("s1", socket as RealtimeSocket);
     const removed = removeConnection("s1", "u1", socket);
     expect(removed).toBeDefined();
@@ -161,12 +159,10 @@ describe("removeConnection socket identity (P5.2)", () => {
     const live = makeRawSocket("s1", "u1", raw);
     expect(isActiveConnection("s1", "u1", live)).toBe(true);
 
-    // A different wrapper sharing the raw socket is still the same connection.
     const closeWrapper = makeSocket() as RealtimeSocket;
     (closeWrapper as unknown as Record<string, unknown>).raw = raw;
     expect(isActiveConnection("s1", "u1", closeWrapper)).toBe(true);
 
-    // A different raw socket is a stale/replaced connection.
     const stale = makeSocket() as RealtimeSocket;
     (stale as unknown as Record<string, unknown>).raw = {};
     expect(isActiveConnection("s1", "u1", stale)).toBe(false);

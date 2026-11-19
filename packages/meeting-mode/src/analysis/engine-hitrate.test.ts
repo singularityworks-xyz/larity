@@ -86,12 +86,6 @@ function makeEngine(costManager: CostManager = new CostManager()): {
 
 const settle = () => new Promise((r) => setTimeout(r, 25));
 
-/**
- * P3.6 hit-rate measurement. Deterministic harness for the mechanism the
- * one-week dogfood would measure: a matching final must reuse the
- * speculative classification (one LLM call total), a non-matching final
- * must fall through to a fresh Tier 2 call.
- */
 describe("Speculative hit-rate (P3.6)", () => {
   beforeEach(() => {
     resetMetrics();
@@ -100,7 +94,6 @@ describe("Speculative hit-rate (P3.6)", () => {
   test("matching final consumes the speculation; unrelated final misses", async () => {
     const { engine, tier2Calls } = makeEngine();
 
-    // 1) Partial speculates ("we can deliver by friday").
     await engine.evaluatePartial({
       confidence: 0.95,
       sessionId: SESSION,
@@ -111,14 +104,12 @@ describe("Speculative hit-rate (P3.6)", () => {
     await settle();
     expect(tier2Calls).toHaveLength(1);
 
-    // 2) Matching final — speculation hit, no new LLM call.
     const hit = await engine.evaluateUtterance(
       makeFinal("we can deliver by friday", `${SESSION}:0`)
     );
     expect(hit.speculativeHit).toBe(true);
     expect(tier2Calls).toHaveLength(1);
 
-    // 3) Unrelated final — miss, fresh Tier 2 call.
     const miss = await engine.evaluateUtterance(
       makeFinal("the weather is lovely today", `${SESSION}:1`)
     );

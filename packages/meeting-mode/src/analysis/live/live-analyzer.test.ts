@@ -169,7 +169,6 @@ describe("live analyzer", () => {
       expect(prompt).toContain(field);
     }
     expect(prompt).toContain('"pricingHit":true');
-    // No artificial zero-confidence classification is passed as model evidence.
     expect(prompt).not.toContain('"tier2":{"intent":"general"');
   });
 });

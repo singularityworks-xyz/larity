@@ -390,7 +390,6 @@ const EditableMemberCard = memo(function EditableMemberCard({
         </div>
       )}
 
-      {/* Persona Tooltip / Indicator */}
       {member.persona && Object.keys(member.persona).length > 0 && (
         <div
           className={`absolute opacity-0 transition-opacity group-hover:opacity-100 ${

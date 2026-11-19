@@ -19,10 +19,6 @@ interface S3Error {
   name: string;
 }
 
-/**
- * Downloads a file from S3 and returns its contents as a Buffer.
- * Returns null if the file does not exist.
- */
 async function downloadS3File(
   s3: S3Client,
   bucket: string,
@@ -48,9 +44,6 @@ async function downloadS3File(
   }
 }
 
-/**
- * Fetches the raw audio files from S3 and transcribes them using Deepgram.
- */
 export async function fetchAndTranscribeAudio(
   s3Prefix: string,
   log: WorkerLogger

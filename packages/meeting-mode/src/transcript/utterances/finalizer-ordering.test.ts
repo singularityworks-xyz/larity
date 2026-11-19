@@ -50,7 +50,6 @@ describe("UtteranceFinalizer per-session ordering", () => {
       {
         hset: () => Promise.resolve(0),
         publish: (channel, message) => {
-          // Topic deltas share the publisher; only utterance publishes count here.
           if (!channel.startsWith("meeting.utterance.")) {
             return Promise.resolve(1);
           }
@@ -71,20 +70,15 @@ describe("UtteranceFinalizer per-session ordering", () => {
     const second = finalizer.process(
       makeFinal(1, "second speaker replies here", now - 1000)
     );
-    // Let both reach their embedding await; only the first may proceed.
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(resolvers.length).toBe(1);
 
-    // Resolve out of arrival order: only the first embed exists so far.
     resolvers[0]?.([0.1]);
     await new Promise((resolve) => setTimeout(resolve, 10));
-    // The second finalize now started and awaits its own embed.
     expect(resolvers.length).toBe(2);
     resolvers[1]?.([0.2]);
 
     await Promise.all([first, second]);
-    // Different speakers: the first finalize's utterance is released when
-    // the second pushes. Order must be finalize order, not embed order.
     expect(publishedIds).toEqual(["test-session:0"]);
 
     await finalizer.closeSession("test-session");

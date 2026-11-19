@@ -64,9 +64,6 @@ export class ConstraintManager {
     const ledger = this.getLedger(sessionId);
     const fromSnapshot = await ledger.hydrateFromSnapshot();
 
-    // P2.10: the pipeline engine already fetched the context — reuse it
-    // instead of a second Redis GET. `undefined` (e.g. processUtterance path)
-    // keeps the legacy self-read.
     const payload =
       contextPayload === undefined
         ? await this.readContextPayload(sessionId)

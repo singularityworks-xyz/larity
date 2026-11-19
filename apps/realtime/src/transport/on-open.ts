@@ -15,18 +15,10 @@ import type { RealtimeSocket } from "./types";
 
 const log = createRealtimeLogger("on-open");
 
-/**
- * Handle new WebSocket connection
- * Called when a client successfully upgrades to WebSocket
- */
 export function onOpen(ws: RealtimeSocket): void {
   const data = ws.data;
   const { sessionId, userId, role } = data;
 
-  // Session ID is validated in upgrade handler
-  // If we get here, we have a valid session
-
-  // Register connection in memory
   addConnection(sessionId, ws);
 
   const session = getSession(sessionId);
@@ -46,7 +38,6 @@ export function onOpen(ws: RealtimeSocket): void {
       return;
     }
 
-    // Start raw audio persistence for host sessions
     try {
       createStreamer(sessionId, data.orgId);
       log.info(
@@ -65,17 +56,12 @@ export function onOpen(ws: RealtimeSocket): void {
     sessionManager.connectSession(sessionId);
   }
 
-  // P5.2: subscribe to this session's Redis channels on first connection.
-  // After the capacity check so a rejected connection cannot leak a
-  // subscription. Fire-and-forget — subscription completes in ms; audio
-  // finals take ≥1s. Late-join state comes from the join API, not the stream.
   subscribeSession(sessionId).catch((error) => {
     log.error({ err: error, sessionId }, "Failed to subscribe session");
   });
 
   log.info({ sessionId, userId, role }, "Connection established");
 
-  // Publish session start event if this is the first connection
   if (isFirstConnection) {
     publishSessionStart({
       sessionId,
@@ -85,7 +71,6 @@ export function onOpen(ws: RealtimeSocket): void {
     });
   }
 
-  // Publish participant join event
   publishParticipantJoin({
     sessionId,
     userId,

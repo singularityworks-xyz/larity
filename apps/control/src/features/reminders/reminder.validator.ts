@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { paginationSchema } from "../../lib/pagination";
 
-// Better-auth uses 32-character alphanumeric IDs, not UUIDs
 const betterAuthId = z
   .string()
   .length(32, "Invalid user ID")

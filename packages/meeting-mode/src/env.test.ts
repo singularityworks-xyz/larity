@@ -17,8 +17,6 @@ describe("meeting-mode env defaults", () => {
     expect(LIVE_PIPELINE_CONCURRENCY).toBe(2);
   });
   test("merger publish gap stays short (P2.3)", () => {
-    // Guard against regressing the publish path to the old ~700ms hold.
-    // Overridable via MERGE_PUBLISH_GAP_MS; the test env leaves it unset.
     expect(process.env.MERGE_PUBLISH_GAP_MS).toBeUndefined();
     expect(MERGE_PUBLISH_GAP_MS).toBe(250);
     expect(MERGE_GROUPING_MS).toBe(5000);

@@ -12,7 +12,6 @@ import { handleSttChannel } from "./stt-forwarding";
 const log = createRealtimeLogger("subscriber");
 const pipelineTraceLog = createRealtimeLogger("pipeline-trace");
 
-/** Same semantics as `packages/meeting-mode` `PIPELINE_TRACE_PRETTY_JSON` (default off, opt-in). */
 function pipelineTracePrettyLogsEnabled(): boolean {
   const raw = process.env.PIPELINE_TRACE_PRETTY_JSON;
   return raw === "true" || raw === "1";
@@ -20,18 +19,8 @@ function pipelineTracePrettyLogsEnabled(): boolean {
 
 let subscriber: Redis | null = null;
 
-/**
- * Fallback wildcard for `realtime.*` control events (P5.2). Nothing
- * publishes those for this subscriber today (meeting-mode consumes them);
- * the pattern stays so future control traffic needs no code change.
- */
 const REALTIME_CONTROL_PATTERN = "realtime.*";
 
-/**
- * Exact per-session channels (P5.2) — the session-scoped equivalents of the
- * nine former global patterns, plus the legacy STT shape. Personal alerts
- * stay a session-scoped pattern (see `sessionPatterns`).
- */
 export function sessionChannels(sessionId: string): string[] {
   return [
     redisKeys.meetingUtterance(sessionId),
@@ -48,13 +37,11 @@ export function sessionChannels(sessionId: string): string[] {
   ];
 }
 
-/** Session-scoped patterns: personal alert fan-out for one session. */
 export function sessionPatterns(sessionId: string): string[] {
   return [redisKeys.meetingAlertPersonal(sessionId, "*")];
 }
 
 const subscribedSessions = new Set<string>();
-/** Desired state incl. in-flight ops (true = should be subscribed). */
 const desiredSubscriptions = new Set<string>();
 /** Serializes subscribe/unsubscribe per session so a fast close cannot leak. */
 const subscriptionOps = new Map<string, Promise<void>>();
@@ -81,8 +68,6 @@ function reconcileSession(sessionId: string): Promise<void> {
         try {
           await subscriber.psubscribe(...sessionPatterns(sessionId));
         } catch (error) {
-          // Roll back the channel subscribe so a partial failure cannot
-          // leave an untracked subscription behind.
           await subscriber
             .unsubscribe(...sessionChannels(sessionId))
             .catch(() => undefined);
@@ -95,8 +80,6 @@ function reconcileSession(sessionId: string): Promise<void> {
           await subscriber.unsubscribe(...sessionChannels(sessionId));
           await subscriber.punsubscribe(...sessionPatterns(sessionId));
         } finally {
-          // Desired state is "off"; clear tracking even on a failed Redis
-          // call so the next reconcile converges instead of desyncing.
           subscribedSessions.delete(sessionId);
         }
         log.info({ sessionId }, "Unsubscribed from session channels");
@@ -115,19 +98,11 @@ function reconcileSession(sessionId: string): Promise<void> {
   return next;
 }
 
-/**
- * Subscribe to one session's channels. Idempotent; called on the session's
- * first connection (any role — participants need the streams too). No-op
- * when the subscriber isn't running.
- */
 export async function subscribeSession(sessionId: string): Promise<void> {
   desiredSubscriptions.add(sessionId);
   await reconcileSession(sessionId);
 }
 
-/**
- * Leave one session's channels. Called when its last connection closes.
- */
 export async function unsubscribeSession(sessionId: string): Promise<void> {
   desiredSubscriptions.delete(sessionId);
   await reconcileSession(sessionId);
@@ -171,15 +146,11 @@ export async function startSubscriber(): Promise<void> {
   });
 }
 
-/**
- * Handle incoming messages from Redis
- */
 function handleMessage(
   pattern: string,
   channel: string,
   message: string
 ): void {
-  // pattern is unused, but required by Redis signature
   const _ = pattern;
 
   try {
@@ -206,8 +177,6 @@ function handleMessage(
     }
 
     if (channel.startsWith("meeting.alert.")) {
-      // P5.3: single alert log lives in handleAlertChannel (routing
-      // outcome); no entry log here.
       handleAlertChannel(channel, message);
     }
   } catch (error) {
@@ -243,7 +212,6 @@ function handlePipelineTraceMessage(message: string): void {
   }
 }
 
-/** Minimal Redis surface used by session subscriptions (test seam). */
 export interface SubscriptionClient {
   psubscribe(...patterns: string[]): Promise<unknown>;
   punsubscribe(...patterns: unknown[]): Promise<unknown>;
@@ -264,9 +232,6 @@ export const __test_only_resetSubscriptions = (): void => {
   subscriber = null;
 };
 
-/**
- * Stop the Redis subscriber
- */
 export async function stopSubscriber(): Promise<void> {
   subscribedSessions.clear();
   desiredSubscriptions.clear();

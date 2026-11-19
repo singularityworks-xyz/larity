@@ -12,8 +12,6 @@ pub mod processor;
 pub mod ring;
 pub mod vad;
 
-/// Webview window labels (see `lib.rs` builders). Amplitude events target
-/// one window each (P4.4) instead of broadcasting via `app.emit`.
 pub const OVERLAY_WINDOW_LABEL: &str = "meeting-overlay";
 pub const MAIN_WINDOW_LABEL: &str = "main";
 
@@ -37,16 +35,9 @@ pub struct AudioCaptureStatus {
 pub struct AudioState {
     pub is_capturing: Arc<Mutex<bool>>,
     pub current_session: Arc<Mutex<Option<String>>>,
-    // Channel for stopping the capture thread
     pub stop_tx: Arc<Mutex<Option<tokio::sync::mpsc::Sender<()>>>>,
-    /// True while system/loopback capture runs alongside the mic.
     pub sys_active: Arc<Mutex<bool>>,
-    /// Mixer drop-counter handle for the current capture (P4.3). `None`
-    /// before the first capture. Only the counter is retained — never the
-    /// mixer itself, so dropping capture still closes the queue.
     pub mixer_drops: Arc<Mutex<Option<Arc<AtomicU64>>>>,
-    /// Why system capture is absent while mic capture runs (`None` = full
-    /// capture, or a VAD-only non-host role that never attempts loopback).
     pub sys_error: Arc<Mutex<Option<String>>>,
 }
 

@@ -19,21 +19,12 @@ function makeInput(): Tier2Input {
   };
 }
 
-/**
- * Tier 2 provider contract (General Compute). Changing provider, model,
- * reasoning effort, or schema strictness must be deliberate and measured —
- * these assertions are the guard.
- */
 describe("Tier 2 request contract", () => {
   test("targets General Compute gpt-oss-120b with reasoning low", () => {
     const request = buildTier2Request(makeInput());
-    // Env default; override via GENERALCOMPUTE_TIER2_MODEL.
     expect(request.model).toBe("gpt-oss-120b");
-    // Classification, not deep reasoning (TIER2_REASONING_EFFORT default low).
     expect(request.reasoning_effort).toBe("low");
     expect(request.temperature).toBe(0);
-    // Reconnection is an SDK client option (`maxRetries: 0`), never a body
-    // field — strict providers reject unknown JSON body keys.
     expect("reconnectAttempts" in request).toBe(false);
   });
 

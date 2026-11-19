@@ -257,7 +257,6 @@ export function TranscriptStream({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-border border-r">
-      {/* Tabs Nav */}
       <div
         aria-label="Transcript view mode"
         className="flex shrink-0 items-stretch gap-0 border-border-subtle border-b bg-bg-elevated"

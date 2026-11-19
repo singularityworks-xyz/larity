@@ -120,7 +120,6 @@ export function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Resize window to wide auth layout
   useEffect(() => {
     applyWindowProfile(WINDOW_PROFILES.auth, { center: true }).catch(() => {
       // best-effort outside Tauri
@@ -251,7 +250,6 @@ export function RegisterPage() {
     <div className={authSplitRootClass}>
       <TitleBar />
 
-      {/* ── Left panel — brand / ambient ── */}
       <aside aria-hidden="true" className={authBrandPanelClass}>
         <div className={authBrandInnerClass}>
           <div className={authBrandLogoClass}>
@@ -275,7 +273,6 @@ export function RegisterPage() {
         <div className={authBrandBgClass} />
       </aside>
 
-      {/* ── Right panel — form ── */}
       <main className={authFormPanelClass}>
         <div className={authFormInnerClass}>
           <Link className={authBackClass} to="/welcome">

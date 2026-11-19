@@ -17,15 +17,6 @@ const log = createMeetingModeLogger("speaker-identifier");
 
 const CLOCK_OFFSET_TTL_SECONDS = 2 * 60 * 60;
 
-/**
- * Maximum duration of a live VAD interval that was never closed by a
- * `vad_silence` packet. When `openInterval` receives a new speak signal more
- * than this many milliseconds after the existing open interval started, it
- * treats the old interval as implicitly ended and opens a fresh one. This
- * matches the cap applied in `getActiveMembersAt` (which uses the same value
- * to bound the effective end of any unclosed interval at query time), so the
- * two code paths stay consistent.
- */
 const MAX_VAD_INTERVAL_MS = 10_000;
 
 interface ClockOffsetRedisClient {
@@ -208,8 +199,6 @@ export class SpeakerIdentifier {
 
     let teamMember = this.teamMembers.get(userId);
     if (!teamMember) {
-      // If participant.join was missed, trust authenticated VAD userId and
-      // register a minimal team identity so VAD correlation still works.
       this.registerTeamMember(userId, userId, role);
       teamMember = this.teamMembers.get(userId);
       log.info(
@@ -290,7 +279,6 @@ export class SpeakerIdentifier {
       }
     }
 
-    // Host channel short-circuit: mic audio (< 1000) directly maps to the host
     if (diarizationIndex < 1000) {
       let host:
         | { userId: string; name: string; role?: "host" | "participant" }
@@ -364,19 +352,16 @@ export class SpeakerIdentifier {
   ): string | undefined {
     let speakingMembers = this.getActiveMembersAt(utteranceTimestamp);
 
-    // DUAL-CHANNEL CORRELATION HARDENING
-    // Ensure that System Audio (>= 1000) does not correlate with the Host's VAD
-    // and Mic Audio (< 1000) does not correlate with a Remote Participant's VAD.
     speakingMembers = speakingMembers.filter((userId) => {
       const member = this.teamMembers.get(userId);
       const isHost = member?.role === "host";
       const isParticipant = member?.role === "participant";
 
       if (diarizationIndex >= 1000 && isHost) {
-        return false; // System audio should never map to the Host
+        return false;
       }
       if (diarizationIndex < 1000 && isParticipant) {
-        return false; // Mic audio should never map to a Remote Participant
+        return false;
       }
       return true;
     });
@@ -385,7 +370,6 @@ export class SpeakerIdentifier {
       return;
     }
 
-    // Hardened filtering: only consider members whose role matches the physical channel
     const validMembers = speakingMembers.filter((userId) => {
       const member = this.teamMembers.get(userId);
       if (!member) {
@@ -453,11 +437,6 @@ export class SpeakerIdentifier {
       diarizationIndex: number;
       speaker: SpeakerIdentity;
     }> = [];
-
-    // NOTE: do NOT call processVadSignal here. The subscriber already routes
-    // every VAD edge through SpeakerManager.handleVadSignal → processVadSignal
-    // before late identification runs; recording it again would duplicate the
-    // interval, the clock sample, and the Redis persist (hset + expire).
 
     if (this.clockTracker.isUntrusted()) {
       return results;
@@ -651,8 +630,6 @@ export class SpeakerIdentifier {
         if (!interval) {
           continue;
         }
-        // Cap open VAD intervals at MAX_VAD_INTERVAL_MS to prevent a missed
-        // vad_silence from bleeding the speaker's active state indefinitely.
         const isClosed = interval.endTs !== undefined;
         const endTs = interval.endTs ?? interval.startTs + MAX_VAD_INTERVAL_MS;
         const effectiveLower = isClosed
@@ -688,8 +665,6 @@ export class SpeakerIdentifier {
     if (targetSpeakerId) {
       const existingMapping = this.speakerMappings.get(targetSpeakerId);
       if (existingMapping) {
-        // Channel-aware merge guard: only merge if the new diarizationIndex
-        // belongs to the same channel class (mic vs system) as the existing indices of this mapping.
         const isSameChannelClass =
           existingMapping.speaker.diarizationIndices.every(
             (idx) => idx >= 1000 === diarizationIndex >= 1000
@@ -763,14 +738,9 @@ export class SpeakerIdentifier {
     const latest = intervals.at(-1);
     if (latest && latest.endTs === undefined) {
       if (adjustedTs > latest.startTs + MAX_VAD_INTERVAL_MS) {
-        // The previous interval was never closed and has now exceeded the
-        // maximum allowed duration. Implicitly close it at the cap boundary
-        // and start a fresh interval for this new speak event.
         latest.endTs = latest.startTs + MAX_VAD_INTERVAL_MS;
         intervals.push({ userId, startTs: adjustedTs });
       } else {
-        // Duplicate or out-of-order speak signal within the same interval;
-        // keep the earliest known start time.
         latest.startTs = Math.min(latest.startTs, adjustedTs);
       }
     } else {
@@ -825,6 +795,5 @@ function isChannelRoleMatch(
     // Host must NOT be on a system channel
     return !isSystemChannel;
   }
-  // Participant MUST be on a system channel
   return isSystemChannel;
 }

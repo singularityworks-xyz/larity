@@ -22,11 +22,9 @@ export function ContextStrip() {
                 />
               )}
               <div className="flex flex-col items-center gap-1 md:flex-row md:gap-3">
-                {/* Technical Value: Emphasized with Instrument Serif */}
                 <span className="font-bold font-display text-2xl text-accent leading-none tracking-tight md:text-3xl">
                   {claim.value}
                 </span>
-                {/* Technical Label: Quiet metadata */}
                 <span className="font-body font-bold text-[10px] text-zinc-500 uppercase leading-none tracking-widest md:text-xs">
                   {claim.label}
                 </span>

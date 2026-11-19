@@ -2,7 +2,6 @@ import { createRealtimeLogger } from "../logger";
 
 const log = createRealtimeLogger("validate-session");
 
-// URL for validating sessions with control plane
 const CONTROL_API_URL = process.env.CONTROL_API_URL || "http://localhost:3000";
 
 interface ValidationResponse {
@@ -13,11 +12,6 @@ interface ValidationResponse {
   success: boolean;
 }
 
-/**
- * Validate session with control plane
- *
- * Makes an HTTP call to verify the session exists and the user is authorized
- */
 export async function validateSession(
   sessionId: string,
   userId?: string,
@@ -25,7 +19,6 @@ export async function validateSession(
 ): Promise<{ isValid: boolean; orgId?: string }> {
   const isDev = process.env.NODE_ENV !== "production";
 
-  // Bypass only local test sessions in non-production environments
   if (isDev && sessionId.includes("test-session")) {
     return { isValid: true, orgId: "default" };
   }

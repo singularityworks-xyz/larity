@@ -29,17 +29,16 @@ export function OverlayShell() {
 
     const tick = () => {
       const realMs = Math.max(0, Date.now() - data.startedAtMs);
-      const baseMs = 8 * 60 * 1000; // Start at 08:00
-      const jumpStartMs = 12_000; // Trigger fast-forward after 12 real seconds (at 08:12)
-      const jumpDuration = 4000; // Fast-forward takes 4 seconds
-      const jumpAmount = 42 * 60 * 1000; // Adds 42 minutes
+      const baseMs = 8 * 60 * 1000;
+      const jumpStartMs = 12_000;
+      const jumpDuration = 4000;
+      const jumpAmount = 42 * 60 * 1000;
 
       let displayMs = baseMs + realMs;
 
       if (realMs > jumpStartMs) {
         if (realMs <= jumpStartMs + jumpDuration) {
           const progress = (realMs - jumpStartMs) / jumpDuration;
-          // Smooth ease-in-out curve for cinematic counter spinning
           const easeInOut =
             progress < 0.5
               ? 2 * progress * progress

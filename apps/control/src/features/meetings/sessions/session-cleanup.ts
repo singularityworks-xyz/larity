@@ -14,10 +14,8 @@ export async function scheduleCleanup(
   sessionId: string,
   meetingId: string
 ): Promise<void> {
-  // Remove from active sessions
   await redis.srem(redisKeys.activeSessions(), sessionId);
 
-  // Fetch orgId from DB
   let orgId: string | undefined;
   try {
     const meeting = await prisma.meeting.findUnique({
@@ -41,7 +39,6 @@ export async function scheduleCleanup(
   }
 
   if (orgId) {
-    // Dump session state to S3
     try {
       const commitmentsRaw = await redis.get(
         redisKeys.meetingCommitment(sessionId)
@@ -125,7 +122,6 @@ export async function scheduleCleanup(
     );
   }
 
-  // Extend TTL of specified keys to 7 days
   const keysToExtend = [
     redisKeys.meetingSession(sessionId),
     redisKeys.meetingToSession(meetingId),
@@ -143,7 +139,7 @@ export async function scheduleCleanup(
 
   for (const key of keysToExtend) {
     try {
-      await redis.expire(key, 7 * 24 * 60 * 60); // 7 days
+      await redis.expire(key, 7 * 24 * 60 * 60);
     } catch {
       // ignore
     }

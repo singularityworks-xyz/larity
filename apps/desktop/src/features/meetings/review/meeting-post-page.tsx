@@ -33,7 +33,6 @@ export function MeetingPostPage() {
     useMeetingInsights(meetingId);
   const reprocess = useReprocess(meetingId);
 
-  // Single unified processing status query with smart polling pause once settled
   const { data: status } = useProcessingStatus(meetingId);
 
   const settled = isProcessingSettled(status);
@@ -97,7 +96,6 @@ export function MeetingPostPage() {
   return (
     <div className="absolute inset-0 flex flex-col overflow-hidden bg-bg text-fg">
       <div className="mx-auto flex h-full w-full max-w-[1200px] flex-col gap-4 overflow-hidden px-4 pt-12 pb-4 sm:px-6 sm:pt-14 sm:pb-6 md:px-8 md:pt-16 md:pb-6">
-        {/* Hero Header */}
         <div className="relative shrink-0 overflow-hidden rounded-2xl border border-border/40 px-6 py-8 md:flex-row md:items-end">
           <div
             className="pointer-events-none absolute inset-0 bg-bottom bg-cover opacity-50 mix-blend-overlay"
@@ -171,9 +169,7 @@ export function MeetingPostPage() {
           </div>
         </div>
 
-        {/* Main Content Area */}
         <main className="relative z-10 flex w-full flex-1 flex-col gap-4 overflow-hidden md:flex-row">
-          {/* Sidebar / Tabs */}
           <div className="scrollbar-thin scrollbar-thumb-border-strong flex w-full shrink-0 flex-col gap-2 overflow-y-auto pr-2 pb-4 md:w-64">
             <ProcessingBanner
               onReprocessSuccess={handleReprocessSuccess}
@@ -224,7 +220,6 @@ export function MeetingPostPage() {
             </div>
           </div>
 
-          {/* Tab content */}
           <div className="flex flex-1 flex-col overflow-hidden rounded-[16px] border border-border bg-bg-elevated shadow-sm">
             <div className="flex items-center justify-between border-border/40 border-b bg-bg-subtle/50 px-4 py-3 backdrop-blur-sm">
               <h2 className="font-bold font-heading text-base text-fg tracking-tight">

@@ -1,22 +1,12 @@
-// Deterministic animation delays for each dot position (row × 5 + col),
-// matching the SVG sparkle's pseudo-random stagger pattern. Values in ms.
 const DOT_DELAYS: number[] = [
-  // row 0
-  0, 2283, 1617, 1466, 31,
-  // row 1
-  2106, 296, 1206, 333, 2241,
-  // row 2
-  1929, 967, 1238, 1004, 2252,
-  // row 3
-  1955, 2517, 1139, 1076, 1362,
-  // row 4
-  2132, 920, 1274, 1310, 1019,
+  0, 2283, 1617, 1466, 31, 2106, 296, 1206, 333, 2241, 1929, 967, 1238, 1004,
+  2252, 1955, 2517, 1139, 1076, 1362, 2132, 920, 1274, 1310, 1019,
 ];
 
 const CYCLE_MS = 1400;
 const GRID_SIZE = 5;
-const DOT_STEP = 5.5; // gap between dot centres
-const DOT_START = 2.5; // first dot centre offset
+const DOT_STEP = 5.5;
+const DOT_START = 2.5;
 
 interface Dot {
   cx: number;
@@ -26,11 +16,9 @@ interface Dot {
   id: string;
 }
 
-// Pre-built so React never sees array-index keys.
 const DOTS: Dot[] = DOT_DELAYS.map((delayRandom, index) => {
   const row = Math.floor(index / GRID_SIZE);
   const col = index % GRID_SIZE;
-  // Center is row 2, col 2
   const distFromCenter = Math.sqrt((row - 2) ** 2 + (col - 2) ** 2);
   return {
     id: `r${row}c${col}`,
@@ -42,18 +30,11 @@ const DOTS: Dot[] = DOT_DELAYS.map((delayRandom, index) => {
 });
 
 interface VoiceDotMatrixProps {
-  /** Current voice intensity (0 to 1). */
   amplitude?: number;
-  /** Whether the user is currently speaking — drives the animation. */
   isSpeaking: boolean;
-  /** Accessible label for the indicator. */
   label?: string;
 }
 
-/**
- * A 5×5 dot matrix that idles at near-invisible opacity and shifts to
- * a rippling hue effect while the user is speaking.
- */
 export function VoiceDotMatrix({
   isSpeaking,
   amplitude = 0,
@@ -82,7 +63,6 @@ export function VoiceDotMatrix({
         viewBox="0 0 28 28"
         xmlns="http://www.w3.org/2000/svg"
       >
-        {/* Base layer: static dim dots that give the matrix its shape */}
         <g
           style={{
             color: "var(--fg-subtle)",
@@ -101,7 +81,6 @@ export function VoiceDotMatrix({
           ))}
         </g>
 
-        {/* Active layer: continuously animating dots, revealed when speaking */}
         <g
           style={{
             color: "var(--accent)",
@@ -117,7 +96,6 @@ export function VoiceDotMatrix({
               key={`twinkle-${dot.id}`}
               r={1.8}
               style={{
-                // Switches from random twinkle (idle but hidden) to centre ripple (active)
                 animation: isSpeaking
                   ? `dot-twinkle ${CYCLE_MS}ms cubic-bezier(0.65, 0, 0.35, 1) ${dot.delayRipple}ms infinite both`
                   : `dot-twinkle ${CYCLE_MS}ms cubic-bezier(0.65, 0, 0.35, 1) -${dot.delayRandom}ms infinite both`,

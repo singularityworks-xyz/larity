@@ -9,8 +9,6 @@ mock.module("@larity/db/redis", () => ({
 
 afterAll(() => mock.restore());
 
-// Import after the redis mock is registered so processVadSignal persists
-// through the fakes and the writes are countable.
 import { SpeakerIdentifier } from "./identifier";
 import type { VadSignal } from "./types";
 
@@ -26,15 +24,10 @@ function makeSignal(type: VadSignal["type"]): VadSignal {
   };
 }
 
-/** Flush fire-and-forget Redis persists (`persistClockOffset` is not awaited). */
 async function flushPersists(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-/**
- * Mirrors the subscriber's VAD path: SpeakerManager.handleVadSignal (which
- * calls processVadSignal) followed by tryLateIdentification on the same edge.
- */
 describe("VAD single processing", () => {
   beforeEach(() => {
     hsetMock.mockClear();

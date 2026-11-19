@@ -22,7 +22,6 @@ export const policyGuardrailsRoutes = new Elysia({
     },
     { query: policyGuardrailQuerySchema }
   )
-  // Get active guardrails for a client (includes org-level)
   .get(
     "/active",
     async ({ query, set }) => {
@@ -46,7 +45,6 @@ export const policyGuardrailsRoutes = new Elysia({
       }),
     }
   )
-  // Get policy guardrail by id
   .get(
     "/:id",
     async ({ params, set }) => {
@@ -79,7 +77,6 @@ export const policyGuardrailsRoutes = new Elysia({
     },
     { body: createPolicyGuardrailSchema }
   )
-  // Seed default guardrails for an org
   .post(
     "/seed",
     // biome-ignore lint/suspicious/noExplicitAny: user is derived from global auth middleware

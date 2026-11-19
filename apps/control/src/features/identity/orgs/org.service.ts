@@ -13,7 +13,6 @@ export const OrgService = {
         },
       });
 
-      // Set the creator as member and owner of the org
       await tx.user.update({
         where: { id: creatorUserId },
         data: {

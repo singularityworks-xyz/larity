@@ -13,7 +13,6 @@ export function useReprocess(meetingId: string) {
     mutationFn: () =>
       api.post<ReprocessResult>(`/meetings/${meetingId}/reprocess`),
     onSuccess: () => {
-      // Invalidate both insights and processing status to trigger a fresh fetch
       queryClient.invalidateQueries({
         queryKey: ["meeting-insights", meetingId],
       });

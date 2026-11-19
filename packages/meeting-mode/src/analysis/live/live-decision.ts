@@ -118,7 +118,6 @@ function sameSpeaker(a: SpeakerIdentity, b: SpeakerIdentity): boolean {
   return a.speakerId === b.speakerId;
 }
 
-/** Bound references and identity checks in code, rather than trusting generated attribution. */
 export function buildDecisionAlert(
   context: Tier4Context,
   decision: z.infer<typeof decisionSchema>
@@ -203,7 +202,6 @@ function allowedDecision(
   ) {
     return false;
   }
-  // Agenda closeout is handled by the existing meeting-end speaker-state checks.
   if (kind === "undiscussed_agenda") {
     return false;
   }
@@ -226,7 +224,6 @@ function decisionRouting(
   return "shared";
 }
 
-/** Compact decision on the alert path; detailed classification proceeds independently. */
 export class LiveDecisionAnalyzer implements LiveAnalyzer {
   readonly requiresClassification = true;
   private readonly invoke: DecisionInvoke;

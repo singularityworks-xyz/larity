@@ -1,22 +1,8 @@
-/**
- * types.ts — STT Package Type Definitions
- *
- * The STT layer emits raw diarization indices from Deepgram.
- * Speaker identification (resolving indices to team/external)
- * happens downstream in the meeting-mode pipeline.
- */
-
-/**
- * Session start event from realtime plane
- */
 export interface SessionStartEvent {
   sessionId: string;
   ts: number;
 }
 
-/**
- * Session end event from realtime plane
- */
 export interface SessionEndEvent {
   duration: number;
   sessionId: string;
@@ -31,9 +17,9 @@ export interface SessionEndEvent {
  * happens downstream via voice embeddings.
  */
 export interface SttResult {
-  channel: number; // 0 for host mic, 1 for loopback
+  channel: number;
   confidence: number;
-  diarizationIndex: number; // Deepgram speaker index (0, 1, 2...)
+  diarizationIndex: number;
   duration: number;
   isFinal: boolean;
   sessionId: string;

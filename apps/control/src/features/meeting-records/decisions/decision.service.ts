@@ -36,7 +36,6 @@ export const DecisionService = {
       throw new Error("Decision not found");
     }
 
-    // Mark previous version as superseded
     await prisma.decision.update({
       where: { id: latest.id },
       data: { status: "SUPERSEDED" },
@@ -134,7 +133,6 @@ export const DecisionService = {
       orderBy: [{ decisionRef: "asc" }, { version: "desc" }],
     });
 
-    // Filter to only latest versions (unless status filter is applied)
     if (!query?.status) {
       const latestVersions = new Map<string, (typeof decisions)[0]>();
       for (const decision of decisions) {

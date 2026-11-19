@@ -8,8 +8,6 @@ import type { Tier3Result } from "../../types";
 
 const log = createMeetingModeLogger("tier3-search");
 
-// We abstract out the adapters so Tier3 doesn't tightly couple to the exact Engine imports,
-// but for Prisma we just import it directly since this is the designated place for pgvector checks.
 export interface CommitmentLedgerSearchAdapter {
   search(
     sessionId: string,
@@ -17,7 +15,6 @@ export interface CommitmentLedgerSearchAdapter {
     options?: { k?: number; minSimilarity?: number }
   ): Array<
     | { commitment: { id: string }; similarity: number }
-    /** @deprecated tests / legacy mocks */
     | { id: string; score: number }
   >;
 }
@@ -28,7 +25,7 @@ export type OrganizationMemoryQuery = (
 ) => Promise<Tier3Result["memoryMatches"]>;
 
 export class Tier3SearchEngine {
-  private readonly MEMORY_THRESHOLD = 0.7; // ~0.3 cosine distance
+  private readonly MEMORY_THRESHOLD = 0.7;
   private readonly LEDGER_THRESHOLD = 0.8;
 
   private readonly queryMemory: OrganizationMemoryQuery;
@@ -62,7 +59,6 @@ export class Tier3SearchEngine {
       };
     }
 
-    // No org/client memory and no commitments → skip pgvector + ledger search work
     if (!payload) {
       const ledgerProbe = commitmentManager.search(sessionId, embedding, {
         k: 1,
@@ -91,9 +87,6 @@ export class Tier3SearchEngine {
 
     const [noveltyScore, ledgerMatches, memory] = await Promise.all(tasks);
 
-    // Suggest Tier 4: memory or commitment-ledger similarity (potential contradiction).
-    // The pipeline engine still respects Tier 2 `shouldStopForDeepReasoning` so low-value
-    // lines do not invoke Tier 4 even when ledger embedding matches loosely.
     const forceTier4 = memory.matches.length > 0 || ledgerMatches.length > 0;
 
     return {

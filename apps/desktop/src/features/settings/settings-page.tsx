@@ -37,7 +37,6 @@ function getAmplitudeColor(rms: number): string {
 
 type TabId = "guardrails" | "audio";
 
-// --- Guardrail Types ---
 export type GuardrailRuleType =
   | "NDA"
   | "LEGAL"
@@ -215,14 +214,11 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const vadManager = useMemo(() => new VadManager(), []);
 
-  // Auth State
   const { user } = useAuthSession();
   const orgId = user?.orgId;
 
-  // Tab State
   const [activeTab, setActiveTab] = useState<TabId>("guardrails");
 
-  // VAD State
   const [isRunning, setIsRunning] = useState(false);
   const [speechDetected, setSpeechDetected] = useState(false);
   const [lastSpeechStartTs, setLastSpeechStartTs] = useState<number | null>(
@@ -237,7 +233,6 @@ export function SettingsPage() {
   const [audioDeviceCount, setAudioDeviceCount] = useState<number | null>(null);
   const [, setLastPreflightError] = useState<string>("");
 
-  // Guardrail State
   const [guardrails, setGuardrails] = useState<PolicyGuardrail[]>([]);
   const [isLoadingGuardrails, setIsLoadingGuardrails] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -246,7 +241,6 @@ export function SettingsPage() {
   const [newType, setNewType] = useState<GuardrailRuleType>("CUSTOM");
   const [newSeverity, setNewSeverity] = useState<GuardrailSeverity>("WARNING");
 
-  // Memoized formatted events - avoid per-render Date allocation
   const formattedEvents = useMemo(
     () =>
       events.map((event) => ({
@@ -256,7 +250,6 @@ export function SettingsPage() {
     [events]
   );
 
-  // Fetch guardrails
   const fetchGuardrails = useCallback(async () => {
     if (!orgId) {
       return;
@@ -265,7 +258,6 @@ export function SettingsPage() {
       const data = await api.get<PolicyGuardrail[]>(
         `/policy-guardrails/?orgId=${orgId}`
       );
-      // Filter out client-specific guardrails so global settings only show org ones
       const orgGuardrails = data.filter((g: PolicyGuardrail) => !g.clientId);
       setGuardrails(orgGuardrails);
     } catch (e) {
@@ -279,7 +271,6 @@ export function SettingsPage() {
     fetchGuardrails();
   }, [fetchGuardrails]);
 
-  // VAD Cleanup
   useEffect(
     () => () => {
       invoke("audio_capture_stop").catch((e) => {
@@ -290,7 +281,6 @@ export function SettingsPage() {
     [vadManager]
   );
 
-  // VAD Permission Init
   useEffect(() => {
     invoke<string>("linux_media_permission_get_decision")
       .then((decision) => setPermissionDecision(decision))
@@ -315,8 +305,6 @@ export function SettingsPage() {
       setAudioDeviceCount(audioInputs.length);
 
       try {
-        // P4.1: capture streams through a Channel. This VAD-only test does
-        // not consume audio frames, so pass a no-op channel.
         const audioChannel = new Channel<ArrayBuffer>();
         audioChannel.onmessage = () => undefined;
         await invoke("audio_capture_start", {
@@ -402,7 +390,6 @@ export function SettingsPage() {
     }
   }
 
-  // --- Guardrail Actions ---
   async function handleAddGuardrail(e: React.FormEvent) {
     e.preventDefault();
     if (!(newName.trim() && newDesc.trim() && orgId)) {
@@ -437,7 +424,6 @@ export function SettingsPage() {
         return;
       }
 
-      // Optimistic UI update
       setGuardrails((prev) =>
         prev.map((g) => (g.id === id ? { ...g, isActive: !g.isActive } : g))
       );
@@ -449,7 +435,6 @@ export function SettingsPage() {
           await api.post(`/policy-guardrails/${id}/activate`);
         }
       } catch (e) {
-        // Revert if API fails
         setGuardrails((prev) =>
           prev.map((g) =>
             g.id === id ? { ...g, isActive: target.isActive } : g

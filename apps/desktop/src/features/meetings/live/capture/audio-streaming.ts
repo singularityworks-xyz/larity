@@ -5,16 +5,9 @@ export interface AudioStatusSnapshot {
   active: boolean;
   backend: string;
   error?: string | null;
-  /** Mixer frames shed by the bounded drop-oldest queue (P4.3). */
   mixer_drops?: number;
 }
 
-/**
- * Raw audio frame as delivered by the Rust mixer over a Tauri `Channel`
- * (P4.1): `[tag: u8][ts: u64 LE][linear16 LE samples…]`, arriving in JS as
- * an `ArrayBuffer`. No base64, no `atob`, no per-frame JSON envelope — and
- * no `sessionId` per frame (the client already knows it).
- */
 export interface RawAudioFrame {
   samples: Uint8Array;
   tag: number;
@@ -82,10 +75,6 @@ export function buildRealtimeSocketUrl(
   return url.toString();
 }
 
-/**
- * Parse one mixer frame. Returns `null` for truncated buffers or unknown
- * tags so a corrupt frame can never poison the upload queue.
- */
 export function parseRawAudioFrame(buffer: ArrayBuffer): RawAudioFrame | null {
   if (buffer.byteLength < 9) {
     return null;
@@ -145,11 +134,6 @@ export class AudioStreamingClient {
   private readonly maxReconnectAttempts = 10;
   private readonly baseReconnectDelayMs = 1000;
   private readonly maxReconnectDelayMs = 30_000;
-  /**
-   * 50 ms flush pump (P4.9). Runs only while frames are queued but the
-   * socket isn't draining them, so queued audio doesn't wait for the next
-   * incoming frame. Stopped as soon as the queue drains.
-   */
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private static readonly FLUSH_INTERVAL_MS = 50;
 
@@ -159,11 +143,6 @@ export class AudioStreamingClient {
     lastFrameTs: 0,
   };
 
-  /**
-   * `performance.now()` captured at the top of the last WS text-message
-   * dispatch. Lets subscribers measure ws_recv → setState latency
-   * synchronously during dispatch (Phase 0 observability, dev only).
-   */
   private lastWsRecvPerf = 0;
 
   private warning = "";
@@ -237,9 +216,8 @@ export class AudioStreamingClient {
       this.log.info("WebSocket connected");
       if (this.socket === ws) {
         this.warning = "";
-        this.streamStarted = false; // Reset stream state on new connection
-        this.reconnectAttempts = 0; // Reset reconnection attempts on successful connect
-        // P4.9: drain anything queued while connecting (sends stream start).
+        this.streamStarted = false;
+        this.reconnectAttempts = 0;
         if (this.currentSessionId) {
           this.flushPending(this.currentSessionId);
           this.ensureFlushTimer();
@@ -375,7 +353,6 @@ export class AudioStreamingClient {
     return { ...this.metrics };
   }
 
-  /** See `lastWsRecvPerf`. Returns 0 if no text message received yet. */
   getLastWsRecvPerf(): number {
     return this.lastWsRecvPerf;
   }
@@ -403,11 +380,6 @@ export class AudioStreamingClient {
     };
   }
 
-  /**
-   * Upload path for Channel-delivered frames (P4.1). The tag prefix is
-   * guaranteed by the Rust mixer; `ensureTaggedAudioFrame` stays as a
-   * cheap defensive check.
-   */
   handleRawAudioFrame(frame: RawAudioFrame, sessionId: string): SendResult {
     // Frames from a stale Tauri Channel (previous meeting) must never reach
     // the current session's socket. Before any connect, there is no current
@@ -424,7 +396,6 @@ export class AudioStreamingClient {
       return { sent: false, dropped: true };
     }
 
-    // Rebuild the tagged wire frame: [tag][samples…].
     const tagged = new Uint8Array(frame.samples.length + 1);
     tagged[0] = frame.tag;
     tagged.set(frame.samples, 1);
@@ -440,12 +411,6 @@ export class AudioStreamingClient {
     return { sent, dropped };
   }
 
-  /**
-   * Start the 50 ms flush pump when frames are waiting (P4.9). No-op when
-   * the queue is empty or the pump already runs. The pump stops itself on
-   * drain; `connect`/`disconnect` stop it unconditionally. Uses global
-   * timers (not `window.*`) so the client stays testable outside a browser.
-   */
   private ensureFlushTimer(): void {
     if (this.flushTimer !== null || this.pendingFrames.length === 0) {
       return;
@@ -631,15 +596,12 @@ function detectIncomingMessageType(
   ) {
     return "ledger";
   }
-  // Topic deltas patch an already-rendered utterance; they carry utteranceId
-  // too, so they must classify as "topic" before the generic utterance branch.
   if (dataType === "utterance_topic") {
     return "topic";
   }
   if (typeof data.utteranceId === "string") {
     return "utterance";
   }
-  // Alerts include `topicId` (context); classify before generic topicId branch.
   if (
     typeof data.alertType === "string" ||
     typeof data.level === "string" ||

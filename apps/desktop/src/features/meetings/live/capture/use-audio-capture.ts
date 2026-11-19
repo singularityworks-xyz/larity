@@ -33,8 +33,6 @@ export function useAudioCapture({
   // Active raw-audio Channel (P4.1). Created per startCapture; cleared on
   // stop/unmount so a stale channel can never feed a new session.
   const audioChannelRef = useRef<Channel<ArrayBuffer> | null>(null);
-  // Frame counters shared between the channel handler and the 1 Hz metrics
-  // sync below — the handler never calls setState per frame (P6 territory).
   const audioFrameCountsRef = useRef({
     dropped: 0,
     lastTs: 0,
@@ -69,16 +67,12 @@ export function useAudioCapture({
 
     try {
       streamingClient.connect(sessionId);
-      // P4.1: raw frames arrive as ArrayBuffer over this Channel — no
-      // base64/atob, no per-frame JSON envelope, no sessionId per frame.
       const audioChannel = new Channel<ArrayBuffer>();
       audioChannel.onmessage = (buffer) => {
         const frame = parseRawAudioFrame(buffer);
         if (!frame) {
           return;
         }
-        // P4.9: no setState, no getMetrics per frame — the 1 Hz sync below
-        // picks up counters and warning changes.
         const counts = audioFrameCountsRef.current;
         counts.received += 1;
         counts.lastTs = frame.ts;

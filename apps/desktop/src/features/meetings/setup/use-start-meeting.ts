@@ -6,7 +6,6 @@ interface StartAdhocInput {
   agenda?: string;
   clientId: string;
   description?: string;
-  /** ISO 8601 datetime string when scheduling for later */
   scheduledAt?: string;
   title?: string;
 }

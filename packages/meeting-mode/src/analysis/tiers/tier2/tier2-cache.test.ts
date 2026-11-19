@@ -22,7 +22,6 @@ describe("Tier2SemanticCache", () => {
       "Hello World",
       makeClassification("concern")
     );
-    // Different spacing/case normalizes to the same key.
     expect(cache.get("s", [0.9, 0.9, 0.9], "  hello   WORLD ")?.intent).toBe(
       "concern"
     );
@@ -68,9 +67,7 @@ describe("Tier2SemanticCache", () => {
       "filler entry number 2",
       makeClassification("filler")
     );
-    // Touch the first entry so it becomes most-recently-used.
     cache.get("s", firstEmbedding, "first entry here");
-    // Fill to the 200 cap and overflow by one: evicts filler #1, not first.
     for (let i = 3; i <= 200; i++) {
       cache.set(
         "s",
@@ -79,8 +76,6 @@ describe("Tier2SemanticCache", () => {
         makeClassification("filler")
       );
     }
-    // Query embedding is far from every surviving vector, so only an exact
-    // text hit could match — and filler #1's exact entry is gone.
     expect(
       cache.get("s", [0.5, 0.5, 0], "filler entry number 1")
     ).toBeUndefined();

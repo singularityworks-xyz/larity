@@ -1,16 +1,9 @@
-/**
- * Prisma error handling utilities
- */
-
 export interface PrismaError {
   code: string;
   message?: string;
   meta?: Record<string, unknown>;
 }
 
-/**
- * Type guard to check if an error is a Prisma error
- */
 export function isPrismaError(e: unknown): e is PrismaError {
   return (
     typeof e === "object" &&
@@ -20,30 +13,18 @@ export function isPrismaError(e: unknown): e is PrismaError {
   );
 }
 
-/**
- * Prisma error codes reference:
- * - P2002: Unique constraint violation
- * - P2003: Foreign key constraint violation
- * - P2025: Record not found
- */
 export const PrismaErrorCode = {
   UNIQUE_CONSTRAINT: "P2002",
   FOREIGN_KEY_CONSTRAINT: "P2003",
   RECORD_NOT_FOUND: "P2025",
 } as const;
 
-/**
- * Standard API error response structure
- */
 export interface ApiErrorResponse {
   error: string;
   message?: string;
   success: false;
 }
 
-/**
- * Create a standardized error response
- */
 export function createErrorResponse(
   error: string,
   message?: string
@@ -55,9 +36,6 @@ export function createErrorResponse(
   };
 }
 
-/**
- * Handle common Prisma errors and return appropriate response
- */
 export function handlePrismaError(
   e: unknown,
   options: {

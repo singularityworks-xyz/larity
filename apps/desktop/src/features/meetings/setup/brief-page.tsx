@@ -78,7 +78,6 @@ function BriefDetails({ brief }: BriefDetailsProps) {
       initial={{ opacity: 0, y: 15 }}
       transition={{ duration: 0.3 }}
     >
-      {/* TL;DR summary card */}
       <div className="relative overflow-hidden rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
         <div className="absolute top-0 left-0 h-full w-1.5 bg-accent" />
         <h3 className="mb-2 font-bold text-accent text-xs uppercase tracking-wider">
@@ -89,7 +88,6 @@ function BriefDetails({ brief }: BriefDetailsProps) {
         </p>
       </div>
 
-      {/* Landmines section */}
       {brief.landmines.length > 0 && (
         <div className="relative overflow-hidden rounded-2xl border border-warning/20 bg-warning/5 p-6">
           <h3 className="mb-4 flex items-center gap-2 font-bold text-warning text-xs uppercase tracking-wider">
@@ -110,9 +108,7 @@ function BriefDetails({ brief }: BriefDetailsProps) {
         </div>
       )}
 
-      {/* Commitments & Action Items */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* You Owe */}
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-bg-elevated p-5 shadow-sm">
           <h3 className="flex items-center gap-2 font-bold text-fg-muted text-xs uppercase tracking-wider">
             <UserCheck className="h-4 w-4 text-accent" />
@@ -142,7 +138,6 @@ function BriefDetails({ brief }: BriefDetailsProps) {
           )}
         </div>
 
-        {/* They Owe */}
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-bg-elevated p-5 shadow-sm">
           <h3 className="flex items-center gap-2 font-bold text-fg-muted text-xs uppercase tracking-wider">
             <TrendingUp className="h-4 w-4 text-info" />
@@ -173,7 +168,6 @@ function BriefDetails({ brief }: BriefDetailsProps) {
         </div>
       </div>
 
-      {/* Suggested Agenda */}
       {brief.suggestedAgenda.length > 0 && (
         <div className="flex flex-col gap-3 rounded-2xl border border-border bg-bg-elevated p-6 shadow-sm">
           <h3 className="font-bold text-fg-muted text-xs uppercase tracking-wider">
@@ -211,7 +205,6 @@ export function MeetingBriefPage() {
     refetch,
   } = useMeetingBrief(meetingId);
 
-  // Auto-poll if generation is in progress (202 status or message indicator)
   const isGenerating =
     isBriefLoading ||
     (isError &&
@@ -245,7 +238,6 @@ export function MeetingBriefPage() {
   const clientName = meeting?.client?.name ?? "Client";
   const meetingTitle = meeting?.title ?? "Scheduled Meeting";
 
-  // Render main content area
   const renderContent = () => {
     if (isGenerating) {
       return (
@@ -310,7 +302,6 @@ export function MeetingBriefPage() {
   return (
     <AppShell subtitle={`Briefing for ${clientName}`} title={meetingTitle}>
       <div className="mx-auto grid w-full max-w-7xl gap-6 pb-12 md:grid-cols-[2.5fr_1fr]">
-        {/* Left Column: Brief details */}
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-2.5">
             <BookOpen className="h-5 w-5 text-accent" />
@@ -321,7 +312,6 @@ export function MeetingBriefPage() {
           {renderContent()}
         </div>
 
-        {/* Right Column: Participants list */}
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-2.5">
             <Users className="h-5 w-5 text-accent" />

@@ -9,9 +9,6 @@ import type { TopicState } from "./types";
 
 const log = createMeetingModeLogger("topic-manager");
 
-/** Derive a short initial label from the first utterance text so the
- *  frontend shows something descriptive before the summarizer or Tier 2
- *  supplies the real label. */
 function deriveInitialLabel(text?: string): string {
   if (!text) {
     return "New Topic";
@@ -42,29 +39,22 @@ export class TopicManager {
   private readonly publisher: TopicPublisher;
   private readonly enableAsyncSummarization: boolean;
 
-  // similarity threshold for assigning to an existing topic
   private readonly SIMILARITY_THRESHOLD = 0.65;
 
-  // Debounce settings for slow path
   private readonly BATCH_THRESHOLD = 4;
   private readonly SILENCE_TIMEOUT_MS = 5000;
 
-  // In-memory state: sessionId -> TopicState[]
   private readonly activeTopics = new Map<string, TopicState[]>();
 
-  // Pending utterances per topicId: topicId -> string[]
   private readonly pendingUtterances = new Map<string, string[]>();
 
-  // Timers for silence debouncing per topic
   private readonly debounceTimers = new Map<
     string,
     ReturnType<typeof setTimeout>
   >();
 
-  // Processing locks per topic to prevent concurrent summarizer runs
   private readonly processingLocks = new Set<string>();
 
-  // Tracks last summarization hash per topic to skip redundant LLM calls
   private readonly lastSummarizedHash = new Map<string, string>();
 
   constructor(publisher: TopicPublisher, options: TopicManagerOptions = {}) {
@@ -87,26 +77,17 @@ export class TopicManager {
       } catch {
         // Fall through to empty below.
       }
-      // P2.2: a failed in-flight embedding resolves to "no embedding" —
-      // never a second attempt. Tier 2/3 tolerate missing embeddings, and
-      // assignTopic falls back to recency below.
       return [];
     }
     return this.embedder.embed(utterance.text).catch(() => []);
   }
 
-  /**
-   * Fast Path: Embed the incoming utterance, find a matching topic (or spawn new),
-   * update the centroid in memory, and return the assigned topicId.
-   */
   async assignTopic(utterance: Utterance): Promise<string> {
     const { sessionId, text } = utterance;
 
-    // 1. Embed utterance (pre-computed, in-flight promise, or embed here)
     const newVector = await this.getUtteranceEmbedding(utterance);
     utterance.embedding = newVector;
 
-    // 2. Find best match
     const sessionTopics = this.activeTopics.get(sessionId) || [];
     let bestTopic: TopicState | null = null;
     let maxSimilarity = -1;
@@ -126,10 +107,8 @@ export class TopicManager {
 
     let assignedTopicId: string;
 
-    // 3. Assign or Create
     if (bestTopic && maxSimilarity >= this.SIMILARITY_THRESHOLD) {
       assignedTopicId = bestTopic.topicId;
-      // Update centroid
       bestTopic.centroid = updateCentroid(
         bestTopic.centroid,
         newVector,
@@ -141,7 +120,6 @@ export class TopicManager {
         "Assigned utterance to existing topic"
       );
     } else if (newVector.length === 0 && sessionTopics.length > 0) {
-      // Fallback: assign to the most recently active topic when embeddings fail
       const fallbackTopic = sessionTopics.reduce((a, b) =>
         a.lastUpdated > b.lastUpdated ? a : b
       );
@@ -249,23 +227,16 @@ export class TopicManager {
     await this.persistAndPublish(sessionId, topic);
   }
 
-  /**
-   * Slow Path orchestration: Add text to pending queue, check triggers.
-   * LLM summarization is strictly a background polish step — the live summary
-   * comes from applyTier2TopicDelta reducer state.
-   */
   private enqueueForSummarization(topicId: string, text: string): void {
     const pending = this.pendingUtterances.get(topicId) || [];
     pending.push(text);
     this.pendingUtterances.set(topicId, pending);
 
-    // Clear existing timer
     const existingTimer = this.debounceTimers.get(topicId);
     if (existingTimer) {
       clearTimeout(existingTimer);
     }
 
-    // Hash-based dedup: skip LLM if topic state hasn't changed significantly
     const topicState = this.findTopicState(topicId);
     const currentHash = topicState ? computeStateHash(topicState) : "";
     const lastHash = this.lastSummarizedHash.get(topicId);
@@ -279,16 +250,13 @@ export class TopicManager {
       return;
     }
 
-    // Trigger 1: Batch size reached
     if (pending.length >= this.BATCH_THRESHOLD) {
-      // Intentionally not awaiting here to keep caller fast
       this.triggerSummarization(topicId).catch((err) =>
         log.error({ err }, "Background summarization failed")
       );
       return;
     }
 
-    // Trigger 2: Silence Debounce
     const timer = setTimeout(() => {
       this.triggerSummarization(topicId).catch((err) =>
         log.error({ err }, "Background summarization failed")
@@ -361,8 +329,6 @@ export class TopicManager {
 
       this.lastSummarizedHash.set(topicId, computeStateHash(targetTopic));
     } catch (error) {
-      // Fail-silent: strictly catch all LLM errors without breaking TopicManager.
-      // applyTier2TopicDelta is the live source of truth; LLM polish is best-effort.
       log.warn(
         { err: error, topicId },
         "Background summarization LLM failed silently"
@@ -409,13 +375,8 @@ export class TopicManager {
       const topicJson = JSON.stringify(topic);
       const redisKey = `meeting.topics.${sessionId}`;
 
-      // P2.10: issue concurrently instead of serially — wall time drops from
-      // the sum to the max, and the shared client's auto-pipelining batches
-      // same-tick commands into fewer round trips.
       await Promise.all([
-        // Save full topic state to HASH
         this.publisher.hset(redisKey, topic.topicId, topicJson),
-        // Broadcast update to clients
         this.publisher.publish(topicChannel(sessionId), topicJson),
       ]);
 

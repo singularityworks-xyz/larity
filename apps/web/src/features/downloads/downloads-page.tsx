@@ -138,7 +138,6 @@ export function DownloadsPage() {
 
   return (
     <div className="w-full bg-bg pt-28 pb-32">
-      {/* Background Ambient Layer */}
       <div className="pointer-events-none absolute inset-0 z-0 h-[650px] overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-top bg-no-repeat opacity-40"
@@ -154,9 +153,7 @@ export function DownloadsPage() {
       </div>
 
       <div className="relative z-10 mx-auto max-w-6xl px-6 md:px-8">
-        {/* Header / Hero */}
         <div className="flex flex-col items-center text-center">
-          {/* Version pill */}
           <div className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3.5 py-1 text-accent text-xs">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
             <span className="font-mono font-semibold text-[11px] uppercase tracking-wider">
@@ -176,7 +173,6 @@ export function DownloadsPage() {
             joining as a bot. Choose your operating system below to get started.
           </p>
 
-          {/* OS Quick Pill Indicator */}
           {detectedOS !== "unknown" && (
             <div className="mt-6 inline-flex items-center gap-2 rounded-lg border border-zinc-900/10 bg-white/60 px-3 py-1.5 backdrop-blur-sm">
               <span className="font-mono text-[10px] text-zinc-500 uppercase tracking-widest">
@@ -192,11 +188,7 @@ export function DownloadsPage() {
           )}
         </div>
 
-        {/* Main OS Cards Grid */}
         <div className="mt-16 grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {/* ─────────────────────────────────────────────────────────────
-              1. LINUX CARD
-          ───────────────────────────────────────────────────────────── */}
           <div
             className={`relative flex flex-col justify-between overflow-hidden rounded-3xl border bg-white p-7 shadow-sm transition-all duration-300 sm:p-8 ${
               detectedOS === "linux"
@@ -211,7 +203,6 @@ export function DownloadsPage() {
             )}
 
             <div>
-              {/* Card Header */}
               <div className="flex items-center justify-between">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-900/10 bg-[#f7f4ea] text-zinc-900">
                   <svg
@@ -220,7 +211,6 @@ export function DownloadsPage() {
                     fill="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    {/* Tux / Linux Icon */}
                     <path d="M12 2C9.5 2 7.5 4 7.5 6.5C7.5 7.8 8.1 9 9 9.8C8 10.6 7 12 7 14C7 16 8 18 9 19.5C9 20.5 8 21.5 6 22H18C16 21.5 15 20.5 15 19.5C16 18 17 16 17 14C17 12 16 10.6 15 9.8C15.9 9 16.5 7.8 16.5 6.5C16.5 4 14.5 2 12 2ZM10.5 5.5C10.8 5.5 11 5.7 11 6C11 6.3 10.8 6.5 10.5 6.5C10.2 6.5 10 6.3 10 6C10 5.7 10.2 5.5 10.5 5.5ZM13.5 5.5C13.8 5.5 14 5.7 14 6C14 6.3 13.8 6.5 13.5 6.5C13.2 6.5 13 6.3 13 6C13 5.7 13.2 5.5 13.5 5.5ZM12 7.2C12.8 7.2 13.2 7.8 13.2 8C13.2 8.2 12.8 8.8 12 8.8C11.2 8.8 10.8 8.2 10.8 8C10.8 7.8 11.2 7.2 12 7.2Z" />
                   </svg>
                 </div>
@@ -237,7 +227,6 @@ export function DownloadsPage() {
                 Arch, and NixOS.
               </p>
 
-              {/* Primary Download Button */}
               <div className="mt-6">
                 <a
                   className="group flex w-full items-center justify-between rounded-2xl bg-zinc-950 px-5 py-3.5 font-semibold text-[#f7f4ea] text-xs shadow-sm transition-all duration-200 hover:bg-accent hover:shadow-accent/20 hover:shadow-md active:scale-[0.98] sm:text-sm"
@@ -267,7 +256,6 @@ export function DownloadsPage() {
                 </a>
               </div>
 
-              {/* Alternative Distro Packages */}
               <div className="mt-6 border-zinc-900/10 border-t pt-5">
                 <p className="font-mono font-semibold text-[10px] text-zinc-500 uppercase tracking-widest">
                   Other Linux Packages
@@ -295,7 +283,6 @@ export function DownloadsPage() {
                     </a>
                   ))}
 
-                  {/* NixOS Option */}
                   <div className="rounded-xl border border-zinc-900/5 bg-[#f7f4ea]/40 p-3 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-zinc-800">
@@ -327,7 +314,6 @@ export function DownloadsPage() {
               </div>
             </div>
 
-            {/* Requirements Footer */}
             <div className="mt-8 border-zinc-900/10 border-t pt-4 font-mono text-[10px] text-zinc-500">
               <div className="flex items-center justify-between">
                 <span>Architecture</span>
@@ -342,9 +328,6 @@ export function DownloadsPage() {
             </div>
           </div>
 
-          {/* ─────────────────────────────────────────────────────────────
-              2. WINDOWS CARD
-          ───────────────────────────────────────────────────────────── */}
           <div
             className={`relative flex flex-col justify-between overflow-hidden rounded-3xl border bg-white p-7 shadow-sm transition-all duration-300 sm:p-8 ${
               detectedOS === "windows"
@@ -359,7 +342,6 @@ export function DownloadsPage() {
             )}
 
             <div>
-              {/* Card Header */}
               <div className="flex items-center justify-between">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-900/10 bg-[#f7f4ea] text-zinc-900">
                   <svg
@@ -368,7 +350,6 @@ export function DownloadsPage() {
                     fill="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    {/* Windows 4-square Icon */}
                     <path d="M3 5.48L10.5 4.43V11.25H3V5.48ZM10.5 12.75V19.57L3 18.52V12.75H10.5ZM12 4.22L21 3V11.25H12V4.22ZM21 12.75V21L12 19.78V12.75H21Z" />
                   </svg>
                 </div>
@@ -385,7 +366,6 @@ export function DownloadsPage() {
                 Windows 11 systems.
               </p>
 
-              {/* Primary Download Button */}
               <div className="mt-6">
                 <a
                   className="group flex w-full items-center justify-between rounded-2xl bg-zinc-950 px-5 py-3.5 font-semibold text-[#f7f4ea] text-xs shadow-sm transition-all duration-200 hover:bg-accent hover:shadow-accent/20 hover:shadow-md active:scale-[0.98] sm:text-sm"
@@ -415,7 +395,6 @@ export function DownloadsPage() {
                 </a>
               </div>
 
-              {/* Enterprise MSI Option */}
               <div className="mt-6 border-zinc-900/10 border-t pt-5">
                 <p className="font-mono font-semibold text-[10px] text-zinc-500 uppercase tracking-widest">
                   Enterprise Deployment
@@ -441,7 +420,6 @@ export function DownloadsPage() {
                   </a>
                 </div>
 
-                {/* Windows SmartScreen Info Box */}
                 <div className="mt-4 rounded-xl border border-amber-900/10 bg-amber-50/50 p-3 font-body text-amber-900 text-xs">
                   <span className="font-semibold">💡 Installation note:</span>{" "}
                   If Windows SmartScreen shows a prompt, click{" "}
@@ -451,7 +429,6 @@ export function DownloadsPage() {
               </div>
             </div>
 
-            {/* Requirements Footer */}
             <div className="mt-8 border-zinc-900/10 border-t pt-4 font-mono text-[10px] text-zinc-500">
               <div className="flex items-center justify-between">
                 <span>Compatibility</span>
@@ -466,12 +443,8 @@ export function DownloadsPage() {
             </div>
           </div>
 
-          {/* ─────────────────────────────────────────────────────────────
-              3. MACOS CARD (COMING SOON)
-          ───────────────────────────────────────────────────────────── */}
           <div className="relative flex flex-col justify-between overflow-hidden rounded-3xl border border-zinc-900/20 border-dashed bg-white/60 p-7 shadow-xs sm:p-8">
             <div>
-              {/* Card Header */}
               <div className="flex items-center justify-between">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-900/10 bg-[#f7f4ea] text-zinc-900">
                   <svg
@@ -480,7 +453,6 @@ export function DownloadsPage() {
                     fill="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    {/* Apple Icon */}
                     <path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.09997 22C7.78997 22.05 6.79997 20.68 5.95997 19.47C4.24997 17 2.93997 12.45 4.69997 9.39C5.56997 7.87 7.12997 6.91 8.81997 6.88C10.1 6.86 11.32 7.75 12.11 7.75C12.89 7.75 14.37 6.68 15.92 6.84C16.57 6.87 18.39 7.1 19.56 8.82C19.47 8.88 17.39 10.1 17.41 12.63C17.44 15.65 20.06 16.66 20.09 16.67C20.06 16.74 19.67 18.11 18.71 19.5ZM15.97 4.54C16.57 3.81 16.98 2.79 16.86 1.77C15.99 1.81 14.93 2.35 14.3 3.09C13.74 3.74 13.25 4.78 13.39 5.78C14.37 5.86 15.37 5.27 15.97 4.54Z" />
                   </svg>
                 </div>
@@ -497,7 +469,6 @@ export function DownloadsPage() {
                 build in active engineering.
               </p>
 
-              {/* Status Box */}
               <div className="mt-6 rounded-2xl border border-zinc-900/10 bg-zinc-50/70 p-5">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-amber-500" />
@@ -510,7 +481,6 @@ export function DownloadsPage() {
                   CoreAudio permissions.
                 </p>
 
-                {/* Email notify form */}
                 <div className="mt-4 border-zinc-900/10 border-t pt-4">
                   <p className="font-mono font-semibold text-[9px] text-zinc-500 uppercase tracking-widest">
                     Get Notified for Mac Launch
@@ -550,7 +520,6 @@ export function DownloadsPage() {
               </div>
             </div>
 
-            {/* Target Specs Footer */}
             <div className="mt-8 border-zinc-900/10 border-t pt-4 font-mono text-[10px] text-zinc-400">
               <div className="flex items-center justify-between">
                 <span>Platforms</span>
@@ -564,9 +533,6 @@ export function DownloadsPage() {
           </div>
         </div>
 
-        {/* ─────────────────────────────────────────────────────────────
-            TERMINAL & PACKAGE MANAGER SECTION
-        ───────────────────────────────────────────────────────────── */}
         <div className="mt-16 overflow-hidden rounded-3xl border border-zinc-900/10 bg-zinc-950 p-6 text-[#f7f4ea] sm:p-10">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
             <div>
@@ -578,7 +544,6 @@ export function DownloadsPage() {
               </h3>
             </div>
 
-            {/* Tab switchers */}
             <div className="flex flex-wrap gap-1.5 rounded-xl bg-white/10 p-1 font-mono text-xs">
               {(
                 [
@@ -604,7 +569,6 @@ export function DownloadsPage() {
             </div>
           </div>
 
-          {/* Terminal Box */}
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/60 p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -690,11 +654,7 @@ export function DownloadsPage() {
           </div>
         </div>
 
-        {/* ─────────────────────────────────────────────────────────────
-            SECURITY & CHECKSUMS SECTION
-        ───────────────────────────────────────────────────────────── */}
         <div className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-2">
-          {/* Card: Verification & Integrity */}
           <div className="rounded-3xl border border-zinc-900/10 bg-white p-6 sm:p-8">
             <div className="flex items-center gap-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 font-mono text-accent text-sm">
@@ -728,7 +688,6 @@ export function DownloadsPage() {
             </div>
           </div>
 
-          {/* Card: OS-Level Audio & Privacy */}
           <div className="rounded-3xl border border-zinc-900/10 bg-white p-6 sm:p-8">
             <div className="flex items-center gap-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 font-mono text-accent text-sm">
@@ -754,7 +713,6 @@ export function DownloadsPage() {
           </div>
         </div>
 
-        {/* Back to Homepage CTA strip */}
         <div className="mt-20 flex flex-col items-center justify-between gap-6 rounded-3xl border border-accent/20 bg-accent/[0.04] p-8 text-center sm:flex-row sm:p-10 sm:text-left">
           <div>
             <h3 className="font-display text-2xl text-zinc-950 sm:text-3xl">

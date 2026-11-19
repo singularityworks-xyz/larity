@@ -15,38 +15,12 @@ const DIGIT_REGEX = /\d+/;
 const RECONCILIATION_WINDOW_SECONDS = 3.0;
 const TIMESTAMP_MS_THRESHOLD = 1_000_000_000_000;
 
-/**
- * Maximum duration to assign to a VAD interval whose `vad_silence` packet was
- * never received (lost, delayed, or the session ended abruptly). Keeping this
- * short prevents a missed silence from making a speaker appear active for the
- * rest of the meeting and corrupting all subsequent speaker correlations.
- */
 const MAX_UNCLOSED_VAD_INTERVAL_MS = 10_000;
 
-/**
- * Minimum enforced duration for an auto-closed VAD interval. Protects against
- * a degenerate zero-length interval when the only signal for a user is a
- * `vad_speaking` at the exact same timestamp as the last history entry.
- */
 const MIN_VAD_INTERVAL_DURATION_MS = 1000;
 
-/**
- * Seconds added to each boundary of a mic segment's time window when testing
- * for overlap with a system segment during acoustic-echo suppression. This
- * grace period absorbs utterance-boundary jitter that arises because Deepgram
- * may return slightly different start/end times for the same audio on the two
- * channels. Kept small (1 s) so that genuinely distinct, close-in-time
- * utterances are never accidentally suppressed.
- */
 const ECHO_OVERLAP_GRACE_SEC = 1.0;
 
-/**
- * Minimum bigram-Jaccard similarity between a mic segment and an overlapping
- * system segment for the mic segment to be classified as an acoustic echo and
- * discarded. A score of 0.4 tolerates minor transcription differences between
- * the two channels while remaining high enough to avoid suppressing speech
- * that merely touches the same topic.
- */
 const ECHO_SIMILARITY_THRESHOLD = 0.4;
 
 export interface VadInterval {
@@ -57,18 +31,15 @@ export interface VadInterval {
 }
 
 export interface BatchUtteranceSegment {
-  channel: number; // 0 or 1
-  duration: number; // seconds
+  channel: number;
+  duration: number;
   id: string;
-  speaker: string; // initial speaker name
-  speakerType?: "TEAM" | "EXTERNAL"; // Added type
+  speaker: string;
+  speakerType?: "TEAM" | "EXTERNAL";
   text: string;
-  timestamp: number; // relative seconds
+  timestamp: number;
 }
 
-/**
- * Reconstructs VAD intervals from chronological VAD history.
- */
 export function reconstructVadIntervals(
   vadHistory: Array<{
     userId: string;
@@ -107,23 +78,16 @@ export function reconstructVadIntervals(
     }
   }
 
-  // Auto-close any intervals whose vad_silence was never received.
   if (sortedHistory.length > 0) {
     const firstTs = sortedHistory[0]?.adjustedTs ?? 0;
     const lastTs = sortedHistory.at(-1)?.adjustedTs ?? firstTs;
 
     for (const [userId, active] of activeIntervals.entries()) {
-      // Step 1 — natural ceiling: the interval cannot extend past the last
-      //           known event in the history (lastTs), but must be at least
-      //           MIN_VAD_INTERVAL_DURATION_MS long to stay non-trivial.
       const naturalEnd = Math.max(
         active.startTs + MIN_VAD_INTERVAL_DURATION_MS,
         lastTs
       );
 
-      // Step 2 — hard cap: if the natural end overshoots the maximum allowed
-      //           duration, clamp it. This prevents a missed silence from
-      //           bleeding a speaker's VAD state across the rest of the meeting.
       const cappedEnd = Math.min(
         active.startTs + MAX_UNCLOSED_VAD_INTERVAL_MS,
         naturalEnd
@@ -141,11 +105,6 @@ export function reconstructVadIntervals(
   return intervals;
 }
 
-/**
- * Checks if VAD role matches the physical channel.
- * Channel 0: Mic (Host)
- * Channel 1: System (Participant)
- */
 export function isChannelRoleMatchOffline(
   channel: number,
   role?: "host" | "participant"
@@ -162,9 +121,6 @@ export function isChannelRoleMatchOffline(
   return true;
 }
 
-/**
- * Computes overlap between two intervals [a, b] and [x, y] in milliseconds.
- */
 function getOverlapDuration(
   a: number,
   b: number,
@@ -176,9 +132,6 @@ function getOverlapDuration(
   return Math.max(0, end - start);
 }
 
-/**
- * Computes Jaccard similarity and containment of 2-gram sets of two strings.
- */
 export function calculateTextMetrics(
   str1: string,
   str2: string
@@ -233,17 +186,10 @@ export function calculateTextMetrics(
   return { jaccard, containment };
 }
 
-/**
- * Computes Jaccard similarity of 2-gram sets of two strings.
- */
 export function calculateTextSimilarity(str1: string, str2: string): number {
   return calculateTextMetrics(str1, str2).jaccard;
 }
 
-/**
- * Formats batch speaker names to premium uppercase format (e.g., "Speaker 0" -> "Speaker A").
- * If there is an existing speaker map in live mappings for this index, use its name.
- */
 export function translateBatchSpeakerName(
   speakerLabel: string,
   channel: number,
@@ -282,9 +228,6 @@ export function translateBatchSpeakerName(
   };
 }
 
-/**
- * Checks VAD activity and returns a matched team member's name if exactly one overlaps >=60%.
- */
 function correlateVAD(
   segment: BatchUtteranceSegment,
   segmentStartMs: number,
@@ -336,9 +279,6 @@ function correlateVAD(
   return { name: null, isAmbiguous: false, userId: null };
 }
 
-/**
- * Performs textual fallback by finding similar live utterances.
- */
 function textualFallback(
   segment: BatchUtteranceSegment,
   liveUtterances: Utterance[],
@@ -375,9 +315,6 @@ function textualFallback(
   return null;
 }
 
-/**
- * Core speaker correlation engine for a single segment.
- */
 function checkVadCorrelation(
   segment: BatchUtteranceSegment,
   segmentStartMs: number,
@@ -407,7 +344,6 @@ function checkVadCorrelation(
     let correlatedSpeakerType: "TEAM" | "EXTERNAL" = "TEAM";
     let isAmbiguous = false;
 
-    // Live Transcript Cross-Check
     const matchedLiveUtt = liveUtterances.find((lu) => {
       const luTimeSec =
         lu.timestamp > TIMESTAMP_MS_THRESHOLD
@@ -483,7 +419,6 @@ function correlateSingleSegment(
     isAmbiguous = vadCheck.isAmbiguous;
   }
 
-  // Textual Fallback
   if (!correlatedSpeakerName || isAmbiguous) {
     const fallbackMatch = textualFallback(
       segment,
@@ -496,7 +431,6 @@ function correlateSingleSegment(
     }
   }
 
-  // Channel-based defaults fallback
   if (!correlatedSpeakerName) {
     if (segment.channel === 0) {
       correlatedSpeakerName = effectiveHostName;
@@ -518,9 +452,6 @@ function correlateSingleSegment(
   return { name: correlatedSpeakerName, type: finalType };
 }
 
-/**
- * Processes offline correlation, spike filtering, and textual fallback.
- */
 export function processOfflineCorrelation(options: {
   batchSegments: BatchUtteranceSegment[];
   sessionState: SessionSpeakerStatePayload;
@@ -559,11 +490,6 @@ export function processOfflineCorrelation(options: {
 
   const connectionStartTimeSec = connectionStartTime / 1000;
 
-  // Resolve the effective host name from authenticated VAD team-member data
-  // rather than from the `hostName` Postgres parameter, which may be stale or
-  // set to a generic default at the time the offline transcription job runs.
-  // If the session somehow registered more than one host-role member (should
-  // not occur in practice) we log a diagnostic warning and use the first one.
   const hostMembers = sessionState.teamMembers.filter(
     (m: SessionStateTeamMember) => m.role === "host"
   );
@@ -608,7 +534,6 @@ export function processOfflineCorrelation(options: {
         return false;
       }
 
-      // Condition 1: temporal overlap (with grace extension on the mic side).
       const hasOverlap =
         micExtStart < seg1.timestamp + seg1.duration &&
         seg1.timestamp < micExtEnd;
@@ -617,7 +542,6 @@ export function processOfflineCorrelation(options: {
         return false;
       }
 
-      // Condition 2: text similarity or containment.
       const metrics = calculateTextMetrics(seg0.text, seg1.text);
       return (
         metrics.jaccard >= ECHO_SIMILARITY_THRESHOLD ||

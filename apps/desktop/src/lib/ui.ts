@@ -146,10 +146,8 @@ export const dividerLabelClass =
 export const authSwitchClass =
   "mt-4 text-center text-xs font-medium leading-normal text-fg-muted [&_a]:font-medium [&_a]:text-accent [&_a]:no-underline hover:[&_a]:underline";
 
-/** Full-width horizontal row for segment buttons. */
 export const segmentControlLayoutClass = "flex w-full min-w-0";
 
-/** Border, radius, and clipping for paired segment buttons. */
 export const segmentControlChromeClass =
   "overflow-hidden rounded-[var(--radius-button)] border border-border";
 
@@ -158,15 +156,12 @@ export const segmentControlClass = cx(
   segmentControlChromeClass
 );
 
-/** Shared frame for segment toggles (pair with idle or active appearance). */
 export const segmentButtonClass =
   "h-7 min-w-0 flex-1 cursor-pointer rounded-none border-0 px-3 font-sans text-xs font-medium transition-[background-color,color,box-shadow] duration-150 ease-out";
 
-/** Unselected segment: muted label, light hover wash. */
 export const segmentButtonIdleClass =
   "bg-transparent text-fg-muted hover:not-disabled:bg-bg-subtle/50 hover:not-disabled:text-fg";
 
-/** Selected segment: lifted surface and inset edge. */
 export const segmentButtonActiveClass =
   "bg-bg-subtle text-fg font-medium shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07)] hover:not-disabled:bg-bg-emphasis";
 
@@ -248,7 +243,6 @@ export const codeClass =
 export const warningBannerClass =
   "rounded-[var(--radius-0)] border border-warning-fg bg-warning-bg p-3 text-xs font-medium text-warning-fg";
 
-// Home screen
 export const startMeetingModeClass =
   "rounded-[var(--radius-panel)] border border-border bg-bg-elevated p-4 transition-all duration-150 ease-out";
 

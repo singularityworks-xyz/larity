@@ -4,7 +4,6 @@ import type { SttResult } from "../../types";
 
 type Handler = (...args: unknown[]) => void;
 
-/** Fake socket with manual open control (never auto-opens). */
 class ManualLiveSocket {
   readonly handlers = new Map<string, Handler[]>();
   closed = false;
@@ -68,7 +67,6 @@ mock.module("@larity/db/redis", () => ({
   },
 }));
 
-// Import after mocks so the connection uses the fake client + fake redis.
 afterAll(() => mock.restore());
 
 import { DeepgramConnection } from "./connection";
@@ -101,7 +99,6 @@ describe("DeepgramConnection speech-timestamp anchor", () => {
     const conn = new DeepgramConnection("test-session", 0);
     conn.setAudioStreamStart(1_000_000);
 
-    // 70 frames pre-open: 6 drop (6 × 1024 B = 192 ms), 64 deliver.
     const pendings = Array.from({ length: 70 }, () =>
       conn.sendAudio(Buffer.alloc(1024))
     );
@@ -113,7 +110,6 @@ describe("DeepgramConnection speech-timestamp anchor", () => {
     await tick(10);
 
     expect(published.length).toBe(1);
-    // anchor (1_000_000) + dropped head (192 ms) + Deepgram offset (10 s).
     expect(published[0]?.result.speechTimestamp).toBe(1_010_192);
     expect(published[0]?.channel).toBe("meeting.stt.final.test-session");
   });
@@ -129,7 +125,6 @@ describe("DeepgramConnection speech-timestamp anchor", () => {
     first.emit("open");
     await firstSend;
 
-    // Reconnect with a non-idle code: replacement socket opens fresh.
     first.emit("close", { code: 1006 });
     await tick(250);
     expect(createdSockets.length).toBe(2);
