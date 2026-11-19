@@ -15,7 +15,7 @@ import { tasksRoutes } from "./features/meeting-records/tasks/tasks.routes";
 import { preMeetingBriefSchedule } from "./features/meetings/briefs/brief-schedule";
 import { meetingsRoutes } from "./features/meetings/meetings.routes";
 import { internalSessionRoutes } from "./features/meetings/sessions/internal-session.routes";
-import { meetingSessionRoutes } from "./features/meetings/sessions/meeting-session.routes";
+import { meetingSessionRoutes } from "./features/meetings/sessions/meeting-session.routes.plugin";
 import { notificationsRoutes } from "./features/notifications/notifications.routes";
 import { remindersRoutes } from "./features/reminders/reminders.routes";
 import { createControlLogger } from "./logger";

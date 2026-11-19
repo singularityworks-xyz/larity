@@ -1,20 +1,12 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import { Elysia } from "elysia";
-
-class TestMeetingSessionError extends Error {
-  readonly code: string;
-
-  constructor(message: string, code: string) {
-    super(message);
-    this.code = code;
-  }
-}
+import { MeetingSessionError } from "./meeting-session.errors";
 
 const getSession = mock(async () => null as unknown);
 const start = mock(async () => ({
   sessionId: "session-1",
   meetingId: "123e4567-e89b-12d3-a456-426614174000",
-  status: "initializing",
+  status: "initializing" as const,
   websocketUrl: "ws://localhost:9001",
   createdAt: 1,
   allowNameCustomization: true,
@@ -26,24 +18,32 @@ const serviceMethods = {
   getByMeetingId: mock(async () => null),
   getStatus: mock(async () => null),
   isValidSession: mock(async () => false),
-  join: mock(async () => ({})),
+  join: mock(async () => ({
+    success: true,
+    sessionId: "session-1",
+    meetingId: "meeting-1",
+    role: "participant" as const,
+    websocketUrl: "ws://localhost:9001",
+    joinedAt: 1,
+    allowNameCustomization: true,
+  })),
   start,
-  startAdhoc: mock(async () => ({})),
+  startAdhoc: mock(async () => ({
+    sessionId: "session-1",
+    meetingId: "meeting-1",
+    status: "initializing" as const,
+    websocketUrl: "ws://localhost:9001",
+    createdAt: 1,
+    allowNameCustomization: true,
+  })),
   updateConfig: mock(async () => undefined),
 };
 
 mock.module("../../../lib/auth", () => ({
   auth: { api: { getSession } },
 }));
-mock.module("./meeting-session.service", () => ({
-  MeetingSessionError: TestMeetingSessionError,
-  getHttpStatusForError: (code: string) =>
-    code === "SESSION_EXISTS" ? 409 : 500,
-  meetingSessionService: serviceMethods,
-}));
-
-const { meetingSessionRoutes } = await import("./meeting-session.routes");
-const app = new Elysia().use(meetingSessionRoutes);
+const { createMeetingSessionRoutes } = await import("./meeting-session.routes");
+const app = new Elysia().use(createMeetingSessionRoutes(serviceMethods));
 const meetingId = "123e4567-e89b-12d3-a456-426614174000";
 
 function startRequest(): Request {
@@ -86,7 +86,7 @@ describe("meeting session routes", () => {
       user: { id: "user-1" },
     });
     start.mockRejectedValue(
-      new TestMeetingSessionError(
+      new MeetingSessionError(
         "Meeting already has an active session",
         "SESSION_EXISTS"
       )

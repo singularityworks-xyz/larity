@@ -5,8 +5,8 @@ import { requireAuth } from "../../../middleware/auth";
 import {
   getHttpStatusForError,
   MeetingSessionError,
-  meetingSessionService,
-} from "./meeting-session.service";
+} from "./meeting-session.errors";
+import type { meetingSessionService } from "./meeting-session.service";
 import {
   endSessionSchema,
   joinSessionSchema,
@@ -17,12 +17,372 @@ import {
 
 const log = createControlLogger("meeting-session-routes");
 
-export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
-  .use(requireAuth)
+type MeetingSessionRouteService = Pick<
+  typeof meetingSessionService,
+  | "end"
+  | "getActiveForOrg"
+  | "getByMeetingId"
+  | "getStatus"
+  | "join"
+  | "start"
+  | "startAdhoc"
+  | "updateConfig"
+>;
 
-  .post(
-    "/start",
-    async ({ body, user, set }) => {
+export function createMeetingSessionRoutes(
+  service: MeetingSessionRouteService
+) {
+  return new Elysia({ prefix: "/meeting-session" })
+    .use(requireAuth)
+
+    .post(
+      "/start",
+      async ({ body, user, set }) => {
+        if (!user) {
+          set.status = 401;
+          return {
+            success: false,
+            error: "User not authenticated",
+          };
+        }
+
+        try {
+          const validatedInput = startSessionSchema.parse(body);
+
+          const result = await service.start(validatedInput, user.id);
+
+          log.info(
+            {
+              sessionId: result.sessionId,
+              meetingId: validatedInput.meetingId,
+              userId: user.id,
+            },
+            "Session started"
+          );
+
+          return {
+            success: true,
+            data: result,
+          };
+        } catch (error) {
+          if (error instanceof ZodError) {
+            set.status = 400;
+            return {
+              success: false,
+              error: "Validation failed",
+              details: error.issues,
+            };
+          }
+
+          if (error instanceof MeetingSessionError) {
+            set.status = getHttpStatusForError(error.code);
+            return {
+              success: false,
+              error: error.code,
+              message: error.message,
+            };
+          }
+
+          log.error({ err: error, userId: user.id }, "Failed to start session");
+          set.status = 500;
+          return {
+            success: false,
+            error: "INTERNAL_ERROR",
+            message: "Failed to start session",
+          };
+        }
+      },
+      {
+        body: t.Object({
+          meetingId: t.String(),
+          metadata: t.Optional(
+            t.Object({
+              deviceType: t.Optional(t.String()),
+              audioSource: t.Optional(t.String()),
+              clientVersion: t.Optional(t.String()),
+            })
+          ),
+        }),
+      }
+    )
+
+    .post(
+      "/start-adhoc",
+      async ({ body, user, set }) => {
+        if (!user) {
+          set.status = 401;
+          return {
+            success: false,
+            error: "User not authenticated",
+          };
+        }
+
+        try {
+          const validatedInput = startAdhocSessionSchema.parse(body);
+          const result = await service.startAdhoc(validatedInput, user.id);
+
+          log.info(
+            {
+              sessionId: result.sessionId,
+              userId: user.id,
+              clientId: validatedInput.clientId,
+            },
+            "Ad-hoc session started"
+          );
+
+          return {
+            success: true,
+            data: result,
+          };
+        } catch (error) {
+          if (error instanceof ZodError) {
+            set.status = 400;
+            return {
+              success: false,
+              error: "Validation failed",
+              details: error.issues,
+            };
+          }
+
+          if (error instanceof MeetingSessionError) {
+            set.status = getHttpStatusForError(error.code);
+            return {
+              success: false,
+              error: error.code,
+              message: error.message,
+            };
+          }
+
+          log.error(
+            { err: error, userId: user.id },
+            "Failed to start ad-hoc session"
+          );
+          set.status = 500;
+          return {
+            success: false,
+            error: "INTERNAL_ERROR",
+            message: "Failed to start ad-hoc session",
+          };
+        }
+      },
+      {
+        body: t.Object({
+          clientId: t.String(),
+          title: t.Optional(t.String()),
+          metadata: t.Optional(
+            t.Object({
+              deviceType: t.Optional(t.String()),
+              audioSource: t.Optional(t.String()),
+              clientVersion: t.Optional(t.String()),
+            })
+          ),
+        }),
+      }
+    )
+
+    .post(
+      "/join",
+      async ({ body, user, set }) => {
+        if (!user) {
+          set.status = 401;
+          return {
+            success: false,
+            error: "User not authenticated",
+          };
+        }
+
+        try {
+          const validatedInput = joinSessionSchema.parse(body);
+
+          const result = await service.join(validatedInput.sessionId, user.id);
+
+          log.info(
+            {
+              sessionId: result.sessionId,
+              userId: user.id,
+            },
+            "User joined session"
+          );
+
+          return {
+            success: true,
+            data: result,
+          };
+        } catch (error) {
+          if (error instanceof ZodError) {
+            set.status = 400;
+            return {
+              success: false,
+              error: "Validation failed",
+              details: error.issues,
+            };
+          }
+
+          if (error instanceof MeetingSessionError) {
+            set.status = getHttpStatusForError(error.code);
+            return {
+              success: false,
+              error: error.code,
+              message: error.message,
+            };
+          }
+
+          log.error({ err: error, userId: user.id }, "Failed to join session");
+          set.status = 500;
+          return {
+            success: false,
+            error: "INTERNAL_ERROR",
+            message: "Failed to join session",
+          };
+        }
+      },
+      {
+        body: t.Object({
+          sessionId: t.String(),
+        }),
+      }
+    )
+
+    .post(
+      "/end",
+      async ({ body, user, set }) => {
+        if (!user) {
+          set.status = 401;
+          return {
+            success: false,
+            error: "User not authenticated",
+          };
+        }
+
+        try {
+          const validatedInput = endSessionSchema.parse(body);
+
+          const result = await service.end(validatedInput, user.id);
+
+          log.info(
+            {
+              sessionId: validatedInput.sessionId,
+              reason: validatedInput.reason,
+              userId: user.id,
+            },
+            "Session ended"
+          );
+
+          return {
+            success: true,
+            data: result,
+          };
+        } catch (error) {
+          if (error instanceof MeetingSessionError) {
+            set.status = getHttpStatusForError(error.code);
+            return {
+              success: false,
+              error: error.code,
+              message: error.message,
+            };
+          }
+
+          log.error(
+            { err: error, sessionId: body.sessionId },
+            "Failed to end session"
+          );
+          set.status = 500;
+          return {
+            success: false,
+            error: "INTERNAL_ERROR",
+            message: "Failed to end session",
+          };
+        }
+      },
+      {
+        body: t.Object({
+          sessionId: t.String(),
+          reason: t.Optional(t.String()),
+        }),
+      }
+    )
+
+    .get(
+      "/:id/status",
+      async ({ params, set }) => {
+        try {
+          const { id } = sessionIdSchema.parse(params);
+
+          const status = await service.getStatus(id);
+
+          if (!status) {
+            set.status = 404;
+            return {
+              success: false,
+              error: "SESSION_NOT_FOUND",
+              message: "Session not found",
+            };
+          }
+
+          return {
+            success: true,
+            data: status,
+          };
+        } catch (error) {
+          log.error(
+            { err: error, sessionId: params.id },
+            "Failed to get session status"
+          );
+          set.status = 500;
+          return {
+            success: false,
+            error: "INTERNAL_ERROR",
+          };
+        }
+      },
+      {
+        params: t.Object({
+          id: t.String(),
+        }),
+      }
+    )
+
+    .get(
+      "/by-meeting/:meetingId",
+      async ({ params, set }) => {
+        try {
+          const meetingId = params.meetingId;
+
+          const status = await service.getByMeetingId(meetingId);
+
+          if (!status) {
+            set.status = 404;
+            return {
+              success: false,
+              error: "SESSION_NOT_FOUND",
+              message: "No active session for this meeting",
+            };
+          }
+
+          return {
+            success: true,
+            data: status,
+          };
+        } catch (error) {
+          log.error(
+            { err: error, meetingId: params.meetingId },
+            "Failed to get session by meeting ID"
+          );
+          set.status = 500;
+          return {
+            success: false,
+            error: "INTERNAL_ERROR",
+          };
+        }
+      },
+      {
+        params: t.Object({
+          meetingId: t.String(),
+        }),
+      }
+    )
+
+    .get("/active", async ({ user, set }) => {
       if (!user) {
         set.status = 401;
         return {
@@ -32,295 +392,15 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
       }
 
       try {
-        const validatedInput = startSessionSchema.parse(body);
-
-        const result = await meetingSessionService.start(
-          validatedInput,
-          user.id
-        );
-
-        log.info(
-          {
-            sessionId: result.sessionId,
-            meetingId: validatedInput.meetingId,
-            userId: user.id,
-          },
-          "Session started"
-        );
-
+        const sessions = await service.getActiveForOrg(user.id);
         return {
           success: true,
-          data: result,
+          data: sessions,
         };
       } catch (error) {
-        if (error instanceof ZodError) {
-          set.status = 400;
-          return {
-            success: false,
-            error: "Validation failed",
-            details: error.issues,
-          };
-        }
-
-        if (error instanceof MeetingSessionError) {
-          set.status = getHttpStatusForError(error.code);
-          return {
-            success: false,
-            error: error.code,
-            message: error.message,
-          };
-        }
-
-        log.error({ err: error, userId: user.id }, "Failed to start session");
-        set.status = 500;
-        return {
-          success: false,
-          error: "INTERNAL_ERROR",
-          message: "Failed to start session",
-        };
-      }
-    },
-    {
-      body: t.Object({
-        meetingId: t.String(),
-        metadata: t.Optional(
-          t.Object({
-            deviceType: t.Optional(t.String()),
-            audioSource: t.Optional(t.String()),
-            clientVersion: t.Optional(t.String()),
-          })
-        ),
-      }),
-    }
-  )
-
-  .post(
-    "/start-adhoc",
-    async ({ body, user, set }) => {
-      if (!user) {
-        set.status = 401;
-        return {
-          success: false,
-          error: "User not authenticated",
-        };
-      }
-
-      try {
-        const validatedInput = startAdhocSessionSchema.parse(body);
-        const result = await meetingSessionService.startAdhoc(
-          validatedInput,
-          user.id
-        );
-
-        log.info(
-          {
-            sessionId: result.sessionId,
-            userId: user.id,
-            clientId: validatedInput.clientId,
-          },
-          "Ad-hoc session started"
-        );
-
-        return {
-          success: true,
-          data: result,
-        };
-      } catch (error) {
-        if (error instanceof ZodError) {
-          set.status = 400;
-          return {
-            success: false,
-            error: "Validation failed",
-            details: error.issues,
-          };
-        }
-
-        if (error instanceof MeetingSessionError) {
-          set.status = getHttpStatusForError(error.code);
-          return {
-            success: false,
-            error: error.code,
-            message: error.message,
-          };
-        }
-
         log.error(
           { err: error, userId: user.id },
-          "Failed to start ad-hoc session"
-        );
-        set.status = 500;
-        return {
-          success: false,
-          error: "INTERNAL_ERROR",
-          message: "Failed to start ad-hoc session",
-        };
-      }
-    },
-    {
-      body: t.Object({
-        clientId: t.String(),
-        title: t.Optional(t.String()),
-        metadata: t.Optional(
-          t.Object({
-            deviceType: t.Optional(t.String()),
-            audioSource: t.Optional(t.String()),
-            clientVersion: t.Optional(t.String()),
-          })
-        ),
-      }),
-    }
-  )
-
-  .post(
-    "/join",
-    async ({ body, user, set }) => {
-      if (!user) {
-        set.status = 401;
-        return {
-          success: false,
-          error: "User not authenticated",
-        };
-      }
-
-      try {
-        const validatedInput = joinSessionSchema.parse(body);
-
-        const result = await meetingSessionService.join(
-          validatedInput.sessionId,
-          user.id
-        );
-
-        log.info(
-          {
-            sessionId: result.sessionId,
-            userId: user.id,
-          },
-          "User joined session"
-        );
-
-        return {
-          success: true,
-          data: result,
-        };
-      } catch (error) {
-        if (error instanceof ZodError) {
-          set.status = 400;
-          return {
-            success: false,
-            error: "Validation failed",
-            details: error.issues,
-          };
-        }
-
-        if (error instanceof MeetingSessionError) {
-          set.status = getHttpStatusForError(error.code);
-          return {
-            success: false,
-            error: error.code,
-            message: error.message,
-          };
-        }
-
-        log.error({ err: error, userId: user.id }, "Failed to join session");
-        set.status = 500;
-        return {
-          success: false,
-          error: "INTERNAL_ERROR",
-          message: "Failed to join session",
-        };
-      }
-    },
-    {
-      body: t.Object({
-        sessionId: t.String(),
-      }),
-    }
-  )
-
-  .post(
-    "/end",
-    async ({ body, user, set }) => {
-      if (!user) {
-        set.status = 401;
-        return {
-          success: false,
-          error: "User not authenticated",
-        };
-      }
-
-      try {
-        const validatedInput = endSessionSchema.parse(body);
-
-        const result = await meetingSessionService.end(validatedInput, user.id);
-
-        log.info(
-          {
-            sessionId: validatedInput.sessionId,
-            reason: validatedInput.reason,
-            userId: user.id,
-          },
-          "Session ended"
-        );
-
-        return {
-          success: true,
-          data: result,
-        };
-      } catch (error) {
-        if (error instanceof MeetingSessionError) {
-          set.status = getHttpStatusForError(error.code);
-          return {
-            success: false,
-            error: error.code,
-            message: error.message,
-          };
-        }
-
-        log.error(
-          { err: error, sessionId: body.sessionId },
-          "Failed to end session"
-        );
-        set.status = 500;
-        return {
-          success: false,
-          error: "INTERNAL_ERROR",
-          message: "Failed to end session",
-        };
-      }
-    },
-    {
-      body: t.Object({
-        sessionId: t.String(),
-        reason: t.Optional(t.String()),
-      }),
-    }
-  )
-
-  .get(
-    "/:id/status",
-    async ({ params, set }) => {
-      try {
-        const { id } = sessionIdSchema.parse(params);
-
-        const status = await meetingSessionService.getStatus(id);
-
-        if (!status) {
-          set.status = 404;
-          return {
-            success: false,
-            error: "SESSION_NOT_FOUND",
-            message: "Session not found",
-          };
-        }
-
-        return {
-          success: true,
-          data: status,
-        };
-      } catch (error) {
-        log.error(
-          { err: error, sessionId: params.id },
-          "Failed to get session status"
+          "Failed to list active sessions"
         );
         set.status = 500;
         return {
@@ -328,146 +408,73 @@ export const meetingSessionRoutes = new Elysia({ prefix: "/meeting-session" })
           error: "INTERNAL_ERROR",
         };
       }
-    },
-    {
-      params: t.Object({
-        id: t.String(),
-      }),
-    }
-  )
+    })
 
-  .get(
-    "/by-meeting/:meetingId",
-    async ({ params, set }) => {
-      try {
-        const meetingId = params.meetingId;
-
-        const status = await meetingSessionService.getByMeetingId(meetingId);
-
-        if (!status) {
-          set.status = 404;
+    .post(
+      "/:id/config",
+      async ({ body, params, user, set }) => {
+        if (!user) {
+          set.status = 401;
           return {
             success: false,
-            error: "SESSION_NOT_FOUND",
-            message: "No active session for this meeting",
+            error: "User not authenticated",
           };
         }
 
-        return {
-          success: true,
-          data: status,
-        };
-      } catch (error) {
-        log.error(
-          { err: error, meetingId: params.meetingId },
-          "Failed to get session by meeting ID"
-        );
-        set.status = 500;
-        return {
-          success: false,
-          error: "INTERNAL_ERROR",
-        };
-      }
-    },
-    {
-      params: t.Object({
-        meetingId: t.String(),
-      }),
-    }
-  )
+        try {
+          const { id } = sessionIdSchema.parse(params);
 
-  .get("/active", async ({ user, set }) => {
-    if (!user) {
-      set.status = 401;
-      return {
-        success: false,
-        error: "User not authenticated",
-      };
-    }
-
-    try {
-      const sessions = await meetingSessionService.getActiveForOrg(user.id);
-      return {
-        success: true,
-        data: sessions,
-      };
-    } catch (error) {
-      log.error(
-        { err: error, userId: user.id },
-        "Failed to list active sessions"
-      );
-      set.status = 500;
-      return {
-        success: false,
-        error: "INTERNAL_ERROR",
-      };
-    }
-  })
-
-  .post(
-    "/:id/config",
-    async ({ body, params, user, set }) => {
-      if (!user) {
-        set.status = 401;
-        return {
-          success: false,
-          error: "User not authenticated",
-        };
-      }
-
-      try {
-        const { id } = sessionIdSchema.parse(params);
-
-        await meetingSessionService.updateConfig(id, user.id, {
-          allowNameCustomization: body.allowNameCustomization,
-        });
-
-        log.info(
-          {
-            sessionId: id,
-            userId: user.id,
+          await service.updateConfig(id, user.id, {
             allowNameCustomization: body.allowNameCustomization,
-          },
-          "Session config updated"
-        );
+          });
 
-        return { success: true };
-      } catch (error) {
-        if (error instanceof MeetingSessionError) {
-          set.status = getHttpStatusForError(error.code);
+          log.info(
+            {
+              sessionId: id,
+              userId: user.id,
+              allowNameCustomization: body.allowNameCustomization,
+            },
+            "Session config updated"
+          );
+
+          return { success: true };
+        } catch (error) {
+          if (error instanceof MeetingSessionError) {
+            set.status = getHttpStatusForError(error.code);
+            return {
+              success: false,
+              error: error.code,
+              message: error.message,
+            };
+          }
+
+          if (error instanceof ZodError) {
+            set.status = 400;
+            return {
+              success: false,
+              error: "Validation failed",
+              details: error.issues,
+            };
+          }
+
+          log.error(
+            { err: error, sessionId: params.id },
+            "Failed to update session config"
+          );
+          set.status = 500;
           return {
             success: false,
-            error: error.code,
-            message: error.message,
+            error: "INTERNAL_ERROR",
           };
         }
-
-        if (error instanceof ZodError) {
-          set.status = 400;
-          return {
-            success: false,
-            error: "Validation failed",
-            details: error.issues,
-          };
-        }
-
-        log.error(
-          { err: error, sessionId: params.id },
-          "Failed to update session config"
-        );
-        set.status = 500;
-        return {
-          success: false,
-          error: "INTERNAL_ERROR",
-        };
+      },
+      {
+        params: t.Object({
+          id: t.String(),
+        }),
+        body: t.Object({
+          allowNameCustomization: t.Boolean(),
+        }),
       }
-    },
-    {
-      params: t.Object({
-        id: t.String(),
-      }),
-      body: t.Object({
-        allowNameCustomization: t.Boolean(),
-      }),
-    }
-  );
+    );
+}
