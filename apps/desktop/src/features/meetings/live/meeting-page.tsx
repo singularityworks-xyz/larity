@@ -1,4 +1,3 @@
-import { Channel, invoke } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -32,16 +31,14 @@ import {
   warningBannerClass,
 } from "../../../lib/ui";
 import { closeOverlayWindow, createOverlayWindow } from "../overlay/window";
-import {
-  type AudioStatusSnapshot,
-  AudioStreamingClient,
-  parseRawAudioFrame,
-} from "./capture/audio-streaming";
+import { AudioStreamingClient } from "./capture/audio-streaming";
+import { useAudioCapture } from "./capture/use-audio-capture";
 import { VadManager } from "./capture/vad";
 import { MeetingHeader } from "./meeting-header";
 import { MeetingSidebar } from "./meeting-sidebar";
 import { NameConfigModal } from "./name-config-modal";
 import { TopicsTimeline } from "./topics-timeline";
+import { upsertLiveUtterance } from "./transcript-state";
 import { TranscriptStream } from "./transcript-stream";
 import type {
   LiveCommitment,
@@ -60,12 +57,6 @@ interface MeetingLocationState {
   role?: "host" | "participant";
   startedAt?: number;
   websocketUrl?: string;
-}
-
-interface AudioDevice {
-  id: string;
-  is_default: boolean;
-  name: string;
 }
 
 const DEFAULT_WS_URL = WS_URL;
@@ -224,13 +215,6 @@ export function MeetingPage() {
   // const [rememberBanner, setRememberBanner] = useState<string | null>(null);
   const [constraintCount, setConstraintCount] = useState(0);
   const [ambientTopic, setAmbientTopic] = useState<string | null>(null);
-  const [isStreamActive, setIsStreamActive] = useState(true);
-
-  const [status, setStatus] = useState<AudioStatusSnapshot | null>(null);
-  const [framesReceived, setFramesReceived] = useState(0);
-  const [framesSent, setFramesSent] = useState(0);
-  const [framesDropped, setFramesDropped] = useState(0);
-  const [lastTs, setLastTs] = useState<number>(0);
   // Dev-only ws_recv → setState latency (ms, avg of last 30) per STT type.
   const [wsPartialMs, setWsPartialMs] = useState<number | null>(null);
   const [wsFinalMs, setWsFinalMs] = useState<number | null>(null);
@@ -238,18 +222,25 @@ export function MeetingPage() {
     final: [],
     partial: [],
   });
-  // Active raw-audio Channel (P4.1). Created per startCapture; cleared on
-  // stop/unmount so a stale channel can never feed a new session.
-  const audioChannelRef = useRef<Channel<ArrayBuffer> | null>(null);
-  // Frame counters shared between the channel handler and the 1 Hz metrics
-  // sync below — the handler never calls setState per frame (P6 territory).
-  const audioFrameCountsRef = useRef({
-    dropped: 0,
-    lastTs: 0,
-    received: 0,
-    sent: 0,
-  });
   const [warning, setWarning] = useState("");
+  const {
+    clearAudioChannel,
+    devices,
+    framesDropped,
+    framesReceived,
+    framesSent,
+    isStreamActive,
+    lastTs,
+    micDeviceId,
+    refreshStatus,
+    setMicDeviceId,
+    setSysDeviceId,
+    startCapture,
+    status,
+    stopCapture,
+    syncFrameMetrics,
+    sysDeviceId,
+  } = useAudioCapture({ role, sessionId, setWarning, streamingClient });
   const [systemEvents, setSystemEvents] = useState<
     Array<{
       eventId: string;
@@ -262,9 +253,6 @@ export function MeetingPage() {
   >([]);
   const [isBusy, setIsBusy] = useState(false);
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
-  const [devices, setDevices] = useState<AudioDevice[]>([]);
-  const [micDeviceId, setMicDeviceId] = useState<string | null>(null);
-  const [sysDeviceId, setSysDeviceId] = useState<string | null>(null);
   // meetingId received from the meeting_processed WebSocket event after pipeline completes
   const [postProcessingMeetingId, setPostProcessingMeetingId] = useState<
     string | null
@@ -301,79 +289,6 @@ export function MeetingPage() {
     () => commitments.filter((c) => c.status === "CONTRADICTED").length,
     [commitments]
   );
-
-  const refreshStatus = useCallback(async (): Promise<void> => {
-    try {
-      const nextStatus = await invoke<AudioStatusSnapshot>(
-        "audio_capture_status"
-      );
-      setStatus(nextStatus);
-      setIsStreamActive(nextStatus?.active ?? false);
-    } catch (error) {
-      setWarning(`Unable to read capture status: ${String(error)}`);
-      setIsStreamActive(false);
-    }
-  }, []);
-
-  const startCapture = useCallback(async (): Promise<void> => {
-    if (!sessionId) {
-      return;
-    }
-
-    try {
-      streamingClient.connect(sessionId);
-      // P4.1: raw frames arrive as ArrayBuffer over this Channel — no
-      // base64/atob, no per-frame JSON envelope, no sessionId per frame.
-      const audioChannel = new Channel<ArrayBuffer>();
-      audioChannel.onmessage = (buffer) => {
-        const frame = parseRawAudioFrame(buffer);
-        if (!frame) {
-          return;
-        }
-        // P4.9: no setState, no getMetrics per frame — the 1 Hz sync below
-        // picks up counters and warning changes.
-        const counts = audioFrameCountsRef.current;
-        counts.received += 1;
-        counts.lastTs = frame.ts;
-        streamingClient.handleRawAudioFrame(frame, sessionId);
-      };
-      audioChannelRef.current = audioChannel;
-      await invoke("audio_capture_start", {
-        sessionId,
-        micDeviceId: micDeviceId || null,
-        sysDeviceId: sysDeviceId || null,
-        role,
-        onAudio: audioChannel,
-      });
-      await refreshStatus();
-    } catch (error) {
-      const message = String(error);
-      if (!message.includes("already running")) {
-        setWarning(`Failed to start capture: ${message}`);
-      }
-    }
-  }, [
-    refreshStatus,
-    sessionId,
-    streamingClient,
-    micDeviceId,
-    sysDeviceId,
-    role,
-  ]);
-
-  const stopCapture = useCallback(async (): Promise<void> => {
-    try {
-      await invoke("audio_capture_stop");
-      await refreshStatus();
-    } catch (error) {
-      const message = String(error);
-      if (!message.includes("not running")) {
-        setWarning(`Failed to stop capture: ${message}`);
-      }
-    } finally {
-      audioChannelRef.current = null;
-    }
-  }, [refreshStatus]);
 
   const clearScrollTarget = useCallback(() => {
     setScrollTargetId(null);
@@ -592,27 +507,7 @@ export function MeetingPage() {
       const utterance = mapBackendUtteranceToLive(
         data as unknown as Parameters<typeof mapBackendUtteranceToLive>[0]
       );
-      setUtterances((prev) => {
-        const idx = prev.findIndex((u) => u.id === utterance.id);
-        if (idx >= 0) {
-          // P2.4: same-id republish (retroactive re-identification / role
-          // change) updates speaker/role but must preserve client-derived
-          // enrichment (commitment/alert/memory badges, late topicId) that a
-          // fresh backend mapping resets.
-          const previous = prev[idx] as LiveUtterance;
-          const next = [...prev];
-          next[idx] = {
-            ...previous,
-            ...utterance,
-            isCommitment: previous.isCommitment,
-            hasAlert: previous.hasAlert,
-            hasMemory: previous.hasMemory,
-            topicId: utterance.topicId ?? previous.topicId,
-          };
-          return next;
-        }
-        return [...prev, utterance];
-      });
+      setUtterances((previous) => upsertLiveUtterance(previous, utterance));
       if (typeof startOffset === "number" && typeof duration === "number") {
         setPendingFinals((prev) =>
           prev.filter((p) => !pendingOverlapsSttRange(p, startOffset, duration))
@@ -900,14 +795,6 @@ export function MeetingPage() {
   }, [streamingClient, userId]);
 
   useEffect(() => {
-    if (isHost) {
-      invoke<AudioDevice[]>("audio_capture_list_devices")
-        .then((list) => setDevices(list))
-        .catch((e) => setWarning(`Failed to list devices: ${String(e)}`));
-    }
-  }, [isHost]);
-
-  useEffect(() => {
     if (!sessionId) {
       return;
     }
@@ -945,14 +832,7 @@ export function MeetingPage() {
       if (!isMounted) {
         return;
       }
-      const counts = audioFrameCountsRef.current;
-      const metrics = streamingClient.getMetrics();
-      counts.sent = metrics.framesSent;
-      counts.dropped = metrics.framesDropped;
-      setFramesReceived(counts.received);
-      setFramesSent(counts.sent);
-      setFramesDropped(counts.dropped);
-      setLastTs(counts.lastTs);
+      syncFrameMetrics();
       const clientWarning = streamingClient.getWarning();
       if (clientWarning !== lastSyncedWarning) {
         lastSyncedWarning = clientWarning;
@@ -973,7 +853,7 @@ export function MeetingPage() {
     return () => {
       isMounted = false;
       clearInterval(metricsSyncInterval);
-      audioChannelRef.current = null;
+      clearAudioChannel();
 
       closeOverlayWindow().catch(() => {
         /* overlay may already be closed */
@@ -998,6 +878,8 @@ export function MeetingPage() {
     meetingDisplayTitle,
     meetingStartedAtMs,
     state.websocketUrl,
+    syncFrameMetrics,
+    clearAudioChannel,
   ]);
 
   // function handleRememberThis() {

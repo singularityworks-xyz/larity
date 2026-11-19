@@ -4,6 +4,7 @@ import {
   isUtteranceTopicDelta,
   mapBackendUtteranceToLive,
 } from "./mappers";
+import { upsertLiveUtterance } from "./transcript-state";
 
 function makeBackendUtterance(topicId?: string) {
   return {
@@ -27,6 +28,23 @@ function makeBackendUtterance(topicId?: string) {
     wordCount: 3,
   };
 }
+
+test("a speaker correction preserves local badges and the assigned topic", () => {
+  const raw = makeBackendUtterance();
+  const current = {
+    ...mapBackendUtteranceToLive(raw),
+    hasAlert: true,
+    isCommitment: true,
+    topicId: "topic-1",
+  };
+  const correction = mapBackendUtteranceToLive({
+    ...raw,
+    speaker: { ...raw.speaker, speakerId: "identified-speaker" },
+  });
+  expect(upsertLiveUtterance([current], correction)).toEqual([
+    { ...current, speakerId: "identified-speaker" },
+  ]);
+});
 
 describe("utterance topic deltas (P2.1)", () => {
   test("delta shape is recognized and full topic state is not a delta", () => {
