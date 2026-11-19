@@ -1,9 +1,5 @@
 const SESSION_TOKEN_KEY = "larity.session-token";
 
-/**
- * Session token shape: signed `id.signature` (base64url dot base64url).
- * Never log the token — it's bearer material.
- */
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
 
 export function getStoredSessionToken(): string | null {

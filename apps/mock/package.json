@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "build": "vite build",
+    "check-types": "tsc --noEmit",
     "mock": "WEBKIT_DISABLE_COMPOSITING_MODE=1 tauri dev",
     "latency": "bun scripts/latency.ts"
   },

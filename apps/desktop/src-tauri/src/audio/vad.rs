@@ -48,9 +48,6 @@ pub fn spawn_vad_task(
     Ok(VadTx { tx })
 }
 
-/// Collapse a just-received frame plus any waiting backlog to the newest
-/// frame (P4.5). A 4-deep backlog is ~128 ms of stale audio; VAD onset
-/// detection must run on fresh speech, not drain history.
 fn collapse_backlog(rx: &mpsc::Receiver<Vec<i16>>, first: Vec<i16>) -> Vec<i16> {
     let mut newest = first;
     while let Ok(newer) = rx.try_recv() {
@@ -104,8 +101,6 @@ fn run_vad_loop(
                     let _ = app.emit("vad-speech-start", ());
                 }
             } else {
-                // P4.4: ≤15 Hz, main window only (VadManager), and only
-                // while a listener is registered — not ~31 raw emits/sec.
                 let now_ms = now_ms();
                 if should_emit_amplitude(&amplitude, last_amp_emit_ms, now_ms) {
                     last_amp_emit_ms = now_ms;

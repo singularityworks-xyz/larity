@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { redisKeys } from "@larity/db/redis/keys";
 import { TTL } from "@larity/db/redis/ttl";
 import type { Redis } from "ioredis";
-import { ledgerChannel } from "../channels";
 import { LEDGER_SNAPSHOT_DEBOUNCE_MS } from "../env";
+import { ledgerChannel } from "../events/channels";
 import { createMeetingModeLogger } from "../logger";
 import { packEmbeddingToBase64, unpackEmbeddingFromBase64 } from "./encoding";
 import type {
@@ -52,7 +52,6 @@ export interface CommitmentLedgerOptions {
   idFactory?: () => string;
   index?: CommitmentVectorIndex;
   now?: () => number;
-  /** 0 = write Redis snapshot synchronously on each change */
   snapshotDebounceMs?: number;
 }
 
@@ -156,7 +155,6 @@ export class CommitmentLedger {
     const limit = options.k ?? DEFAULT_SEARCH_LIMIT;
     const minSimilarity = options.minSimilarity ?? Number.NEGATIVE_INFINITY;
 
-    // Skip similarity queries for empty embeddings to avoid false matches
     if (!queryEmbedding || queryEmbedding.length === 0) {
       return [];
     }
@@ -277,7 +275,6 @@ export class CommitmentLedger {
     return drained;
   }
 
-  /** Persist any debounced snapshot before dropping memory */
   async flushPendingSnapshot(): Promise<void> {
     this.cancelSnapshotFlush();
     if (this.commitments.size === 0) {

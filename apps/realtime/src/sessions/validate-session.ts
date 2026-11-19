@@ -1,0 +1,61 @@
+import { createRealtimeLogger } from "../logger";
+
+const log = createRealtimeLogger("validate-session");
+
+const CONTROL_API_URL = process.env.CONTROL_API_URL || "http://localhost:3000";
+
+interface ValidationResponse {
+  data?: {
+    valid: boolean;
+    orgId?: string;
+  };
+  success: boolean;
+}
+
+export async function validateSession(
+  sessionId: string,
+  userId?: string,
+  role?: string
+): Promise<{ isValid: boolean; orgId?: string }> {
+  const isDev = process.env.NODE_ENV !== "production";
+
+  if (isDev && sessionId.includes("test-session")) {
+    return { isValid: true, orgId: "default" };
+  }
+
+  try {
+    const response = await fetch(
+      `${CONTROL_API_URL}/internal/meeting-session/${sessionId}/validate`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId, role }),
+      }
+    );
+
+    if (!response.ok) {
+      return { isValid: false };
+    }
+
+    const data = (await response.json()) as unknown;
+    if (
+      data &&
+      typeof data === "object" &&
+      "success" in data &&
+      (data as ValidationResponse).success
+    ) {
+      const validationData = data as ValidationResponse;
+      return {
+        isValid: validationData.success && validationData.data?.valid === true,
+        orgId: validationData.data?.orgId,
+      };
+    }
+  } catch (error) {
+    log.error({ err: error, sessionId }, "Session validation failed");
+    // CRITICAL: Fail closed. Do not allow access if validation fails.
+    return { isValid: false };
+  }
+  return { isValid: false };
+}

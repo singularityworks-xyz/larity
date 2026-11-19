@@ -62,7 +62,6 @@ export const auth = betterAuth({
       if (!rawLocation) {
         return;
       }
-      // Strict allow-list: only the exact desktop callback, no path traversal or extra host.
       let url: URL;
       try {
         url = new URL(rawLocation);
@@ -108,7 +107,6 @@ export const auth = betterAuth({
       if (!TOKEN_CHARS_REGEX.test(token)) {
         return;
       }
-      // `URLSearchParams.set` handles encoding; token is bearer material — never log it.
       url.searchParams.set("token", token);
       headers.set("Location", url.toString());
     }),

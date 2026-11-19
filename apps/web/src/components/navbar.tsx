@@ -25,7 +25,6 @@ export function Navbar() {
       }`}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 md:px-8">
-        {/* Left: Logo */}
         <Link
           className="flex items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           href="/"
@@ -43,7 +42,6 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* Right: Nav Links + CTA */}
         <div className="flex items-center gap-6 sm:gap-8">
           <div className="hidden items-center gap-6 font-medium text-sm text-zinc-600 sm:flex">
             <Link

@@ -2,17 +2,11 @@ use rubato::{FastFixedIn, PolynomialDegree, Resampler};
 
 const TARGET_SAMPLE_RATE: usize = 16000;
 const SAMPLES_PER_FRAME: usize = 512; // 32ms at 16kHz — matches Silero VAD chunk_size exactly
-/// Resampler input quantum (P4.6). Matches the requested cpal period
-/// (`CPAL_BUFFER_FRAMES` in `engine.rs`) so each device wake completes one
-/// quantum after downmix instead of batching ~21 ms in the default buffer.
 const RESAMPLE_CHUNK: usize = 512;
 
 pub struct AudioProcessor {
     resampler: Option<FastFixedIn<f32>>,
-    /// Preallocated resampler output (len = `output_frames_max()`), reused
-    /// across calls so the worker never allocates for resampling (P4.2).
     resample_scratch: Vec<f32>,
-    /// Staging input: exactly one `RESAMPLE_CHUNK` (P4.2).
     stage: Box<[f32; RESAMPLE_CHUNK]>,
     _input_sample_rate: usize,
     channels: usize,
@@ -69,13 +63,11 @@ impl AudioProcessor {
     /// drains; only the per-frame `Vec<i16>` payloads allocate, on the
     /// worker thread — never in the cpal callback).
     pub fn process_into(&mut self, interleaved_samples: &[f32], frames_out: &mut Vec<Vec<i16>>) {
-        // 1. Downmix to Mono
         for chunk in interleaved_samples.chunks(self.channels) {
             let sum: f32 = chunk.iter().sum();
             self.pre_buffer.push(sum / self.channels as f32);
         }
 
-        // 2. Resample full chunks into the preallocated scratch buffer
         if let Some(resampler) = &mut self.resampler {
             while self.pre_buffer.len() >= self.chunk_size {
                 self.stage
@@ -95,7 +87,6 @@ impl AudioProcessor {
             self.post_buffer.append(&mut self.pre_buffer);
         }
 
-        // 3. Chunk into 512-sample frames of i16 (matches Silero VAD chunk_size)
         while self.post_buffer.len() >= SAMPLES_PER_FRAME {
             let chunk_f32: Vec<f32> = self.post_buffer.drain(0..SAMPLES_PER_FRAME).collect();
 
@@ -139,9 +130,6 @@ mod tests {
         let mut processor = AudioProcessor::new(48000, 1);
         let samples = vec![0.0; 48000]; // 1 second of audio
         let chunks = processor.process(&samples);
-        // 48000 input -> 16000 output = 16000 samples/sec
-        // Each output frame = 512 samples
-        // 16000 / 512 ≈ 31.25 frames per second
         assert!(chunks.len() >= 30 && chunks.len() <= 33);
     }
 }

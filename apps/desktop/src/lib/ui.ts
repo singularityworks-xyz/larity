@@ -146,10 +146,8 @@ export const dividerLabelClass =
 export const authSwitchClass =
   "mt-4 text-center text-xs font-medium leading-normal text-fg-muted [&_a]:font-medium [&_a]:text-accent [&_a]:no-underline hover:[&_a]:underline";
 
-/** Full-width horizontal row for segment buttons. */
 export const segmentControlLayoutClass = "flex w-full min-w-0";
 
-/** Border, radius, and clipping for paired segment buttons. */
 export const segmentControlChromeClass =
   "overflow-hidden rounded-[var(--radius-button)] border border-border";
 
@@ -158,15 +156,12 @@ export const segmentControlClass = cx(
   segmentControlChromeClass
 );
 
-/** Shared frame for segment toggles (pair with idle or active appearance). */
 export const segmentButtonClass =
   "h-7 min-w-0 flex-1 cursor-pointer rounded-none border-0 px-3 font-sans text-xs font-medium transition-[background-color,color,box-shadow] duration-150 ease-out";
 
-/** Unselected segment: muted label, light hover wash. */
 export const segmentButtonIdleClass =
   "bg-transparent text-fg-muted hover:not-disabled:bg-bg-subtle/50 hover:not-disabled:text-fg";
 
-/** Selected segment: lifted surface and inset edge. */
 export const segmentButtonActiveClass =
   "bg-bg-subtle text-fg font-medium shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07)] hover:not-disabled:bg-bg-emphasis";
 
@@ -221,23 +216,6 @@ export const desktopShellClass = "mx-auto grid w-full gap-4 pb-8";
 
 export const formPanelClass = cx(panelClass, "w-full max-w-[640px]");
 
-export const dashboardGridClass =
-  "grid gap-3 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]";
-
-export const choiceCardClass =
-  "cursor-pointer rounded-[var(--radius-0)] border border-border bg-bg-elevated p-4 transition-colors duration-150 hover:border-border-strong hover:bg-bg-subtle";
-
-export const cardTitleClass = "mt-0 mb-1 text-[13px] font-semibold text-fg";
-
-export const cardTextClass =
-  "m-0 text-xs font-medium leading-normal text-fg-muted";
-
-export const inviteListClass =
-  "mt-2 grid list-none gap-0 border border-border-subtle p-0";
-
-export const inviteRowClass =
-  "flex items-start justify-between gap-3 border-border-subtle border-b px-3 py-2.5 last:border-b-0";
-
 export const tabsPanelClass = cx(panelClass, "grid gap-3");
 
 export const tabsRowClass = "flex gap-0 border-border border-b";
@@ -265,7 +243,6 @@ export const codeClass =
 export const warningBannerClass =
   "rounded-[var(--radius-0)] border border-warning-fg bg-warning-bg p-3 text-xs font-medium text-warning-fg";
 
-// Home screen
 export const startMeetingModeClass =
   "rounded-[var(--radius-panel)] border border-border bg-bg-elevated p-4 transition-all duration-150 ease-out";
 
@@ -273,16 +250,3 @@ export const homeGridClass = "grid gap-3 md:grid-cols-[1fr_1.2fr]";
 
 export const healthStripClass =
   "flex items-center gap-2 rounded-[var(--radius-panel)] border border-border bg-bg-overlay px-3.5 py-2";
-
-export function metricChipClass(
-  variant: "success" | "warning" | "muted" = "muted"
-): string {
-  const base =
-    "inline-flex items-center rounded-[var(--radius-pill)] border px-2 py-0.5 text-[10px] font-medium leading-snug tracking-wide uppercase";
-  const variants: Record<string, string> = {
-    success: `${base} border-success bg-success-bg text-success`,
-    warning: `${base} border-warning bg-warning-bg text-warning`,
-    muted: `${base} border-border bg-bg-overlay text-fg-muted`,
-  };
-  return variants[variant] ?? variants.muted ?? "";
-}

@@ -8,7 +8,6 @@
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "lefthook": "^2.1.9",
-    "lint-staged": "^17.0.8",
     "turbo": "^2.10.0",
     "typescript": "^7.0.1-rc",
     "ultracite": "7.8.3"
@@ -22,15 +21,18 @@
     "mock:latency": "cd apps/mock && bun run latency",
     "build": "turbo run build",
     "check-types": "turbo run check-types && make rust-clippy",
-    "check": "ultracite fix --unsafe && make rust-fix",
-    "test": "turbo run test",
+    "lint": "ultracite check",
+    "fix": "ultracite fix && make rust-fmt",
+    "check": "ultracite check && bun run check-types",
+    "version:bump": "bun scripts/version-manager.ts",
+    "test": "bun test",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "db:gen": "turbo run generate --filter=@larity/db",
     "db:push": "turbo run push --filter=@larity/db",
     "db:migrate": "turbo run migrate --filter=@larity/db",
     "db:studio": "turbo run studio --filter=@larity/db",
-    "setup": "cp -n .env.example .env 2>/dev/null || true && bun install && bun docker:up && bun db:generate && bun db:push"
+    "setup": "cp -n .env.example .env 2>/dev/null || true && bun install && bun docker:up && bun db:gen && bun db:push"
   },
   "type": "module",
   "workspaces": [

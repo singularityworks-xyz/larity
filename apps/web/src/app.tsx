@@ -4,9 +4,9 @@ import { useState } from "react";
 import { Footer } from "./components/footer.tsx";
 import { LegalModal } from "./components/legal-modal.tsx";
 import { Navbar } from "./components/navbar.tsx";
+import { DownloadsPage } from "./features/downloads/downloads-page.tsx";
+import { HomePage } from "./features/home/home-page.tsx";
 import { RouterProvider, useRouter } from "./lib/router.tsx";
-import { DownloadsPage } from "./pages/downloads-page.tsx";
-import { HomePage } from "./pages/home-page.tsx";
 
 function AppContent() {
   const { pathname } = useRouter();

@@ -1,15 +1,3 @@
-/**
- * metrics.ts — dependency-free in-process latency observability for the STT
- * package (consumed in the realtime process).
- *
- * Same aggregate-only histogram/counter design as
- * `packages/meeting-mode/src/pipeline/metrics.ts`, duplicated here because
- * `stt` cannot depend on `meeting-mode` (meeting-mode depends on STT types —
- * a shared dependency would be circular). Metric names MUST NOT contain
- * per-session labels.
- */
-
-/** Upper bound on retained samples per histogram (oldest dropped past cap). */
 const MAX_SAMPLES_PER_HISTOGRAM = 1024;
 
 export interface HistogramSnapshot {
@@ -74,7 +62,6 @@ export class MetricsRegistry {
   private readonly counters = new Map<string, number>();
   private readonly histograms = new Map<string, Histogram>();
 
-  /** Record a latency sample (ms) on a named histogram. */
   record(name: string, valueMs: number): void {
     let histogram = this.histograms.get(name);
     if (!histogram) {
@@ -84,7 +71,6 @@ export class MetricsRegistry {
     histogram.record(valueMs);
   }
 
-  /** Increment a named counter by `delta` (default 1). */
   increment(name: string, delta = 1): void {
     if (!Number.isFinite(delta)) {
       return;
@@ -112,7 +98,6 @@ export class MetricsRegistry {
   }
 }
 
-/** Process-wide registry for STT + realtime ingest metrics. */
 export const metrics = new MetricsRegistry();
 
 export function recordHistogram(name: string, valueMs: number): void {

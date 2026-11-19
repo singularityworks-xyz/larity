@@ -1,22 +1,3 @@
-/**
- * scripts/latency.ts — repeatable live-path latency measurement harness.
- *
- * Streams deterministic synthetic PCM (or a raw s16le 16kHz mono `--pcm-file`)
- * to the realtime WebSocket as tagged dual-channel frames, counts inbound
- * message types, and prints the `/admin/metrics` snapshot before/after.
- *
- * Usage:
- *   bun scripts/latency.ts [--duration=30] [--url=ws://127.0.0.1:9001]
- *     [--session=test-session-latency] [--pcm-file=/path/to/audio.s16le]
- *
- * Notes:
- * - The default session id contains "test-session", which the realtime dev
- *   validator accepts without the control plane.
- * - Synthetic sine audio exercises frame flow + drop counters. Meaningful
- *   `stt.audio_end_to_final_ms` values need a Deepgram key server-side and
- *   speech-like input (pass a real capture via --pcm-file).
- */
-
 const SAMPLE_RATE = 16_000;
 const SAMPLES_PER_FRAME = 512;
 const PCM_BYTES_PER_FRAME = SAMPLES_PER_FRAME * 2;
@@ -80,7 +61,6 @@ function buildSocketUrl(
 
 import { readFile } from "node:fs/promises";
 
-/** Deterministic speech-like sample: gated syllabic-AM tone, no randomness. */
 function synthSample(globalIndex: number, freqHz: number): number {
   const t = globalIndex / SAMPLE_RATE;
   const gate = t % 3 < 2 ? 1 : 0.05;
@@ -208,10 +188,6 @@ async function main(): Promise<void> {
     let mic: Uint8Array;
     let sys: Uint8Array;
     if (pcmFile) {
-      // Both channels carry the same slice: each Deepgram connection must
-      // see a continuous stream. (Interleaving disjoint slices — as an
-      // earlier revision did — halves each channel's audio rate and its
-      // silence gaps, corrupting endpointing timing.)
       const chunk = pcmFile.slice(fileOffset, fileOffset + PCM_BYTES_PER_FRAME);
       fileOffset = (fileOffset + PCM_BYTES_PER_FRAME) % pcmFile.length;
       mic = taggedFrame(chunk, TAG_MIC);
@@ -234,7 +210,6 @@ async function main(): Promise<void> {
     }
   }
 
-  // Grace period: let endpointing + accumulator flush + pipeline finish.
   await sleep(5000);
   const after = await fetchMetrics(httpBase);
   ws.close();

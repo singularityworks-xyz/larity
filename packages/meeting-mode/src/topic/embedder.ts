@@ -4,11 +4,6 @@ import { createMeetingModeLogger } from "../logger";
 
 const log = createMeetingModeLogger("topic-embedder");
 
-/**
- * Embedding request budget (P2.2). The finalizer publishes before topic
- * assignment, so a hung embedding must fail fast rather than stall the
- * per-session finalize chain.
- */
 const EMBEDDING_TIMEOUT_MS = 1500;
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {

@@ -67,6 +67,9 @@ jobs:
   lint-rust:
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 20
+    strategy:
+      matrix:
+        app: [desktop, mock]
     steps:
       - name: Checkout
         uses: useblacksmith/checkout@2d63ce5ba61677748c4e92f6eb578a8694226225
@@ -88,16 +91,19 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            apps/desktop/src-tauri/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('apps/desktop/src-tauri/Cargo.lock') }}
+            apps/${{ matrix.app }}/src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ matrix.app }}-${{ hashFiles(format('apps/{0}/src-tauri/Cargo.lock', matrix.app)) }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-cargo-${{ matrix.app }}-
 
       - name: Run Rust Format Check
-        run: cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml -- --check
+        run: cargo fmt --manifest-path apps/${{ matrix.app }}/src-tauri/Cargo.toml -- --check
 
       - name: Run Rust Clippy
-        run: cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --all-targets -- -D warnings
+        run: cargo clippy --locked --manifest-path apps/${{ matrix.app }}/src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: Run Rust Tests
+        run: cargo test --locked --manifest-path apps/${{ matrix.app }}/src-tauri/Cargo.toml
 
   unit-tests:
     runs-on: blacksmith-2vcpu-ubuntu-2404

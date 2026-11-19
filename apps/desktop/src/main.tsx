@@ -7,6 +7,21 @@ import App from "./app";
 import { AppErrorBoundary } from "./components/app-error-boundary";
 import { RouteErrorBoundary } from "./components/route-error-boundary";
 import { ThemeProvider } from "./components/theme-provider";
+import { LoginPage } from "./features/auth/login-page";
+import { RegisterPage } from "./features/auth/register-page";
+import { WelcomePage } from "./features/auth/welcome-page";
+import { AddClientPage } from "./features/clients/add-page";
+import { ClientsPage } from "./features/clients/clients-page";
+import { ClientDetailPage } from "./features/clients/detail-page";
+import { HomePage } from "./features/home/home-page";
+import { MeetingPage } from "./features/meetings/live/meeting-page";
+import { MeetingPostPage } from "./features/meetings/review/meeting-post-page";
+import { MeetingBriefPage } from "./features/meetings/setup/brief-page";
+import { JoinMeetingPage } from "./features/meetings/setup/join-page";
+import { StartMeetingPage } from "./features/meetings/setup/start-page";
+import { WaitingRoomPage } from "./features/meetings/setup/waiting-room-page";
+import { OnboardingPage } from "./features/onboarding/onboarding-page";
+import { SettingsPage } from "./features/settings/settings-page";
 import { initAuthDeepLink } from "./lib/auth-deeplink";
 import { queryClient } from "./lib/query";
 import {
@@ -15,23 +30,8 @@ import {
   onboardingLoader,
   rootIndexLoader,
 } from "./routes/_guard";
-import { AddClientPage } from "./routes/clients/add";
-import { ClientDetailPage } from "./routes/clients/detail";
-import { ClientsPage } from "./routes/clients/index";
-import { HomePage } from "./routes/home";
-import { LoginPage } from "./routes/login";
-import { MeetingPage } from "./routes/meeting/$session-id";
-import { WaitingRoomPage } from "./routes/meeting/waiting-room";
-import { MeetingPostPage } from "./routes/meeting-post/$meeting-id";
-import { MeetingBriefPage } from "./routes/meetings/brief";
-import { JoinMeetingPage } from "./routes/meetings/join";
-import { StartMeetingPage } from "./routes/meetings/start";
-import { OnboardingPage } from "./routes/onboarding";
 import { OverlayPage } from "./routes/overlay";
-import { RegisterPage } from "./routes/register";
-import { SettingsPage } from "./routes/settings";
 import { AuthGuardSkeleton } from "./routes/shared";
-import { WelcomePage } from "./routes/welcome";
 
 const router = createBrowserRouter([
   {

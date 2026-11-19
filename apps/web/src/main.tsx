@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./app.tsx";
 
-// ─── Larity Console Banner ────────────────────────────────────────────────────
 const art = [
   "  ██╗      █████╗ ██████╗ ██╗████████╗██╗   ██╗",
   "  ██║     ██╔══██╗██╔══██╗██║╚══██╔══╝╚██╗ ██╔╝",
@@ -58,7 +57,6 @@ console.log(
   "%c  Your meeting memory. Organised.\n  ─────────────────────────────────────\n  👋  Curious about how Larity works?\n  🔗  www.itssingularity.com\n  🐦  x.com/amancooks   |   💼  linkedin.com/in/aman-aziz",
   "color: #f7f4ea; font-family: monospace; font-size: 11px; line-height: 1.8;"
 );
-// ─────────────────────────────────────────────────────────────────────────────
 
 const rootElement = document.getElementById("root");
 if (rootElement) {

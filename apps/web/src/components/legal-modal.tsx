@@ -14,11 +14,9 @@ export function LegalModal({
 }: LegalModalProps) {
   const [activeTab, setActiveTab] = useState<"privacy" | "terms">(initialTab);
 
-  // Sync state when modal opens
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab);
-      // Prevent body scroll when modal is open
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
@@ -38,7 +36,6 @@ export function LegalModal({
       className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
       role="dialog"
     >
-      {/* Backdrop */}
       <button
         aria-label="Close modal backdrop"
         className="absolute inset-0 h-full w-full cursor-default bg-zinc-900/30 backdrop-blur-md transition-opacity duration-300"
@@ -47,9 +44,7 @@ export function LegalModal({
         type="button"
       />
 
-      {/* Modal Content container */}
       <div className="fade-in zoom-in-95 relative z-10 flex h-[80vh] max-h-[700px] w-full max-w-3xl animate-in flex-col rounded-2xl border border-zinc-900/10 bg-bg shadow-2xl duration-200">
-        {/* Header */}
         <div className="flex items-center justify-between border-zinc-900/5 border-b px-6 py-4">
           <div className="flex gap-4">
             <button
@@ -85,7 +80,6 @@ export function LegalModal({
           </button>
         </div>
 
-        {/* Scrollable Content Body */}
         <div className="custom-scrollbar flex-1 overflow-y-auto px-6 py-6 font-body text-sm text-zinc-600 leading-relaxed">
           {activeTab === "privacy" ? (
             <div className="space-y-6">
@@ -372,7 +366,6 @@ export function LegalModal({
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex justify-end border-zinc-900/5 border-t bg-zinc-900/[0.01] px-6 py-4">
           <button
             className="cursor-pointer rounded-full bg-zinc-900 px-5 py-2 font-semibold text-bg text-xs shadow-sm transition-colors duration-200 hover:bg-zinc-800"

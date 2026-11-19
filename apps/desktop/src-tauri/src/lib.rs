@@ -142,11 +142,9 @@ mod linux_media_permission {
                 wv.connect_permission_request(move |_view, request: &PermissionRequest| {
                     let Some(media_request) = request.downcast_ref::<UserMediaPermissionRequest>()
                     else {
-                        // Let non-media requests follow WebKit defaults.
                         return false;
                     };
                     if media_request.is_for_video_device() {
-                        // This app only needs microphone access for VAD.
                         request.deny();
                         return true;
                     }
@@ -239,8 +237,6 @@ async fn audio_capture_start(
     mic_device_id: Option<String>,
     sys_device_id: Option<String>,
     role: String,
-    // P4.1: JS creates `new Channel<ArrayBuffer>()` and passes it here;
-    // raw audio frames arrive in the webview with no base64/atob.
     on_audio: Channel<Response>,
 ) -> Result<(), String> {
     let mut is_capturing = state.is_capturing.lock().await;
@@ -248,7 +244,6 @@ async fn audio_capture_start(
         return Err("Capture is already running".to_string());
     }
 
-    // Start engine
     let handles = audio::engine::start_capture(
         app.clone(),
         session_id.clone(),
@@ -258,23 +253,18 @@ async fn audio_capture_start(
         on_audio,
     )?;
 
-    // Keep the stream alive by moving it to a background thread
     let (tx, mut rx) = tokio::sync::mpsc::channel(1);
 
     *state.stop_tx.lock().await = Some(tx);
     *state.current_session.lock().await = Some(session_id);
     *state.sys_active.lock().await = handles._sys_stream.is_some() || handles.sys_task.is_some();
     *state.sys_error.lock().await = handles.sys_error.clone();
-    // P4.3: retain only the drop counter, never the mixer (holding the
-    // queue sender would keep the forward loop alive past stop).
     *state.mixer_drops.lock().await = handles._mixer.as_ref().map(|m| m.dropped_handle());
     *is_capturing = true;
 
     // Stream must not drop before we stop
     tauri::async_runtime::spawn(async move {
-        // Wait for a stop signal
         let _ = rx.recv().await;
-        // Dropping handles will stop the cpal capture and abort tasks
         drop(handles);
     });
 
@@ -315,9 +305,6 @@ async fn audio_capture_status(
     } else {
         "alsa-monitor"
     };
-    // Honest backend: the hard-coded name is only accurate when loopback is
-    // actually running; mic-only capture is labeled as such with the reason
-    // in `error` (P1.13).
     let backend = if sys_active || sys_error.is_none() {
         base_backend.to_string()
     } else {
@@ -355,7 +342,6 @@ async fn create_overlay_window(app: AppHandle, url: String) -> Result<(), String
             None => path.to_string(),
         }
     } else {
-        // Fall back to treating the raw string as a path
         url
     };
 
@@ -376,11 +362,8 @@ async fn create_overlay_window(app: AppHandle, url: String) -> Result<(), String
     .decorations(false)
     .always_on_top(true)
     .resizable(true)
-    // transparent(true) enables transparent webview compositing. On macOS, this is paired
-    // with the `macos-private-api` Cargo feature on the `tauri` dependency in Cargo.toml.
     .transparent(true)
     .visible(false)
-    // Reveal only after the page finishes loading to avoid blank white flash.
     .on_page_load(|win, payload| {
         use tauri::webview::PageLoadEvent;
         if payload.event() == PageLoadEvent::Finished {

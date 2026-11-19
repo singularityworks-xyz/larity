@@ -26,7 +26,6 @@ pub struct SpscRing {
 unsafe impl Sync for SpscRing {}
 
 impl SpscRing {
-    /// Capacity is rounded up to a power of two (mask indexing).
     pub fn new(capacity: usize) -> Self {
         let capacity = capacity.next_power_of_two().max(1024);
         Self {
@@ -49,13 +48,10 @@ impl SpscRing {
         self.len() == 0
     }
 
-    /// Samples dropped (newest) due to overflow, cumulative.
     pub fn dropped(&self) -> u64 {
         self.dropped.load(Ordering::Relaxed)
     }
 
-    /// Copy `data` into the ring. Returns the number of samples accepted;
-    /// the remainder (newest) is dropped and counted.
     pub fn push(&self, data: &[f32]) -> usize {
         if data.is_empty() {
             return 0;
@@ -84,7 +80,6 @@ impl SpscRing {
         n
     }
 
-    /// Drain up to `out.len()` samples. Returns the number actually read.
     pub fn pop(&self, out: &mut [f32]) -> usize {
         if out.is_empty() {
             return 0;
@@ -128,19 +123,16 @@ mod tests {
     #[test]
     fn wraparound_preserves_order() {
         let ring = SpscRing::new(1024);
-        // Fill more than capacity in two pushes to force wrap + overflow.
         let first: Vec<f32> = (0..900).map(|i| i as f32).collect();
         assert_eq!(ring.push(&first), 900);
         let mut drain = vec![0.0; 500];
         assert_eq!(ring.pop(&mut drain), 500);
         let second: Vec<f32> = (900..1600).map(|i| i as f32).collect();
-        // 400 buffered + 700 new = 1100 > 1024 → 76 newest dropped.
         assert_eq!(ring.push(&second), 624);
         assert_eq!(ring.dropped(), 76);
         let mut rest = vec![0.0; 1024];
         let n = ring.pop(&mut rest);
         assert_eq!(n, 1024);
-        // Oldest surviving sample is input[500], newest is input[1523].
         assert_eq!(rest[0], 500.0);
         assert_eq!(rest[n - 1], 900.0 + 623.0);
         assert!(ring.is_empty());

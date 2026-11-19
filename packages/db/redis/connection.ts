@@ -13,15 +13,11 @@ export const redis = new Redis(REDIS_URL, {
   maxRetriesPerRequest: 2,
   enableReadyCheck: true,
   showFriendlyErrorStack: true,
-  // P2.10: batch same-tick commands into fewer round trips automatically.
-  // Safe here: this client carries only non-blocking commands (no BLPOP /
-  // SUBSCRIBE — subscribers use dedicated connections) and no MULTI scripts.
   enableAutoPipelining: true,
 });
 
 redis.on("error", (error: Error) => {
   if (process.env.NODE_ENV === "test") {
-    // Swallow error during unit tests so it doesn't crash the test runner
     return;
   }
   log.error({ err: error }, "Unhandled Redis error event");

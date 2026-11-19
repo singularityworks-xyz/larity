@@ -1,17 +1,16 @@
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
+import { createCommonJobOptions } from "./job-options";
+import {
+  AUDIO_CLEANUP_QUEUE,
+  CLIENT_PERSONA_QUEUE,
+  PRE_MEETING_BRIEF_QUEUE,
+  SUMMARY_QUEUE,
+  TRANSCRIBE_QUEUE,
+} from "./meeting-handoffs";
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
-const MAX_JOB_ATTEMPTS = 3;
-const BACKOFF_DELAY_MS = Number(process.env.BACKOFF_DELAY_MS ?? "5000");
-
-const COMMON_JOB_OPTIONS = {
-  attempts: MAX_JOB_ATTEMPTS,
-  backoff: {
-    type: "exponential" as const,
-    delay: BACKOFF_DELAY_MS,
-  },
-};
+const COMMON_JOB_OPTIONS = createCommonJobOptions();
 
 let redisConnection: IORedis | null = null;
 
@@ -25,31 +24,31 @@ function getRedisConnection(): IORedis {
   return redisConnection;
 }
 
-export const transcribeQueue = new Queue("meeting.transcribe", {
+export const transcribeQueue = new Queue(TRANSCRIBE_QUEUE, {
   // biome-ignore lint/suspicious/noExplicitAny: bullmq bundles ioredis@5.10.1 while workspace has 5.11.1
   connection: getRedisConnection() as any,
   defaultJobOptions: COMMON_JOB_OPTIONS,
 });
 
-export const summaryQueue = new Queue("meeting.summary", {
+export const summaryQueue = new Queue(SUMMARY_QUEUE, {
   // biome-ignore lint/suspicious/noExplicitAny: bullmq bundles ioredis@5.10.1 while workspace has 5.11.1
   connection: getRedisConnection() as any,
   defaultJobOptions: COMMON_JOB_OPTIONS,
 });
 
-export const audioCleanupQueue = new Queue("meeting.cleanupAudio", {
+export const audioCleanupQueue = new Queue(AUDIO_CLEANUP_QUEUE, {
   // biome-ignore lint/suspicious/noExplicitAny: bullmq bundles ioredis@5.10.1 while workspace has 5.11.1
   connection: getRedisConnection() as any,
   defaultJobOptions: COMMON_JOB_OPTIONS,
 });
 
-export const clientPersonaQueue = new Queue("client.personaExtraction", {
+export const clientPersonaQueue = new Queue(CLIENT_PERSONA_QUEUE, {
   // biome-ignore lint/suspicious/noExplicitAny: bullmq bundles ioredis@5.10.1 while workspace has 5.11.1
   connection: getRedisConnection() as any,
   defaultJobOptions: COMMON_JOB_OPTIONS,
 });
 
-export const preMeetingBriefQueue = new Queue("meeting.preMeetingBrief", {
+export const preMeetingBriefQueue = new Queue(PRE_MEETING_BRIEF_QUEUE, {
   // biome-ignore lint/suspicious/noExplicitAny: bullmq bundles ioredis@5.10.1 while workspace has 5.11.1
   connection: getRedisConnection() as any,
   defaultJobOptions: COMMON_JOB_OPTIONS,

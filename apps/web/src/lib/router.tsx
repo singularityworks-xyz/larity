@@ -44,7 +44,6 @@ export function RouterProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Handle hash links on current page
     if (to.startsWith("#")) {
       const el = document.querySelector(to);
       if (el) {
@@ -84,7 +83,6 @@ export function Link({ href, children, onClick, ...props }: LinkProps) {
       onClick(e);
     }
 
-    // Ignore if modified click (cmd/ctrl click or external link)
     if (
       e.defaultPrevented ||
       e.button !== 0 ||

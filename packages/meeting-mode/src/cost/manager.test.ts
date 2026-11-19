@@ -16,7 +16,6 @@ describe("CostManager model pricing", () => {
   test("Tier 2 default model bills at General Compute gpt-oss rates", async () => {
     const manager = new CostManager();
     const total = await manager.recordCost("s1", 1_000_000, 0, "gpt-oss-120b");
-    // 1M input tokens × $0.21/M = 0.21 (flash-lite fallback would be 0.25).
     expect(total).toBeCloseTo(0.21, 10);
   });
 
@@ -41,7 +40,6 @@ describe("CostManager model pricing", () => {
     return manager
       .recordCost("s1", 1_000_000, 1_000_000, "gemini-3.5-flash-lite")
       .then((total) => {
-        // $0.30 input + $2.50 output per 1M tokens.
         expect(total).toBeCloseTo(2.8, 10);
       });
   });
@@ -57,7 +55,6 @@ describe("CostManager tracked costs (P3.3)", () => {
     expect(
       await manager.getTrackedCost("s1", SPECULATIVE_COST_TRACK)
     ).toBeCloseTo(0.21, 10);
-    // Session total includes the tracked spend (budget accuracy).
     expect(await manager.getSessionCost("s1")).toBeCloseTo(0.21, 10);
   });
 

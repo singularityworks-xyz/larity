@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
-import type { Utterance } from "../utterance/types";
+import type { Utterance } from "../transcript/utterances/types";
 
 mock.restore();
 const { TopicManager } = await import("./manager");
@@ -40,7 +40,6 @@ describe("TopicManager persist+publish (P2.10)", () => {
       { enableAsyncSummarization: false }
     );
 
-    // Direct embedding: no provider call.
     const topicId = await manager.assignTopic(makeUtterance());
     expect(hset).toHaveBeenCalledTimes(1);
     expect(publish).toHaveBeenCalledTimes(1);

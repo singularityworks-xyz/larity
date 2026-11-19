@@ -8,7 +8,6 @@ import {
 } from "./session-token";
 
 const OAUTH_PENDING_KEY = "larity.oauth-pending";
-/** Pending OAuth window — 10 minutes. */
 const OAUTH_PENDING_TTL_MS = 10 * 60 * 1000;
 
 let initialized = false;
@@ -41,20 +40,10 @@ function consumeOAuthPending(): boolean {
   }
 }
 
-/**
- * Call before `signIn.social({ callbackURL: "larity://auth/callback" })`
- * so the deep-link handler only accepts tokens for an initiated flow.
- */
 export function prepareOAuthDeepLink(): void {
   markOAuthPending();
 }
 
-/**
- * Listens for `larity://` deep links and completes OAuth by persisting
- * the session token delivered by the callback redirect. Registered once
- * at app startup. Validates pending state and token shape, verifies
- * the session before navigating.
- */
 export function initAuthDeepLink(): void {
   if (initialized || typeof window === "undefined") {
     return;
@@ -67,7 +56,6 @@ export function initAuthDeepLink(): void {
       return;
     }
 
-    // Only accept deep-links that correspond to a recently-initiated OAuth flow.
     if (!consumeOAuthPending()) {
       return;
     }
@@ -81,8 +69,6 @@ export function initAuthDeepLink(): void {
       return;
     }
 
-    // Verify the token is a real session before navigating — prevents fixation.
-    // Dynamic import avoids a circular dependency with `auth-client`.
     import("./auth-client")
       .then(({ authClient }) =>
         authClient.getSession({

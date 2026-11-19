@@ -1,38 +1,31 @@
 import { cors } from "@elysiajs/cors";
-import { cron } from "@elysiajs/cron";
-import { Prisma } from "@larity/db/prisma";
-import { preMeetingBriefQueue } from "@larity/jobs";
 import { Elysia } from "elysia";
 import { env } from "./env";
-import { prisma } from "./lib/prisma";
+import { clientsRoutes } from "./features/clients/clients.routes";
+import { policyGuardrailsRoutes } from "./features/clients/guardrails/policy-guardrails.routes";
+import { documentsRoutes } from "./features/documents/documents.routes";
+import { homeRoutes } from "./features/home/home.routes";
+import { authRoutes } from "./features/identity/auth/auth.routes";
+import { orgsRoutes } from "./features/identity/orgs/orgs.routes";
+import { usersRoutes } from "./features/identity/users/users.routes";
+import { decisionsRoutes } from "./features/meeting-records/decisions/decisions.routes";
+import { importantPointsRoutes } from "./features/meeting-records/important-points/important-points.routes";
+import { openQuestionsRoutes } from "./features/meeting-records/open-questions/open-questions.routes";
+import { tasksRoutes } from "./features/meeting-records/tasks/tasks.routes";
+import { preMeetingBriefSchedule } from "./features/meetings/briefs/brief-schedule";
+import { meetingsRoutes } from "./features/meetings/meetings.routes";
+import { internalSessionRoutes } from "./features/meetings/sessions/internal-session.routes";
+import { meetingSessionRoutes } from "./features/meetings/sessions/meeting-session.routes.plugin";
+import { notificationsRoutes } from "./features/notifications/notifications.routes";
+import { remindersRoutes } from "./features/reminders/reminders.routes";
 import { createControlLogger } from "./logger";
 import { requireAuth } from "./middleware/auth";
 import { requestLogger } from "./middleware/logger";
-import {
-  authRoutes,
-  clientsRoutes,
-  decisionsRoutes,
-  documentsRoutes,
-  homeRoutes,
-  importantPointsRoutes,
-  internalSessionRoutes,
-  meetingSessionRoutes,
-  meetingsRoutes,
-  notificationsRoutes,
-  openQuestionsRoutes,
-  orgsRoutes,
-  policyGuardrailsRoutes,
-  remindersRoutes,
-  tasksRoutes,
-  usersRoutes,
-} from "./routes";
 
 const log = createControlLogger("server");
 
 export const app = new Elysia()
-  // Request logging
   .use(requestLogger)
-  // CORS
   .use(
     cors({
       origin: (request) => {
@@ -41,19 +34,16 @@ export const app = new Elysia()
           return false;
         }
 
-        // Public waitlist route can be accessed from any origin
         const url = new URL(request.url);
         if (url.pathname === "/api/waitlist") {
           return true;
         }
 
-        // Restrict all other routes to trusted frontend origins
         return env.FRONTEND_ORIGINS.includes(origin);
       },
       credentials: true,
     })
   )
-  // Global error handler
   .onError(({ code, error, set }) => {
     log.error({ code, err: error }, "Global error handler");
 
@@ -82,72 +72,25 @@ export const app = new Elysia()
       message: (error as Error).message,
     };
   })
-  // Health check
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
-  // Cron jobs
-  .use(
-    cron({
-      name: "pre-meeting-brief-generator",
-      pattern: "0 * * * *", // Every hour
-      async run() {
-        log.info("Running pre-meeting brief cron...");
-        const now = new Date();
-        const next24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        const meetings = await prisma.meeting.findMany({
-          where: {
-            status: "SCHEDULED",
-            scheduledAt: { gte: now, lte: next24Hours },
-            preMeetingBrief: { equals: Prisma.DbNull },
-          },
-          select: { id: true },
-        });
-
-        for (const meeting of meetings) {
-          try {
-            await preMeetingBriefQueue.add(
-              "generate",
-              { meetingId: meeting.id },
-              { jobId: `pre-meeting-brief-${meeting.id}` }
-            );
-          } catch (error) {
-            log.error(
-              { err: error, meetingId: meeting.id },
-              "Failed to enqueue pre-meeting brief job"
-            );
-          }
-        }
-        if (meetings.length > 0) {
-          log.info({ count: meetings.length }, "Enqueued pre-meeting briefs");
-        }
-      },
-    })
-  )
-  // Auth routes
+  .use(preMeetingBriefSchedule)
   .use(authRoutes)
-  // Internal server-to-server routes (no user auth required)
   .use(internalSessionRoutes)
 
-  // Protected API routes
   .group("/api", (app) =>
     app
       .use(requireAuth)
-      // Core identity
       .use(orgsRoutes)
       .use(clientsRoutes)
       .use(usersRoutes)
       .use(notificationsRoutes)
-      // Home / dashboard
       .use(homeRoutes)
-      // Meeting domain
       .use(meetingsRoutes)
-      // Decisions & tasks
       .use(tasksRoutes)
       .use(decisionsRoutes)
       .use(openQuestionsRoutes)
       .use(importantPointsRoutes)
-      // Policy & compliance
       .use(policyGuardrailsRoutes)
-      // Documents & reminders
       .use(documentsRoutes)
       .use(remindersRoutes)
       .use(meetingSessionRoutes)

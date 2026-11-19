@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "mock-overlay",
   "version": "0.0.5",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.itssingularity.larity.mock",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",

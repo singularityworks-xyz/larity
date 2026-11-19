@@ -1,0 +1,834 @@
+import { Channel, invoke } from "@tauri-apps/api/core";
+import { ArrowLeft } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../../lib/api";
+import { useAuthSession } from "../auth/use-session";
+import { VadManager } from "../meetings/live/capture/vad";
+
+type CorrelationState = "TEAM MEMBER" | "EXTERNAL";
+type VadDebugEventType = "speech_start" | "speech_end";
+
+interface VadDebugEvent {
+  id: string;
+  ts: number;
+  type: VadDebugEventType;
+}
+
+const TEAM_MEMBER_STATE: CorrelationState = "TEAM MEMBER";
+const EXTERNAL_STATE: CorrelationState = "EXTERNAL";
+
+function formatTimestamp(ts: number | null): string {
+  if (!ts) {
+    return "Never";
+  }
+  return new Date(ts).toLocaleTimeString();
+}
+
+function getAmplitudeColor(rms: number): string {
+  if (rms > 0.8) {
+    return "var(--color-danger-fg)";
+  }
+  if (rms > 0.5) {
+    return "var(--color-warning-fg)";
+  }
+  return "var(--color-success-fg)";
+}
+
+type TabId = "guardrails" | "audio";
+
+export type GuardrailRuleType =
+  | "NDA"
+  | "LEGAL"
+  | "TERMINOLOGY"
+  | "INTERNAL"
+  | "CUSTOM";
+export type GuardrailSeverity = "INFO" | "WARNING" | "BLOCK";
+
+export interface PolicyGuardrail {
+  clientId?: string;
+  description: string;
+  id: string;
+  isActive: boolean;
+  name: string;
+  ruleType: GuardrailRuleType;
+  severity: GuardrailSeverity;
+}
+
+function getSeverityLineClass(severity: GuardrailSeverity): string {
+  if (severity === "BLOCK") {
+    return "bg-danger-fg";
+  }
+  if (severity === "WARNING") {
+    return "bg-warning-fg";
+  }
+  return "bg-info-fg";
+}
+
+function getSeverityBadgeClass(severity: GuardrailSeverity): string {
+  if (severity === "BLOCK") {
+    return "border-danger-fg/30 bg-danger-bg/50 text-danger-fg";
+  }
+  if (severity === "WARNING") {
+    return "border-warning-fg/30 bg-warning-bg/50 text-warning-fg";
+  }
+  return "border-info-fg/30 bg-info-bg/50 text-info-fg";
+}
+
+function getGuardrailWrapperClass(isActive: boolean): string {
+  return `group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-bg-subtle transition-all duration-300 hover:border-border-strong hover:bg-bg-elevated hover:shadow-sm ${
+    isActive ? "" : "opacity-60 grayscale-[0.6]"
+  }`;
+}
+
+interface MicLevelController {
+  push: (rms: number) => void;
+  reset: () => void;
+}
+
+const MicLevelBar = memo(function MicLevelBar({
+  controllerRef,
+}: {
+  controllerRef: React.MutableRefObject<MicLevelController | null>;
+}) {
+  const [amplitude, setAmplitude] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  const pendingRef = useRef(0);
+
+  useEffect(() => {
+    const push = (rms: number) => {
+      pendingRef.current = rms;
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null;
+          setAmplitude(pendingRef.current);
+        });
+      }
+    };
+    const reset = () => {
+      pendingRef.current = 0;
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      setAmplitude(0);
+    };
+    controllerRef.current = { push, reset };
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      if (controllerRef.current?.push === push) {
+        controllerRef.current = null;
+      }
+    };
+  }, [controllerRef]);
+
+  const clamped = Math.min(amplitude, 1);
+  const percentLabel = (amplitude * 100).toFixed(0);
+
+  return (
+    <div className="mt-4">
+      <div className="mb-1 flex items-center justify-between">
+        <span className="font-semibold text-[10px] text-fg-subtle uppercase tracking-wider">
+          Mic Level
+        </span>
+        <span className="font-mono text-[10px] text-fg-muted">
+          {percentLabel}%
+        </span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-border-subtle">
+        <div
+          className="h-full rounded-full transition-all duration-75"
+          style={{
+            transform: `scaleX(${clamped})`,
+            transformOrigin: "left",
+            backgroundColor: getAmplitudeColor(amplitude),
+          }}
+        />
+      </div>
+    </div>
+  );
+});
+
+const GuardrailCard = memo(function GuardrailCard({
+  g,
+  toggleGuardrail,
+}: {
+  g: PolicyGuardrail;
+  toggleGuardrail: (id: string) => void;
+}) {
+  const wrapperClass = getGuardrailWrapperClass(g.isActive);
+
+  return (
+    <div className={wrapperClass}>
+      <div
+        className={`absolute top-0 left-0 h-full w-1 ${getSeverityLineClass(
+          g.severity
+        )}`}
+      />
+      <div className="p-5 pl-6">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <h3 className="font-semibold text-fg text-sm tracking-tight">
+              {g.name}
+            </h3>
+            <div className="flex items-center gap-1.5">
+              <span className="rounded-[4px] border border-border-subtle bg-bg px-2 py-0.5 font-bold text-[9px] text-fg-subtle uppercase tracking-widest">
+                {g.ruleType}
+              </span>
+              <span
+                className={`rounded-[4px] border px-2 py-0.5 font-bold text-[9px] uppercase tracking-widest ${getSeverityBadgeClass(
+                  g.severity
+                )}`}
+              >
+                {g.severity}
+              </span>
+            </div>
+          </div>
+
+          <button
+            className={`relative inline-flex h-[18px] w-8 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none ${
+              g.isActive ? "bg-success-fg" : "bg-border-strong"
+            }`}
+            onClick={() => toggleGuardrail(g.id)}
+            type="button"
+          >
+            <span
+              className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow ring-0 transition duration-300 ease-in-out ${
+                g.isActive ? "translate-x-[14px]" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+
+        <p className="mt-3 max-w-[90%] text-[13px] text-fg-muted leading-relaxed">
+          {g.description}
+        </p>
+      </div>
+    </div>
+  );
+});
+
+export function SettingsPage() {
+  const navigate = useNavigate();
+  const vadManager = useMemo(() => new VadManager(), []);
+
+  const { user } = useAuthSession();
+  const orgId = user?.orgId;
+
+  const [activeTab, setActiveTab] = useState<TabId>("guardrails");
+
+  const [isRunning, setIsRunning] = useState(false);
+  const [speechDetected, setSpeechDetected] = useState(false);
+  const [lastSpeechStartTs, setLastSpeechStartTs] = useState<number | null>(
+    null
+  );
+  const [lastSpeechEndTs, setLastSpeechEndTs] = useState<number | null>(null);
+  const amplitudeControllerRef = useRef<MicLevelController | null>(null);
+
+  const [events, setEvents] = useState<VadDebugEvent[]>([]);
+  const [warning, setWarning] = useState("");
+  const [permissionDecision, setPermissionDecision] = useState("loading");
+  const [audioDeviceCount, setAudioDeviceCount] = useState<number | null>(null);
+  const [, setLastPreflightError] = useState<string>("");
+
+  const [guardrails, setGuardrails] = useState<PolicyGuardrail[]>([]);
+  const [isLoadingGuardrails, setIsLoadingGuardrails] = useState(true);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newType, setNewType] = useState<GuardrailRuleType>("CUSTOM");
+  const [newSeverity, setNewSeverity] = useState<GuardrailSeverity>("WARNING");
+
+  const formattedEvents = useMemo(
+    () =>
+      events.map((event) => ({
+        ...event,
+        timeLabel: new Date(event.ts).toLocaleTimeString(),
+      })),
+    [events]
+  );
+
+  const fetchGuardrails = useCallback(async () => {
+    if (!orgId) {
+      return;
+    }
+    try {
+      const data = await api.get<PolicyGuardrail[]>(
+        `/policy-guardrails/?orgId=${orgId}`
+      );
+      const orgGuardrails = data.filter((g: PolicyGuardrail) => !g.clientId);
+      setGuardrails(orgGuardrails);
+    } catch (e) {
+      console.error("Failed to fetch guardrails", e);
+    } finally {
+      setIsLoadingGuardrails(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    fetchGuardrails();
+  }, [fetchGuardrails]);
+
+  useEffect(
+    () => () => {
+      invoke("audio_capture_stop").catch((e) => {
+        console.warn("audio_capture_stop cleanup failed", e);
+      });
+      vadManager.destroy();
+    },
+    [vadManager]
+  );
+
+  useEffect(() => {
+    invoke<string>("linux_media_permission_get_decision")
+      .then((decision) => setPermissionDecision(decision))
+      .catch(() => setPermissionDecision("unknown"));
+  }, []);
+
+  const correlationState: CorrelationState = speechDetected
+    ? TEAM_MEMBER_STATE
+    : EXTERNAL_STATE;
+
+  async function startVADTest() {
+    setWarning("");
+    setLastPreflightError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      for (const track of stream.getTracks()) {
+        track.stop();
+      }
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter((d) => d.kind === "audioinput");
+      setAudioDeviceCount(audioInputs.length);
+
+      try {
+        const audioChannel = new Channel<ArrayBuffer>();
+        audioChannel.onmessage = () => undefined;
+        await invoke("audio_capture_start", {
+          sessionId: "vad-test",
+          micDeviceId: null,
+          sysDeviceId: null,
+          role: "participant",
+          onAudio: audioChannel,
+        });
+      } catch (captureError) {
+        if (!String(captureError).includes("already running")) {
+          throw captureError;
+        }
+      }
+
+      await vadManager.start({
+        onSpeechStart: () => {
+          const now = Date.now();
+          setLastSpeechStartTs(now);
+          setSpeechDetected(true);
+          setEvents((prev) =>
+            [
+              {
+                id: `speech_start_${now}`,
+                type: "speech_start" as const,
+                ts: now,
+              },
+              ...prev,
+            ].slice(0, 30)
+          );
+        },
+        onSpeechEnd: () => {
+          const now = Date.now();
+          setLastSpeechEndTs(now);
+          setLastSpeechStartTs(null);
+          setSpeechDetected(false);
+          amplitudeControllerRef.current?.reset();
+          setEvents((prev) =>
+            [
+              { id: `speech_end_${now}`, type: "speech_end" as const, ts: now },
+              ...prev,
+            ].slice(0, 30)
+          );
+        },
+        onAmplitude: (rms: number) => {
+          amplitudeControllerRef.current?.push(rms);
+        },
+      });
+      setIsRunning(true);
+    } catch (error) {
+      const message = String(error);
+      setWarning(`Unable to start VAD test: ${message}`);
+      setLastPreflightError(message);
+      setIsRunning(false);
+    }
+  }
+
+  function stopVADTest() {
+    vadManager.destroy();
+    invoke("audio_capture_stop").catch((e) => {
+      console.warn("Failed to stop audio capture", e);
+    });
+    setIsRunning(false);
+    setSpeechDetected(false);
+    amplitudeControllerRef.current?.reset();
+  }
+
+  function clearDebugHistory() {
+    setEvents([]);
+    setLastSpeechStartTs(null);
+    setLastSpeechEndTs(null);
+  }
+
+  async function resetPermissionDecision() {
+    try {
+      await invoke("linux_media_permission_reset");
+      const decision = await invoke<string>(
+        "linux_media_permission_get_decision"
+      );
+      setPermissionDecision(decision);
+    } catch (error) {
+      setWarning(`Unable to reset permission decision: ${String(error)}`);
+    }
+  }
+
+  async function handleAddGuardrail(e: React.FormEvent) {
+    e.preventDefault();
+    if (!(newName.trim() && newDesc.trim() && orgId)) {
+      return;
+    }
+    try {
+      const newGuardrail = await api.post<PolicyGuardrail>(
+        "/policy-guardrails/",
+        {
+          orgId,
+          name: newName.trim(),
+          description: newDesc.trim(),
+          ruleType: newType,
+          severity: newSeverity,
+        }
+      );
+      setGuardrails([newGuardrail, ...guardrails]);
+      setIsAdding(false);
+      setNewName("");
+      setNewDesc("");
+      setNewType("CUSTOM");
+      setNewSeverity("WARNING");
+    } catch (e) {
+      setWarning(`Failed to add guardrail: ${String(e)}`);
+    }
+  }
+
+  const toggleGuardrail = useCallback(
+    async (id: string) => {
+      const target = guardrails.find((g) => g.id === id);
+      if (!target) {
+        return;
+      }
+
+      setGuardrails((prev) =>
+        prev.map((g) => (g.id === id ? { ...g, isActive: !g.isActive } : g))
+      );
+
+      try {
+        if (target.isActive) {
+          await api.post(`/policy-guardrails/${id}/deactivate`);
+        } else {
+          await api.post(`/policy-guardrails/${id}/activate`);
+        }
+      } catch (e) {
+        setGuardrails((prev) =>
+          prev.map((g) =>
+            g.id === id ? { ...g, isActive: target.isActive } : g
+          )
+        );
+        setWarning(`Failed to toggle guardrail: ${String(e)}`);
+      }
+    },
+    [guardrails]
+  );
+
+  async function seedDefaultGuardrails() {
+    if (!orgId) {
+      return;
+    }
+    setIsLoadingGuardrails(true);
+    try {
+      await api.post("/policy-guardrails/seed", { orgId });
+      await fetchGuardrails();
+    } catch (e) {
+      setWarning(`Failed to load defaults: ${String(e)}`);
+      setIsLoadingGuardrails(false);
+    }
+  }
+
+  function renderAudioTab() {
+    return (
+      <section className="fade-in slide-in-from-bottom-2 animate-in duration-300">
+        <div className="rounded-xl border border-border bg-bg-subtle p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="font-medium text-fg text-sm">VAD Correlation</h2>
+              <p className="mt-1.5 max-w-[80%] text-fg-muted text-xs leading-relaxed">
+                Speak into your microphone. If VAD detects speech, this test
+                reports <strong>TEAM MEMBER</strong>; otherwise{" "}
+                <strong>EXTERNAL</strong>.
+              </p>
+            </div>
+            <span
+              className={
+                correlationState === TEAM_MEMBER_STATE
+                  ? "rounded-full border border-success-fg/30 bg-success-bg px-2.5 py-1 font-semibold text-[11px] text-success-fg uppercase tracking-wide"
+                  : "rounded-full border border-border-subtle bg-bg px-2.5 py-1 font-semibold text-[11px] text-fg-muted uppercase tracking-wide"
+              }
+            >
+              {correlationState}
+            </span>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <button
+              className="inline-flex h-8 items-center rounded-md border border-border bg-bg px-4 font-medium text-fg text-xs transition-colors hover:bg-bg-elevated disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isRunning}
+              onClick={() => startVADTest().catch(console.error)}
+              type="button"
+            >
+              Start Test
+            </button>
+            <button
+              className="inline-flex h-8 items-center rounded-md border border-border bg-bg px-4 font-medium text-fg text-xs transition-colors hover:bg-bg-elevated disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!isRunning}
+              onClick={stopVADTest}
+              type="button"
+            >
+              Stop Test
+            </button>
+            <div className="ml-2 flex items-center gap-2">
+              <div
+                className={`h-2 w-2 rounded-full ${isRunning ? "animate-pulse bg-success-fg" : "bg-fg-muted"}`}
+              />
+              <span className="font-medium text-fg-muted text-xs">
+                {isRunning ? "Listening..." : "Idle"}
+              </span>
+            </div>
+          </div>
+
+          {isRunning && <MicLevelBar controllerRef={amplitudeControllerRef} />}
+
+          <div className="mt-5 flex items-center justify-between border-border-subtle border-t pt-5">
+            <div className="flex flex-col gap-1">
+              <span className="font-medium text-fg text-xs">
+                Linux Media Permission
+              </span>
+              <span className="text-[11px] text-fg-muted capitalize">
+                {permissionDecision}
+              </span>
+            </div>
+            <button
+              className="inline-flex h-7 items-center rounded font-medium text-[11px] text-fg-muted transition-colors hover:text-fg"
+              onClick={() => resetPermissionDecision().catch(console.error)}
+              type="button"
+            >
+              Reset Decision
+            </button>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-4 rounded-lg border border-border-subtle bg-bg p-4 text-xs">
+            <div className="flex flex-col gap-1.5 text-fg-muted">
+              <span className="font-semibold text-[10px] text-fg-subtle uppercase tracking-wider">
+                Hardware
+              </span>
+              <p>
+                Audio inputs:{" "}
+                <span className="font-medium text-fg">
+                  {audioDeviceCount === null ? "n/a" : audioDeviceCount}
+                </span>
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5 text-fg-muted">
+              <span className="font-semibold text-[10px] text-fg-subtle uppercase tracking-wider">
+                Timings
+              </span>
+              <p>
+                Speech Start:{" "}
+                <span className="text-fg">
+                  {formatTimestamp(lastSpeechStartTs)}
+                </span>
+              </p>
+              <p>
+                Speech End:{" "}
+                <span className="text-fg">
+                  {formatTimestamp(lastSpeechEndTs)}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-lg border border-border bg-bg">
+            <div className="flex items-center justify-between border-border border-b bg-bg-elevated px-4 py-2">
+              <p className="font-medium text-fg text-xs uppercase tracking-wide">
+                Event Log
+              </p>
+              <button
+                className="font-medium text-[11px] text-fg-subtle transition-colors hover:text-fg"
+                onClick={clearDebugHistory}
+                type="button"
+              >
+                Clear
+              </button>
+            </div>
+            <div className="min-h-[120px] bg-bg p-2">
+              {formattedEvents.length === 0 ? (
+                <div className="flex h-full items-center justify-center pt-8">
+                  <p className="text-[11px] text-fg-muted italic">
+                    No events recorded
+                  </p>
+                </div>
+              ) : (
+                <ul className="max-h-[200px] space-y-1.5 overflow-y-auto pr-2">
+                  {formattedEvents.map((event) => (
+                    <li
+                      className="flex items-center justify-between rounded px-2 py-1.5 text-[11px] transition-colors hover:bg-bg-subtle"
+                      key={event.id}
+                    >
+                      <span
+                        className={`font-semibold uppercase tracking-wider ${event.type === "speech_start" ? "text-success-fg" : "text-fg-subtle"}`}
+                      >
+                        {event.type.replace("_", " ")}
+                      </span>
+                      <span className="font-mono text-fg-muted">
+                        {event.timeLabel}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function renderGuardrailsTab() {
+    return (
+      <section className="fade-in slide-in-from-bottom-2 animate-in duration-300">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-fg">Active Guardrails</h2>
+            <p className="mt-1.5 max-w-[85%] text-fg-muted text-xs leading-relaxed">
+              Define the compliance rules and operational boundaries that the
+              LLM enforces during all organizational meetings.
+            </p>
+          </div>
+          <button
+            className="inline-flex h-8 items-center justify-center rounded-md bg-accent px-4 font-semibold text-[11px] text-fg-on-accent tracking-wide transition-all hover:scale-[1.02] hover:bg-accent-hover active:scale-95"
+            onClick={() => setIsAdding(!isAdding)}
+            type="button"
+          >
+            {isAdding ? "Cancel" : "+ Add Policy"}
+          </button>
+        </div>
+
+        {isAdding && (
+          <form
+            className="slide-in-from-top-4 mb-8 animate-in overflow-hidden rounded-xl border border-border bg-bg-elevated shadow-xl duration-300"
+            onSubmit={handleAddGuardrail}
+          >
+            <div className="border-border border-b bg-bg-subtle px-5 py-4">
+              <h3 className="font-semibold text-fg text-sm">
+                Create New Guardrail
+              </h3>
+            </div>
+
+            <div className="p-5">
+              <div className="mb-5 grid grid-cols-1 gap-5 md:grid-cols-[1fr_200px]">
+                <div className="flex flex-col gap-2">
+                  <label
+                    className="font-semibold text-[11px] text-fg-muted uppercase tracking-wider"
+                    htmlFor="policy-name"
+                  >
+                    Policy Name
+                  </label>
+                  <input
+                    className="rounded-md border border-border bg-bg px-3 py-2 text-fg text-sm outline-none transition-colors placeholder:text-fg-subtle focus:border-ring"
+                    id="policy-name"
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="e.g. strict internal NDA"
+                    required
+                    value={newName}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-1">
+                  <div className="flex flex-col gap-2">
+                    <label
+                      className="font-semibold text-[11px] text-fg-muted uppercase tracking-wider"
+                      htmlFor="rule-type"
+                    >
+                      Rule Type
+                    </label>
+                    <select
+                      className="rounded-md border border-border bg-bg px-3 py-2 text-fg text-sm outline-none transition-colors focus:border-ring"
+                      id="rule-type"
+                      onChange={(e) =>
+                        setNewType(e.target.value as GuardrailRuleType)
+                      }
+                      value={newType}
+                    >
+                      <option value="NDA">NDA</option>
+                      <option value="LEGAL">Legal</option>
+                      <option value="TERMINOLOGY">Terminology</option>
+                      <option value="INTERNAL">Internal</option>
+                      <option value="CUSTOM">Custom</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label
+                      className="font-semibold text-[11px] text-fg-muted uppercase tracking-wider"
+                      htmlFor="severity"
+                    >
+                      Severity
+                    </label>
+                    <select
+                      className="rounded-md border border-border bg-bg px-3 py-2 text-fg text-sm outline-none transition-colors focus:border-ring"
+                      id="severity"
+                      onChange={(e) =>
+                        setNewSeverity(e.target.value as GuardrailSeverity)
+                      }
+                      value={newSeverity}
+                    >
+                      <option value="INFO">Info</option>
+                      <option value="WARNING">Warning</option>
+                      <option value="BLOCK">Block</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-6 flex flex-col gap-2">
+                <label
+                  className="font-semibold text-[11px] text-fg-muted uppercase tracking-wider"
+                  htmlFor="enforcement-criteria"
+                >
+                  Enforcement Criteria
+                </label>
+                <textarea
+                  className="resize-none rounded-md border border-border bg-bg px-3 py-2 text-fg text-sm outline-none transition-colors placeholder:text-fg-subtle focus:border-ring"
+                  id="enforcement-criteria"
+                  onChange={(e) => setNewDesc(e.target.value)}
+                  placeholder="Describe the exact criteria for this rule. The LLM will use this to evaluate live speech and generate compliance alerts."
+                  required
+                  rows={3}
+                  value={newDesc}
+                />
+              </div>
+
+              <div className="flex justify-end border-border-subtle border-t pt-4">
+                <button
+                  className="inline-flex h-8 items-center justify-center rounded-md bg-accent px-5 font-semibold text-fg-on-accent text-xs transition-transform hover:scale-[1.02] active:scale-95"
+                  type="submit"
+                >
+                  Save Guardrail
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
+
+        <div className="grid grid-cols-1 gap-4">
+          {isLoadingGuardrails ? (
+            <div className="flex justify-center py-12">
+              <span className="animate-pulse font-medium text-fg-muted text-xs">
+                Loading guardrails...
+              </span>
+            </div>
+          ) : (
+            guardrails.map((g) => (
+              <GuardrailCard
+                g={g}
+                key={g.id}
+                toggleGuardrail={toggleGuardrail}
+              />
+            ))
+          )}
+
+          {guardrails.length === 0 && !isAdding && !isLoadingGuardrails && (
+            <div className="fade-in flex animate-in flex-col items-center justify-center rounded-xl border border-border border-dashed bg-bg-subtle py-16 text-center duration-500">
+              <p className="font-medium text-fg text-sm">
+                No guardrails active
+              </p>
+              <p className="mt-1.5 mb-5 text-fg-muted text-xs">
+                Create rules to enforce compliance across all meetings.
+              </p>
+              <button
+                className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-bg px-5 font-semibold text-[11px] text-fg uppercase tracking-wide transition-all hover:scale-[1.02] hover:bg-bg-elevated active:scale-95"
+                onClick={seedDefaultGuardrails}
+                type="button"
+              >
+                Load Default Policies
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <main className="mx-auto flex w-full max-w-[860px] flex-col gap-6 px-2 pt-4 pb-12">
+      <div className="flex items-center gap-4 border-border border-b pb-4">
+        <button
+          aria-label="Go back"
+          className="group flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border bg-bg-elevated text-fg-subtle transition-all [-webkit-app-region:no-drag] [app-region:no-drag] hover:bg-bg-subtle hover:text-fg active:scale-95"
+          onClick={() => navigate(-1)}
+          type="button"
+        >
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+        </button>
+        <div className="flex-grow">
+          <h1 className="font-semibold text-fg text-lg tracking-tight">
+            Configuration
+          </h1>
+          <p className="mt-1 text-fg-muted text-xs">
+            Manage system diagnostics and global organization policies.
+          </p>
+        </div>
+      </div>
+
+      {warning && (
+        <p className="rounded-md border border-warning-fg/30 bg-warning-bg px-3 py-2.5 font-medium text-warning-fg text-xs">
+          {warning}
+        </p>
+      )}
+
+      <div className="flex items-center gap-1 border-border-subtle border-b pb-px">
+        <button
+          className={`relative top-px border-b-2 px-4 py-2 font-medium text-xs tracking-wide transition-all ${
+            activeTab === "guardrails"
+              ? "border-accent text-fg"
+              : "border-transparent text-fg-subtle hover:border-border-strong hover:text-fg"
+          }`}
+          onClick={() => setActiveTab("guardrails")}
+          type="button"
+        >
+          Guardrails & Policy
+        </button>
+        <button
+          className={`relative top-px border-b-2 px-4 py-2 font-medium text-xs tracking-wide transition-all ${
+            activeTab === "audio"
+              ? "border-accent text-fg"
+              : "border-transparent text-fg-subtle hover:border-border-strong hover:text-fg"
+          }`}
+          onClick={() => setActiveTab("audio")}
+          type="button"
+        >
+          Audio & VAD
+        </button>
+      </div>
+
+      <div className="pt-2">
+        {activeTab === "guardrails" ? renderGuardrailsTab() : renderAudioTab()}
+      </div>
+    </main>
+  );
+}

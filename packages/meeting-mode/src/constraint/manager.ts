@@ -2,7 +2,7 @@ import { redisKeys } from "@larity/db/redis/keys";
 import type { Redis } from "ioredis";
 import { LEDGER_SNAPSHOT_DEBOUNCE_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
-import type { Utterance } from "../utterance/types";
+import type { Utterance } from "../transcript/utterances/types";
 import { ConstraintLedger, type ConstraintLedgerOptions } from "./ledger";
 import type {
   Constraint,
@@ -64,9 +64,6 @@ export class ConstraintManager {
     const ledger = this.getLedger(sessionId);
     const fromSnapshot = await ledger.hydrateFromSnapshot();
 
-    // P2.10: the pipeline engine already fetched the context — reuse it
-    // instead of a second Redis GET. `undefined` (e.g. processUtterance path)
-    // keeps the legacy self-read.
     const payload =
       contextPayload === undefined
         ? await this.readContextPayload(sessionId)

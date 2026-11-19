@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "bun --env-file=../../.env --watch src/index.ts",
+    "test": "bun test",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {

@@ -1,17 +1,3 @@
-/**
- * stress-test.ts — Load Testing for Realtime Plane
- *
- * Creates multiple concurrent WebSocket connections and sends
- * audio frames at high frequency to test server capacity.
- *
- * Usage:
- *   bun run apps/realtime/scripts/stress-test.ts [connections] [framesPerSec] [durationSec]
- *
- * Examples:
- *   bun run apps/realtime/scripts/stress-test.ts 10 20 30
- *   bun run apps/realtime/scripts/stress-test.ts 50 10 60
- */
-
 const connectionCount = Number.parseInt(process.argv[2] || "10", 10);
 const framesPerSecond = Number.parseInt(process.argv[3] || "20", 10);
 const durationSeconds = Number.parseInt(process.argv[4] || "10", 10);
@@ -30,7 +16,6 @@ console.log(
 );
 console.log("----------------------------------------\n");
 
-// Statistics
 const stats = {
   connected: 0,
   disconnected: 0,
@@ -39,7 +24,6 @@ const stats = {
   framesPerConnection: new Map<string, number>(),
 };
 
-// Create fake audio frame
 function createFakeAudioFrame(size = 512): ArrayBuffer {
   const buffer = new ArrayBuffer(size);
   const view = new Uint8Array(buffer);
@@ -49,7 +33,6 @@ function createFakeAudioFrame(size = 512): ArrayBuffer {
   return buffer;
 }
 
-// Create a single connection
 function createConnection(id: number): Promise<void> {
   return new Promise((resolve) => {
     const sessionId = `stress-test-${id}-${Date.now()}`;
@@ -64,7 +47,6 @@ function createConnection(id: number): Promise<void> {
         `[conn-${id}] Connected (${stats.connected}/${connectionCount})`
       );
 
-      // Start sending frames
       intervalId = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
           const frame = createFakeAudioFrame();
@@ -88,7 +70,6 @@ function createConnection(id: number): Promise<void> {
       resolve();
     };
 
-    // Schedule close after duration
     setTimeout(() => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.close(1000, "Test complete");
@@ -97,7 +78,6 @@ function createConnection(id: number): Promise<void> {
   });
 }
 
-// Progress reporter
 const progressInterval = setInterval(() => {
   const elapsed = Math.floor((Date.now() - startTime) / 1000);
   console.log(
@@ -105,19 +85,15 @@ const progressInterval = setInterval(() => {
   );
 }, 2000);
 
-// Run the test
 const startTime = Date.now();
 console.log("[stress] Starting connections...\n");
 
-// Stagger connection creation to avoid overwhelming the server
 const connectionPromises: Promise<void>[] = [];
 for (let i = 0; i < connectionCount; i++) {
-  // Stagger by 50ms per connection
   await new Promise((r) => setTimeout(r, 50));
   connectionPromises.push(createConnection(i));
 }
 
-// Wait for all connections to complete
 Promise.all(connectionPromises).then(() => {
   clearInterval(progressInterval);
 

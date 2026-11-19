@@ -9,7 +9,6 @@ const envPath = join(projectRoot, ".env");
 
 config({ path: envPath });
 
-// Environment variable validation
 const requiredEnvVars = ["DATABASE_URL"] as const;
 
 export function validateEnv() {
@@ -62,6 +61,3 @@ export const env = {
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   PERSONAL_EMAIL: process.env.PERSONAL_EMAIL,
 };
-
-// Log unused optionalEnvVars to satisfy linter or just remove it if it's purely for documentation
-// For now, let's keep it and use it in validation if we want, but let's just make sure the env object has them.

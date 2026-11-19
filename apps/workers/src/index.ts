@@ -1,13 +1,16 @@
 import { checkRedisHealth, connectRedis } from "@larity/db/redis";
 import { Elysia } from "elysia";
 import { rootLogger } from "./logger";
-import type { BaseWorker } from "./worker";
+import {
+  createRegisteredWorkers,
+  type RegisteredWorker,
+} from "./runtime/registry";
 
 const PORT = Number.parseInt(process.env.WORKERS_PORT ?? "8080", 10);
 
-const activeWorkers: BaseWorker[] = [];
+const activeWorkers: RegisteredWorker[] = [];
 
-export function registerWorker(worker: BaseWorker): void {
+export function registerWorker(worker: RegisteredWorker): void {
   activeWorkers.push(worker);
 }
 
@@ -21,20 +24,29 @@ export async function startWorkersApp(): Promise<void> {
   }
   rootLogger.info("Redis connected");
 
-  // Instantiate and register stub workers
-  const { TranscribeWorker } = await import("./transcribe.worker");
-  const { SummaryWorker } = await import("./summary.worker");
-  const { AudioCleanupWorker } = await import("./audio-cleanup.worker");
-  const { ClientPersonaWorker } = await import("./client-persona.worker");
+  const { TranscribeWorker } = await import(
+    "./jobs/transcribe/transcribe.worker"
+  );
+  const { SummaryWorker } = await import("./jobs/summary/summary.worker");
+  const { AudioCleanupWorker } = await import(
+    "./jobs/audio-cleanup/audio-cleanup.worker"
+  );
+  const { ClientPersonaWorker } = await import(
+    "./jobs/client-persona/client-persona.worker"
+  );
+  const { PreMeetingBriefWorker } = await import(
+    "./jobs/pre-meeting-brief/pre-meeting-brief.worker"
+  );
 
-  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
-  registerWorker(new TranscribeWorker() as any);
-  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
-  registerWorker(new SummaryWorker() as any);
-  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
-  registerWorker(new AudioCleanupWorker() as any);
-  // biome-ignore lint/suspicious/noExplicitAny: workers have different generic type params
-  registerWorker(new ClientPersonaWorker() as any);
+  for (const worker of createRegisteredWorkers({
+    TranscribeWorker,
+    SummaryWorker,
+    AudioCleanupWorker,
+    ClientPersonaWorker,
+    PreMeetingBriefWorker,
+  })) {
+    registerWorker(worker);
+  }
 
   const app = new Elysia()
     .get("/health", async () => {
