@@ -1,7 +1,6 @@
 import type { Alert } from "../alerts/types";
 import { createAlert } from "../alerts/types";
-import type { Commitment } from "../commitment/types";
-import type { Constraint, PreloadedContextPayload } from "../constraint/types";
+import type { PreloadedContextPayload } from "../constraint/types";
 import { CostManager } from "../cost/manager";
 import {
   GEMINI_TIER4_MODEL,
@@ -11,6 +10,24 @@ import {
 import { createMeetingModeLogger } from "../logger";
 import type { TopicState } from "../topic/types";
 import type { Utterance } from "../transcript/utterances/types";
+import type {
+  CommitmentManagerAdapter,
+  ConstraintManagerAdapter,
+  PipelineEngineDependencies,
+  PipelineEvaluationResult,
+  PipelineFinalizerAdapter,
+  Tier4AlertsPublisher,
+} from "./engine-types";
+import {
+  applyBacklogShed,
+  applyCostGates,
+  applySpeakerAwareGate,
+  isHighSignal,
+  shouldRunLiveAnalysis,
+  tier4PassesStructuralOverride,
+} from "./evaluation-gates";
+import { evaluateLegacyReasoning } from "./legacy-reasoning";
+import { LiveCommitOrder } from "./live/commit-order";
 import type { LiveAnalyzer } from "./live/live-analyzer";
 import { LiveEvaluationScheduler } from "./live/live-scheduler";
 import { incrementCounter, recordHistogram } from "./metrics";
@@ -20,10 +37,7 @@ import type { SpeakerStateAlert } from "./speaker-state/types";
 import { PredictivePreloader } from "./speculative/predictive-preloader";
 import { SpeculativeProcessor } from "./speculative/processor";
 import type { PartialUtterance } from "./speculative/types";
-import {
-  getSpeakerProcessingPriority,
-  SPEAKER_AWARE_TIER4_CONFIDENCE,
-} from "./speculative/types";
+import { getSpeakerProcessingPriority } from "./speculative/types";
 import {
   Tier1StructuralDetector,
   textMatchesTier1PricingPath,
@@ -42,164 +56,18 @@ import type {
   Tier4Response,
 } from "./types";
 
+export type {
+  PipelineEngineDependencies,
+  PipelineEvaluationResult,
+  Tier4AlertsPublisher,
+  Tier4EvaluationSummary,
+} from "./engine-types";
+
 const log = createMeetingModeLogger("pipeline-engine");
 
 const PERF = {
   now: () => performance.now(),
 };
-
-/**
- * Backlog shed threshold (P2.8): when an utterance is dequeued with more
- * than this many evaluations still queued behind it, Tier 4 is skipped for
- * it (Tier 1–3 still run). Bounds per-session alert latency under bursts
- * instead of cascading one slow Tier 4 after another.
- */
-const TIER4_BACKLOG_SKIP_DEPTH = 2;
-
-export interface Tier4AlertsPublisher {
-  publish(sessionId: string, alert: Alert): Promise<void>;
-}
-
-interface PipelineFinalizerAdapter {
-  applyTier2TopicDelta(
-    sessionId: string,
-    topicId: string | undefined,
-    delta: NonNullable<Tier2Classification["topicDelta"]>
-  ): Promise<void>;
-  getRecentEmbeddings(sessionId: string, limit?: number): number[][];
-  getRecentSameSpeakerText(
-    sessionId: string,
-    speakerId: string,
-    currentUtteranceId?: string,
-    limit?: number
-  ): string[];
-  getRecentUtterancesChronological(
-    sessionId: string,
-    options?: { excludeUtteranceId?: string; limit?: number }
-  ): Utterance[];
-}
-
-interface ConstraintManagerAdapter {
-  ensureHydrated(
-    sessionId: string,
-    contextPayload?: PreloadedContextPayload | null
-  ): Promise<void>;
-  getAll(sessionId: string): Constraint[];
-  processUtterance(utterance: Utterance): Promise<unknown>;
-}
-
-interface CommitmentManagerAdapter {
-  addCommitment(
-    sessionId: string,
-    input: {
-      statement: string;
-      normalizedStatement?: string;
-      speaker: Utterance["speaker"];
-      topicId: string;
-      type:
-        | "timeline"
-        | "scope"
-        | "resource"
-        | "price"
-        | "capability"
-        | "general";
-      timestamp: number;
-      utteranceId: string;
-      embedding: number[];
-      extractedData?: {
-        deadline?: string;
-        quantity?: number;
-        scope?: string[];
-        amount?: number;
-        currency?: string;
-      };
-    }
-  ): Promise<unknown>;
-  getAll(sessionId: string): Commitment[];
-  hydrateSession(sessionId: string): Promise<unknown>;
-  search(
-    sessionId: string,
-    embedding: number[],
-    options?: { k?: number; minSimilarity?: number }
-  ): Array<{ commitment: { id: string }; similarity: number }>;
-}
-
-export interface PipelineEngineDependencies {
-  commitmentManager: CommitmentManagerAdapter;
-  constraintManager: ConstraintManagerAdapter;
-  costManager?: CostManager;
-  finalizer: PipelineFinalizerAdapter;
-  getAgendaItems?: (sessionId: string) => string[];
-  getContextPayload: (
-    sessionId: string
-  ) => Promise<PreloadedContextPayload | null>;
-  getCurrentTopicLabel?: (
-    sessionId: string,
-    topicId: string | undefined
-  ) => Promise<string | undefined>;
-  getKnownClientMembers?: (
-    sessionId: string
-  ) => Promise<Array<{ id: string; name: string }>>;
-  getTopics?: (sessionId: string) => TopicState[];
-  /** Contextual alert decision runs independently of detailed extraction. */
-  liveAnalyzer?: LiveAnalyzer;
-  liveConcurrency?: number;
-  /** Hook after pipeline session teardown (e.g. clear session-scoped alert publishers) */
-  onPipelineSessionClosed?: (sessionId: string) => void;
-  onSpeakerIdentityGuessed?: (
-    sessionId: string,
-    index: string,
-    memberId: string
-  ) => void;
-  onUtteranceRetracted?: (sessionId: string, utteranceId: string) => void;
-  predictivePreloader?: PredictivePreloader;
-  preFilter?: PreFilter;
-  speakerStateTracker?: SpeakerStateTracker;
-  speculativeProcessor?: SpeculativeProcessor;
-  tier1?: Tier1StructuralDetector;
-  tier2?: Tier2Classifier;
-  tier2Cache?: Tier2SemanticCache;
-  tier3?: Tier3SearchEngine;
-  tier4?: Tier4DeepReasoner;
-  tier4Alerts?: Tier4AlertsPublisher;
-}
-
-export interface Tier4EvaluationSummary {
-  invoked: boolean;
-  latencyMs?: number;
-  surfaced?: boolean;
-}
-
-export interface PipelineEvaluationResult {
-  dropped: boolean;
-  dropReason?: string;
-  latencies: {
-    preFilterMs: number;
-    retrievalMs?: number;
-    analysisMs?: number;
-    tier1Ms?: number;
-    tier2Ms?: number;
-    gateMs?: number;
-    tier4Ms?: number;
-    pipelineBudgetMs: number;
-  };
-  mode?: "live" | "legacy";
-  retractUtteranceId?: string;
-  runTier4: boolean;
-  sessionCost?: number;
-  speakerPriority?: "high" | "standard" | "low";
-  speculativeHit?: boolean;
-  speculativeMismatchRatio?: number;
-  tier1?: Tier1Result;
-  tier2?: Tier2Classification;
-  tier2CacheHit?: boolean;
-  /** Mirrors Tier 2 classifier `shouldStopForDeepReasoning` (shown in traces / QA) */
-  tier2StopDeepReasoning?: boolean;
-  tier3?: Tier3Result;
-  tier4Outcome?: Tier4EvaluationSummary;
-  /** Raw Tier 4 model output — **omit** downstream / logs for privacy unless required */
-  tier4Response?: Tier4Response | null;
-}
 
 interface SessionPipelineState {
   contextPayload: PreloadedContextPayload | null;
@@ -245,7 +113,7 @@ export class MeetingPipelineEngine {
   private readonly evaluationDepth = new Map<string, number>();
   private readonly liveAnalyzer?: LiveAnalyzer;
   private readonly liveScheduler: LiveEvaluationScheduler;
-  private readonly liveCommitChains = new Map<string, Promise<void>>();
+  private readonly liveCommitOrder = new LiveCommitOrder();
   private readonly sessionControllers = new Map<string, AbortController>();
   private readonly hydrationTasks = new Map<string, Promise<void>>();
 
@@ -528,7 +396,7 @@ export class MeetingPipelineEngine {
     }
 
     const _gateStart = PERF.now();
-    const highSignal = this.isHighSignal(tier1, tier2.classification);
+    const highSignal = isHighSignal(tier1, tier2.classification);
 
     // Respect Tier 2 "low-value / filler" gate for the whole Tier 4 call: Tier 3
     // ledger/memory hits can otherwise force Tier 4 on every greeting when embeddings
@@ -542,11 +410,11 @@ export class MeetingPipelineEngine {
       tier2.shouldStopForDeepReasoning &&
       !(tier2.isFallback === true && tier3.forceTier4);
     let runTier4 =
-      this.tier4PassesStructuralOverride(tier1, tier2Stop) &&
+      tier4PassesStructuralOverride(tier1, tier2Stop) &&
       (highSignal || tier3.forceTier4);
 
     // --- Speaker-aware Tier 4 gate ---
-    runTier4 = this.applySpeakerAwareGate(
+    runTier4 = applySpeakerAwareGate(
       runTier4,
       speakerPriority,
       tier1,
@@ -559,7 +427,8 @@ export class MeetingPipelineEngine {
     );
 
     const { runTier4: gatedTier4, suppressReason: _tier4SuppressReason } =
-      this.applyCostGates(
+      applyCostGates(
+        this.costManager,
         runTier4,
         utterance.sessionId,
         sessionCost,
@@ -567,16 +436,23 @@ export class MeetingPipelineEngine {
         tier2.classification
       );
     runTier4 = gatedTier4;
-    runTier4 = this.applyBacklogShed(runTier4, backlogDepth, utterance);
+    runTier4 = applyBacklogShed(runTier4, backlogDepth, utterance);
 
     const { tier4Response, tier4Outcome, tier4Ms } =
-      await this.evaluateTier4AfterGate({
+      await evaluateLegacyReasoning({
         utterance,
         runTier4,
-        tier1,
-        tier2Classification: tier2.classification,
-        tier3,
-        payload,
+        tier4: this.tier4,
+        tier4Alerts: this.tier4Alerts,
+        costManager: this.costManager,
+        assembleContext: () =>
+          this.makeLegacyContext(
+            utterance,
+            tier1,
+            tier2.classification,
+            tier3,
+            payload
+          ),
       });
 
     if (tier4Outcome.invoked && tier4Ms !== undefined) {
@@ -674,14 +550,7 @@ export class MeetingPipelineEngine {
           u.timestamp <= utterance.timestamp
       )
       .map((u) => ({ ...u, speaker: { ...u.speaker } }));
-    const previousCommit =
-      this.liveCommitChains.get(sessionId) ?? Promise.resolve();
-    let releaseCommit: () => void = () => undefined;
-    const finished = new Promise<void>((resolve) => {
-      releaseCommit = resolve;
-    });
-    const commitTail = previousCommit.then(() => finished);
-    this.liveCommitChains.set(sessionId, commitTail);
+    const commit = this.liveCommitOrder.begin(sessionId);
     try {
       const retrievalStart = PERF.now();
       // Hydration and this utterance's embedding do not depend on one another.
@@ -709,7 +578,12 @@ export class MeetingPipelineEngine {
       if (signal.aborted) {
         return emptyResult();
       }
-      const runAnalysis = this.shouldRunLiveAnalysis(sessionCost, tier1, tier3);
+      const runAnalysis = shouldRunLiveAnalysis(
+        this.costManager,
+        sessionCost,
+        tier1,
+        tier3
+      );
       const unknown: Tier2Classification = {
         intent: "general",
         commitmentType: null,
@@ -792,7 +666,7 @@ export class MeetingPipelineEngine {
       );
       // Alerts publish as soon as they are validated. State updates retain arrival
       // order so topic deltas and speaker trajectories cannot move backwards.
-      await previousCommit;
+      await commit.ready;
       if (signal.aborted) {
         return emptyResult();
       }
@@ -826,14 +700,7 @@ export class MeetingPipelineEngine {
         },
       };
     } finally {
-      releaseCommit();
-      if (this.liveCommitChains.get(sessionId) === commitTail) {
-        commitTail.then(() => {
-          if (this.liveCommitChains.get(sessionId) === commitTail) {
-            this.liveCommitChains.delete(sessionId);
-          }
-        });
-      }
+      commit.release();
     }
   }
 
@@ -871,25 +738,6 @@ export class MeetingPipelineEngine {
         );
       return outcome.classification;
     });
-  }
-
-  private shouldRunLiveAnalysis(
-    cost: number,
-    tier1: Tier1Result,
-    tier3: Tier3Result
-  ): boolean {
-    if (this.costManager.isHardCapReached(cost)) {
-      return false;
-    }
-    if (!this.costManager.isWarningMode(cost)) {
-      return true;
-    }
-    return (
-      tier1.technicalHit ||
-      tier1.blocklistHit ||
-      tier1.pricingHit ||
-      tier3.forceTier4
-    );
   }
 
   private async publishLiveAlert(
@@ -953,99 +801,6 @@ export class MeetingPipelineEngine {
       );
     }
     return this.publishSpeakerStateAlerts(utterance, classification);
-  }
-
-  private isHighSignal(
-    tier1: Tier1Result,
-    tier2Classification: Tier2Classification
-  ): boolean {
-    return (
-      tier1.blocklistHit ||
-      tier1.technicalHit ||
-      tier1.pricingHit ||
-      tier2Classification.intent === "commitment" ||
-      tier2Classification.intent === "decision" ||
-      tier2Classification.intent === "concern" ||
-      tier2Classification.riskSignals.length > 0
-    );
-  }
-
-  /**
-   * Structural Tier 1 hits (API key, password, pricing, blocklist) override
-   * Tier 2's "stop deep reasoning" signal. An API key leaked in casual filler
-   * should still reach Tier 4 for information_risk assessment.
-   */
-  private tier4PassesStructuralOverride(
-    tier1: Tier1Result,
-    shouldStop: boolean
-  ): boolean {
-    if (!shouldStop) {
-      return true;
-    }
-    return tier1.technicalHit || tier1.blocklistHit || tier1.pricingHit;
-  }
-
-  private applySpeakerAwareGate(
-    runTier4: boolean,
-    speakerPriority: "high" | "standard" | "low",
-    tier1: Tier1Result,
-    tier2Classification: Tier2Classification
-  ): boolean {
-    if (!runTier4 || speakerPriority !== "low") {
-      return runTier4;
-    }
-
-    if (tier1.blocklistHit || tier1.technicalHit) {
-      return true;
-    }
-
-    const threshold = SPEAKER_AWARE_TIER4_CONFIDENCE[speakerPriority];
-    if (tier2Classification.confidence < threshold) {
-      log.debug(
-        {
-          speakerPriority,
-          confidence: tier2Classification.confidence,
-          threshold,
-        },
-        "Speaker-aware gate: Tier 4 suppressed for low-priority speaker"
-      );
-      return false;
-    }
-
-    return true;
-  }
-
-  private applyCostGates(
-    runTier4: boolean,
-    sessionId: string,
-    sessionCost: number,
-    tier1: Tier1Result,
-    tier2Classification: Tier2Classification
-  ): { runTier4: boolean; suppressReason: string | undefined } {
-    if (this.costManager.isHardCapReached(sessionCost)) {
-      log.info(
-        { sessionId, sessionCost, limit: 2.0 },
-        "Cost hard cap reached — Tier 4 disabled"
-      );
-      return { runTier4: false, suppressReason: "cost_hard_cap" };
-    }
-
-    if (
-      this.costManager.isWarningMode(sessionCost) &&
-      runTier4 &&
-      !tier1.blocklistHit &&
-      !tier1.technicalHit &&
-      !tier1.pricingHit &&
-      tier2Classification.riskSignals.length === 0
-    ) {
-      log.info(
-        { sessionId, sessionCost, threshold: 1.6 },
-        "Cost warning mode — Tier 4 suppressed (no risk signals)"
-      );
-      return { runTier4: false, suppressReason: "cost_warning" };
-    }
-
-    return { runTier4, suppressReason: undefined };
   }
 
   async evaluatePartial(partial: PartialUtterance): Promise<void> {
@@ -1116,160 +871,37 @@ export class MeetingPipelineEngine {
     return published;
   }
 
-  /**
-   * Backlog shed (P2.8): when the queue behind this utterance is deep, skip
-   * its Tier 4 and let the chain drain instead of cascading slowness.
-   */
-  private applyBacklogShed(
-    runTier4: boolean,
-    backlogDepth: number,
-    utterance: Utterance
-  ): boolean {
-    if (runTier4 && backlogDepth > TIER4_BACKLOG_SKIP_DEPTH) {
-      incrementCounter("pipeline.tier4_skipped_backlog_total");
-      log.info(
-        {
-          utteranceId: utterance.utteranceId,
-          sessionId: utterance.sessionId,
-          backlogDepth,
-        },
-        "Tier 4 skipped: evaluation backlog too deep"
-      );
-      return false;
-    }
-    return runTier4;
-  }
+  private async makeLegacyContext(
+    utterance: Utterance,
+    tier1: Tier1Result,
+    tier2Classification: Tier2Classification,
+    tier3: Tier3Result,
+    payload: PreloadedContextPayload | null
+  ) {
+    const topicSummaryRaw = await this.getCurrentTopicLabel(
+      utterance.sessionId,
+      utterance.topicId
+    );
+    const topicSummary =
+      typeof topicSummaryRaw === "string" ? topicSummaryRaw : "";
 
-  private async evaluateTier4AfterGate(params: {
-    utterance: Utterance;
-    runTier4: boolean;
-    tier1: Tier1Result;
-    tier2Classification: Tier2Classification;
-    tier3: Tier3Result;
-    payload: PreloadedContextPayload | null;
-  }): Promise<{
-    tier4Response: Tier4Response | null;
-    tier4Outcome: Tier4EvaluationSummary;
-    tier4Ms?: number;
-  }> {
-    const { utterance, runTier4, tier1, tier2Classification, tier3, payload } =
-      params;
+    const recentUtterances = this.finalizer.getRecentUtterancesChronological(
+      utterance.sessionId,
+      { excludeUtteranceId: utterance.utteranceId, limit: 48 }
+    );
 
-    if (!runTier4) {
-      return {
-        tier4Response: null,
-        tier4Outcome: { invoked: false },
-      };
-    }
-
-    const tier4 = this.tier4;
-    const tier4Alerts = this.tier4Alerts;
-    if (!tier4) {
-      log.debug(
-        { sessionId: utterance.sessionId, utteranceId: utterance.utteranceId },
-        "Tier4 gated positive but Tier4 missing; skipping silently"
-      );
-      return {
-        tier4Response: null,
-        tier4Outcome: { invoked: false, surfaced: false },
-      };
-    }
-
-    let tier4Response: Tier4Response | null = null;
-    let tier4Ms = 0;
-
-    try {
-      const topicSummaryRaw = await this.getCurrentTopicLabel(
-        utterance.sessionId,
-        utterance.topicId
-      );
-      const topicSummary =
-        typeof topicSummaryRaw === "string" ? topicSummaryRaw : "";
-
-      const recentUtterances = this.finalizer.getRecentUtterancesChronological(
-        utterance.sessionId,
-        { excludeUtteranceId: utterance.utteranceId, limit: 48 }
-      );
-
-      const tier4Ctx = assembleTier4Context({
-        utterance,
-        topicSummary,
-        tier1,
-        tier2: tier2Classification,
-        tier3,
-        payload,
-        recentUtterances,
-        allCommitments: this.commitmentManager.getAll(utterance.sessionId),
-        allConstraints: this.constraintManager.getAll(utterance.sessionId),
-        speakerStates: this.speakerStateTracker.getSummaries(
-          utterance.sessionId
-        ),
-      });
-
-      const tier4WallStart = PERF.now();
-      const tier4Result = await tier4.reason(tier4Ctx);
-      tier4Ms = PERF.now() - tier4WallStart;
-      tier4Response = tier4Result.response;
-
-      if (tier4Result.promptTokens > 0 || tier4Result.completionTokens > 0) {
-        this.costManager
-          .recordCost(
-            utterance.sessionId,
-            tier4Result.promptTokens,
-            tier4Result.completionTokens,
-            GEMINI_TIER4_MODEL
-          )
-          .catch((err) =>
-            log.warn(
-              { err, utteranceId: utterance.utteranceId },
-              "Tier4 cost recording failed"
-            )
-          );
-      }
-    } catch (error) {
-      log.warn(
-        { err: error, utteranceId: utterance.utteranceId },
-        "Tier4 reasoning sequence failed silently"
-      );
-      tier4Response = null;
-    }
-
-    let tier4Surfaced = false;
-    if (tier4Response && tier4Alerts) {
-      const alert = buildAlertFromTier4Response({
-        response: tier4Response,
-        triggerUtteranceId: utterance.utteranceId,
-        speaker: utterance.speaker,
-        topicId: utterance.topicId,
-      });
-
-      if (alert) {
-        try {
-          await tier4Alerts.publish(utterance.sessionId, alert);
-          tier4Surfaced = true;
-        } catch (error) {
-          log.warn(
-            { err: error, utteranceId: utterance.utteranceId },
-            "Tier4 alert publishing failed silently"
-          );
-        }
-      }
-    } else if (tier4Response && !tier4Alerts) {
-      log.debug(
-        { utteranceId: utterance.utteranceId },
-        "Tier4 response available but tier4Alerts publisher missing"
-      );
-    }
-
-    return {
-      tier4Response,
-      tier4Outcome: {
-        invoked: true,
-        surfaced: tier4Surfaced,
-        latencyMs: tier4Ms,
-      },
-      tier4Ms,
-    };
+    return assembleTier4Context({
+      utterance,
+      topicSummary,
+      tier1,
+      tier2: tier2Classification,
+      tier3,
+      payload,
+      recentUtterances,
+      allCommitments: this.commitmentManager.getAll(utterance.sessionId),
+      allConstraints: this.constraintManager.getAll(utterance.sessionId),
+      speakerStates: this.speakerStateTracker.getSummaries(utterance.sessionId),
+    });
   }
 
   closeSession(sessionId: string): void {
@@ -1277,7 +909,7 @@ export class MeetingPipelineEngine {
     this.sessionControllers.delete(sessionId);
     this.hydrationTasks.delete(sessionId);
     this.liveScheduler.closeSession(sessionId);
-    this.liveCommitChains.delete(sessionId);
+    this.liveCommitOrder.closeSession(sessionId);
     this.preFilter.closeSession(sessionId);
     this.tier1.closeSession(sessionId);
     this.tier2Cache.closeSession(sessionId);
@@ -1297,7 +929,7 @@ export class MeetingPipelineEngine {
     this.sessionControllers.clear();
     this.hydrationTasks.clear();
     this.liveScheduler.closeAll();
-    this.liveCommitChains.clear();
+    this.liveCommitOrder.closeAll();
     this.preFilter.closeAll();
     this.tier1.closeAll();
     this.tier2Cache.closeAll();
