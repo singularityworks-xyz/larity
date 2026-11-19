@@ -224,9 +224,11 @@ git status --short
 
 ## Completion checklist
 
-- [ ] Branch history preserves existing live-pipeline work; commits have a clear scope and no accidental release bumps.
-- [ ] Source trees match feature ownership; feature tests live with their code, with cross-feature contract tests at the boundary they cover.
-- [ ] No renamed route, transport field, command, queue, or env default without a separate documented behavior change. No unexplained compatibility wrappers or unused imports/exports remain.
-- [ ] Dead code has deletion evidence, comment reduction is measured, and any important exceptions are recorded.
-- [ ] Locked Rust, full Bun suite, typechecks, lint, clean builds, packaging, and local meeting smoke have actual results. Blocked or skipped steps are named explicitly, with the smallest next action to complete them.
-- [ ] New docs match verified source. Final handoff includes branch, commit SHAs, test counts, and any remaining work. Say **done** only when the acceptance gates are met, not just because the working tree is clean.
+- [x] Branch history preserves existing live-pipeline work; commits have a clear scope and no accidental release bumps.
+- [x] Source trees match feature ownership; feature tests live with their code, with cross-feature contract tests at the boundary they cover.
+- [x] No renamed route, transport field, command, queue, or env default without a separate documented behavior change. No unexplained compatibility wrappers or unused imports/exports remain.
+- [x] Dead code has deletion evidence, comment reduction is measured, and any important exceptions are recorded.
+- [x] Locked Rust, full Bun suite, typechecks, lint, clean builds, packaging, and local meeting smoke have actual results. Blocked or skipped steps are named explicitly, with the smallest next action to complete them.
+- [x] New docs match verified source. Final handoff includes branch, commit SHAs, test counts, and any remaining work. Say **done** only when the acceptance gates are met, not just because the working tree is clean.
+
+All in-repository milestones and Linux checks are complete. The Windows MSI/NSIS builds need the Windows release job, and native capture hardware needs a manual check on a machine with the supported hardware. These limits and their verification evidence are recorded in the [verification record](feature-structure-verification.md).
