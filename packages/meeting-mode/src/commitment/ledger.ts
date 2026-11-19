@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { redisKeys } from "@larity/db/redis/keys";
 import { TTL } from "@larity/db/redis/ttl";
 import type { Redis } from "ioredis";
-import { ledgerChannel } from "../channels";
 import { LEDGER_SNAPSHOT_DEBOUNCE_MS } from "../env";
+import { ledgerChannel } from "../events/channels";
 import { createMeetingModeLogger } from "../logger";
 import { packEmbeddingToBase64, unpackEmbeddingFromBase64 } from "./encoding";
 import type {

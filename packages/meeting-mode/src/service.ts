@@ -8,6 +8,14 @@ import { redisKeys } from "@larity/db/redis/keys";
 import type { Redis } from "ioredis";
 import { AlertPublisher } from "./alerts/publisher";
 import type { Alert } from "./alerts/types";
+import { MeetingPipelineEngine } from "./analysis/engine";
+import { LiveDecisionAnalyzer } from "./analysis/live/live-decision";
+import { getMetricsSnapshot } from "./analysis/metrics";
+import { publishPipelineEvaluationTrace } from "./analysis/pipeline-trace";
+import { PreFilter } from "./analysis/pre-filter";
+import { Tier1StructuralDetector } from "./analysis/tiers/tier1/tier1";
+import { Tier2Classifier } from "./analysis/tiers/tier2/tier2";
+import { Tier4DeepReasoner } from "./analysis/tiers/tier4/tier4";
 import { CommitmentManager } from "./commitment/manager";
 import { ConstraintManager } from "./constraint/manager";
 import type { PreloadedContextPayload } from "./constraint/types";
@@ -18,18 +26,10 @@ import {
   MEETING_PIPELINE_MODE,
   validateEnv,
 } from "./env";
+import { startSubscriber, stopSubscriber } from "./events/subscriber";
 import { rootLogger } from "./logger";
-import { MeetingPipelineEngine } from "./pipeline/engine";
-import { LiveDecisionAnalyzer } from "./pipeline/live-decision";
-import { getMetricsSnapshot } from "./pipeline/metrics";
-import { publishPipelineEvaluationTrace } from "./pipeline/pipeline-trace";
-import { PreFilter } from "./pipeline/pre-filter";
-import { Tier1StructuralDetector } from "./pipeline/tier1";
-import { Tier2Classifier } from "./pipeline/tier2";
-import { Tier4DeepReasoner } from "./pipeline/tier4";
-import { SpeakerManager } from "./speaker/manager";
-import { startSubscriber, stopSubscriber } from "./subscriber";
-import { UtteranceFinalizer } from "./utterance/finalizer";
+import { SpeakerManager } from "./transcript/speakers/manager";
+import { UtteranceFinalizer } from "./transcript/utterances/finalizer";
 
 const UTTERANCE_CACHE_TTL = 7 * 24 * 60 * 60;
 const METRICS_DUMP_INTERVAL_MS = 30_000;

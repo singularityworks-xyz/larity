@@ -1,4 +1,4 @@
-import type { SpeakerIdentity } from "../utterance/types";
+import type { SpeakerIdentity } from "../transcript/utterances/types";
 
 export const commitmentStatuses = [
   "tentative",

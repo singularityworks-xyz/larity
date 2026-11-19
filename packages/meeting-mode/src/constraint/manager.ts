@@ -2,7 +2,7 @@ import { redisKeys } from "@larity/db/redis/keys";
 import type { Redis } from "ioredis";
 import { LEDGER_SNAPSHOT_DEBOUNCE_MS } from "../env";
 import { createMeetingModeLogger } from "../logger";
-import type { Utterance } from "../utterance/types";
+import type { Utterance } from "../transcript/utterances/types";
 import { ConstraintLedger, type ConstraintLedgerOptions } from "./ledger";
 import type {
   Constraint,

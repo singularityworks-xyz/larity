@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
-import type { Utterance } from "../utterance/types";
+import type { Utterance } from "../transcript/utterances/types";
 
 mock.restore();
 const { TopicManager } = await import("./manager");

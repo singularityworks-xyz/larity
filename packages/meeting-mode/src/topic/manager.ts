@@ -1,7 +1,7 @@
-import { topicChannel } from "../channels";
+import type { Tier2TopicDelta } from "../analysis/types";
+import { topicChannel } from "../events/channels";
 import { createMeetingModeLogger } from "../logger";
-import type { Tier2TopicDelta } from "../pipeline/types";
-import type { Utterance } from "../utterance/types";
+import type { Utterance } from "../transcript/utterances/types";
 import { GoogleGenAIEmbedder } from "./embedder";
 import { cosineSimilarity, updateCentroid } from "./similarity";
 import { TopicSummarizer } from "./summarizer";

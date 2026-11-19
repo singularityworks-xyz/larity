@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { Utterance } from "../utterance/types";
+import type { Utterance } from "../transcript/utterances/types";
 import { TopicManager } from "./manager";
 
 function makeUtterance(): Utterance {

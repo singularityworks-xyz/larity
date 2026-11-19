@@ -1,12 +1,12 @@
 /** Synthetic provider check; sends no transcripts or organization records. */
 
-import { LiveMeetingAnalyzer } from "../packages/meeting-mode/src/pipeline/live-analyzer";
-import { LiveDecisionAnalyzer } from "../packages/meeting-mode/src/pipeline/live-decision";
+import { LiveMeetingAnalyzer } from "../packages/meeting-mode/src/analysis/live/live-analyzer";
+import { LiveDecisionAnalyzer } from "../packages/meeting-mode/src/analysis/live/live-decision";
 import type {
   Tier2Input,
   Tier4Context,
-} from "../packages/meeting-mode/src/pipeline/types";
-import type { Utterance } from "../packages/meeting-mode/src/utterance/types";
+} from "../packages/meeting-mode/src/analysis/types";
+import type { Utterance } from "../packages/meeting-mode/src/transcript/utterances/types";
 
 const speaker: Utterance["speaker"] = {
   speakerId: "synthetic-team",
