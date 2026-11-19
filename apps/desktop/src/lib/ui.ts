@@ -256,16 +256,3 @@ export const homeGridClass = "grid gap-3 md:grid-cols-[1fr_1.2fr]";
 
 export const healthStripClass =
   "flex items-center gap-2 rounded-[var(--radius-panel)] border border-border bg-bg-overlay px-3.5 py-2";
-
-export function metricChipClass(
-  variant: "success" | "warning" | "muted" = "muted"
-): string {
-  const base =
-    "inline-flex items-center rounded-[var(--radius-pill)] border px-2 py-0.5 text-[10px] font-medium leading-snug tracking-wide uppercase";
-  const variants: Record<string, string> = {
-    success: `${base} border-success bg-success-bg text-success`,
-    warning: `${base} border-warning bg-warning-bg text-warning`,
-    muted: `${base} border-border bg-bg-overlay text-fg-muted`,
-  };
-  return variants[variant] ?? variants.muted ?? "";
-}

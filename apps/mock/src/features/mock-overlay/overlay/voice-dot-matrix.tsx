@@ -27,16 +27,16 @@ interface Dot {
 }
 
 // Pre-built so React never sees array-index keys.
-const DOTS: Dot[] = Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => {
-  const row = Math.floor(i / GRID_SIZE);
-  const col = i % GRID_SIZE;
+const DOTS: Dot[] = DOT_DELAYS.map((delayRandom, index) => {
+  const row = Math.floor(index / GRID_SIZE);
+  const col = index % GRID_SIZE;
   // Center is row 2, col 2
   const distFromCenter = Math.sqrt((row - 2) ** 2 + (col - 2) ** 2);
   return {
     id: `r${row}c${col}`,
     cx: DOT_START + col * DOT_STEP,
     cy: DOT_START + row * DOT_STEP,
-    delayRandom: DOT_DELAYS[i],
+    delayRandom,
     delayRipple: Math.round(distFromCenter * 150),
   };
 });
