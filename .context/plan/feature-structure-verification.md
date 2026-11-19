@@ -35,4 +35,4 @@ The control and realtime images built from `2b0af5b` started against disposable 
 
 ## Release checks
 
-The desktop deb, rpm, and AppImage built on Linux from the verified source. The mock deb and rpm built at `1b04727`, which replaces the mock's template bundle identifier with its own. The published desktop Nix version and hash were unchanged by these packaging checks. Windows MSI and NSIS builds require the Windows release job and were outside this Linux verification.
+The desktop deb, rpm, and AppImage built on Linux from the verified source. The mock deb and rpm built at `1b04727`, which replaces the mock's template bundle identifier with its own. The published desktop Nix version and hash were unchanged by these packaging checks. Windows MSI and NSIS builds require the Windows release job and were outside this Linux verification. `actionlint` was unavailable in the verification environment, so workflow lint was not run. Native capture hardware still needs a manual check on a supported device.
