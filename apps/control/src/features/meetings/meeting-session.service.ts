@@ -1,14 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { redis } from "@larity/db/redis";
 import { redisKeys } from "@larity/db/redis/keys";
-import { TTL } from "@larity/db/redis/ttl";
-import {
-  createS3Client,
-  getS3Config,
-  PutObjectCommand,
-} from "@larity/infra/s3";
 import { prisma } from "../../lib/prisma";
-import { createControlLogger } from "../../logger";
 import type {
   ActiveSession,
   EndSessionInput,
@@ -18,7 +11,9 @@ import type {
   StartSessionInput,
   StartSessionResponse,
 } from "./meeting-session.validator";
+import { scheduleCleanup } from "./session-cleanup";
 import { SESSION_TTL } from "./session-constants";
+import { preloadContext } from "./session-context";
 import {
   getSessionStatus,
   isValidSession,
@@ -30,53 +25,6 @@ const REALTIME_WS_URL = process.env.REALTIME_WS_URL || "ws://localhost:3001";
 
 // Lock TTL in seconds (prevent race conditions)
 const LOCK_TTL = 30;
-
-const CONTEXT_LOOKBACK_DAYS = 84;
-const CONTEXT_MAX_RESULTS = 100;
-const AGENDA_SPLIT_REGEX = /\r?\n/;
-const AGENDA_BULLET_PREFIX_REGEX = /^\s*(?:[-*]|\d+[.)])\s*/;
-const KEYWORD_HINTS = ["blocklist", "keyword", "blocked"] as const;
-
-interface SessionPreloadedDecision {
-  content: string;
-  createdAt: number;
-  id: string;
-  tags: string[];
-  title: string;
-}
-
-interface SessionPreloadedPolicyGuardrail {
-  clientId: string | null;
-  description: string;
-  id: string;
-  keywords: string[];
-  name: string;
-  pattern: string | null;
-  ruleType: string;
-  severity: string;
-}
-
-interface SessionPreloadedPoint {
-  content: string;
-  createdAt: number;
-  id: string;
-}
-
-interface SessionPreloadedContext {
-  activePolicyGuardrails: SessionPreloadedPolicyGuardrail[];
-  calendarAgendaItems: string[];
-  clientId: string;
-  clientNameList: string[];
-  keywordBlocklists: string[];
-  knownConstraints: SessionPreloadedPoint[];
-  loadedAt: number;
-  meetingId: string;
-  openDecisions: SessionPreloadedDecision[];
-  orgId: string;
-  priorCommitments: SessionPreloadedPoint[];
-  sessionId: string;
-  version: 1;
-}
 
 /**
  * Session data stored in Redis
@@ -101,8 +49,6 @@ interface SessionData {
  * - Getting session status
  */
 export const meetingSessionService = {
-  logger: createControlLogger("meeting-session-service"),
-
   /**
    * Start a new meeting session
    *
@@ -196,7 +142,7 @@ export const meetingSessionService = {
       }
 
       try {
-        await this.preloadContext({
+        await preloadContext({
           sessionId,
           meetingId,
           clientId: meeting.clientId,
@@ -403,7 +349,7 @@ export const meetingSessionService = {
 
     // Step 4: Clean up Redis (with short delay to let other services react)
     // The actual cleanup happens after a grace period
-    await this.scheduleCleanup(sessionId, meetingId);
+    await scheduleCleanup(sessionId, meetingId);
 
     return { success: true, meetingId };
   },
@@ -647,311 +593,6 @@ export const meetingSessionService = {
   },
 
   /**
-   * Schedule cleanup of session data
-   * Delayed to allow other services to process the session end event
-   */
-  async scheduleCleanup(sessionId: string, meetingId: string): Promise<void> {
-    // Remove from active sessions
-    await redis.srem(redisKeys.activeSessions(), sessionId);
-
-    // Fetch orgId from DB
-    let orgId: string | undefined;
-    try {
-      const meeting = await prisma.meeting.findUnique({
-        where: { id: meetingId },
-        select: {
-          client: {
-            select: {
-              orgId: true,
-            },
-          },
-        },
-      });
-      if (meeting?.client?.orgId) {
-        orgId = meeting.client.orgId;
-      }
-    } catch (err) {
-      this.logger.error(
-        { err, meetingId, sessionId },
-        `Failed to fetch orgId from DB for meeting ${meetingId}, aborting session S3 dump`
-      );
-    }
-
-    if (orgId) {
-      // Dump session state to S3
-      try {
-        const commitmentsRaw = await redis.get(
-          redisKeys.meetingCommitment(sessionId)
-        );
-        const finalCommitments = commitmentsRaw
-          ? JSON.parse(commitmentsRaw)
-          : null;
-
-        const constraintsRaw = await redis.get(
-          redisKeys.meetingConstraintLedger(sessionId)
-        );
-        const finalConstraints = constraintsRaw
-          ? JSON.parse(constraintsRaw)
-          : null;
-
-        const speakerMap = await redis.hgetall(
-          redisKeys.meetingSpeaker(sessionId)
-        );
-
-        const topicsRaw = await redis.get(redisKeys.meetingTopic(sessionId));
-        const finalTopics = topicsRaw ? JSON.parse(topicsRaw) : null;
-
-        const vadHistoryRaw = await redis.lrange(
-          `meeting.vad.${sessionId}`,
-          0,
-          -1
-        );
-        const vadHistory = vadHistoryRaw.map((item) => {
-          try {
-            return JSON.parse(item);
-          } catch {
-            return item;
-          }
-        });
-
-        const clockOffsets = await redis.hgetall(
-          `meeting.clock_offsets.${sessionId}`
-        );
-
-        const sessionState = {
-          sessionId,
-          meetingId,
-          orgId,
-          commitments: finalCommitments,
-          constraints: finalConstraints,
-          speakerMap,
-          topics: finalTopics,
-          vadHistory,
-          clockOffsets,
-          timestamp: Date.now(),
-        };
-
-        const s3Client = createS3Client();
-        try {
-          const config = getS3Config();
-          const key = `${orgId}/${sessionId}/session_state.json`;
-
-          await s3Client.send(
-            new PutObjectCommand({
-              Bucket: config.bucket,
-              Key: key,
-              Body: JSON.stringify(sessionState, null, 2),
-              ContentType: "application/json",
-              ServerSideEncryption: "AES256",
-            })
-          );
-        } finally {
-          s3Client.destroy();
-        }
-      } catch (err) {
-        // Fail-safe: do not crash if S3 upload fails, but log it
-        this.logger.error(
-          { err, sessionId, meetingId, orgId },
-          `Session cleanup S3 dump failed for session ${sessionId}`
-        );
-      }
-    } else {
-      this.logger.warn(
-        { sessionId, meetingId },
-        `Aborting session S3 dump for session ${sessionId}: missing or empty orgId`
-      );
-    }
-
-    // Extend TTL of specified keys to 7 days
-    const keysToExtend = [
-      redisKeys.meetingSession(sessionId),
-      redisKeys.meetingToSession(meetingId),
-      redisKeys.meetingCommitment(sessionId),
-      redisKeys.meetingConstraintLedger(sessionId),
-      redisKeys.meetingSpeaker(sessionId),
-      redisKeys.meetingContext(sessionId),
-      redisKeys.meetingTopic(sessionId),
-      `meeting.topics.${sessionId}`,
-      `meeting.cost.${sessionId}`,
-      `meeting.clock_offsets.${sessionId}`,
-      `meeting.vad.${sessionId}`,
-      `meeting:ledger:${sessionId}`,
-    ];
-
-    for (const key of keysToExtend) {
-      try {
-        await redis.expire(key, 7 * 24 * 60 * 60); // 7 days
-      } catch {
-        // ignore
-      }
-    }
-  },
-
-  async preloadContext(input: {
-    sessionId: string;
-    meetingId: string;
-    clientId: string;
-    clientName: string;
-    orgId: string;
-    orgSettings: unknown;
-    agenda: string | null;
-  }): Promise<SessionPreloadedContext> {
-    const {
-      sessionId,
-      meetingId,
-      clientId,
-      clientName,
-      orgId,
-      orgSettings,
-      agenda,
-    } = input;
-
-    const lookbackMs = CONTEXT_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
-    const createdAfter = new Date(Date.now() - lookbackMs);
-
-    const [
-      decisions,
-      constraints,
-      priorCommitments,
-      guardrails,
-      clientMembers,
-    ] = await Promise.all([
-      prisma.decision.findMany({
-        where: {
-          clientId,
-          status: "ACTIVE",
-          createdAt: { gte: createdAfter },
-        },
-        orderBy: { createdAt: "desc" },
-        take: CONTEXT_MAX_RESULTS,
-        select: {
-          id: true,
-          title: true,
-          content: true,
-          tags: true,
-          createdAt: true,
-        },
-      }),
-      prisma.importantPoint.findMany({
-        where: {
-          clientId,
-          category: "CONSTRAINT",
-        },
-        orderBy: { createdAt: "desc" },
-        take: CONTEXT_MAX_RESULTS,
-        select: {
-          id: true,
-          content: true,
-          createdAt: true,
-        },
-      }),
-      prisma.importantPoint.findMany({
-        where: {
-          clientId,
-          category: "COMMITMENT",
-          OR: [{ meetingId: null }, { meetingId: { not: meetingId } }],
-        },
-        orderBy: { createdAt: "desc" },
-        take: CONTEXT_MAX_RESULTS,
-        select: {
-          id: true,
-          content: true,
-          createdAt: true,
-        },
-      }),
-      prisma.policyGuardrail.findMany({
-        where: {
-          orgId,
-          isActive: true,
-          OR: [{ clientId: null }, { clientId }],
-        },
-        orderBy: { createdAt: "desc" },
-        take: CONTEXT_MAX_RESULTS,
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          ruleType: true,
-          severity: true,
-          keywords: true,
-          pattern: true,
-          clientId: true,
-        },
-      }),
-      prisma.clientMember.findMany({
-        where: { clientId },
-        select: { name: true },
-        take: CONTEXT_MAX_RESULTS,
-        orderBy: { name: "asc" },
-      }),
-    ]);
-
-    const guardrailKeywords = guardrails.flatMap((guardrail) =>
-      guardrail.keywords.filter((keyword) => keyword.trim().length > 0)
-    );
-    const settingsKeywords = extractKeywordBlocklists(orgSettings);
-    const keywordBlocklists = [
-      ...new Set([...settingsKeywords, ...guardrailKeywords]),
-    ];
-
-    const clientNameList = [
-      clientName,
-      ...clientMembers.map((member) => member.name),
-    ].filter(
-      (name, index, names) =>
-        name.trim().length > 0 && names.indexOf(name) === index
-    );
-
-    const payload: SessionPreloadedContext = {
-      version: 1,
-      sessionId,
-      meetingId,
-      clientId,
-      orgId,
-      loadedAt: Date.now(),
-      openDecisions: decisions.map((decision) => ({
-        id: decision.id,
-        title: decision.title,
-        content: decision.content,
-        tags: decision.tags,
-        createdAt: decision.createdAt.getTime(),
-      })),
-      knownConstraints: constraints.map((constraint) => ({
-        id: constraint.id,
-        content: constraint.content,
-        createdAt: constraint.createdAt.getTime(),
-      })),
-      activePolicyGuardrails: guardrails.map((guardrail) => ({
-        id: guardrail.id,
-        name: guardrail.name,
-        description: guardrail.description,
-        ruleType: guardrail.ruleType,
-        severity: guardrail.severity,
-        keywords: guardrail.keywords,
-        pattern: guardrail.pattern,
-        clientId: guardrail.clientId,
-      })),
-      priorCommitments: priorCommitments.map((commitment) => ({
-        id: commitment.id,
-        content: commitment.content,
-        createdAt: commitment.createdAt.getTime(),
-      })),
-      clientNameList,
-      keywordBlocklists,
-      calendarAgendaItems: parseAgendaItems(agenda),
-    };
-
-    await redis.set(
-      redisKeys.meetingContext(sessionId),
-      JSON.stringify(payload),
-      "EX",
-      Math.min(SESSION_TTL, TTL.MEETING_CONTEXT)
-    );
-
-    return payload;
-  },
-
-  /**
    * Helper: Serialize session data for Redis HSET
    */
   serializeSession(data: SessionData): Record<string, string> {
@@ -999,65 +640,4 @@ export function getHttpStatusForError(code: string): number {
   };
 
   return statusMap[code] || 500;
-}
-
-function parseAgendaItems(agenda: string | null): string[] {
-  if (!agenda) {
-    return [];
-  }
-
-  return agenda
-    .split(AGENDA_SPLIT_REGEX)
-    .map((line) => line.replace(AGENDA_BULLET_PREFIX_REGEX, "").trim())
-    .filter((line) => line.length > 0);
-}
-
-function extractKeywordBlocklists(settings: unknown): string[] {
-  if (!(settings && typeof settings === "object")) {
-    return [];
-  }
-
-  const keywords = new Set<string>();
-  collectKeywordValues(settings, keywords, false);
-
-  return [...keywords];
-}
-
-function collectKeywordValues(
-  value: unknown,
-  keywords: Set<string>,
-  shouldCollectString: boolean
-): void {
-  if (typeof value === "string") {
-    if (!shouldCollectString) {
-      return;
-    }
-
-    const cleaned = value.trim();
-    if (cleaned.length > 0) {
-      keywords.add(cleaned);
-    }
-    return;
-  }
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      collectKeywordValues(item, keywords, shouldCollectString);
-    }
-    return;
-  }
-
-  if (!(value && typeof value === "object")) {
-    return;
-  }
-
-  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    const shouldCollectChild = shouldCollectString || hasKeywordHint(key);
-    collectKeywordValues(child, keywords, shouldCollectChild);
-  }
-}
-
-function hasKeywordHint(key: string): boolean {
-  const lowered = key.toLowerCase();
-  return KEYWORD_HINTS.some((hint) => lowered.includes(hint));
 }

@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { prisma } from "@larity/db/client";
 import type { MeetingAnalysis } from "@larity/db/meeting-analysis.types";
 import { Prisma } from "@larity/db/prisma";
@@ -16,7 +15,7 @@ import {
   getSessionCommitments,
   type RedisCommitment,
 } from "./commitments";
-import { cosineSimilarity, deduplicateItems } from "./deduplication";
+import { deduplicateItems } from "./deduplication";
 import { generateEmbedding } from "./embeddings";
 import {
   type ExtractedDecision,
@@ -26,6 +25,14 @@ import {
   extractInsightsFromTranscriptChunk,
 } from "./extraction-llm";
 import { generateMeetingAnalysis } from "./final-analysis-llm";
+import {
+  persistCommitmentsTx,
+  persistDecisionsTx,
+  persistImportantPointsTx,
+  persistOpenQuestionsTx,
+  persistTasksTx,
+} from "./persist-records";
+import { persistUtterances } from "./persist-transcript";
 import { computeTalkTime } from "./talk-time";
 
 interface Utterance {
@@ -39,9 +46,6 @@ interface Utterance {
 }
 
 const SPEAKER_LABEL_CLEANUP_REGEX = /\s*-\s*\d+$/;
-const WORD_SPLIT_REGEX = /\s+/;
-const MIN_UTTERANCE_WORDS = 4;
-const UTTERANCE_EMBED_BATCH = 20;
 
 type MeetingWithRelations = Prisma.MeetingGetPayload<{
   include: {
@@ -454,7 +458,7 @@ export class SummaryWorker extends BaseWorker<
         await tx.openQuestion.deleteMany({ where: { meetingId } });
         await tx.importantPoint.deleteMany({ where: { meetingId } });
 
-        await this.persistDecisionsTx(
+        await persistDecisionsTx(
           tx,
           meeting.clientId,
           meetingId,
@@ -463,7 +467,7 @@ export class SummaryWorker extends BaseWorker<
           oldEmbeddingMap
         );
 
-        await this.persistTasksTx(
+        await persistTasksTx(
           tx,
           meeting.clientId,
           meetingId,
@@ -472,7 +476,7 @@ export class SummaryWorker extends BaseWorker<
           parseOptionalDate
         );
 
-        await this.persistOpenQuestionsTx(
+        await persistOpenQuestionsTx(
           tx,
           meeting.clientId,
           meetingId,
@@ -481,7 +485,7 @@ export class SummaryWorker extends BaseWorker<
           parseOptionalDate
         );
 
-        await this.persistImportantPointsTx(
+        await persistImportantPointsTx(
           tx,
           meeting.clientId,
           meetingId,
@@ -489,7 +493,7 @@ export class SummaryWorker extends BaseWorker<
           resolveUserOrParticipant
         );
 
-        await this.persistCommitmentsTx(
+        await persistCommitmentsTx(
           tx,
           meeting.clientId,
           meetingId,
@@ -512,7 +516,12 @@ export class SummaryWorker extends BaseWorker<
       );
 
       try {
-        await this.persistUtterances(meeting.clientId, meetingId, utterances);
+        await persistUtterances(
+          this.log,
+          meeting.clientId,
+          meetingId,
+          utterances
+        );
       } catch (err) {
         this.log.error(
           { err, meetingId },
@@ -532,250 +541,5 @@ export class SummaryWorker extends BaseWorker<
       await setJobStatus(sessionId, "summary", "failed");
       throw error;
     }
-  }
-
-  private async persistDecisionsTx(
-    tx: Prisma.TransactionClient,
-    clientId: string,
-    meetingId: string,
-    decisionsWithEmbeddings: Array<{
-      d: ExtractedDecision;
-      embedding: number[];
-    }>,
-    existingDecisions: Array<{
-      id: string;
-      decisionRef: string;
-      version: number;
-    }>,
-    oldEmbeddingMap: Map<string, number[]>
-  ): Promise<void> {
-    const updatedRefs = new Set<string>();
-
-    for (const { d, embedding } of decisionsWithEmbeddings) {
-      let decisionRef: string = randomUUID();
-      const version = 1;
-
-      for (const old of existingDecisions) {
-        if (updatedRefs.has(old.decisionRef)) {
-          continue;
-        }
-
-        const oldEmbedding = oldEmbeddingMap.get(old.id);
-        if (oldEmbedding) {
-          const similarity = cosineSimilarity(embedding, oldEmbedding);
-
-          if (similarity >= 0.85) {
-            decisionRef = old.decisionRef;
-            updatedRefs.add(decisionRef);
-            break;
-          }
-        }
-      }
-
-      const created = await tx.decision.create({
-        data: {
-          decisionRef:
-            decisionRef as `${string}-${string}-${string}-${string}-${string}`,
-          version,
-          clientId,
-          meetingId,
-          title: d.title,
-          content: d.content,
-          rationale: d.rationale || null,
-          evidence: d.evidence || null,
-          status: "ACTIVE",
-          tags: d.tags,
-        },
-      });
-
-      const vectorStr = `[${embedding.join(",")}]`;
-      await tx.$executeRawUnsafe(
-        "UPDATE decisions SET embedding = $1::vector WHERE id = $2",
-        vectorStr,
-        created.id
-      );
-    }
-  }
-
-  private async persistTasksTx(
-    tx: Prisma.TransactionClient,
-    clientId: string,
-    meetingId: string,
-    tasks: ExtractedTask[],
-    resolveUserOrParticipant: (hint: string | undefined) => string | null,
-    parseOptionalDate: (dateStr: string | undefined | null) => Date | null
-  ): Promise<void> {
-    for (const t of tasks) {
-      const assigneeId = resolveUserOrParticipant(t.assigneeHint);
-      await tx.task.create({
-        data: {
-          clientId,
-          meetingId,
-          title: t.title,
-          description: t.description || null,
-          assigneeId,
-          priority: t.priority,
-          dueAt: parseOptionalDate(t.dueAt),
-          status: "OPEN",
-        },
-      });
-    }
-  }
-
-  private async persistOpenQuestionsTx(
-    tx: Prisma.TransactionClient,
-    clientId: string,
-    meetingId: string,
-    questions: ExtractedOpenQuestion[],
-    resolveUserOrParticipant: (hint: string | undefined) => string | null,
-    parseOptionalDate: (dateStr: string | undefined | null) => Date | null
-  ): Promise<void> {
-    for (const q of questions) {
-      const assigneeId = resolveUserOrParticipant(q.assigneeHint);
-      await tx.openQuestion.create({
-        data: {
-          clientId,
-          meetingId,
-          question: q.question,
-          context: q.context || null,
-          assigneeId,
-          dueAt: parseOptionalDate(q.dueAt),
-          status: "OPEN",
-        },
-      });
-    }
-  }
-
-  private async persistImportantPointsTx(
-    tx: Prisma.TransactionClient,
-    clientId: string,
-    meetingId: string,
-    pointsWithEmbeddings: Array<{
-      p: ExtractedImportantPoint;
-      embedding: number[];
-    }>,
-    resolveUserOrParticipant: (hint: string | undefined) => string | null
-  ): Promise<void> {
-    for (const { p, embedding } of pointsWithEmbeddings) {
-      const speakerId = resolveUserOrParticipant(p.speakerHint);
-      const created = await tx.importantPoint.create({
-        data: {
-          clientId,
-          meetingId,
-          speakerId,
-          content: p.content,
-          category: p.category,
-          transcriptEvidence: p.transcriptEvidence || null,
-        },
-      });
-
-      const vectorStr = `[${embedding.join(",")}]`;
-      await tx.$executeRawUnsafe(
-        "UPDATE important_points SET embedding = $1::vector WHERE id = $2",
-        vectorStr,
-        created.id
-      );
-    }
-  }
-
-  private async persistCommitmentsTx(
-    tx: Prisma.TransactionClient,
-    clientId: string,
-    meetingId: string,
-    commitmentsWithEmbeddings: Array<{
-      c: RedisCommitment;
-      embedding: number[];
-    }>,
-    resolveUserOrParticipant: (hint: string | undefined) => string | null
-  ): Promise<void> {
-    for (const { c, embedding } of commitmentsWithEmbeddings) {
-      const speakerId =
-        c.speaker.userId || resolveUserOrParticipant(c.speaker.name);
-      const created = await tx.importantPoint.create({
-        data: {
-          clientId,
-          meetingId,
-          speakerId,
-          content: c.statement,
-          category: "COMMITMENT",
-          transcriptEvidence: c.utteranceId || null,
-        },
-      });
-
-      if (embedding.length > 0) {
-        const vectorStr = `[${embedding.join(",")}]`;
-        await tx.$executeRawUnsafe(
-          "UPDATE important_points SET embedding = $1::vector WHERE id = $2",
-          vectorStr,
-          created.id
-        );
-      }
-    }
-  }
-
-  private async persistUtterances(
-    clientId: string,
-    meetingId: string,
-    utterances: Utterance[]
-  ): Promise<void> {
-    await prisma.transcriptUtterance.deleteMany({ where: { meetingId } });
-
-    const eligible = utterances.filter(
-      (u) => u.text.trim().split(WORD_SPLIT_REGEX).length >= MIN_UTTERANCE_WORDS
-    );
-
-    if (eligible.length === 0) {
-      this.log.info({ meetingId }, "No eligible utterances for embedding");
-      return;
-    }
-
-    this.log.info(
-      {
-        meetingId,
-        totalUtterances: utterances.length,
-        eligible: eligible.length,
-      },
-      "Embedding utterances for assistant compatibility"
-    );
-
-    const rows = await Promise.all(
-      eligible.map((u) =>
-        prisma.transcriptUtterance.create({
-          data: {
-            meetingId,
-            clientId,
-            speaker: u.speaker,
-            text: u.text,
-            timestamp: u.timestamp,
-            duration: u.duration,
-            channel: u.channel,
-          },
-        })
-      )
-    );
-
-    for (let i = 0; i < rows.length; i += UTTERANCE_EMBED_BATCH) {
-      const batch = rows.slice(i, i + UTTERANCE_EMBED_BATCH);
-      await Promise.all(
-        batch.map(async (row) => {
-          const embedding = await generateEmbedding(row.text);
-          const vectorStr = `[${embedding.join(",")}]`;
-          await prisma.$executeRawUnsafe(
-            "UPDATE transcript_utterances SET embedding = $1::vector WHERE id = $2",
-            vectorStr,
-            row.id
-          );
-        })
-      );
-      this.log.info(
-        { meetingId, batchIndex: i / UTTERANCE_EMBED_BATCH },
-        "Utterance embedding batch complete"
-      );
-    }
-
-    this.log.info(
-      { meetingId, embeddedCount: rows.length },
-      "Utterance embedding complete"
-    );
   }
 }
