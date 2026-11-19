@@ -137,6 +137,8 @@ jobs:
         run: bun run db:gen
 
       - name: Run Unit Tests
+        env:
+          DATABASE_URL: postgresql://unit:unit@127.0.0.1:1/larity_unit
         run: bun test
 
   build:
