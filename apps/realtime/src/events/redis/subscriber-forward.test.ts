@@ -5,11 +5,11 @@ import {
 } from "../../sessions/session";
 import type { RealtimeSocket } from "../../transport/types";
 import {
-  __test_only_handleAlertChannel as handleAlertChannel,
-  __test_only_handleBroadcastSessionChannel as handleBroadcastSessionChannel,
-  __test_only_handleProcessedChannel as handleProcessedChannel,
-  __test_only_handleSttChannel as handleSttChannel,
-} from "./subscriber";
+  handleAlertChannel,
+  handleBroadcastSessionChannel,
+  handleProcessedChannel,
+} from "./meeting-forwarding";
+import { handleSttChannel } from "./stt-forwarding";
 
 function makeSocket(userId = "u1"): RealtimeSocket & { sent: unknown[] } {
   const sent: unknown[] = [];

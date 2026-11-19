@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseSttEnvelope } from "./subscriber";
+import { parseSttEnvelope } from "./stt-forwarding";
 
 describe("parseSttEnvelope", () => {
   test("parses new final channels", () => {

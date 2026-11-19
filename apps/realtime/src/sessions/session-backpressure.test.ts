@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { getMetricsSnapshot, resetMetrics } from "@larity/stt/metrics";
+import { WS_SEND_BACKPRESSURE_BYTES } from "../transport/outbound";
 import type { RealtimeSocket } from "../transport/types";
 import {
   addConnection,
@@ -8,7 +9,6 @@ import {
   removeConnection,
   __test_only_reset as resetSessions,
   sendToUser,
-  WS_SEND_BACKPRESSURE_BYTES,
 } from "./session";
 
 function makeSocket(bufferedBytes?: number): RealtimeSocket & {
