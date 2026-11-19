@@ -1,4 +1,4 @@
-import { prisma } from "../../lib/prisma";
+import { prisma } from "../../../lib/prisma";
 import type { CreateUserInput, UpdateUserInput } from "./user.validator";
 
 export const UserService = {

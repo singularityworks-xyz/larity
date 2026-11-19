@@ -2,7 +2,7 @@ import { Type } from "@google/genai";
 import { prisma } from "@larity/db/client";
 import type { ClientPersonaJobData } from "@larity/jobs";
 import type { Job } from "bullmq";
-import { ai } from "../../lib/gemini";
+import { ai } from "../../runtime/gemini";
 import { BaseWorker } from "../../runtime/worker";
 
 const WHITESPACE_REGEX = /\s+/;

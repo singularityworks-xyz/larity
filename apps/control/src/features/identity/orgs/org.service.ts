@@ -1,4 +1,4 @@
-import { prisma } from "../../lib/prisma";
+import { prisma } from "../../../lib/prisma";
 import type { CreateOrgInput, UpdateOrgInput } from "./org.validator";
 
 export const OrgService = {

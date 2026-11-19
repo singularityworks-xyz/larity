@@ -8,7 +8,7 @@ import {
   cleanupMeetingStateKeys,
   publishMeetingProcessed,
   setJobStatus,
-} from "../../lib/job-status";
+} from "../../runtime/job-status";
 import { BaseWorker } from "../../runtime/worker";
 import { chunkUtterances } from "./chunking";
 import {

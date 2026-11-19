@@ -17,18 +17,18 @@ import {
   meetingQuerySchema,
   updateMeetingSchema,
 } from "./meeting.validator";
-import { MeetingInsightsService } from "./meeting-insights.service";
-import { MeetingParticipantService } from "./meeting-participant.service";
+import { MeetingInsightsService } from "./review/meeting-insights.service";
+import { TranscriptService } from "./review/transcript.service";
+import {
+  createTranscriptSchema,
+  updateTranscriptSchema,
+} from "./review/transcript.validator";
+import { MeetingParticipantService } from "./sessions/meeting-participant.service";
 import {
   createMeetingParticipantBaseSchema,
   meetingParticipantIdSchema,
   updateMeetingParticipantSchema,
-} from "./meeting-participant.validator";
-import { TranscriptService } from "./transcript.service";
-import {
-  createTranscriptSchema,
-  updateTranscriptSchema,
-} from "./transcript.validator";
+} from "./sessions/meeting-participant.validator";
 
 export const meetingsRoutes = new Elysia({ prefix: "/meetings" })
   .use(requireAuth)

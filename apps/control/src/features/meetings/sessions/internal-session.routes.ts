@@ -1,7 +1,7 @@
 import { redis } from "@larity/db/redis";
 import { redisKeys } from "@larity/db/redis/keys";
 import { Elysia, t } from "elysia";
-import { createControlLogger } from "../../logger";
+import { createControlLogger } from "../../../logger";
 import { meetingSessionService } from "./meeting-session.service";
 import { validateSessionSchema } from "./meeting-session.validator";
 

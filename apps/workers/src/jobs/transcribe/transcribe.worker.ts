@@ -26,8 +26,8 @@ import {
   type SessionSpeakerStatePayload,
   type Utterance,
 } from "meeting-mode";
-import { setJobStatus } from "../../lib/job-status";
 import type { createWorkerLogger } from "../../logger";
+import { setJobStatus } from "../../runtime/job-status";
 import { BaseWorker } from "../../runtime/worker";
 
 type WorkerLogger = ReturnType<typeof createWorkerLogger>;

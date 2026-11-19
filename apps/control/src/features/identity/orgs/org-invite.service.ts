@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { prisma } from "../../lib/prisma";
+import { prisma } from "../../../lib/prisma";
 import type { CreateOrgInviteInput } from "./org.validator";
 
 const DEFAULT_INVITE_TTL_HOURS = 24 * 7;

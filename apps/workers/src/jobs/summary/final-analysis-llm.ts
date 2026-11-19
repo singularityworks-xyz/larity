@@ -1,6 +1,6 @@
 import { Type } from "@google/genai";
 import type { MeetingAnalysis } from "@larity/db/meeting-analysis.types";
-import { ai } from "../../lib/gemini";
+import { ai } from "../../runtime/gemini";
 import type {
   ExtractedDecision,
   ExtractedImportantPoint,

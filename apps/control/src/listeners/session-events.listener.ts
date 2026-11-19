@@ -1,5 +1,5 @@
 import Redis from "ioredis";
-import { meetingSessionService } from "../features/meetings/meeting-session.service";
+import { meetingSessionService } from "../features/meetings/sessions/meeting-session.service";
 import { systemEvents } from "../lib/events";
 import { createControlLogger } from "../logger";
 

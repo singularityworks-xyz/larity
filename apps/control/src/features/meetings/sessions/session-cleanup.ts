@@ -5,8 +5,8 @@ import {
   getS3Config,
   PutObjectCommand,
 } from "@larity/infra/s3";
-import { prisma } from "../../lib/prisma";
-import { createControlLogger } from "../../logger";
+import { prisma } from "../../../lib/prisma";
+import { createControlLogger } from "../../../logger";
 
 const log = createControlLogger("meeting-session-service");
 

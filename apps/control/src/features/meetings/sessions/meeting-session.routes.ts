@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { ZodError } from "zod";
-import { createControlLogger } from "../../logger";
-import { requireAuth } from "../../middleware/auth";
+import { createControlLogger } from "../../../logger";
+import { requireAuth } from "../../../middleware/auth";
 import {
   getHttpStatusForError,
   MeetingSessionError,

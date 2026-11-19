@@ -1,7 +1,7 @@
 import { redis } from "@larity/db/redis";
 import { redisKeys } from "@larity/db/redis/keys";
 import { TTL } from "@larity/db/redis/ttl";
-import { prisma } from "../../lib/prisma";
+import { prisma } from "../../../lib/prisma";
 import { SESSION_TTL } from "./session-constants";
 
 const CONTEXT_LOOKBACK_DAYS = 84;

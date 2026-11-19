@@ -1,5 +1,5 @@
 import { AIBriefGeneratorService, BriefSchema } from "meeting-mode";
-import { prisma } from "../../lib/prisma";
+import { prisma } from "../../../lib/prisma";
 
 export const MeetingBriefService = {
   async generateBrief(meetingId: string) {

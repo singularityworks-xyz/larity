@@ -1,5 +1,5 @@
 import { isMeetingAnalysis } from "@larity/db/meeting-analysis.types";
-import { prisma } from "../../lib/prisma";
+import { prisma } from "../../../lib/prisma";
 
 export const MeetingInsightsService = {
   async getInsights(meetingId: string) {

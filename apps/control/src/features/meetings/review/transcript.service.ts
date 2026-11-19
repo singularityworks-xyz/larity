@@ -1,5 +1,5 @@
-import { isPrismaError, PrismaErrorCode } from "../../lib/errors";
-import { prisma } from "../../lib/prisma";
+import { isPrismaError, PrismaErrorCode } from "../../../lib/errors";
+import { prisma } from "../../../lib/prisma";
 import type {
   CreateTranscriptInput,
   UpdateTranscriptInput,

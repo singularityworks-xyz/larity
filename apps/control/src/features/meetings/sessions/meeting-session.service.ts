@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { redis } from "@larity/db/redis";
 import { redisKeys } from "@larity/db/redis/keys";
-import { prisma } from "../../lib/prisma";
+import { prisma } from "../../../lib/prisma";
 import type {
   ActiveSession,
   EndSessionInput,

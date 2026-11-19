@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: <required for auth> */
 import { Elysia } from "elysia";
-import { requireAuth } from "../../middleware/auth";
+import { requireAuth } from "../../../middleware/auth";
 import { OrgService } from "./org.service";
 import {
   createOrgInviteSchema,

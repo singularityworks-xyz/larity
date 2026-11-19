@@ -1,4 +1,4 @@
-import { ai } from "../../lib/gemini";
+import { ai } from "../../runtime/gemini";
 
 const EMBEDDING_MODEL = "gemini-embedding-2-preview";
 const EMBEDDING_DIMENSIONALITY = 768;
