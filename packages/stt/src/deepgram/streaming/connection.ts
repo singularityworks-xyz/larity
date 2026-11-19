@@ -1,21 +1,20 @@
 import { publishSystemEvent, redis } from "@larity/db/redis";
-import {
-  DEEPGRAM_DIARIZE_MIC,
-  DEEPGRAM_ENDPOINTING_MS,
-  DEEPGRAM_NO_DELAY,
-  DEEPGRAM_UTTERANCE_END_MS,
-} from "../../env";
+import { redisKeys } from "@larity/db/redis/keys";
 import { createSttLogger } from "../../logger";
 import { incrementCounter, recordHistogram } from "../../metrics";
 import type { SttResult } from "../../types";
-import { partialChannel, transcriptChannel } from "../channels";
 import { getDeepgramClient } from "../client";
-import {
-  DEFAULT_DG_CONFIG,
-  type DeepgramWord,
-  type TranscriptAlternative,
-  type TranscriptResult,
+import type {
+  DeepgramWord,
+  TranscriptAlternative,
+  TranscriptResult,
 } from "../types";
+import {
+  DEEPGRAM_KEEP_ALIVE_INTERVAL_MS,
+  shouldSendKeepAlive,
+  streamingOptions,
+} from "./connect-policy";
+import { TranscriptAccumulator } from "./transcript-accumulator";
 
 /** Minimal handle for a v5 Listen V1 WebSocket connection. */
 interface LiveConnection {
@@ -25,24 +24,6 @@ interface LiveConnection {
   sendKeepAlive(message: { type: string }): void;
   sendMedia(message: ArrayBuffer | Blob | ArrayBufferView): void;
   waitForOpen(): Promise<unknown>;
-}
-
-/** Idle interval between Deepgram KeepAlive frames (P5.6). */
-export const DEEPGRAM_KEEP_ALIVE_INTERVAL_MS = 5000;
-
-/**
- * Pure idle check for the KeepAlive tick (P5.6): connected, and no audio
- * sent for at least one interval. Unit-tested; the method below performs
- * the send.
- */
-export function shouldSendKeepAlive(
-  connected: boolean,
-  lastAudioSendMs: number,
-  nowMs: number
-): boolean {
-  return (
-    connected && nowMs - lastAudioSendMs >= DEEPGRAM_KEEP_ALIVE_INTERVAL_MS
-  );
 }
 
 const log = createSttLogger("dg-connection");
@@ -113,15 +94,7 @@ export class DeepgramConnection {
   private transitEstimateMs = 0;
   private transitCaptured = false;
 
-  // Accumulation state for stitching intermediate is_final=true segments
-  // until speech_final=true signals the end of the utterance.
-  // See: https://developers.deepgram.com/docs/understand-endpointing-interim-results
-  private accumulatedText = "";
-  private accumulatedConfidence = 0;
-  private accumulatedSegmentCount = 0;
-  private accumulatedStart = 0;
-  private accumulatedEnd = 0;
-  private accumulatedDiarizationIndex = -1;
+  private readonly transcript = new TranscriptAccumulator();
 
   // Reconnection state
   private retryCount = 0;
@@ -189,27 +162,12 @@ export class DeepgramConnection {
 
     try {
       const client = getDeepgramClient();
-      // Own reconnect at the app layer: disable the SDK's internal
-      // auto-reconnect (`reconnectAttempts` → RWS `maxRetries`; excluded
-      // from the API query params by the SDK) so a replaced socket can
-      // never come back to life on its own and orphan a Deepgram session.
-      //
-      // P5.7 live-tuning overrides (env; defaults preserve behavior):
-      // endpointing / utterance_end_ms / no_delay apply to both channels;
-      // diarize=false applies to the mic channel only (the host is
-      // channel-identified, so per-word speaker labels add nothing there).
-      const cfg = {
-        ...DEFAULT_DG_CONFIG,
-        endpointing: DEEPGRAM_ENDPOINTING_MS,
-        utterance_end_ms: DEEPGRAM_UTTERANCE_END_MS,
-        ...(DEEPGRAM_NO_DELAY ? { no_delay: "true" } : {}),
-        ...(this.logicalChannel === 0 && !DEEPGRAM_DIARIZE_MIC
-          ? { diarize: "false" }
-          : {}),
-        reconnectAttempts: 0,
-        // biome-ignore lint/suspicious/noExplicitAny: SDK internally fills Authorization
-      } as any;
-      this.connection = await client.listen.v1.connect(cfg);
+      // Only this connection manages retries and socket generations.
+      this.connection = await client.listen.v1.connect(
+        streamingOptions(this.logicalChannel) as Parameters<
+          typeof client.listen.v1.connect
+        >[0]
+      );
       this.setupEventHandlers();
       this.connection.connect();
       await this.connection.waitForOpen();
@@ -574,22 +532,22 @@ export class DeepgramConnection {
 
     // --- Accumulate intermediate finals (is_final=true, speech_final=false) ---
     if (is_final && !result.speech_final) {
-      this.accumulateSegment(transcript, alternative, start, duration);
+      const combinedText = this.transcript.append({
+        text: transcript,
+        confidence: alternative.confidence || 0,
+        diarizationIndex: this.computeDiarizationIndex(alternative),
+        start,
+        duration,
+      });
+      log.debug(
+        `Accumulated final segment: "${transcript}" (total: "${combinedText}")`
+      );
       return;
     }
 
     // --- Publish partials immediately, never touching the accumulator ---
     if (!is_final) {
-      // During accumulation, prepend accumulated text so the frontend
-      // sees the full sentence grow rather than disjoint segment text.
-      // Avoid duplication: if Deepgram's partial already includes the
-      // accumulated text (e.g. interim results before endpointing),
-      // use the raw transcript.
-      const partialText =
-        this.accumulatedText && !transcript.startsWith(this.accumulatedText)
-          ? `${this.accumulatedText} ${transcript}`
-          : transcript;
-
+      const partialText = this.transcript.partialText(transcript);
       const diarizationIndex = this.computeDiarizationIndex(alternative);
       const anchorBaseMs = this.anchorBaseMs();
 
@@ -623,25 +581,19 @@ export class DeepgramConnection {
       return;
     }
 
-    // --- speech_final=true: combine with accumulated text, publish as final ---
-
-    const finalTranscript = this.accumulatedText
-      ? `${this.accumulatedText} ${transcript}`
-      : transcript;
-
-    const finalConfidence = this.combineConfidence(alternative.confidence || 0);
-    const finalStart =
-      this.accumulatedSegmentCount > 0 ? this.accumulatedStart : start;
-    const finalDuration =
-      this.accumulatedSegmentCount > 0
-        ? Math.max(this.accumulatedEnd, start + duration) - finalStart
-        : duration;
-    const diarizationIndex =
-      this.accumulatedSegmentCount > 0
-        ? this.accumulatedDiarizationIndex
-        : this.computeDiarizationIndex(alternative);
-
-    this.resetAccumulation();
+    const {
+      text: finalTranscript,
+      confidence: finalConfidence,
+      start: finalStart,
+      duration: finalDuration,
+      diarizationIndex,
+    } = this.transcript.finish({
+      text: transcript,
+      confidence: alternative.confidence || 0,
+      start,
+      duration,
+      diarizationIndex: this.computeDiarizationIndex(alternative),
+    });
 
     const anchorBaseMs = this.anchorBaseMs();
 
@@ -675,8 +627,8 @@ export class DeepgramConnection {
    */
   private async publishTranscript(result: SttResult): Promise<void> {
     const channel = result.isFinal
-      ? transcriptChannel(result.sessionId)
-      : partialChannel(result.sessionId);
+      ? redisKeys.meetingSttFinal(result.sessionId)
+      : redisKeys.meetingSttPartial(result.sessionId);
 
     try {
       await redis.publish(channel, JSON.stringify(result));
@@ -694,21 +646,17 @@ export class DeepgramConnection {
    * If the accumulator is empty, this is a no-op.
    */
   private async flushAccumulatedFinal(): Promise<void> {
-    const text = this.accumulatedText;
-    if (!text) {
+    const segment = this.transcript.flush();
+    if (!segment) {
       return;
     }
-
-    const confidence =
-      this.accumulatedSegmentCount > 0
-        ? this.accumulatedConfidence / this.accumulatedSegmentCount
-        : 0;
-    const start = this.accumulatedStart;
-    const diarizationIndex = this.accumulatedDiarizationIndex;
-    const flushDuration =
-      this.accumulatedEnd > start ? this.accumulatedEnd - start : 0;
-
-    this.resetAccumulation();
+    const {
+      text,
+      confidence,
+      start,
+      diarizationIndex,
+      duration: flushDuration,
+    } = segment;
 
     const anchorBaseMs = this.anchorBaseMs();
 
@@ -734,59 +682,6 @@ export class DeepgramConnection {
     );
     this.recordAudioEndToFinal(anchorBaseMs, start, flushDuration);
     await this.publishTranscript(sttResult);
-  }
-
-  /**
-   * Accumulate an intermediate final segment (is_final=true, speech_final=false).
-   * Concatenates text and tracks confidence, start time, and diarization index.
-   */
-  private accumulateSegment(
-    transcript: string,
-    alternative: TranscriptAlternative,
-    start: number,
-    duration: number
-  ): void {
-    this.accumulatedText += (this.accumulatedText ? " " : "") + transcript;
-    this.accumulatedConfidence += alternative.confidence || 0;
-    this.accumulatedSegmentCount++;
-    if (this.accumulatedSegmentCount === 1) {
-      this.accumulatedStart = start;
-    }
-    const segmentEnd = start + (duration ?? 0);
-    if (segmentEnd > this.accumulatedEnd) {
-      this.accumulatedEnd = segmentEnd;
-    }
-    const diarizationIndex = this.computeDiarizationIndex(alternative);
-    if (diarizationIndex >= 0) {
-      this.accumulatedDiarizationIndex = diarizationIndex;
-    }
-    log.debug(
-      `Accumulated final segment: "${transcript}" ` +
-        `(total: "${this.accumulatedText}")`
-    );
-  }
-
-  /**
-   * Compute weighted average confidence across accumulated segments and the
-   * current segment's confidence.
-   */
-  private combineConfidence(currentConfidence: number): number {
-    return this.accumulatedSegmentCount > 0
-      ? (this.accumulatedConfidence + currentConfidence) /
-          (this.accumulatedSegmentCount + 1)
-      : currentConfidence;
-  }
-
-  /**
-   * Reset all accumulation state after a final utterance is published or flushed.
-   */
-  private resetAccumulation(): void {
-    this.accumulatedText = "";
-    this.accumulatedConfidence = 0;
-    this.accumulatedSegmentCount = 0;
-    this.accumulatedStart = 0;
-    this.accumulatedEnd = 0;
-    this.accumulatedDiarizationIndex = -1;
   }
 
   /**

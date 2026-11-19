@@ -1,3 +1,4 @@
+import { redisKeys } from "@larity/db/redis/keys";
 import { Redis } from "ioredis";
 import { createRealtimeLogger } from "../../logger";
 import {
@@ -33,23 +34,23 @@ const REALTIME_CONTROL_PATTERN = "realtime.*";
  */
 export function sessionChannels(sessionId: string): string[] {
   return [
-    `meeting.utterance.${sessionId}`,
-    `meeting.topic.${sessionId}`,
-    `meeting.alert.${sessionId}.shared`,
+    redisKeys.meetingUtterance(sessionId),
+    redisKeys.meetingTopic(sessionId),
+    redisKeys.meetingAlertShared(sessionId),
     `meeting.ledger.${sessionId}`,
     `meeting.pipeline.${sessionId}`,
-    `meeting.stt.final.${sessionId}`,
-    `meeting.stt.partial.${sessionId}`,
-    `meeting.stt.${sessionId}`,
-    `meeting.processed.${sessionId}`,
+    redisKeys.meetingSttFinal(sessionId),
+    redisKeys.meetingSttPartial(sessionId),
+    redisKeys.meetingSttLegacy(sessionId),
+    redisKeys.meetingProcessingComplete(sessionId),
     `meeting.speaker_identity_guessed.${sessionId}`,
-    `meeting.system_event.${sessionId}`,
+    redisKeys.meetingSystemEvent(sessionId),
   ];
 }
 
 /** Session-scoped patterns: personal alert fan-out for one session. */
 export function sessionPatterns(sessionId: string): string[] {
-  return [`meeting.alert.${sessionId}.user.*`];
+  return [redisKeys.meetingAlertPersonal(sessionId, "*")];
 }
 
 const subscribedSessions = new Set<string>();

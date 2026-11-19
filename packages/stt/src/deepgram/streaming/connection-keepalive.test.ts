@@ -5,9 +5,9 @@ afterAll(() => mock.restore());
 
 import {
   DEEPGRAM_KEEP_ALIVE_INTERVAL_MS,
-  DeepgramConnection,
   shouldSendKeepAlive,
-} from "./connection";
+} from "./connect-policy";
+import { DeepgramConnection } from "./connection";
 
 type Handler = (...args: unknown[]) => void;
 

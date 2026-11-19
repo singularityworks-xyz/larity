@@ -1,14 +1,16 @@
-export const STT_FINAL_PATTERN = "meeting.stt.final.*";
-export const STT_PARTIAL_PATTERN = "meeting.stt.partial.*";
+import { redisKeys } from "@larity/db/redis/keys";
+
+export const STT_FINAL_PATTERN = redisKeys.meetingSttFinal("*");
+export const STT_PARTIAL_PATTERN = redisKeys.meetingSttPartial("*");
 /**
  * Legacy pre-P1.1 final shape `meeting.stt.<sessionId>`. Kept subscribed so
  * a mixed-version deploy (old STT/realtime still publishing the legacy shape)
  * does not silently drop finals during a rolling upgrade.
  */
-export const STT_LEGACY_PATTERN = "meeting.stt.*";
+export const STT_LEGACY_PATTERN = redisKeys.meetingSttLegacy("*");
 
-const STT_FINAL_PREFIX = "meeting.stt.final.";
-const STT_PARTIAL_PREFIX = "meeting.stt.partial.";
+const STT_FINAL_PREFIX = redisKeys.meetingSttFinal("");
+const STT_PARTIAL_PREFIX = redisKeys.meetingSttPartial("");
 
 /**
  * True only for the legacy `meeting.stt.<sessionId>` shape (3 segments, with

@@ -60,20 +60,6 @@ export interface VadSignal {
   userId: string;
 }
 
-/**
- * Session lifecycle event payloads
- */
-export interface SessionStartEvent {
-  sessionId: string;
-  ts: number;
-}
-
-export interface SessionEndEvent {
-  duration: number;
-  sessionId: string;
-  ts: number;
-}
-
 export interface ParticipantJoinEvent {
   name: string;
   role: "host" | "participant";

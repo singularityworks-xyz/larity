@@ -1,10 +1,9 @@
 import { redis } from "@larity/db/redis";
+import type { SessionEndEvent, SessionStartEvent } from "@larity/stt";
 import { createRealtimeLogger } from "../../logger";
 import type {
   ParticipantJoinEvent,
   ParticipantLeaveEvent,
-  SessionEndEvent,
-  SessionStartEvent,
   VadSignal,
 } from "../../transport/types";
 import {
