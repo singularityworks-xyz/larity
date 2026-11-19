@@ -1,12 +1,12 @@
 import { memo, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../../lib/api";
+import { useAuthSession } from "../../auth/use-session";
 import type {
   GuardrailRuleType,
   GuardrailSeverity,
   PolicyGuardrail,
-} from "../../../routes/settings";
-import { useAuthSession } from "../../auth/use-session";
+} from "../../settings/settings-page";
 
 function getSeverityLineClass(severity: GuardrailSeverity): string {
   if (severity === "BLOCK") {

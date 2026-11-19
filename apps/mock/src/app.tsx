@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { OverlayShell } from "./overlay/overlay-shell";
+import { OverlayShell } from "./features/mock-overlay/overlay/overlay-shell";
 
 function App() {
   useEffect(() => {
