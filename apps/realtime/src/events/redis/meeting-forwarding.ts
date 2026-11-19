@@ -1,10 +1,7 @@
 import { createRealtimeLogger } from "../../logger";
-import { broadcast, hasSession, sendToUser } from "../../sessions/session";
+import { broadcast, sendToUser } from "../../sessions/session";
 
 const log = createRealtimeLogger("subscriber");
-
-const DEBUG_INGEST_ENDPOINT =
-  "http://127.0.0.1:7268/ingest/d02c4985-7539-46d4-bc45-33f990c9f9a8";
 
 /**
  * Forward meeting processed events to WebSocket clients.
@@ -83,50 +80,6 @@ export function handleAlertChannel(channel: string, message: string): void {
   if (sessionId === undefined || route === undefined) {
     return;
   }
-
-  // #region agent log
-  if (process.env.DEBUG_ALERT_INGEST === "true") {
-    let category: string | null = null;
-    let alertRouting: string | null = null;
-    try {
-      const o = JSON.parse(message) as Record<string, unknown>;
-      if (typeof o.category === "string") {
-        category = o.category;
-      }
-      if (typeof o.routing === "string") {
-        alertRouting = o.routing;
-      }
-    } catch {
-      /* ignore */
-    }
-    const sessionLive = hasSession(sessionId);
-    fetch(DEBUG_INGEST_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "6eb14a",
-      },
-      body: JSON.stringify({
-        sessionId: "6eb14a",
-        runId: "post-fix",
-        hypothesisId: "B",
-        location: "subscriber.ts:handleAlertChannel",
-        message: "Redis alert channel received",
-        data: {
-          channelSuffix: "REDACTED",
-          redisSessionId: "REDACTED",
-          route,
-          category,
-          alertRouting,
-          sessionLive,
-          personalTargetUserId: "REDACTED",
-          personalHasSocket: null,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => undefined);
-  }
-  // #endregion
 
   let wrapped: string;
   try {
