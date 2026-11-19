@@ -1,18 +1,10 @@
-import { emitTo, listen } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuthSession } from "../../auth/use-session";
 import { AlertCard } from "../alerts/alert-card";
-import { mapBackendAlertToMeetingAlert } from "../alerts/mapper";
 import { useAlertQueue } from "../alerts/use-alert-queue";
 import { AmbientStatusBar } from "./ambient-status-bar";
-import {
-  isUtteranceTopicDelta,
-  mapBackendCommitmentToLive,
-  mapBackendTopicToLive,
-  mapBackendUtteranceToLive,
-  mapSpeakerToParticipant,
-} from "./mappers";
 
 const UNIDENTIFIED_SPEAKER_REGEX = /^Speaker \d+$/i;
 
@@ -30,23 +22,18 @@ import {
   statsGridClass,
   warningBannerClass,
 } from "../../../lib/ui";
-import { closeOverlayWindow, createOverlayWindow } from "../overlay/window";
+import { closeOverlayWindow } from "../overlay/window";
 import { AudioStreamingClient } from "./capture/audio-streaming";
 import { useAudioCapture } from "./capture/use-audio-capture";
 import { VadManager } from "./capture/vad";
+import { useMeetingLiveEvents } from "./events/use-meeting-live-events";
 import { MeetingHeader } from "./meeting-header";
 import { MeetingSidebar } from "./meeting-sidebar";
 import { NameConfigModal } from "./name-config-modal";
+import { useMeetingConnection } from "./session/use-meeting-connection";
 import { TopicsTimeline } from "./topics-timeline";
-import { upsertLiveUtterance } from "./transcript-state";
 import { TranscriptStream } from "./transcript-stream";
-import type {
-  LiveCommitment,
-  LiveParticipant,
-  LivePendingUtterance,
-  LiveTopic,
-  LiveUtterance,
-} from "./types";
+import type { LiveTopic, LiveUtterance } from "./types";
 
 interface MeetingLocationState {
   allowNameCustomization?: boolean;
@@ -80,19 +67,6 @@ function getWsBaseUrl(websocketUrl: string | undefined): string {
   }
 }
 
-function pendingOverlapsSttRange(
-  p: LivePendingUtterance,
-  utteranceStartOffset: number,
-  utteranceDuration: number,
-  slackSec = 0.5
-): boolean {
-  const u0 = utteranceStartOffset - slackSec;
-  const u1 = utteranceStartOffset + utteranceDuration + slackSec;
-  const p0 = p.startSec - slackSec;
-  const p1 = p.startSec + p.durationSec + slackSec;
-  return p0 < u1 && p1 > u0;
-}
-
 function getSystemEventBannerClass(
   severity: "info" | "warning" | "error"
 ): string {
@@ -115,32 +89,6 @@ function getSystemEventSourceLabel(
     return "AI Classifier";
   }
   return "AI Reasoner";
-}
-
-const WS_TIMING_RING_SIZE = 30;
-
-function pushWsTimingSample(ring: number[], valueMs: number): void {
-  ring.push(valueMs);
-  if (ring.length > WS_TIMING_RING_SIZE) {
-    ring.splice(0, ring.length - WS_TIMING_RING_SIZE);
-  }
-}
-
-function avgWsTimingMs(ring: number[]): number | null {
-  if (ring.length === 0) {
-    return null;
-  }
-  return ring.reduce((acc, value) => acc + value, 0) / ring.length;
-}
-
-function sampleWsRecvTiming(ring: number[], getRecvPerf: () => number): void {
-  if (!import.meta.env.DEV) {
-    return;
-  }
-  const recvPerf = getRecvPerf();
-  if (recvPerf > 0) {
-    pushWsTimingSample(ring, performance.now() - recvPerf);
-  }
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: pre-existing, refactor deferred
@@ -195,29 +143,8 @@ export function MeetingPage() {
   const vadManager = useMemo(() => new VadManager(), []);
   const isHost = role === "host";
 
-  const [topics, setTopics] = useState<LiveTopic[]>([]);
-  const [utterances, setUtterances] = useState<LiveUtterance[]>([]);
-  const [pendingFinals, setPendingFinals] = useState<LivePendingUtterance[]>(
-    []
-  );
-  const [livePartial, setLivePartial] = useState<{
-    text: string;
-    ts: number;
-    channel: number;
-  } | null>(null);
-  const [participants, setParticipants] = useState<LiveParticipant[]>([]);
-  const [commitments, setCommitments] = useState<LiveCommitment[]>([]);
-  const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
   const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
   const [alertsMuted, setAlertsMuted] = useState(false);
-  const [constraintCount, setConstraintCount] = useState(0);
-  const [ambientTopic, setAmbientTopic] = useState<string | null>(null);
-  const [wsPartialMs, setWsPartialMs] = useState<number | null>(null);
-  const [wsFinalMs, setWsFinalMs] = useState<number | null>(null);
-  const wsTimingRef = useRef<{ final: number[]; partial: number[] }>({
-    final: [],
-    partial: [],
-  });
   const [warning, setWarning] = useState("");
   const {
     clearAudioChannel,
@@ -237,32 +164,38 @@ export function MeetingPage() {
     syncFrameMetrics,
     sysDeviceId,
   } = useAudioCapture({ role, sessionId, setWarning, streamingClient });
-  const [systemEvents, setSystemEvents] = useState<
-    Array<{
-      eventId: string;
-      source: "deepgram" | "generalcompute" | "gemini";
-      severity: "info" | "warning" | "error";
-      code: string;
-      message: string;
-      timestamp: number;
-    }>
-  >([]);
   const [isBusy, setIsBusy] = useState(false);
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
-  const [postProcessingMeetingId, setPostProcessingMeetingId] = useState<
-    string | null
-  >(null);
-
   const alertQueue = useAlertQueue();
-  const addAlertRef = useRef(alertQueue.addAlert);
-  addAlertRef.current = alertQueue.addAlert;
+  const {
+    activeTopicId,
+    ambientTopic,
+    commitments,
+    constraintCount,
+    dismissIdentityGuess,
+    dismissSystemEvent,
+    identityGuesses,
+    livePartial,
+    participants,
+    pendingFinals,
+    postProcessingMeetingId,
+    setActiveTopicId,
+    syncLatencyMetrics,
+    systemEvents,
+    topics,
+    utterances,
+    wsFinalMs,
+    wsPartialMs,
+  } = useMeetingLiveEvents({
+    addAlert: alertQueue.addAlert,
+    sessionId,
+    streamingClient,
+    userId,
+    vadManager,
+  });
   const [expandedAlertId, setExpandedAlertId] = useState<string | null>(null);
 
   const unidentifiedAlertedRef = useRef<Set<string>>(new Set());
-
-  const [identityGuesses, setIdentityGuesses] = useState<
-    Array<{ id: string; index: string; memberId: string }>
-  >([]);
 
   const teamCommitmentCount = useMemo(
     () =>
@@ -309,7 +242,7 @@ export function MeetingPage() {
         setScrollTargetId(fallback.id);
       }
     },
-    [utterances]
+    [setActiveTopicId, utterances]
   );
 
   const handleEvidenceClick = useCallback((utteranceId: string) => {
@@ -399,43 +332,6 @@ export function MeetingPage() {
   }, [sessionId, leaveMeeting]);
 
   useEffect(() => {
-    if (!sessionId) {
-      return;
-    }
-
-    vadManager
-      .start({
-        onSpeechStart: () => {
-          streamingClient.sendVadSignal("vad_speaking", sessionId);
-        },
-        onSpeechEnd: () => {
-          streamingClient.sendVadSignal("vad_silence", sessionId);
-        },
-      })
-      .catch(() => {
-        // VAD optional for transcript UI
-      });
-
-    return () => {
-      vadManager.destroy();
-    };
-  }, [vadManager, streamingClient, sessionId]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      setPendingFinals((prev) => {
-        const active = prev.filter((p) => now - p.ts <= 5000);
-        if (active.length === prev.length) {
-          return prev;
-        }
-        return active;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
     if (!(sessionId && isHost)) {
       return;
     }
@@ -456,7 +352,7 @@ export function MeetingPage() {
 
         if (isUnidentified && !unidentifiedAlertedRef.current.has(p.id)) {
           unidentifiedAlertedRef.current.add(p.id);
-          addAlertRef.current({
+          alertQueue.addAlert({
             id: `unidentified-speaker-${p.id}`,
             category: "unidentified_speaker",
             severity: "medium",
@@ -475,399 +371,33 @@ export function MeetingPage() {
     }, 30_000);
 
     return () => clearInterval(checkInterval);
-  }, [sessionId, meetingStartedAtMs, participants, isHost]);
-
-  useEffect(() => {
-    const unsubUtterance = streamingClient.subscribe("utterance", (data) => {
-      const raw = data as unknown as {
-        utteranceId: string;
-        retracted?: boolean;
-        speaker?: Record<string, unknown>;
-        startOffset?: number;
-        duration?: number;
-      };
-
-      if (raw.retracted) {
-        setUtterances((prev) => prev.filter((u) => u.id !== raw.utteranceId));
-        return;
-      }
-
-      const startOffset = raw.startOffset;
-      const duration = raw.duration;
-
-      const utterance = mapBackendUtteranceToLive(
-        data as unknown as Parameters<typeof mapBackendUtteranceToLive>[0]
-      );
-      setUtterances((previous) => upsertLiveUtterance(previous, utterance));
-      if (typeof startOffset === "number" && typeof duration === "number") {
-        setPendingFinals((prev) =>
-          prev.filter((p) => !pendingOverlapsSttRange(p, startOffset, duration))
-        );
-      }
-      setParticipants((prev) => {
-        if (!raw.speaker) {
-          return prev;
-        }
-        const participant = mapSpeakerToParticipant(
-          raw.speaker as unknown as Parameters<
-            typeof mapSpeakerToParticipant
-          >[0],
-          userId
-        );
-        const idx = prev.findIndex((p) => p.id === participant.id);
-        if (idx >= 0) {
-          const updated = [...prev];
-          updated[idx] = participant;
-          return updated;
-        }
-        return [...prev, participant];
-      });
-      if (raw.speaker) {
-        emitTo("meeting-overlay", "overlay-data", {
-          type: "utterance",
-          payload: { speaker: raw.speaker },
-        }).catch((err) =>
-          console.warn("overlay-data utterance emit failed:", err)
-        );
-      }
-    });
-
-    const unsubTopic = streamingClient.subscribe("topic", (data) => {
-      if (isUtteranceTopicDelta(data)) {
-        const { utteranceId, topicId } = data;
-        setUtterances((prev) =>
-          prev.map((u) => (u.id === utteranceId ? { ...u, topicId } : u))
-        );
-        return;
-      }
-      const topic = mapBackendTopicToLive(
-        data as unknown as Parameters<typeof mapBackendTopicToLive>[0]
-      );
-      setTopics((prev) => {
-        const idx = prev.findIndex((t) => t.id === topic.id);
-        if (idx >= 0) {
-          const updated = [...prev];
-          updated[idx] = topic;
-          return updated;
-        }
-        return [...prev, topic];
-      });
-      setActiveTopicId((prev) => {
-        if (prev === topic.id) {
-          return prev;
-        }
-        return topic.id;
-      });
-      setAmbientTopic(topic.label);
-      const rawConstraints = data as unknown as {
-        constraintsMentioned?: unknown[];
-      };
-      const mentioned = rawConstraints.constraintsMentioned;
-      if (Array.isArray(mentioned) && mentioned.length > 0) {
-        setConstraintCount((prev) => prev + mentioned.length);
-      }
-      emitTo("meeting-overlay", "overlay-data", {
-        type: "topic",
-        payload: {
-          label: topic.label,
-          constraintsMentioned: Array.isArray(mentioned) ? mentioned.length : 0,
-        },
-      }).catch((err) => console.warn("overlay-data topic emit failed:", err));
-    });
-
-    const unsubLedger = streamingClient.subscribe("ledger", (data) => {
-      const raw = data as unknown as {
-        commitment?: Record<string, unknown>;
-      };
-      if (!raw.commitment) {
-        return;
-      }
-      const live = mapBackendCommitmentToLive(
-        raw.commitment as unknown as Parameters<
-          typeof mapBackendCommitmentToLive
-        >[0]
-      );
-      setCommitments((prev) => {
-        const idx = prev.findIndex((c) => c.id === live.id);
-        if (idx >= 0) {
-          const updated = [...prev];
-          updated[idx] = live;
-          return updated;
-        }
-        return [...prev, live];
-      });
-      setUtterances((prev) =>
-        prev.map((u) =>
-          u.id === live.sourceUtteranceId ? { ...u, isCommitment: true } : u
-        )
-      );
-      emitTo("meeting-overlay", "overlay-data", {
-        type: "ledger",
-        payload: { commitmentId: live.id },
-      }).catch((err) => console.warn("overlay-data ledger emit failed:", err));
-    });
-
-    const unsubSttPartial = streamingClient.subscribe("stt_partial", (data) => {
-      sampleWsRecvTiming(wsTimingRef.current.partial, () =>
-        streamingClient.getLastWsRecvPerf()
-      );
-      const transcript =
-        typeof data.transcript === "string" ? data.transcript.trim() : "";
-      if (!transcript) {
-        return;
-      }
-      const ts = typeof data.ts === "number" ? data.ts : Date.now();
-      const channel = typeof data.channel === "number" ? data.channel : 0;
-      setLivePartial({ text: transcript, ts, channel });
-    });
-
-    const unsubSttFinal = streamingClient.subscribe("stt_final", (data) => {
-      sampleWsRecvTiming(wsTimingRef.current.final, () =>
-        streamingClient.getLastWsRecvPerf()
-      );
-      setLivePartial(null);
-      const transcript =
-        typeof data.transcript === "string" ? data.transcript.trim() : "";
-      if (!transcript) {
-        return;
-      }
-      const channel = typeof data.channel === "number" ? data.channel : 0;
-      const startSec = typeof data.start === "number" ? data.start : 0;
-      const durationSec = typeof data.duration === "number" ? data.duration : 0;
-      const ts = typeof data.ts === "number" ? data.ts : Date.now();
-      const key = `${channel}:${startSec.toFixed(3)}`;
-      setPendingFinals((prev) => {
-        const withoutSameKey = prev.filter((p) => p.key !== key);
-        return [
-          ...withoutSameKey,
-          {
-            key,
-            text: transcript,
-            channel,
-            startSec,
-            durationSec,
-            ts,
-          },
-        ];
-      });
-    });
-
-    const unsubAlert = streamingClient.subscribe("alert", (data) => {
-      const alert = mapBackendAlertToMeetingAlert(data);
-      if (alert) {
-        addAlertRef.current(alert);
-        emitTo("meeting-overlay", "overlay-data", {
-          type: "alert",
-          payload: alert,
-        }).catch((err) => console.warn("overlay-data alert emit failed:", err));
-      }
-    });
-
-    const unsubParticipantEvent = streamingClient.subscribe(
-      "participant_event",
-      (data: Record<string, unknown>) => {
-        const participantData: Record<string, unknown> = {};
-        if (
-          data.type === "participant_list" &&
-          Array.isArray(data.participants)
-        ) {
-          participantData.type = "participant_list";
-          participantData.participants = data.participants;
-        } else if (typeof data.type === "string") {
-          participantData.type = data.type;
-        }
-        emitTo("meeting-overlay", "overlay-data", {
-          type: "participant_event",
-          payload: participantData,
-        }).catch((err) =>
-          console.warn("overlay-data participant_event emit failed:", err)
-        );
-      }
-    );
-
-    const unsubProcessed = streamingClient.subscribe(
-      "meeting_processed",
-      (data: Record<string, unknown>) => {
-        const meetingId =
-          typeof data.meetingId === "string" ? data.meetingId : null;
-        if (meetingId) {
-          setPostProcessingMeetingId(meetingId);
-        }
-      }
-    );
-
-    const unsubSpeakerGuess = streamingClient.subscribe(
-      "speaker_identity_guessed",
-      (data: Record<string, unknown>) => {
-        const payload = data.payload as Record<string, unknown>;
-        if (
-          !payload ||
-          typeof payload.deepgramIndex !== "string" ||
-          typeof payload.clientMemberId !== "string"
-        ) {
-          return;
-        }
-        const index = payload.deepgramIndex;
-        const memberId = payload.clientMemberId;
-        const id = Date.now().toString() + Math.random();
-        setIdentityGuesses((prev) => [...prev, { id, index, memberId }]);
-        emitTo("meeting-overlay", "overlay-data", {
-          type: "speaker_identity_guessed",
-          payload: { id, index, memberId },
-        }).catch((err) =>
-          console.warn(
-            "overlay-data speaker_identity_guessed emit failed:",
-            err
-          )
-        );
-      }
-    );
-
-    const unsubSystemEvent = streamingClient.subscribe(
-      "system_event",
-      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: pre-existing, refactor deferred
-      (data: Record<string, unknown>) => {
-        const eventId =
-          typeof data.eventId === "string"
-            ? data.eventId
-            : Math.random().toString();
-        const source =
-          typeof data.source === "string" ? data.source : "deepgram";
-        const severity =
-          typeof data.severity === "string" ? data.severity : "warning";
-        const code = typeof data.code === "string" ? data.code : "unknown";
-        const message = typeof data.message === "string" ? data.message : "";
-        const timestamp =
-          typeof data.timestamp === "number" ? data.timestamp : Date.now();
-
-        const newEvent = {
-          eventId,
-          source: source as "deepgram" | "generalcompute" | "gemini",
-          severity: severity as "info" | "warning" | "error",
-          code,
-          message,
-          timestamp,
-        };
-
-        setSystemEvents((prev) => {
-          const index = prev.findIndex((e) => e.code === code);
-          if (index !== -1) {
-            const copy = [...prev];
-            copy[index] = newEvent;
-            return copy;
-          }
-          return [...prev, newEvent];
-        });
-
-        if (severity !== "error") {
-          setTimeout(() => {
-            setSystemEvents((prev) =>
-              prev.filter((e) => e.eventId !== eventId)
-            );
-          }, 8000);
-        }
-      }
-    );
-
-    return () => {
-      unsubUtterance();
-      unsubTopic();
-      unsubLedger();
-      unsubSttPartial();
-      unsubSttFinal();
-      unsubAlert();
-      unsubParticipantEvent();
-      unsubProcessed();
-      unsubSpeakerGuess();
-      unsubSystemEvent();
-    };
-  }, [streamingClient, userId]);
-
-  useEffect(() => {
-    if (!sessionId) {
-      return;
-    }
-
-    if (allowNameCustomization && configuredName === null) {
-      return;
-    }
-
-    streamingClient.connect(sessionId);
-    refreshStatus().catch(() => {
-      // noop, warning handled in refreshStatus
-    });
-
-    startCapture().catch(() => {
-      // noop, warning handled in startCapture
-    });
-
-    createOverlayWindow({
-      sessionId,
-      role,
-      clientName: clientDisplayName,
-      meetingTitle: meetingDisplayTitle,
-      startedAt: meetingStartedAtMs,
-      wsBaseUrl: getWsBaseUrl(state.websocketUrl),
-      userId,
-    }).catch(() => {
-      // overlay is optional
-    });
-
-    let isMounted = true;
-    let lastSyncedWarning = streamingClient.getWarning();
-    const metricsSyncInterval = setInterval(() => {
-      if (!isMounted) {
-        return;
-      }
-      syncFrameMetrics();
-      const clientWarning = streamingClient.getWarning();
-      if (clientWarning !== lastSyncedWarning) {
-        lastSyncedWarning = clientWarning;
-        setWarning(clientWarning);
-      }
-      if (import.meta.env.DEV) {
-        setWsPartialMs((prev) => {
-          const next = avgWsTimingMs(wsTimingRef.current.partial);
-          return next === prev ? prev : next;
-        });
-        setWsFinalMs((prev) => {
-          const next = avgWsTimingMs(wsTimingRef.current.final);
-          return next === prev ? prev : next;
-        });
-      }
-    }, 1000);
-
-    return () => {
-      isMounted = false;
-      clearInterval(metricsSyncInterval);
-      clearAudioChannel();
-
-      closeOverlayWindow().catch(() => {
-        /* overlay may already be closed */
-      });
-      stopCapture().catch(() => {
-        // noop
-      });
-
-      streamingClient.disconnect();
-    };
   }, [
-    refreshStatus,
     sessionId,
+    meetingStartedAtMs,
+    participants,
+    isHost,
+    alertQueue.addAlert,
+  ]);
+
+  useMeetingConnection({
+    allowNameCustomization,
+    clearAudioChannel,
+    clientDisplayName,
+    configuredName,
+    meetingDisplayTitle,
+    meetingStartedAtMs,
+    onMetricsSync: syncLatencyMetrics,
+    refreshStatus,
+    role,
+    sessionId,
+    setWarning,
     startCapture,
     stopCapture,
     streamingClient,
-    allowNameCustomization,
-    configuredName,
-    role,
-    userId,
-    clientDisplayName,
-    meetingDisplayTitle,
-    meetingStartedAtMs,
-    state.websocketUrl,
     syncFrameMetrics,
-    clearAudioChannel,
-  ]);
+    userId,
+    wsBaseUrl: getWsBaseUrl(state.websocketUrl),
+  });
 
   async function handleToggleNameCustomization() {
     const next = !allowNameCustomization;
@@ -949,11 +479,7 @@ export function MeetingPage() {
                 <button
                   aria-label="Dismiss"
                   className="ml-2 shrink-0 text-xs opacity-60 hover:opacity-100"
-                  onClick={() =>
-                    setSystemEvents((prev) =>
-                      prev.filter((e) => e.eventId !== event.eventId)
-                    )
-                  }
+                  onClick={() => dismissSystemEvent(event.eventId)}
                   type="button"
                 >
                   ✕
@@ -1030,9 +556,7 @@ export function MeetingPage() {
                   <button
                     className="rounded bg-bg-subtle px-2 py-1 text-fg text-xs hover:bg-bg-hover"
                     onClick={() => {
-                      setIdentityGuesses((prev) =>
-                        prev.filter((g) => g.id !== guess.id)
-                      );
+                      dismissIdentityGuess(guess.id);
                       if (cardErrors[guess.id]) {
                         setCardErrors((prev) => {
                           const next = { ...prev };
@@ -1058,9 +582,7 @@ export function MeetingPage() {
                           deepgramIndex: guess.index,
                           clientMemberId: guess.memberId,
                         });
-                        setIdentityGuesses((prev) =>
-                          prev.filter((g) => g.id !== guess.id)
-                        );
+                        dismissIdentityGuess(guess.id);
                         if (cardErrors[guess.id]) {
                           setCardErrors((prev) => {
                             const next = { ...prev };

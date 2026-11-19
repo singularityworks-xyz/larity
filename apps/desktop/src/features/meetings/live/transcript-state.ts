@@ -1,4 +1,17 @@
-import type { LiveUtterance } from "./types";
+import type { LivePendingUtterance, LiveUtterance } from "./types";
+
+export function pendingOverlapsSttRange(
+  pending: LivePendingUtterance,
+  utteranceStartOffset: number,
+  utteranceDuration: number,
+  slackSec = 0.5
+): boolean {
+  const utteranceStart = utteranceStartOffset - slackSec;
+  const utteranceEnd = utteranceStartOffset + utteranceDuration + slackSec;
+  const pendingStart = pending.startSec - slackSec;
+  const pendingEnd = pending.startSec + pending.durationSec + slackSec;
+  return pendingStart < utteranceEnd && pendingEnd > utteranceStart;
+}
 
 export function upsertLiveUtterance(
   utterances: LiveUtterance[],
