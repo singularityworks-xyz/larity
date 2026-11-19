@@ -212,6 +212,8 @@ jobs:
         run: bun run db:gen
 
       - name: Run Server Contract Tests
+        env:
+          DATABASE_URL: postgresql://unit:unit@127.0.0.1:1/larity_unit
         run: bun test apps/control/src/server.test.ts
 
   security:
