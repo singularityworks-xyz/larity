@@ -1,8 +1,4 @@
 import { cors } from "@elysiajs/cors";
-import { cron } from "@elysiajs/cron";
-import { Prisma } from "@larity/db/prisma";
-import { preMeetingBriefQueue } from "@larity/jobs";
-import { enqueuePreMeetingBrief } from "@larity/jobs/meeting-handoffs";
 import { Elysia } from "elysia";
 import { env } from "./env";
 import { clientsRoutes } from "./features/clients/clients.routes";
@@ -16,12 +12,12 @@ import { decisionsRoutes } from "./features/meeting-records/decisions/decisions.
 import { importantPointsRoutes } from "./features/meeting-records/important-points/important-points.routes";
 import { openQuestionsRoutes } from "./features/meeting-records/open-questions/open-questions.routes";
 import { tasksRoutes } from "./features/meeting-records/tasks/tasks.routes";
+import { preMeetingBriefSchedule } from "./features/meetings/briefs/brief-schedule";
 import { meetingsRoutes } from "./features/meetings/meetings.routes";
 import { internalSessionRoutes } from "./features/meetings/sessions/internal-session.routes";
 import { meetingSessionRoutes } from "./features/meetings/sessions/meeting-session.routes";
 import { notificationsRoutes } from "./features/notifications/notifications.routes";
 import { remindersRoutes } from "./features/reminders/reminders.routes";
-import { prisma } from "./lib/prisma";
 import { createControlLogger } from "./logger";
 import { requireAuth } from "./middleware/auth";
 import { requestLogger } from "./middleware/logger";
@@ -79,39 +75,7 @@ export const app = new Elysia()
     };
   })
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
-  .use(
-    cron({
-      name: "pre-meeting-brief-generator",
-      pattern: "0 * * * *", // Every hour
-      async run() {
-        log.info("Running pre-meeting brief cron...");
-        const now = new Date();
-        const next24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        const meetings = await prisma.meeting.findMany({
-          where: {
-            status: "SCHEDULED",
-            scheduledAt: { gte: now, lte: next24Hours },
-            preMeetingBrief: { equals: Prisma.DbNull },
-          },
-          select: { id: true },
-        });
-
-        for (const meeting of meetings) {
-          try {
-            await enqueuePreMeetingBrief(preMeetingBriefQueue, meeting.id);
-          } catch (error) {
-            log.error(
-              { err: error, meetingId: meeting.id },
-              "Failed to enqueue pre-meeting brief job"
-            );
-          }
-        }
-        if (meetings.length > 0) {
-          log.info({ count: meetings.length }, "Enqueued pre-meeting briefs");
-        }
-      },
-    })
-  )
+  .use(preMeetingBriefSchedule)
   .use(authRoutes)
   .use(internalSessionRoutes)
 
