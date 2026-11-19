@@ -1,13 +1,13 @@
 import { Elysia, t } from "elysia";
+import { addAdminRoutes } from "./admin/admin";
 import { env } from "./env";
-import { onClose } from "./handlers/on-close";
-import { onDrain } from "./handlers/on-drain";
-import { onMessage } from "./handlers/on-message";
-import { onOpen } from "./handlers/on-open";
-import { validateSession } from "./handlers/validate-session";
 import { createRealtimeLogger } from "./logger";
-import { addAdminRoutes } from "./routes/admin";
-import type { RealtimeSocket } from "./types";
+import { validateSession } from "./sessions/validate-session";
+import { onClose } from "./transport/on-close";
+import { onDrain } from "./transport/on-drain";
+import { onMessage } from "./transport/on-message";
+import { onOpen } from "./transport/on-open";
+import type { RealtimeSocket } from "./transport/types";
 
 const log = createRealtimeLogger("server");
 

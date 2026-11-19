@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { addConnection, __test_only_reset as resetSessions } from "../session";
-import type { RealtimeSocket } from "../types";
+import {
+  addConnection,
+  __test_only_reset as resetSessions,
+} from "../../sessions/session";
+import type { RealtimeSocket } from "../../transport/types";
 import {
   __test_only_handleAlertChannel as handleAlertChannel,
   __test_only_handleBroadcastSessionChannel as handleBroadcastSessionChannel,

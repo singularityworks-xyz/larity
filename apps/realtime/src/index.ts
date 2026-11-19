@@ -14,8 +14,8 @@ if (!process.env.REDIS_URL && sttEnv.REDIS_URL) {
 }
 
 import { env } from "./env";
+import { startSubscriber, stopSubscriber } from "./events/redis/subscriber";
 import { rootLogger } from "./logger";
-import { startSubscriber, stopSubscriber } from "./redis/subscriber";
 import { startServer, stopServer } from "./server";
 
 // Track the Elysia instance for graceful shutdown

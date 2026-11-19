@@ -2,11 +2,18 @@ import { redis } from "@larity/db/redis";
 import { redisKeys } from "@larity/db/redis/keys";
 import { sessionManager } from "@larity/stt";
 import { closeStreamer } from "../audio/registry";
+import {
+  publishParticipantLeave,
+  publishSessionEnd,
+} from "../events/redis/publisher";
+import { unsubscribeSession } from "../events/redis/subscriber";
 import { createRealtimeLogger } from "../logger";
-import { publishParticipantLeave, publishSessionEnd } from "../redis/publisher";
-import { unsubscribeSession } from "../redis/subscriber";
-import { getSession, isActiveConnection, removeConnection } from "../session";
-import type { RealtimeSocket } from "../types";
+import {
+  getSession,
+  isActiveConnection,
+  removeConnection,
+} from "../sessions/session";
+import type { RealtimeSocket } from "./types";
 
 const log = createRealtimeLogger("on-close");
 

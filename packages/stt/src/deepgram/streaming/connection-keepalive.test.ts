@@ -56,7 +56,7 @@ class ManualLiveSocket {
 
 const createdSockets: ManualLiveSocket[] = [];
 
-mock.module("./client", () => ({
+mock.module("../client", () => ({
   getDeepgramClient: () => ({
     listen: {
       v1: {

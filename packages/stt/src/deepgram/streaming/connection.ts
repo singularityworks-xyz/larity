@@ -4,18 +4,18 @@ import {
   DEEPGRAM_ENDPOINTING_MS,
   DEEPGRAM_NO_DELAY,
   DEEPGRAM_UTTERANCE_END_MS,
-} from "../env";
-import { createSttLogger } from "../logger";
-import { incrementCounter, recordHistogram } from "../metrics";
-import type { SttResult } from "../types";
-import { partialChannel, transcriptChannel } from "./channels";
-import { getDeepgramClient } from "./client";
+} from "../../env";
+import { createSttLogger } from "../../logger";
+import { incrementCounter, recordHistogram } from "../../metrics";
+import type { SttResult } from "../../types";
+import { partialChannel, transcriptChannel } from "../channels";
+import { getDeepgramClient } from "../client";
 import {
   DEFAULT_DG_CONFIG,
   type DeepgramWord,
   type TranscriptAlternative,
   type TranscriptResult,
-} from "./types";
+} from "../types";
 
 /** Minimal handle for a v5 Listen V1 WebSocket connection. */
 interface LiveConnection {

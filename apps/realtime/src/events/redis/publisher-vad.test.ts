@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { VadSignal } from "../types";
+import type { VadSignal } from "../../transport/types";
 import {
   publishVadSignal,
   type VadRedisClient,

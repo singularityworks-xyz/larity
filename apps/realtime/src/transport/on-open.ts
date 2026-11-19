@@ -1,13 +1,17 @@
 import { sessionManager } from "@larity/stt";
 import { createStreamer } from "../audio/registry";
-import { createRealtimeLogger } from "../logger";
 import {
   publishParticipantJoin,
   publishSessionStart,
-} from "../redis/publisher";
-import { subscribeSession } from "../redis/subscriber";
-import { addConnection, getSession, removeConnection } from "../session";
-import type { RealtimeSocket } from "../types";
+} from "../events/redis/publisher";
+import { subscribeSession } from "../events/redis/subscriber";
+import { createRealtimeLogger } from "../logger";
+import {
+  addConnection,
+  getSession,
+  removeConnection,
+} from "../sessions/session";
+import type { RealtimeSocket } from "./types";
 
 const log = createRealtimeLogger("on-open");
 

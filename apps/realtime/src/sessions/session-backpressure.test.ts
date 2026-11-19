@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { getMetricsSnapshot, resetMetrics } from "@larity/stt/metrics";
+import type { RealtimeSocket } from "../transport/types";
 import {
   addConnection,
   broadcast,
@@ -9,7 +10,6 @@ import {
   sendToUser,
   WS_SEND_BACKPRESSURE_BYTES,
 } from "./session";
-import type { RealtimeSocket } from "./types";
 
 function makeSocket(bufferedBytes?: number): RealtimeSocket & {
   sent: unknown[];

@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
-import { getMetricsSnapshot, resetMetrics } from "../metrics";
+import { getMetricsSnapshot, resetMetrics } from "../../metrics";
 
 type Handler = (...args: unknown[]) => void;
 
@@ -49,7 +49,7 @@ class FakeLiveSocket {
 const createdSockets: FakeLiveSocket[] = [];
 const publishMock = mock(() => Promise.resolve(1));
 
-mock.module("./client", () => ({
+mock.module("../client", () => ({
   getDeepgramClient: () => ({
     listen: {
       v1: {

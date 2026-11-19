@@ -1,13 +1,13 @@
 import { sessionManager } from "@larity/stt";
 import { recordHistogram } from "@larity/stt/metrics";
 import { getStreamer } from "../audio/registry";
-import { createRealtimeLogger } from "../logger";
 import {
   publishParticipantRoleChange,
   publishVadSignal,
-} from "../redis/publisher";
-import { updateLastFrameTs } from "../session";
-import type { RealtimeSocket } from "../types";
+} from "../events/redis/publisher";
+import { createRealtimeLogger } from "../logger";
+import { updateLastFrameTs } from "../sessions/session";
+import type { RealtimeSocket } from "./types";
 
 const log = createRealtimeLogger("on-message");
 

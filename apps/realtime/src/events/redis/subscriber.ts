@@ -1,6 +1,6 @@
 import { Redis } from "ioredis";
-import { createRealtimeLogger } from "../logger";
-import { broadcast, hasSession, sendToUser } from "../session";
+import { createRealtimeLogger } from "../../logger";
+import { broadcast, hasSession, sendToUser } from "../../sessions/session";
 
 const log = createRealtimeLogger("subscriber");
 const pipelineTraceLog = createRealtimeLogger("pipeline-trace");

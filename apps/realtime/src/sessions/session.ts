@@ -17,8 +17,12 @@
  */
 
 import { incrementCounter } from "@larity/stt/metrics";
-import { createRealtimeLogger } from "./logger";
-import type { RealtimeSocket, SessionConnection, SessionEntry } from "./types";
+import { createRealtimeLogger } from "../logger";
+import type {
+  RealtimeSocket,
+  SessionConnection,
+  SessionEntry,
+} from "../transport/types";
 
 const log = createRealtimeLogger("session");
 

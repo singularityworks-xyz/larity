@@ -42,7 +42,7 @@ class ManualLiveSocket {
 
 const seenConfigs: unknown[] = [];
 
-mock.module("./client", () => ({
+mock.module("../client", () => ({
   getDeepgramClient: () => ({
     listen: {
       v1: {
