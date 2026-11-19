@@ -9,7 +9,6 @@
     "dotenv": "^17.4.2",
     "lefthook": "^2.1.9",
     "turbo": "^2.10.0",
-    "typescript": "^7.0.1-rc",
     "ultracite": "7.8.3"
   },
   "name": "larity",
@@ -44,7 +43,8 @@
   "overrides": {
     "brace-expansion": "^5.0.7",
     "deepmerge-ts": "^8.0.0",
-    "fast-uri": "^4.1.2"
+    "fast-uri": "^4.1.4",
+    "mysql2": "^3.22.0"
   },
   "patchedDependencies": {
     "@deepgram/sdk@5.4.0": "patches/@deepgram%2Fsdk@5.4.0.patch"
