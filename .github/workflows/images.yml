@@ -226,7 +226,6 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true
-          trivyignores: .trivyignore
 
       - name: Scan realtime image
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8
@@ -236,7 +235,6 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true
-          trivyignores: .trivyignore
 
       - name: Scan workers image
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8
@@ -246,7 +244,6 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true
-          trivyignores: .trivyignore
 
   # Boot the freshly-built images against an ephemeral postgres+redis and
   # verify they start and serve /health. Catches crash-on-boot defects (e.g.
